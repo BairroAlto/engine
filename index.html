@@ -3,26 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Escala</title>
+    <title>Sistema de Escala - Painel</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script>
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
-            authDomain: "escalas-6e0f9.firebaseapp.com",
-            projectId: "escalas-6e0f9",
-            storageBucket: "escalas-6e0f9.firebasestorage.app",
-            messagingSenderId: "19118998563",
-            appId: "1:19118998563:web:5412be658ae34bd45add96"
-        };
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-    </script>
     <style>
+        /* Estilos Gerais */
         * {
             margin: 0;
             padding: 0;
@@ -36,6 +22,7 @@
             background-color: #f5f6fa;
         }
 
+        /* Sidebar */
         .sidebar {
             width: 250px;
             background-color: #2c3e50;
@@ -45,49 +32,14 @@
             position: fixed;
         }
 
-        .year-card {
-            background-color: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .year-card h2 {
-            color: #2c3e50;
-            margin-bottom: 10px;
-            font-size: 1.5em;
-        }
-
-        .year-card .year-display {
-            font-size: 2em;
-            color: #34495e;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-
-        .year-card .error-message {
-            color: #e74c3c;
-            font-size: 0.9em;
-            margin-top: 10px;
-            position: fixed;
-        }
-
-        .year-card .edit-btn {
-            position: absolute;
-            top: 0;
-            right: 0;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 5px;
-            color: #2c3e50;
-        }
-
         .logo {
             text-align: center;
             padding: 20px 0;
             border-bottom: 1px solid #34495e;
+        }
+
+        .logo h2 {
+            margin: 0;
         }
 
         .nav-list {
@@ -109,12 +61,14 @@
         .nav-item i {
             margin-right: 10px;
             width: 20px;
+            text-align: center;
         }
 
         .nav-item:hover {
             background-color: #34495e;
         }
 
+        /* Conteúdo Principal */
         .content {
             margin-left: 250px;
             padding: 30px;
@@ -141,6 +95,158 @@
             gap: 20px;
         }
 
+        /* Cards Genéricos */
+        .year-card, .schedule-card, .panel-card, .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        /* Modificação: Define o fundo cinzento claro para panel-card, igual ao schedule-card de pregação */
+        .panel-card {
+            background-color: #f0f4f8; /* Fundo cinzento claro */
+        }
+        /* Restaura o fundo branco para os outros schedule-card e year-card, card se ainda quiseres que sejam brancos, senão remove e eles usarão o cinzento claro também */
+        .schedule-card, .year-card, .card {
+            background-color: white; /* Restaura fundo branco para outros cards se necessário */
+        }
+
+
+        .year-card h2, .schedule-card h2, .panel-card h2, .card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        /* Year Card Specific */
+        .year-card .year-display {
+            font-size: 2em;
+            color: #34495e;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .year-card .error-message {
+            color: #e74c3c;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        /* Edit Button (Positioned top-right in cards headers) */
+        .edit-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+
+        .edit-btn:hover {
+            color: #2980b9;
+        }
+
+        /* Meeting Times in Schedule Card */
+        .meeting-times {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .meeting-time {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .meeting-time h3 {
+            color: #2c3e50;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        /* Designation List and Items */
+        .designation-list {
+            margin-top: 15px;
+        }
+
+        .designation-item {
+                display: flex;
+                align-items: center;
+                padding: 10px;
+                background-color: #f8f9fa;
+                border-radius: 6px;
+                margin-bottom: 8px;
+                min-height: 4px;
+                justify-content: space-between;
+            }
+            .designation-item:last-child {
+                border-bottom: none;
+            }
+            .designation-name {
+                margin-left: 10px;
+                text-align: left;
+                white-space: nowrap;
+                flex-grow: 1;
+                margin-right: 10px;
+                padding-right: 5px;
+                min-width: 0;
+            }
+            .designation-status {
+                margin-right: 15px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                width: 20px;
+                min-width: 0;
+            }
+            .designation-status i.fa-check {
+                color: #2ecc71;
+            }
+            .designation-status i.fa-times {
+                color: #e74c3c;
+            }
+            .edit-btn.inline {
+                position: static;
+                margin-left: auto;
+                background: none;
+                border: none;
+                color: #3498db;
+                cursor: pointer;
+                font-size: 1.2em;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 30px;
+                height: 30px;
+                flex-shrink: 0;
+            }
+
+            .edit-btn.inline:hover {
+                color: #2980b9;
+            }
+
+            .designation-item .edit-btn.inline {
+                margin-left: auto;
+                padding: 5px;
+            }
+
+            .designation-item .edit-btn.inline i {
+                color: #3498db;
+            }
+
+            .designation-item .edit-btn.inline:hover i {
+                color: #2980b9;
+            }
+
+
+        /* Media Query for Responsive Sidebar */
         @media (max-width: 768px) {
             .sidebar {
                 width: 70px;
@@ -164,6 +270,12 @@
         </div>
         <nav>
             <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="#painel">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Painel</span>
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a href="#reuniao-semana">
                         <i class="fas fa-users"></i>
@@ -195,12 +307,6 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="#painel">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span>Painel</span>
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a href="#iniciar">
                         <i class="fas fa-play"></i>
                         <span>Iniciar</span>
@@ -217,7 +323,7 @@
     </div>
 
     <main class="content">
-        <div id="painel" class="section">
+        <div id="painel" class="section active">
             <h1>Painel</h1>
             <div class="year-card">
                 <div style="position: relative;">
@@ -229,138 +335,349 @@
                 <div id="currentYear" class="year-display">Carregando...</div>
                 <div id="yearError" class="error-message"></div>
             </div>
+            <div class="schedule-card">
+                <div style="position: relative;">
+                    <h2>Horários de Reunião</h2>
+                    <button class="edit-btn" id="editScheduleBtn">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+                <div class="meeting-times">
+                    <div class="meeting-time">
+                        <h3>Reunião da Semana</h3>
+                        <div id="weekdaySchedule">Carregando...</div>
+                    </div>
+                    <div class="meeting-time">
+                        <h3>Reunião do Fim de Semana</h3>
+                        <div id="weekendSchedule">Carregando...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-card">
+                <div style="position: relative;">
+                    <h2>Designações de Reunião</h2>
+                </div>
+                <div id="meetingDesignations" class="designation-list">
+                    <!-- Meeting designations will be loaded here by JavaScript -->
+                </div>
+            </div>
+            <div class="schedule-card" style="background-color: #e0f7fa;">
+                <div style="position: relative;">
+                    <h2>Horários de Pregação</h2>
+                    <button class="edit-btn" id="editPreachingScheduleBtn">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+                <div class="meeting-times">
+                    <div class="meeting-time">
+                        <h3>Pregação Semana</h3>
+                        <div id="weekdayPreachingSchedule">Carregando...</div>
+                    </div>
+                    <div class="meeting-time">
+                        <h3>Pregação Fim de Semana</h3>
+                        <div id="weekendPreachingSchedule">Carregando...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="schedule-card" style="background-color: #f0f4f8;">
+                <h2>Designações de Pregação</h2>
+                <button id="editPreachingDesignationsBtn" class="edit-btn">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <div id="preachingDesignationsList" class="designation-list">
+                    <!-- Preaching designations will be loaded here by JavaScript -->
+                </div>
+            </div>
             <div class="card-container">
-                <!-- Content will be dynamically loaded -->
+                <!-- Dynamic content can be loaded here if needed -->
             </div>
         </div>
 
-        <div id="reuniao-semana" class="section active">
+        <div id="reuniao-semana" class="section">
             <h1>Reunião Semana</h1>
-            <div class="card-container">
-                <!-- Content will be dynamically loaded -->
-            </div>
+            <p>Conteúdo da Reunião Semana aqui.</p>
         </div>
 
         <div id="fim-de-semana" class="section">
             <h1>Fim de Semana</h1>
-            <div class="card-container">
-                <!-- Content will be dynamically loaded -->
-            </div>
+            <p>Conteúdo do Fim de Semana aqui.</p>
         </div>
 
         <div id="pregacao" class="section">
             <h1>Pregação</h1>
-            <div class="card-container">
-                <!-- Content will be dynamically loaded -->
-            </div>
+            <p>Conteúdo de Pregação aqui.</p>
         </div>
 
         <div id="estatisticas" class="section">
             <h1>Estatísticas</h1>
-            <div class="card-container">
-                <!-- Content will be dynamically loaded -->
-            </div>
-        </div>
-
-        <div id="nomes" class="section">
-            <h1>Nomes</h1>
-            <div class="card-container">
-                <!-- Content will be dynamically loaded -->
-            </div>
-        </div>
-
-        <div id="painel" class="section">
-            <h1>Painel</h1>
-            <div class="card-container">
-                <!-- Content will be dynamically loaded -->
-            </div>
+            <p>Conteúdo de Estatísticas aqui.</p>
         </div>
 
         <div id="iniciar" class="section">
             <h1>Iniciar</h1>
             <div class="card-container">
-                <div class="card flow-card">
-                    <h2>Iniciar Fluxo Semanal</h2>
-                    <a href="iniciar-fluxosemanal.html" class="btn-flow"><i class="fas fa-calendar-week"></i> Iniciar Fluxo Semanal</a>
-                </div>
-                <div class="card flow-card">
-                    <h2>Iniciar Fluxo Fim de Semana</h2>
-                    <a href="#" class="btn-flow"><i class="fas fa-calendar-alt"></i> Iniciar Fluxo Fim de Semana</a>
-                </div>
-                <div class="card flow-card">
-                    <h2>Iniciar Fluxo Técnico</h2>
-                    <a href="#" class="btn-flow"><i class="fas fa-cogs"></i> Iniciar Fluxo Técnico</a>
-                </div>
-                <div class="card flow-card">
-                    <h2>Iniciar Fluxo Pregação</h2>
-                    <a href="#" class="btn-flow"><i class="fas fa-bullhorn"></i> Iniciar Fluxo Pregação</a>
-                </div>
-                <div class="card flow-card">
-                    <h2>Iniciar Fluxo Carrinhos</h2>
-                    <a href="#" class="btn-flow"><i class="fas fa-cart-plus"></i> Iniciar Fluxo Carrinhos</a>
-                </div>
+                <a href="iniciar-fluxosemanal.html" class="btn-flow">
+                    <i class="fas fa-play"></i>
+                    Iniciar Fluxo Semanal
+                </a>
+                <a href="#" class="btn-flow">
+                    <i class="fas fa-play"></i>
+                    Iniciar Fluxo Fim de Semana
+                </a>
+                <a href="#" class="btn-flow">
+                    <i class="fas fa-play"></i>
+                    Iniciar Fluxo Técnica
+                </a>
+                <a href="#" class="btn-flow">
+                    <i class="fas fa-play"></i>
+                    Iniciar Fluxo Pregação
+                </a>
+                <a href="#" class="btn-flow">
+                    <i class="fas fa-play"></i>
+                    Iniciar Fluxo Carrinhos
+                </a>
             </div>
         </div>
 
         <div id="criar" class="section">
             <h1>Criar</h1>
             <div class="card-container">
-                <div class="card">
-                    <h2>Criar Designação</h2>
-                    <a href="criar-designacao.html" class="btn-criar"><i class="fas fa-plus-circle"></i> Ir para Criar Designação</a>
-                </div>
-                <div class="card">
-                    <h2>Criar Nacionalidade</h2>
-                    <a href="criar-nacionalidade.html" class="btn-criar"><i class="fas fa-globe"></i> Ir para Criar Nacionalidade</a>
-                </div>
-                <div class="card">
-                    <h2>Criar Pessoas</h2>
-                    <a href="criar-pessoa.html" class="btn-criar"><i class="fas fa-user-plus"></i> Ir para Criar Pessoas</a>
-                </div>
-                <div class="card">
-                    <h2>Criar Horário de Reunião</h2>
-                    <a href="criar-horario-reuniao.html" class="btn-criar"><i class="fas fa-clock"></i> Ir para Criar Horário de Reunião</a>
-                </div>
-                <div class="card">
-                    <h2>Criar Horário de Pregação</h2>
-                    <a href="criar-horario-pregacao.html" class="btn-criar"><i class="fas fa-bullhorn"></i> Ir para Criar Horário de Pregação</a>
-                </div>
-                <div class="card">
-                    <h2>Criar Ano</h2>
-                    <a href="criar-ano.html" class="btn-criar"><i class="fas fa-calendar"></i> Ir para Criar Ano</a>
-                </div>
+                <a href="criar-designacao.html" class="btn-criar">
+                    <i class="fas fa-plus"></i>
+                    Criar Designação
+                </a>
+                <a href="criar-nacionalidade.html" class="btn-criar">
+                    <i class="fas fa-plus"></i>
+                    Criar Nacionalidade
+                </a>
+                <a href="criar-pessoa.html" class="btn-criar">
+                    <i class="fas fa-plus"></i>
+                    Criar Pessoa
+                </a>
+                <a href="criar-horario-reuniao.html" class="btn-criar">
+                    <i class="fas fa-plus"></i>
+                    Criar Horário Reunião
+                </a>
+                <a href="criar-horario-pregacao.html" class="btn-criar">
+                    <i class="fas fa-plus"></i>
+                    Criar Horário Pregação
+                </a>
             </div>
         </div>
     </main>
 
     <script>
-        // Fetch and display current year
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A", // Replace with your actual API key! **Never expose real API keys in production**
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.firebasestorage.app",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- Functions to Load Data from Firebase ---
+        // Function to load preaching designations
+        function loadPreachingDesignations() {
+            const preachingDesignationsList = document.getElementById('preachingDesignationsList');
+            db.collection('designacoes').where('tipo', '==', 'pregacao').get()
+                .then((querySnapshot) => {
+                    if (querySnapshot.empty) {
+                        preachingDesignationsList.innerHTML = '<div class="designation-item">Nenhuma designação encontrada.</div>';
+                        return;
+                    }
+
+                    let designationsHtml = '';
+                    querySnapshot.forEach((doc) => {
+                        const designation = doc.data();
+                        designationsHtml += `
+                            <div class="designation-item">
+                                <span class="designation-status">
+                                    <i class="fas ${designation.status ? 'fa-check' : 'fa-times'}"></i>
+                                </span>
+                                <span class="designation-name">${designation.nome}</span>
+                                <a href="criar-designacao.html?id=${doc.id}" class="edit-btn inline">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        `;
+                    });
+                    preachingDesignationsList.innerHTML = designationsHtml;
+                })
+                .catch((error) => {
+                    console.error('Error loading preaching designations:', error);
+                    preachingDesignationsList.innerHTML = '<div class="designation-item">Erro ao carregar designações.</div>';
+                });
+        }
+
+        // Function to load meeting designations
+        async function loadMeetingDesignations() {
+            try {
+                const designationsRef = db.collection('designacoes');
+                const snapshot = await designationsRef.where('tipo', '==', 'reuniao').get();
+                const designationsContainer = document.getElementById('meetingDesignations');
+                designationsContainer.innerHTML = '';
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const designationElement = document.createElement('div');
+                    designationElement.className = 'designation-item';
+                    designationElement.innerHTML = `
+                        <div class="designation-item">
+                            <span class="designation-status">
+                                <i class="fas ${data.status ? 'fa-check' : 'fa-times'}"></i>
+                            </span>
+                            <span class="designation-name">${data.nome}</span>
+                            <a href="criar-designacao.html?id=${doc.id}" class="edit-btn inline">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </div>
+                    `;
+                    designationsContainer.appendChild(designationElement);
+                });
+            } catch (error) {
+                console.error('Error loading meeting designations:', error);
+            }
+        }
+
+        // Function to load current year
         async function fetchCurrentYear() {
             try {
-                const painelRef = await db.collection('painel').doc('ano').get();
+                const painelRef = db.collection('painel').doc('ano');
+                const doc = await painelRef.get();
                 const yearDisplay = document.getElementById('currentYear');
                 const yearError = document.getElementById('yearError');
 
-                if (painelRef.exists && painelRef.data().ano) {
-                    yearDisplay.textContent = painelRef.data().ano;
-                    yearError.style.display = 'none';
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data && data.ano) {
+                        yearDisplay.textContent = data.ano;
+                        yearError.style.display = 'none';
+                    } else {
+                        yearDisplay.textContent = 'Não definido';
+                        yearError.textContent = 'Nenhum ano configurado no painel.';
+                        yearError.style.display = 'block';
+                    }
                 } else {
                     yearDisplay.textContent = 'Não definido';
-                    yearError.textContent = 'Nenhum ano configurado no painel.';
+                    yearError.textContent = 'Documento "ano" não encontrado no painel.';
                     yearError.style.display = 'block';
                 }
             } catch (error) {
+                console.error('Erro ao carregar o ano:', error);
                 document.getElementById('currentYear').textContent = 'Erro';
                 document.getElementById('yearError').textContent = 'Erro ao carregar o ano: ' + error.message;
                 document.getElementById('yearError').style.display = 'block';
             }
         }
 
+        // Function to load schedules
+        async function loadSchedules() {
+            try {
+                const painelRef = db.collection('painel').doc('ano');
+                const docAno = await painelRef.get();
+
+                if (docAno.exists && docAno.data().ano) {
+                    const currentYear = docAno.data().ano;
+                    const horariosRef = db.collection('horarios');
+                    const queryHorarios = await horariosRef
+                        .where('ano', '==', currentYear.toString())
+                        .limit(1)
+                        .get();
+
+                    const weekdayScheduleDiv = document.getElementById('weekdaySchedule');
+                    const weekendScheduleDiv = document.getElementById('weekendSchedule');
+                    const weekdayPreachingScheduleDiv = document.getElementById('weekdayPreachingSchedule');
+                    const weekendPreachingScheduleDiv = document.getElementById('weekendPreachingSchedule');
+
+                    if (!queryHorarios.empty) {
+                        const horariosDoc = queryHorarios.docs[0];
+                        const horariosData = horariosDoc.data();
+
+                        weekdayScheduleDiv.textContent = `${horariosData['dia-semana']} ${horariosData['hora-semana']}`;
+                        weekendScheduleDiv.textContent = `${horariosData['dia-fimdesemana']} ${horariosData['hora-fimdesemana']}`;
+
+                        // Query specifically for preaching schedules (assuming separate preaching schedule data)
+                        const preachingQuery = await horariosRef
+                            .where('ano', '==', currentYear.toString())
+                            .where('tipo', '==', 'pregacao') // Adjust 'tipo' if needed for preaching schedules
+                            .limit(1)
+                            .get();
+
+                        if (!preachingQuery.empty) {
+                            const preachingDoc = preachingQuery.docs[0];
+                            const preachingData = preachingDoc.data();
+                            const semanaHorarios = preachingData['dias-semana-horarios'];
+                            const fimDeSemanaHorarios = preachingData['dias-fimdesemana-horarios'];
+
+                            // Format weekday preaching times
+                            const dayOrder = ['segunda', 'terca', 'quarta', 'quinta', 'sexta'];
+                            const weekdayTimesList = [];
+                            if (semanaHorarios) {
+                                for (const day of dayOrder) {
+                                    if (semanaHorarios[day]) {
+                                        const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+                                        weekdayTimesList.push(`${dayName}: ${semanaHorarios[day].join(', ')}`);
+                                    }
+                                }
+                            }
+                            const weekdayTimesText = weekdayTimesList.length > 0 ? weekdayTimesList.join('\n') : 'Não configurado';
+
+                            // Format weekend preaching times
+                            let weekendTimesList = [];
+                            if (fimDeSemanaHorarios) {
+                                const weekendOrder = ['sabado', 'domingo'];
+                                for (const day of weekendOrder) {
+                                    if (fimDeSemanaHorarios[day]) {
+                                        const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+                                        weekendTimesList.push(`${dayName}: ${fimDeSemanaHorarios[day].join(', ')}`);
+                                    }
+                                }
+                            }
+                            const weekendTimesText = weekendTimesList.length > 0 ? weekendTimesList.join('\n') : 'Não configurado';
+
+                            weekdayPreachingScheduleDiv.innerHTML = weekdayTimesText.replace(/\n/g, '<br>');
+                            weekendPreachingScheduleDiv.innerHTML = weekendTimesText.replace(/\n/g, '<br>');
+                        } else {
+                            weekdayPreachingScheduleDiv.textContent = 'Horário de pregação não configurado';
+                            weekendPreachingScheduleDiv.textContent = 'Horário de pregação não configurado';
+                        }
+                    } else {
+                        weekdayScheduleDiv.textContent = 'Horário não configurado';
+                        weekendScheduleDiv.textContent = 'Horário não configurado';
+                        weekdayPreachingScheduleDiv.textContent = 'Horário não configurado';
+                        weekendPreachingScheduleDiv.textContent = 'Horário não configurado';
+                    }
+                } else {
+                    document.getElementById('weekdaySchedule').textContent = 'Erro: Ano não definido';
+                    document.getElementById('weekendSchedule').textContent = 'Erro: Ano não definido';
+                    document.getElementById('weekdayPreachingSchedule').textContent = 'Erro: Ano não definido';
+                    document.getElementById('weekendPreachingSchedule').textContent = 'Erro: Ano não definido';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar horários:', error);
+                document.getElementById('weekdaySchedule').textContent = 'Erro ao carregar horário';
+                document.getElementById('weekendSchedule').textContent = 'Erro ao carregar horário';
+                document.getElementById('weekdayPreachingSchedule').textContent = 'Erro ao carregar horário';
+                document.getElementById('weekendPreachingSchedule').textContent = 'Erro ao carregar horário';
+            }
+        }
+
+        // --- Event Listeners and Initial Load ---
         document.addEventListener('DOMContentLoaded', function() {
-            // Call fetchCurrentYear when the page loads
+            // Load data on page load
             fetchCurrentYear();
-            
-            // Add edit button click handler
+            loadSchedules();
+            loadMeetingDesignations();
+            loadPreachingDesignations();
+
+            // --- Button Event Listeners ---
+            // Edit Year Button
             const editYearBtn = document.getElementById('editYearBtn');
             if (editYearBtn) {
                 editYearBtn.addEventListener('click', async () => {
@@ -371,12 +688,24 @@
                     }
                 });
             }
-            
-            // Navigation functionality
+
+            // Edit Schedule Button (Meeting Schedule)
+            document.getElementById('editScheduleBtn').addEventListener('click', () => {
+                const currentYear = document.getElementById('currentYear').textContent;
+                window.location.href = `criar-horario-reuniao.html?year=${currentYear}`;
+            });
+
+            // Edit Schedule Button (Preaching Schedule)
+            document.getElementById('editPreachingScheduleBtn').addEventListener('click', () => {
+                const currentYear = document.getElementById('currentYear').textContent;
+                window.location.href = `criar-horario-pregacao.html?year=${currentYear}`;
+            });
+
+
+            // --- Navigation --- (Adjust if needed for your full navigation)
             const navLinks = document.querySelectorAll('.sidebar nav ul li a');
             const sections = document.querySelectorAll('.section');
 
-            // Check for hash in URL on page load
             const hash = window.location.hash;
             if (hash) {
                 sections.forEach(s => s.classList.remove('active'));
@@ -395,208 +724,17 @@
             navLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
                     const href = this.getAttribute('href');
-                    
-                    // Check if the link is to an external page
-                    if (href.includes('.html')) {
-                        // Allow default behavior for external links
-                        return;
-                    }
-                    
+                    if (href.includes('.html')) return; // Allow external links
+
                     e.preventDefault();
-                    
-                    // Remove active class from all links and sections
                     navLinks.forEach(l => l.classList.remove('active'));
                     sections.forEach(s => s.classList.remove('active'));
-                    
-                    // Add active class to clicked link
                     this.classList.add('active');
-                    
-                    // Get the target section and activate it
                     const targetId = href.substring(1);
                     document.getElementById(targetId).classList.add('active');
                 });
             });
-
-            // Navigation is set up
         });
     </script>
-</body>
-</html>
-
-<style>
-    .card {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .card h2 {
-        color: #2c3e50;
-        margin-bottom: 20px;
-        font-size: 20px;
-    }
-
-    .form-group {
-        margin-bottom: 15px;
-    }
-
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        color: #2c3e50;
-    }
-
-    .form-group input[type="text"],
-    .form-group input[type="number"],
-    .form-group select {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 14px;
-    }
-
-    .switch-group {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 60px;
-        height: 34px;
-    }
-
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #e74c3c; /* Red for 'Não' */
-        transition: .4s;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 26px;
-        width: 26px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: .4s;
-    }
-
-    input:checked + .slider {
-        background-color: #2ecc71; /* Green for 'Sim' */
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(26px);
-    }
-
-    .slider.round {
-        border-radius: 34px;
-    }
-
-    .slider.round:before {
-        border-radius: 50%;
-    }
-
-    .btn-criar {
-        background-color: #3498db;
-        color: white;
-        padding: 12px 20px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        width: 100%;
-        font-size: 16px;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 15px;
-        text-decoration: none;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-
-    .btn-criar:hover {
-        background-color: #2980b9;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 8px rgba(0,0,0,0.15);
-    }
-
-    .flow-card {
-        background: #34495e;
-    }
-
-    .flow-card h2 {
-        color: white;
-    }
-
-    .btn-flow {
-        background-color: #2ecc71;
-        color: white;
-        padding: 12px 20px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        width: 100%;
-        font-size: 16px;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 15px;
-        text-decoration: none;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-
-    .btn-flow:hover {
-        background-color: #27ae60;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 8px rgba(0,0,0,0.15);
-    }
-</style>
-
-<style>
-.panel-card {
-    position: relative;
-    background-color: white;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.edit-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: none;
-    border: none;
-    color: #3498db;
-    cursor: pointer;
-    font-size: 1.2em;
-}
-
-.edit-btn:hover {
-    color: #2980b9;
-}
-</style>
 </body>
 </html>
