@@ -568,9 +568,22 @@
         let isDesignationView = false;
 
         // Function to populate table with data
+        let allDesignacoes = [];
+
         async function loadPessoas() {
             const tableBody = document.getElementById('tableBody');
             const tableHeader = document.getElementById('tableHeader');
+
+            // Load all designacoes first
+            try {
+                const designacoesSnapshot = await db.collection('designacoes').get();
+                allDesignacoes = [];
+                designacoesSnapshot.forEach(doc => {
+                    allDesignacoes.push(doc.data().nome);
+                });
+            } catch (error) {
+                console.error('Error loading designacoes:', error);
+            }
 
             // Add toggle view functionality
             const toggleBtn = document.getElementById('toggleView');
@@ -616,14 +629,12 @@
 
             // Update table headers based on view
             if (isDesignationView) {
-                tableHeader.innerHTML = `
-                    <tr>
-                        <th>Nome</th>
-                        <th>Designações Reunião</th>
-                        <th>Designações Pregação</th>
-                        <th>Acompanha Carrinhos</th>
-                    </tr>
-                `;
+                let headerHtml = '<tr><th>Nome</th>';
+                allDesignacoes.forEach(designacao => {
+                    headerHtml += `<th>${designacao}</th>`;
+                });
+                headerHtml += '</tr>';
+                tableHeader.innerHTML = headerHtml;
             } else {
                 tableHeader.innerHTML = `
                     <tr>
@@ -654,16 +665,17 @@
             pessoas.forEach(pessoa => {
                 const row = document.createElement('tr');
                 if (isDesignationView) {
-                    const reuniaoDesignacoes = pessoa.designacoesReuniao ? pessoa.designacoesReuniao.join(', ') : 'Nenhuma';
-                    const pregacaoDesignacoes = pessoa.designacoesPregacao ? pessoa.designacoesPregacao.join(', ') : 'Nenhuma';
-                    const carrinhosStatus = pessoa.acompanhaCarrinhos ? '<i class="fas fa-check check-mark"></i>' : '<i class="fas fa-times x-mark"></i>';
+                    let rowHtml = `<td><a href="#" class="person-name" data-id="${pessoa.id}">${pessoa.nomePessoa || 'N/A'}</a></td>`;
                     
-                    row.innerHTML = `
-                        <td><a href="#" class="person-name" data-id="${pessoa.id}">${pessoa.nomePessoa || 'N/A'}</a></td>
-                        <td>${reuniaoDesignacoes}</td>
-                        <td>${pregacaoDesignacoes}</td>
-                        <td>${carrinhosStatus}</td>
-                    `;
+                    allDesignacoes.forEach(designacao => {
+                        const hasDesignacao = 
+                            (pessoa.designacoesReuniao && pessoa.designacoesReuniao.includes(designacao)) ||
+                            (pessoa.designacoesPregacao && pessoa.designacoesPregacao.includes(designacao));
+                        
+                        rowHtml += `<td>${hasDesignacao ? '<i class="fas fa-check check-mark"></i>' : '<i class="fas fa-times x-mark"></i>'}</td>`;
+                    });
+                    
+                    row.innerHTML = rowHtml;
                 } else {
                     row.innerHTML = `
                         <td><a href="#" class="person-name" data-id="${pessoa.id}">${pessoa.nomePessoa || 'N/A'}</a></td>
