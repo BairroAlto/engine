@@ -45,6 +45,45 @@
             position: fixed;
         }
 
+        .year-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .year-card h2 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .year-card .year-display {
+            font-size: 2em;
+            color: #34495e;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .year-card .error-message {
+            color: #e74c3c;
+            font-size: 0.9em;
+            margin-top: 10px;
+            position: fixed;
+        }
+
+        .year-card .edit-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: #2c3e50;
+        }
+
         .logo {
             text-align: center;
             padding: 20px 0;
@@ -178,6 +217,23 @@
     </div>
 
     <main class="content">
+        <div id="painel" class="section">
+            <h1>Painel</h1>
+            <div class="year-card">
+                <div style="position: relative;">
+                    <h2>Ano Atual</h2>
+                    <button class="edit-btn" id="editYearBtn">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+                <div id="currentYear" class="year-display">Carregando...</div>
+                <div id="yearError" class="error-message"></div>
+            </div>
+            <div class="card-container">
+                <!-- Content will be dynamically loaded -->
+            </div>
+        </div>
+
         <div id="reuniao-semana" class="section active">
             <h1>Reunião Semana</h1>
             <div class="card-container">
@@ -225,7 +281,7 @@
             <div class="card-container">
                 <div class="card flow-card">
                     <h2>Iniciar Fluxo Semanal</h2>
-                    <a href="#" class="btn-flow"><i class="fas fa-calendar-week"></i> Iniciar Fluxo Semanal</a>
+                    <a href="iniciar-fluxosemanal.html" class="btn-flow"><i class="fas fa-calendar-week"></i> Iniciar Fluxo Semanal</a>
                 </div>
                 <div class="card flow-card">
                     <h2>Iniciar Fluxo Fim de Semana</h2>
@@ -269,12 +325,53 @@
                     <h2>Criar Horário de Pregação</h2>
                     <a href="criar-horario-pregacao.html" class="btn-criar"><i class="fas fa-bullhorn"></i> Ir para Criar Horário de Pregação</a>
                 </div>
+                <div class="card">
+                    <h2>Criar Ano</h2>
+                    <a href="criar-ano.html" class="btn-criar"><i class="fas fa-calendar"></i> Ir para Criar Ano</a>
+                </div>
             </div>
         </div>
     </main>
 
     <script>
+        // Fetch and display current year
+        async function fetchCurrentYear() {
+            try {
+                const painelRef = await db.collection('painel').doc('ano').get();
+                const yearDisplay = document.getElementById('currentYear');
+                const yearError = document.getElementById('yearError');
+
+                if (painelRef.exists && painelRef.data().ano) {
+                    yearDisplay.textContent = painelRef.data().ano;
+                    yearError.style.display = 'none';
+                } else {
+                    yearDisplay.textContent = 'Não definido';
+                    yearError.textContent = 'Nenhum ano configurado no painel.';
+                    yearError.style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('currentYear').textContent = 'Erro';
+                document.getElementById('yearError').textContent = 'Erro ao carregar o ano: ' + error.message;
+                document.getElementById('yearError').style.display = 'block';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            // Call fetchCurrentYear when the page loads
+            fetchCurrentYear();
+            
+            // Add edit button click handler
+            const editYearBtn = document.getElementById('editYearBtn');
+            if (editYearBtn) {
+                editYearBtn.addEventListener('click', async () => {
+                    const painelRef = await db.collection('painel').doc('ano').get();
+                    if (painelRef.exists) {
+                        const currentYear = painelRef.data().ano;
+                        window.location.href = `criar-ano.html?mode=edit&year=${currentYear}`;
+                    }
+                });
+            }
+            
             // Navigation functionality
             const navLinks = document.querySelectorAll('.sidebar nav ul li a');
             const sections = document.querySelectorAll('.section');
@@ -475,3 +572,31 @@
         box-shadow: 0 6px 8px rgba(0,0,0,0.15);
     }
 </style>
+
+<style>
+.panel-card {
+    position: relative;
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.edit-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: #3498db;
+    cursor: pointer;
+    font-size: 1.2em;
+}
+
+.edit-btn:hover {
+    color: #2980b9;
+}
+</style>
+</body>
+</html>
