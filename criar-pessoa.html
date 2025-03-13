@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Pessoa - Sistema de Escala</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        // Firebase Configuration (as provided)
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.firebasestorage.app",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
+    <style>
+        /*  CSS Styles (Updated for Stacked Toggle Sections and Horarios) */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f6fa;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            height: 100vh;
+            position: fixed;
+        }
+
+        .logo {
+            padding: 0 20px;
+            margin-bottom: 30px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar nav ul {
+            list-style: none;
+        }
+
+        .sidebar nav ul li a {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            color: #ecf0f1;
+            text-decoration: none;
+            gap: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .sidebar nav ul li a:hover,
+        .sidebar nav ul li a.active {
+            background-color: #34495e;
+        }
+
+        .sidebar nav ul li a i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .content {
+            margin-left: 250px;
+            padding: 30px;
+            flex-grow: 1;
+        }
+
+        h1, h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            font-size: 20px;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .section-pessoal,
+        .section-reuniao,
+        .section-pregacao,
+        .section-ausencias {
+            margin: 30px -30px;
+            padding: 25px 30px;
+            position: relative;
+        }
+
+        .section-pessoal {
+            background-color: #e3f2fd;
+            border-left: 5px solid #2196f3;
+        }
+
+        .section-reuniao {
+            background-color: #e8f5e9;
+            border-left: 5px solid #4caf50;
+        }
+
+        .section-pregacao {
+            background-color: #fff3e0;
+            border-left: 5px solid #ff9800;
+        }
+
+        .section-ausencias {
+            background-color: #f3e5f5; /* Light purple for ausencias */
+            border-left: 5px solid #9c27b0; /* Purple border */
+        }
+
+        .section-pessoal h2,
+        .section-pregacao h2,
+        .section-ausencias h2 {
+            color: #1a237e;
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+        }
+
+        /* Special styling for reuniao section header */
+        .section-reuniao h2 {
+            color: #1a237e;
+            font-size: 22px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        /* Header container for section-reuniao to align title and toggle */
+        .reuniao-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        /* Adjust switch group in reuniao header */
+        .reuniao-header .switch-group {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Header container for section-pregacao to align title and toggle */
+        .pregacao-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        /* Adjust switch group in pregacao header */
+        .pregacao-header .switch-group {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .designacoes-section {
+            background-color: rgba(255,255,255,0.7);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            position: relative; /* Required for positioning suggestions box */
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="tel"],
+        .form-group input[type="email"],
+        .form-group input[type="number"],
+        .form-group select,
+        .form-group input[type="date"] { /* Apply same style to date inputs */
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .switch-group {
+            display: flex; /* Keep flex for overall alignment in the form if needed */
+            flex-direction: column; /* Stack label and switch vertically */
+            align-items: flex-start; /* Align items to the start horizontally */
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .switch-group span {
+            margin-bottom: 5px; /* Add space between label and switch */
+            display: block; /* Ensure label takes full width if needed */
+        }
+
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px; /* Adjust width if needed */
+            height: 34px; /* Adjust height if needed */
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #95a5a6; /* Neutral gray color - original */
+            transition: .4s;
+            border-radius: 34px;
+            /* Add text indicators */
+            display: flex;
+            justify-content: space-between; /* Distribute text on either side */
+            align-items: center;
+            padding: 0 8px; /* Add some padding for text */
+            font-size: 12px; /* Adjust font size of text */
+            color: #fff; /* Text color */
+        }
+
+        /* Explicitly define slider ball for default slider (Gênero, Personalidade) */
+        .slider::before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+
+        /* Style for the status sliders (Designações and Carrinhos) */
+        .slider.slider-status {
+            background-color: #e74c3c; /* Red color (OFF state) */
+        }
+
+        /* Explicitly define slider ball for status sliders */
+        .slider.slider-status::before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+
+        input:checked + .slider.slider-status {
+            background-color: #2ecc71; /* Green color when active (ON state) */
+        }
+
+        input:checked + .slider.slider-status::before {
+            transform: translateX(26px);
+        }
+
+
+        /* Style for the text indicators (using pseudo-elements for content from data attributes) */
+        .slider::before { /* Text for default sliders (Gênero, Personalidade) - OFF state */
+            content: attr(data-label-off);
+            color: #333;
+            left: 4px;
+            right: auto;
+        }
+
+        input:checked + .slider::before { /* Text for default sliders (Gênero, Personalidade) - ON state */
+            content: attr(data-label-on);
+            color: white;
+            left: auto;
+            right: 4px;
+        }
+
+        .slider.slider-status::before { /* Text for status sliders (Designações, Carrinhos) - OFF state */
+            content: attr(data-label-off);
+            color: white; /* White text for visibility on red */
+            left: 4px;
+            right: auto;
+        }
+
+        input:checked + .slider.slider-status::before { /* Text for status sliders (Designações, Carrinhos) - ON state */
+            content: attr(data-label-on);
+            color: white;
+            left: auto;
+            right: 4px;
+        }
+
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-item {
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .checkbox-item:has(input[value="Ancião"]) {
+            background-color: #bbdefb;
+        }
+
+        .checkbox-item:has(input[value="Servo Ministerial"]) {
+            background-color: #c8e6c9;
+        }
+
+        .checkbox-item:has(input[value="Pioneiro Regular"]) {
+            background-color: #fff9c4;
+        }
+
+        .checkbox-item:has(input[value="Pioneiro Auxiliar"]) {
+            background-color: #ffecb3;
+        }
+
+        .checkbox-item:has(input[value="Publicador"]) {
+            background-color: #ffcdd2;
+        }
+
+        .checkbox-item:has(input[value="Publicador não Batizado"]) {
+            background-color: #f8bbd0;
+        }
+
+        .designacoes-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .horarios-pregacao {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .horario-item {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .horario-item button {
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-criar, #add-ausencia-btn { /* Apply same style to "Adicionar Ausência" button */
+            background-color: #2c3e50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px; /* Reduced margin-top for better spacing */
+            transition: background-color 0.3s;
+            display: inline-block; /* Make it inline-block to align with date inputs */
+        }
+
+        .btn-criar:hover, #add-ausencia-btn:hover {
+            background-color: #34495e;
+        }
+
+        .btn-voltar {
+            display: inline-block;
+            margin-bottom: 20px;
+            background-color: #7f8c8d;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-voltar:hover {
+            background-color: #95a5a6;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+            }
+
+            .sidebar .logo span,
+            .sidebar nav ul li a span {
+                display: none;
+            }
+
+            .content {
+                margin-left: 70px;
+            }
+        }
+
+        /* CSS for Horarios Section - ADDED HERE */
+        .horarios-section {
+            margin-bottom: 20px;
+        }
+
+        .horarios-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .day-container {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .day-container h4 {
+            color: #34495e;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .horario-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background-color: white;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .horario-item:hover {
+            background-color: #e9ecef;
+        }
+
+        .horario-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .horario-item.selected {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+        }
+
+        /* Styles to visually disable sections */
+        .section-disabled {
+            opacity: 0.6; /* Reduce opacity to visually indicate disabled state */
+            pointer-events: none; /* Make the section non-interactive */
+        }
+
+
+        /* Styles for Selected Ausencias Display */
+        #selected-ausencias-list {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .ausencia-item {
+            background-color: #e0f7fa; /* Light blueish background for selected dates */
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+
+        .ausencia-item button {
+            background: none;
+            border: none;
+            color: #e74c3c; /* Red color for remove button */
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+            line-height: 1;
+        }
+
+        /* Style for date inputs in Marcar Ausências section */
+        .section-ausencias .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .single-date-input,
+        .date-range-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+        }
+
+        .single-date-input input[type="date"],
+        .date-range-input input[type="date"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .single-date-input button,
+        .date-range-input button {
+            padding: 8px 16px;
+            background-color: #9c27b0;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .single-date-input button:hover,
+        .date-range-input button:hover {
+            background-color: #7b1fa2;
+        }
+
+        /* CSS for Suggestions Box */
+        .suggestions-box {
+            position: absolute; /* Posiciona abaixo do input */
+            width: 100%; /* Largura igual à do input */
+            max-height: 150px; /* Altura máxima para scroll */
+            overflow-y: auto; /* Scroll se a lista for longa */
+            border: 1px solid #ddd;
+            border-top: none; /* Remove a borda superior para ligar visualmente ao input */
+            background-color: white;
+            border-radius: 0 0 4px 4px; /* Bordas inferiores arredondadas */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10; /* Garante que fica acima de outros elementos */
+            display: none; /* Inicialmente escondido */
+        }
+
+        .suggestions-box div {
+            padding: 8px 10px;
+            cursor: pointer;
+        }
+
+        .suggestions-box div:hover {
+            background-color: #f0f0f0;
+        }
+
+
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Escala</span>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="index.html#reuniao-semana"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
+                <li><a href="index.html#fim-de-semana"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
+                <li><a href="index.html#pregacao"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
+                <li><a href="index.html#estatisticas"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
+                <li><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
+                <li><a href="index.html#painel"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
+                <li><a href="index.html#criar" class="active"><i class="fas fa-plus"></i><span>Criar</span></a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <main class="content">
+        <a href="index.html#criar" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <h1 id="page-title">Criar Pessoa</h1>
+        <div class="card">
+            <form id="criar-pessoa-form">
+                <div class="section-pessoal">
+                    <h2>Informações Pessoais</h2>
+                    <div class="form-group">
+                        <label for="nome-pessoa">Nome Completo</label>
+                        <input type="text" id="nome-pessoa" name="nome-pessoa" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Gênero</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="genero" value="Masculino" id="genero-masculino"> Masculino
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="genero" value="Feminino" id="genero-feminino"> Feminino
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="idioma">Idioma</label>
+                        <select id="idioma" name="idioma" required>
+                            <option value="">Selecione um idioma</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Privilégios</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="privilegios" value="Ancião"> Ancião
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="privilegios" value="Servo Ministerial"> Servo Ministerial
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="privilegios" value="Pioneiro Regular"> Pioneiro Regular
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="privilegios" value="Pioneiro Auxiliar"> Pioneiro Auxiliar
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="privilegios" value="Publicador"> Publicador
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="privilegios" value="Publicador não Batizado"> Publicador não Batizado
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="grupo">Grupo</label>
+                        <select id="grupo" name="grupo" required class="form-select">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                            <option value="13">13</option>
+                            <option value="14">14</option>
+                            <option value="15">15</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Personalidade</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="personalidade" value="- à vontade" id="personalidade-menos-avontade"> - à vontade
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="personalidade" value="+ à vontade" id="personalidade-mais-avontade"> + à vontade
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="casado-com">Casado Com (Opcional)</label>
+                        <input type="text" id="casado-com" name="casado-com">
+                        <div id="pessoas-suggestions" class="suggestions-box"></div>
+                    </div>
+                </div>
+
+                <!-- Seção de Designações Reunião -->
+                <div class="section-reuniao">
+                    <div class="reuniao-header">
+                        <h2>Designações Reunião</h2>
+                        <div class="switch-group">
+                            <span>Faz Designações de Reunião</span>
+                            <label class="switch">
+                                <input type="checkbox" id="faz-designacoes-reuniao" name="faz-designacoes-reuniao">
+                                <span class="slider slider-status" data-label-on="Sim" data-label-off="Não"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="designacoes-reuniao" class="designacoes-section">
+                        <div class="checkbox-group" id="lista-designacoes-reuniao">
+                            <!-- Designações Reunião will be loaded here from Firebase as checkboxes -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção de Designações Pregação -->
+                <div class="section-pregacao">
+                    <div class="pregacao-header">
+                        <h2>Designações Pregação</h2>
+                        <div class="switch-group">
+                            <span>Faz Designações de Pregação</span>
+                            <label class="switch">
+                                <input type="checkbox" id="faz-designacoes-pregacao" name="faz-designacoes-pregacao">
+                                <span class="slider slider-status" data-label-on="Sim" data-label-off="Não"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="switch-group">
+                        <span>Acompanha Carrinhos</span>
+                        <label class="switch">
+                            <input type="checkbox" id="acompanha-carrinhos" name="acompanha-carrinhos">
+                            <span class="slider slider-status" data-label-on="Sim" data-label-off="Não"></span>
+                        </label>
+                        <span id="acompanha-carrinhos-label">Não</span>
+                    </div>
+
+                    <div id="designacoes-pregacao" class="designacoes-section">
+                    <div class="checkbox-group" id="lista-designacoes-pregacao">
+                        <!-- Designações Pregação will be loaded here from Firebase as checkboxes -->
+                    </div>
+                    <div class="horarios-pregacao">
+                        <div id="horarios-semana" class="horarios-section">
+                            <h3>Horários Semana</h3>
+                            <!-- Horários Semana will be loaded here with checkboxes -->
+                        </div>
+                        <div id="horarios-fim-de-semana" class="horarios-section">
+                            <h3>Horários Fim de Semana</h3>
+                            <!-- Horários Fim de Semana will be loaded here with checkboxes -->
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Seção de Marcar Ausências -->
+                <div class="section-ausencias">
+                    <h2>Marcar Ausências</h2>
+                    <div class="form-group">
+                        <div class="single-date-input">
+                            <label for="ausencia-single-date">Data Única:</label>
+                            <input type="date" id="ausencia-single-date">
+                            <button type="button" id="add-single-ausencia-btn">Adicionar Data</button>
+                        </div>
+                        <div class="date-range-input">
+                            <label for="ausencia-start-date">Intervalo - Início:</label>
+                            <input type="date" id="ausencia-start-date">
+                            <label for="ausencia-end-date">Fim:</label>
+                            <input type="date" id="ausencia-end-date">
+                            <button type="button" id="add-ausencia-btn">Adicionar Intervalo</button>
+                        </div>
+                    </div>
+                    <div id="selected-ausencias-list">
+                        <!-- Selected ausencias will be listed here -->
+                    </div>
+                </div>
+
+
+                <button type="submit" class="btn-criar" id="submit-button">Criar Pessoa</button>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const generoSwitch = document.getElementById('genero');
+            const generoLabel = document.getElementById('genero-label');
+            const personalidadeSwitch = document.getElementById('personalidade');
+            const personalidadeLabel = document.getElementById('personalidade-label');
+            const acompanhaCarrinhosSwitch = document.getElementById('acompanha-carrinhos');
+            const acompanhaCarrinhosLabel = document.getElementById('acompanha-carrinhos-label');
+            const idiomaSelect = document.getElementById('idioma');
+            const pessoasListElement = document.getElementById('pessoas-suggestions'); // Changed to suggestions div
+            const listaDesignacoesReuniaoDiv = document.getElementById('lista-designacoes-reuniao');
+            const listaDesignacoesPregacaoDiv = document.getElementById('lista-designacoes-pregacao');
+            const horariosSemanaDiv = document.getElementById('horarios-semana');
+            const horariosFimDeSemanaDiv = document.getElementById('horarios-fim-de-semana');
+            const criarPessoaForm = document.getElementById('criar-pessoa-form');
+
+            const fazDesignacoesReuniaoSwitch = document.getElementById('faz-designacoes-reuniao');
+            const designacoesReuniaoSection = document.getElementById('designacoes-reuniao');
+            const fazDesignacoesPregacaoSwitch = document.getElementById('faz-designacoes-pregacao');
+            const designacoesPregacaoSection = document.getElementById('designacoes-pregacao');
+            const ausenciaSingleDateInput = document.getElementById('ausencia-single-date');
+            const addSingleAusenciaBtn = document.getElementById('add-single-ausencia-btn');
+            const ausenciaStartDateInput = document.getElementById('ausencia-start-date');
+            const ausenciaEndDateInput = document.getElementById('ausencia-end-date');
+            const addAusenciaBtn = document.getElementById('add-ausencia-btn');
+            const selectedAusenciasListDiv = document.getElementById('selected-ausencias-list');
+
+            let selectedAusencias = []; // Array to store selected ausencia dates
+
+            // Novos seletores para Gênero e Personalidade (checkboxes)
+            const generoMasculinoCheckbox = document.getElementById('genero-masculino');
+            const generoFemininoCheckbox = document.getElementById('genero-feminino');
+            const personalidadeMenosAvontadeCheckbox = document.getElementById('personalidade-menos-avontade');
+            const personalidadeMaisAvontadeCheckbox = document.getElementById('personalidade-mais-avontade');
+            const casadoComInput = document.getElementById('casado-com'); // Get casadoComInput here
+
+
+            // Function to disable/enable elements in a section
+            function toggleSectionInputs(sectionElement, isDisabled) {
+                const inputs = sectionElement.querySelectorAll('input, select, textarea, button');
+                inputs.forEach(input => {
+                    input.disabled = isDisabled;
+                });
+                if (isDisabled) {
+                    sectionElement.classList.add('section-disabled'); // Add class to visually disable
+                } else {
+                    sectionElement.classList.remove('section-disabled'); // Remove class to enable
+                }
+            }
+
+
+            // --- Funções para garantir exclusividade nos Privilégios ---
+            function uncheckOtherPrivileges(checkedCheckbox) {
+                const privilegeCheckboxes = document.querySelectorAll('input[name="privilegios"]');
+                privilegeCheckboxes.forEach(checkbox => {
+                    if (checkbox !== checkedCheckbox &&
+                        (checkedCheckbox.value === "Ancião" || checkedCheckbox.value === "Servo Ministerial" || checkedCheckbox.value === "Publicador" || checkedCheckbox.value === "Publicador não Batizado") &&
+                        (checkbox.value === "Ancião" || checkbox.value === "Servo Ministerial" || checkbox.value === "Publicador" || checkbox.value === "Publicador não Batizado"))
+                     {
+                        checkbox.checked = false;
+                    }
+                });
+            }
+
+            function uncheckOtherPioneerTypes(checkedCheckbox) {
+                const pioneerCheckboxes = document.querySelectorAll('input[name="privilegios"]');
+                pioneerCheckboxes.forEach(checkbox => {
+                    if (checkbox !== checkedCheckbox &&
+                        (checkedCheckbox.value === "Pioneiro Regular" || checkedCheckbox.value === "Pioneiro Auxiliar") &&
+                        (checkbox.value === "Pioneiro Regular" || checkbox.value === "Pioneiro Auxiliar"))
+                     {
+                        checkbox.checked = false;
+                    }
+                });
+            }
+
+
+            // --- Event listeners para Privilégios (exclusividade) ---
+            const privilegioCheckboxes = document.querySelectorAll('input[name="privilegios"]');
+            privilegioCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    uncheckOtherPrivileges(this);
+                    uncheckOtherPioneerTypes(this);
+                });
+            });
+
+
+            // --- Event listeners para Gênero (checkboxes mutuamente exclusivos) ---
+            generoMasculinoCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    generoFemininoCheckbox.checked = false;
+                }
+            });
+
+            generoFemininoCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    generoMasculinoCheckbox.checked = false;
+                }
+            });
+
+
+            // --- Event listeners para Personalidade (checkboxes mutuamente exclusivos) ---
+            personalidadeMenosAvontadeCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    personalidadeMaisAvontadeCheckbox.checked = false;
+                }
+            });
+
+            personalidadeMaisAvontadeCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    personalidadeMenosAvontadeCheckbox.checked = false;
+                }
+            });
+
+
+            // --- Event listener for "Adicionar Data" button (Single Date) ---
+            addSingleAusenciaBtn.addEventListener('click', function() {
+                const singleDateValue = ausenciaSingleDateInput.value;
+                if (singleDateValue) {
+                    const dateString = singleDateValue; // Já está no formato YYYY-MM-DD
+                    if (!selectedAusencias.includes(dateString)) {
+                        selectedAusencias.push(dateString);
+                    }
+                    updateAusenciasDisplay();
+                    ausenciaSingleDateInput.value = ''; // Limpa o campo de input
+                } else {
+                    alert('Por favor, selecione uma data.');
+                }
+            });
+
+            // --- Event listener for "Adicionar Ausências" button ---
+            addAusenciaBtn.addEventListener('click', function() {
+                const startDateValue = ausenciaStartDateInput.value;
+                const endDateValue = ausenciaEndDateInput.value;
+
+                if (startDateValue && endDateValue) {
+                    let startDate = new Date(startDateValue);
+                    let endDate = new Date(endDateValue);
+
+                    if (startDate > endDate) {
+                        alert("Data de início deve ser anterior à data de fim.");
+                        return;
+                    }
+
+                    let currentDate = new Date(startDate);
+                    while (currentDate <= endDate) {
+                        const dateString = currentDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+                        if (!selectedAusencias.includes(dateString)) {
+                            selectedAusencias.push(dateString);
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1); // Move to the next day
+                    }
+                    updateAusenciasDisplay();
+                    ausenciaStartDateInput.value = ''; // Clear start date input
+                    ausenciaEndDateInput.value = '';   // Clear end date input
+                } else {
+                    alert('Por favor, selecione as datas de início e fim.');
+                }
+            });
+
+
+            // Function to update the display of selected ausencias
+            function updateAusenciasDisplay() {
+                selectedAusenciasListDiv.innerHTML = ''; // Clear current display
+                selectedAusencias.sort().forEach(date => { // Sort dates for display
+                    const ausenciaItem = document.createElement('div');
+                    ausenciaItem.classList.add('ausencia-item');
+                    ausenciaItem.textContent = date;
+
+                    const removeButton = document.createElement('button');
+                    removeButton.textContent = 'x';
+                    removeButton.addEventListener('click', function() {
+                        selectedAusencias = selectedAusencias.filter(d => d !== date); // Remove date from array
+                        updateAusenciasDisplay(); // Re-render the list
+                    });
+                    ausenciaItem.appendChild(removeButton);
+                    selectedAusenciasListDiv.appendChild(ausenciaItem);
+                });
+            }
+
+
+            // --- Fetch Idiomas from Firebase and Populate Dropdown ---
+            db.collection("nacionalidades").get().then((querySnapshot) => {
+                querySnapshot.forEach((doc) => {
+                    const option = document.createElement('option');
+                    option.value = doc.data().nome; // Assuming 'nome' field holds the language name
+                    option.textContent = doc.data().nome;
+                    idiomaSelect.appendChild(option);
+                });
+            });
+
+            // --- Fetch Pessoas from Firebase and Populate Suggestions Div (Casado Com) ---
+            let allPessoas = [];
+            let searchTimeout;
+            const pessoasSuggestionsDiv = document.getElementById('pessoas-suggestions'); // Get suggestions div
+
+            db.collection("pessoas").get().then((querySnapshot) => {
+                allPessoas = querySnapshot.docs.map(doc => doc.data().nomePessoa);
+                console.log("Firebase Pessoas data loaded:", allPessoas); // Debugging: Check if data is loaded
+
+                // Move the event listener setup inside the .then() block
+                casadoComInput.addEventListener('input', (e) => {
+                    clearTimeout(searchTimeout);
+                    const inputValue = e.target.value.toLowerCase();
+
+                    searchTimeout = setTimeout(() => {
+                        const filteredPessoas = allPessoas.filter(nome =>
+                            nome.toLowerCase().includes(inputValue)
+                        );
+                        console.log("Filtered pessoas:", filteredPessoas); // Debugging: Check filtered results
+                        updatePessoasList(filteredPessoas);
+                    }, 300);
+                });
+
+                // Add blur listener to hide suggestions when input loses focus
+                casadoComInput.addEventListener('blur', function() {
+                    setTimeout(clearSuggestions, 100); // Delay to allow suggestion click to register
+                });
+
+                // Add focus listener to show suggestions if input is not empty and has focus
+                casadoComInput.addEventListener('focus', function() {
+                    if (casadoComInput.value.length > 0) {
+                        const inputValue = casadoComInput.value.toLowerCase();
+                        const filteredPessoas = allPessoas.filter(nome =>
+                            nome.toLowerCase().includes(inputValue)
+                        );
+                        updatePessoasList(filteredPessoas);
+                    }
+                });
+
+
+            }).catch((error) => {
+                console.error("Error fetching pessoas from Firebase:", error); // Debugging: Check for Firebase errors
+            });
+
+
+            function updatePessoasList(pessoas) {
+                pessoasSuggestionsDiv.innerHTML = ''; // Clear previous suggestions
+                if (pessoas.length > 0) {
+                    pessoas.forEach(nome => {
+                        const suggestionDiv = document.createElement('div');
+                        suggestionDiv.textContent = nome;
+                        suggestionDiv.addEventListener('click', function() {
+                            casadoComInput.value = nome;
+                            clearSuggestions();
+                        });
+                        pessoasSuggestionsDiv.appendChild(suggestionDiv);
+                    });
+                    pessoasSuggestionsDiv.style.display = 'block'; // Show suggestions box
+                } else {
+                    pessoasSuggestionsDiv.style.display = 'none'; // Hide if no suggestions
+                }
+            }
+
+            function clearSuggestions() {
+                pessoasSuggestionsDiv.style.display = 'none';
+            }
+
+
+            // --- Fetch Designações Reunião from Firebase and Populate Checkboxes ---
+            db.collection("designacoes").where("tipo", "==", "reuniao").get().then((querySnapshot) => {
+                querySnapshot.forEach((doc) => {
+                    const designacaoData = doc.data();
+                    const checkboxItem = createDesignacaoCheckbox(designacaoData.nome, 'designacoes-reuniao-list'); // Assuming 'nome' is the designacao name
+                    listaDesignacoesReuniaoDiv.appendChild(checkboxItem);
+                });
+            });
+
+             // --- Fetch Designações Pregação from Firebase and Populate Checkboxes ---
+             db.collection("designacoes").where("tipo", "==", "pregacao").get().then((querySnapshot) => {
+                querySnapshot.forEach((doc) => {
+                    const designacaoData = doc.data();
+                    const checkboxItem = createDesignacaoCheckbox(designacaoData.nome, 'designacoes-pregacao-list'); // Assuming 'nome' is the designacao name
+                    listaDesignacoesPregacaoDiv.appendChild(checkboxItem);
+                });
+            });
+
+            // --- Fetch Horários Pregação from Firebase and Populate  Sections with Checkboxes ---
+            db.collection("horarios").orderBy("ano", "desc").limit(1).get().then((querySnapshot) => {
+                if (!querySnapshot.empty) {
+                    const horariosDoc = querySnapshot.docs[0];
+                    const horariosData = horariosDoc.data();
+                    const horariosSemana = horariosData['dias-semana-horarios'];
+                    const horariosFimDeSemana = horariosData['dias-fimdesemana-horarios'];
+
+                    if (horariosSemana) {
+                        Object.entries(horariosSemana).forEach(([day, times]) => {
+                            const dayContainer = document.createElement('div');
+                            dayContainer.classList.add('day-container');
+
+                            const dayTitle = document.createElement('h4');
+                            dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
+                            dayContainer.appendChild(dayTitle);
+
+                            times.forEach(time => {
+                                const timeSlot = createTimeSlotCheckbox(time, day);
+                                dayContainer.appendChild(timeSlot);
+                            });
+
+                            horariosSemanaDiv.appendChild(dayContainer);
+                        });
+                    }
+                    if (horariosFimDeSemana) {
+                        Object.entries(horariosFimDeSemana).forEach(([day, times]) => {
+                            const dayContainer = document.createElement('div');
+                            dayContainer.classList.add('day-container');
+
+                            const dayTitle = document.createElement('h4');
+                            dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
+                            dayContainer.appendChild(dayTitle);
+
+                            times.forEach(time => {
+                                const timeSlot = createTimeSlotCheckbox(time, day);
+                                dayContainer.appendChild(timeSlot);
+                            });
+
+                            horariosFimDeSemanaDiv.appendChild(dayContainer);
+                        });
+                    }
+                } else {
+                    console.log("No horarios document found.");
+                }
+            }).catch((error) => {
+                console.error("Error getting horarios: ", error);
+            });
+
+            // Add event listeners for time slot selection
+            horariosSemanaDiv.addEventListener('change', function(event) {
+                if (event.target.classList.contains('horario-checkbox')) {
+                    const label = event.target.closest('.horario-item');
+                    if (event.target.checked) {
+                        label.classList.add('selected');
+                    } else {
+                        label.classList.remove('selected');
+                    }
+                }
+            });
+
+            horariosFimDeSemanaDiv.addEventListener('change', function(event) {
+                if (event.target.classList.contains('horario-checkbox')) {
+                    const label = event.target.closest('.horario-item');
+                    if (event.target.checked) {
+                        label.classList.add('selected');
+                    } else {
+                        label.classList.remove('selected');
+                    }
+                }
+            });
+
+
+            // Variable to store the person ID when editing
+            let editingPersonId = null;
+
+            // Initialize section states based on toggle defaults or loaded data in edit mode
+            toggleSectionInputs(designacoesReuniaoSection, !fazDesignacoesReuniaoSwitch.checked);
+            toggleSectionInputs(designacoesPregacaoSection, !fazDesignacoesPregacaoSwitch.checked);
+
+            // Add event listeners for the toggle switches
+            fazDesignacoesReuniaoSwitch.addEventListener('change', function() {
+                toggleSectionInputs(designacoesReuniaoSection, !this.checked);
+            });
+
+            fazDesignacoesPregacaoSwitch.addEventListener('change', function() {
+                toggleSectionInputs(designacoesPregacaoSection, !this.checked);
+            });
+
+            // Check if we're in edit mode by looking for an ID in the URL
+            function checkEditMode() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const personId = urlParams.get('id');
+
+                if (personId) {
+                    // We're in edit mode
+                    editingPersonId = personId;
+                    document.getElementById('page-title').textContent = 'Editar Pessoa';
+                    document.getElementById('submit-button').textContent = 'Editar Pessoa';
+
+                    // Fetch the person data and populate the form
+                    db.collection('pessoas').doc(personId).get()
+                        .then((doc) => {
+                            if (doc.exists) {
+                                const data = doc.data();
+
+                                // Populate form fields with person data
+                                document.getElementById('nome-pessoa').value = data.nomePessoa || '';
+                                generoMasculinoCheckbox.checked = data.genero === 'Masculino';
+                                generoFemininoCheckbox.checked = data.genero === 'Feminino';
+
+
+                                // Set idioma (may need to wait for options to load)
+                                const setIdioma = () => {
+                                    if (idiomaSelect.options.length > 0) {
+                                        for (let i = 0; i < idiomaSelect.options.length; i++) {
+                                            if (idiomaSelect.options[i].value === data.idioma) {
+                                                idiomaSelect.selectedIndex = i;
+                                                break;
+                                            }
+                                        }
+                                    } else {
+                                        setTimeout(setIdioma, 100); // Try again if options not loaded yet
+                                    }
+                                };
+                                setIdioma();
+
+                                // Set privilegios
+                                if (data.privilegios && data.privilegios.length > 0) {
+                                    data.privilegios.forEach(privilegio => {
+                                        const checkbox = document.querySelector(`input[name="privilegios"][value="${privilegio}"]`);
+                                        if (checkbox) checkbox.checked = true;
+                                    });
+                                }
+
+                                // Set grupo
+                                document.getElementById('grupo').value = data.grupo || '1';
+
+                                // Set email
+                                document.getElementById('email').value = data.email || '';
+
+                                // Set personalidade
+                                personalidadeMenosAvontadeCheckbox.checked = data.personalidade === '- à vontade';
+                                personalidadeMaisAvontadeCheckbox.checked = data.personalidade === '+ à vontade';
+
+
+                                // Set casado com
+                                document.getElementById('casado-com').value = data.casadoCom || '';
+
+                                // Set designações reunião
+                                document.getElementById('faz-designacoes-reuniao').checked = data.fazDesignacoesReuniao || false;
+                                toggleSectionInputs(designacoesReuniaoSection, !document.getElementById('faz-designacoes-reuniao').checked);
+
+                                // Set designações pregação
+                                document.getElementById('faz-designacoes-pregacao').checked = data.fazDesignacoesPregacao || false;
+                                toggleSectionInputs(designacoesPregacaoSection, !document.getElementById('faz-designacoes-pregacao').checked);
+
+                                // Set acompanha carrinhos
+                                acompanhaCarrinhosSwitch.checked = data.acompanhaCarrinhos || false;
+                                acompanhaCarrinhosLabel.textContent = data.acompanhaCarrinhos ? 'Sim' : 'Não';
+
+                                // Set ausencias
+                                if (data.ausencias && Array.isArray(data.ausencias)) {
+                                    selectedAusencias = data.ausencias.map(date => date); // Ensure dates are loaded as strings
+                                    updateAusenciasDisplay();
+                                }
+
+
+                                // Wait for designações to load before checking them
+                                const setDesignacoes = () => {
+                                    // Check if designações reunião checkboxes are loaded
+                                    if (document.querySelectorAll('input[name="designacoes-reuniao-list"]').length > 0) {
+                                        // Set designações reunião checkboxes
+                                        if (data.designacoesReuniao && data.designacoesReuniao.length > 0) {
+                                            data.designacoesReuniao.forEach(designacao => {
+                                                const checkbox = document.querySelector(`input[name="designacoes-reuniao-list"][value="${designacao}"]`);
+                                                if (checkbox) checkbox.checked = true;
+                                            });
+                                        }
+
+                                        // Set designações pregação checkboxes
+                                        if (data.designacoesPregacao && data.designacoesPregacao.length > 0) {
+                                            data.designacoesPregacao.forEach(designacao => {
+                                                const checkbox = document.querySelector(`input[name="designacoes-pregacao-list"][value="${designacao}"]`);
+                                                if (checkbox) checkbox.checked = true;
+                                            });
+                                        }
+                                    } else {
+                                        setTimeout(setDesignacoes, 100); // Try again if checkboxes not loaded yet
+                                    }
+                                };
+                                setDesignacoes();
+
+                                // Wait for horários to load before checking them
+                                const setHorarios = () => {
+                                    // Check if horários checkboxes are loaded
+                                    if (document.querySelectorAll('.horario-checkbox').length > 0) {
+                                        // Set horários pregação checkboxes
+                                        if (data.horariosPregacao) {
+                                            // Set semana horários
+                                            if (data.horariosPregacao.semana) {
+                                                Object.entries(data.horariosPregacao.semana).forEach(([day, times]) => {
+                                                    times.forEach(time => {
+                                                        const checkbox = document.querySelector(`#horarios-semana .horario-checkbox[data-day="${day}"][value="${time}"]`);
+                                                        if (checkbox) {
+                                                            checkbox.checked = true;
+                                                            checkbox.closest('.horario-item').classList.add('selected');
+                                                        }
+                                                    });
+                                                });
+                                            }
+
+                                            // Set fim de semana horários
+                                            if (data.horariosPregacao.fimDeSemana) {
+                                                Object.entries(data.horariosPregacao.fimDeSemana).forEach(([day, times]) => {
+                                                    times.forEach(time => {
+                                                        const checkbox = document.querySelector(`#horarios-fim-de-semana .horario-checkbox[data-day="${day}"][value="${time}"]`);
+                                                        if (checkbox) {
+                                                            checkbox.checked = true;
+                                                            checkbox.closest('.horario-item').classList.add('selected');
+                                                        }
+                                                    });
+                                                });
+                                            }
+                                        }
+                                    } else {
+                                        setTimeout(setHorarios, 100); // Try again if checkboxes not loaded yet
+                                    }
+                                };
+                                setHorarios();
+
+                            } else {
+                                console.error('No such document!');
+                                alert('Pessoa não encontrada!');
+                                window.location.href = 'nomes.html';
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Error getting document:', error);
+                            alert('Erro ao buscar dados da pessoa. Verifique o console para mais detalhes.');
+                        });
+                }
+            }
+
+            // Call checkEditMode when the page loads
+            checkEditMode();
+
+            // --- Form Submission Handler ---
+            criarPessoaForm.addEventListener('submit', function(event) {
+                event.preventDefault(); // Prevent default form submission
+
+                // --- Collect Data from Form ---
+                const nomePessoa = document.getElementById('nome-pessoa').value;
+                // Gênero agora é obtido dos checkboxes
+                let genero = '';
+                if (generoMasculinoCheckbox.checked) genero = 'Masculino';
+                if (generoFemininoCheckbox.checked) genero = 'Feminino';
+
+                const idioma = idiomaSelect.value;
+                const privilegios = Array.from(document.querySelectorAll('input[name="privilegios"]:checked')).map(cb => cb.value);
+                const grupo = document.getElementById('grupo').value;
+                const email = document.getElementById('email').value;
+
+                // Personalidade agora é obtida dos checkboxes
+                let personalidade = '';
+                if (personalidadeMenosAvontadeCheckbox.checked) personalidade = '- à vontade';
+                if (personalidadeMaisAvontadeCheckbox.checked) personalidade = '+ à vontade';
+
+
+                const casadoCom = document.getElementById('casado-com').value;
+                const fazDesignacoesReuniao = document.getElementById('faz-designacoes-reuniao').checked;
+                const designacoesReuniaoSelecionadas = getCheckedDesignacoes('designacoes-reuniao-list');
+                const fazDesignacoesPregacao = document.getElementById('faz-designacoes-pregacao').checked;
+                const acompanhaCarrinhos = acompanhaCarrinhosSwitch.checked;
+                const designacoesPregacaoSelecionadas = getCheckedDesignacoes('designacoes-pregacao-list');
+                const horariosPregacaoSelecionados = getSelectedHorarios();
+                const ausencias = [...selectedAusencias]; // Use the array of selected ausencias
+
+
+                const pessoaData = {
+                    nomePessoa: nomePessoa,
+                    genero: genero,
+                    idioma: idioma,
+                    privilegios: privilegios,
+                    grupo: grupo,
+                    email: email,
+                    personalidade: personalidade,
+                    casadoCom: casadoCom,
+                    fazDesignacoesReuniao: fazDesignacoesReuniao,
+                    designacoesReuniao: designacoesReuniaoSelecionadas,
+                    fazDesignacoesPregacao: fazDesignacoesPregacao,
+                    acompanhaCarrinhos: acompanhaCarrinhos,
+                    designacoesPregacao: designacoesPregacaoSelecionadas,
+                    horariosPregacao: horariosPregacaoSelecionados,
+                    ausencias: ausencias // Save ausencias dates array
+                };
+
+                // --- Save to Firebase ---
+                if (editingPersonId) {
+                    // Update existing document
+                    db.collection("pessoas").doc(editingPersonId).update(pessoaData)
+                        .then(() => {
+                            console.log("Document updated with ID: ", editingPersonId);
+                            alert("Pessoa atualizada com sucesso!");
+                            window.location.href = 'nomes.html'; // Redirect back to nomes.html
+                        })
+                        .catch((error) => {
+                            console.error("Error updating document: ", error);
+                            alert("Erro ao atualizar pessoa. Verifique o console para mais detalhes.");
+                        });
+                } else {
+                    // Create new document
+                    db.collection("pessoas").add(pessoaData)
+                        .then((docRef) => {
+                            console.log("Document written with ID: ", docRef.id);
+                            alert("Pessoa criada com sucesso!");
+                            criarPessoaForm.reset(); // Clear the form
+                            selectedAusencias = []; // Clear selected ausencias array
+                            updateAusenciasDisplay(); // Clear ausencias display
+                            // Clear time slot selections
+                            document.querySelectorAll('#horarios-semana .horario-checkbox:checked').forEach(checkbox => {
+                                checkbox.checked = false;
+                                checkbox.closest('.horario-item').classList.remove('selected');
+                            });
+                            document.querySelectorAll('#horarios-fim-de-semana .horario-checkbox:checked').forEach(checkbox => {
+                                checkbox.checked = false;
+                                checkbox.closest('.horario-item').classList.remove('selected');
+                            });
+                        })
+                        .catch((error) => {
+                            console.error("Error adding document: ", error);
+                            alert("Erro ao criar pessoa. Verifique o console para mais detalhes.");
+                        });
+                }
+            });
+
+
+            // --- Helper Functions ---
+            function createDesignacaoCheckbox(designacaoNome, listId) {
+                const checkboxItem = document.createElement('label');
+                checkboxItem.classList.add('checkbox-item');
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.name = listId;
+                checkbox.value = designacaoNome;
+
+                const span = document.createElement('span');
+                span.textContent = designacaoNome;
+
+                checkboxItem.appendChild(checkbox);
+                checkboxItem.appendChild(span);
+                return checkboxItem;
+            }
+
+            function createTimeSlotCheckbox(time, dayName) {
+                const checkboxItem = document.createElement('label');
+                checkboxItem.classList.add('horario-item');
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = time;
+                checkbox.dataset.day = dayName;
+                checkbox.classList.add('horario-checkbox');
+
+                const timeText = document.createTextNode(` ${time}`);
+
+                checkboxItem.appendChild(checkbox);
+                checkboxItem.appendChild(timeText);
+
+                return checkboxItem;
+            }
+
+
+            function getCheckedDesignacoes(checkboxName) {
+                return Array.from(document.querySelectorAll(`input[name="${checkboxName}"]:checked`)).map(cb => cb.value);
+            }
+
+            function getSelectedHorarios() {
+                const selectedHorarios = {
+                    semana: {},
+                    fimDeSemana: {}
+                };
+
+                document.querySelectorAll('#horarios-semana .horario-checkbox:checked').forEach(checkbox => {
+                    const day = checkbox.dataset.day;
+                    if (!selectedHorarios.semana[day]) {
+                        selectedHorarios.semana[day] = [];
+                    }
+                    selectedHorarios.semana[day].push(checkbox.value);
+                });
+
+                document.querySelectorAll('#horarios-fim-de-semana .horario-checkbox:checked').forEach(checkbox => {
+                    const day = checkbox.dataset.day;
+                    if (!selectedHorarios.fimDeSemana[day]) {
+                        selectedHorarios.fimDeSemana[day] = [];
+                    }
+                    selectedHorarios.fimDeSemana[day].push(checkbox.value);
+                });
+                return selectedHorarios;
+            }
+
+
+        });
+    </script>
+</body>
+</html>

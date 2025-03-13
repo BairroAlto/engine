@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Escala</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.firebasestorage.app",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f6fa;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            height: 100vh;
+            position: fixed;
+        }
+
+        .logo {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .nav-list {
+            list-style: none;
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            padding: 10px 20px;
+        }
+
+        .nav-item a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-item i {
+            margin-right: 10px;
+            width: 20px;
+        }
+
+        .nav-item:hover {
+            background-color: #34495e;
+        }
+
+        .content {
+            margin-left: 250px;
+            padding: 30px;
+            flex-grow: 1;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+            }
+
+            .sidebar .logo span,
+            .sidebar nav ul li a span {
+                display: none;
+            }
+
+            .content {
+                margin-left: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <h2>Sistema de Escala</h2>
+        </div>
+        <nav>
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="#reuniao-semana">
+                        <i class="fas fa-users"></i>
+                        <span>Reunião Semana</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#fim-de-semana">
+                        <i class="fas fa-calendar-week"></i>
+                        <span>Fim de Semana</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#pregacao">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Pregação</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#estatisticas">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Estatísticas</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="nomes.html">
+                        <i class="fas fa-address-book"></i>
+                        <span>Nomes</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#painel">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Painel</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#criar">
+                        <i class="fas fa-plus"></i>
+                        <span>Criar</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <main class="content">
+        <div id="reuniao-semana" class="section active">
+            <h1>Reunião Semana</h1>
+            <div class="card-container">
+                <!-- Content will be dynamically loaded -->
+            </div>
+        </div>
+
+        <div id="fim-de-semana" class="section">
+            <h1>Fim de Semana</h1>
+            <div class="card-container">
+                <!-- Content will be dynamically loaded -->
+            </div>
+        </div>
+
+        <div id="pregacao" class="section">
+            <h1>Pregação</h1>
+            <div class="card-container">
+                <!-- Content will be dynamically loaded -->
+            </div>
+        </div>
+
+        <div id="estatisticas" class="section">
+            <h1>Estatísticas</h1>
+            <div class="card-container">
+                <!-- Content will be dynamically loaded -->
+            </div>
+        </div>
+
+        <div id="nomes" class="section">
+            <h1>Nomes</h1>
+            <div class="card-container">
+                <!-- Content will be dynamically loaded -->
+            </div>
+        </div>
+
+        <div id="painel" class="section">
+            <h1>Painel</h1>
+            <div class="card-container">
+                <!-- Content will be dynamically loaded -->
+            </div>
+        </div>
+
+        <div id="criar" class="section">
+            <h1>Criar</h1>
+            <div class="card-container">
+                <div class="card">
+                    <h2>Criar Designação</h2>
+                    <a href="criar-designacao.html" class="btn-criar"><i class="fas fa-plus-circle"></i> Ir para Criar Designação</a>
+                </div>
+                <div class="card">
+                    <h2>Criar Nacionalidade</h2>
+                    <a href="criar-nacionalidade.html" class="btn-criar"><i class="fas fa-globe"></i> Ir para Criar Nacionalidade</a>
+                </div>
+                <div class="card">
+                    <h2>Criar Pessoas</h2>
+                    <a href="criar-pessoa.html" class="btn-criar"><i class="fas fa-user-plus"></i> Ir para Criar Pessoas</a>
+                </div>
+                <div class="card">
+                    <h2>Criar Horário de Reunião</h2>
+                    <a href="criar-horario-reuniao.html" class="btn-criar"><i class="fas fa-clock"></i> Ir para Criar Horário de Reunião</a>
+                </div>
+                <div class="card">
+                    <h2>Criar Horário de Pregação</h2>
+                    <a href="criar-horario-pregacao.html" class="btn-criar"><i class="fas fa-bullhorn"></i> Ir para Criar Horário de Pregação</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Navigation functionality
+            const navLinks = document.querySelectorAll('.sidebar nav ul li a');
+            const sections = document.querySelectorAll('.section');
+
+            // Check for hash in URL on page load
+            const hash = window.location.hash;
+            if (hash) {
+                sections.forEach(s => s.classList.remove('active'));
+                const targetSection = document.querySelector(hash);
+                if (targetSection) {
+                    targetSection.classList.add('active');
+                    navLinks.forEach(l => {
+                        l.classList.remove('active');
+                        if (l.getAttribute('href') === hash) {
+                            l.classList.add('active');
+                        }
+                    });
+                }
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    const href = this.getAttribute('href');
+                    
+                    // Check if the link is to an external page
+                    if (href.includes('.html')) {
+                        // Allow default behavior for external links
+                        return;
+                    }
+                    
+                    e.preventDefault();
+                    
+                    // Remove active class from all links and sections
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    sections.forEach(s => s.classList.remove('active'));
+                    
+                    // Add active class to clicked link
+                    this.classList.add('active');
+                    
+                    // Get the target section and activate it
+                    const targetId = href.substring(1);
+                    document.getElementById(targetId).classList.add('active');
+                });
+            });
+
+            // Navigation is set up
+        });
+    </script>
+</body>
+</html>
+
+<style>
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .card h2 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+        font-size: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #2c3e50;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .switch-group {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #e74c3c; /* Red for 'Não' */
+        transition: .4s;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+    }
+
+    input:checked + .slider {
+        background-color: #2ecc71; /* Green for 'Sim' */
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+
+    .slider.round {
+        border-radius: 34px;
+    }
+
+    .slider.round:before {
+        border-radius: 50%;
+    }
+
+    .btn-criar {
+        background-color: #3498db;
+        color: white;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        width: 100%;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 15px;
+        text-decoration: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .btn-criar:hover {
+        background-color: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    }
+</style>

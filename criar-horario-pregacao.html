@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Horário de Pregação - Sistema de Escala</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.firebasestorage.app",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f6fa;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            height: 100vh;
+            position: fixed;
+        }
+
+        .logo {
+            padding: 0 20px;
+            margin-bottom: 30px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar nav ul {
+            list-style: none;
+        }
+
+        .sidebar nav ul li a {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            color: #ecf0f1;
+            text-decoration: none;
+            gap: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .sidebar nav ul li a:hover,
+        .sidebar nav ul li a.active {
+            background-color: #34495e;
+        }
+
+        .sidebar nav ul li a i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .content {
+            margin-left: 250px;
+            padding: 30px;
+            flex-grow: 1;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="time"],
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .time-slots-group { /* Alterado nome para agrupar conjuntos de horarios por dia */
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 15px; /* Adicionado margem inferior para separar os blocos de dia */
+        }
+
+        .day-time-slot { /* Alterado nome para refletir dia e hora */
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .day-time-slot select { /* Para o seletor de dia */
+            flex: 2; /* Ocupa mais espaço para o nome do dia */
+        }
+
+
+        .day-time-slot input[type="time"] {
+            flex: 3; /* Um pouco mais de espaço para a hora */
+        }
+
+        .btn-add-time-day { /* Botão para adicionar um horario para um dia especifico */
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .btn-remove-time-day { /* Botão para remover um horario de um dia especifico */
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .section-title {
+            color: #2c3e50;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 50px;
+            height: 2px;
+            background-color: #e74c3c;
+        }
+
+        #diasSemanaHorarios {
+            background-color: #f5f6fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #dcdde1;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        #diasFimDeSemanaHorarios {
+            background-color: #fff8f0;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ffecd9;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .time-slots-group {
+            background-color: rgba(255, 255, 255, 0.7);
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .time-slots-group:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .time-slots-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .btn-criar {
+            background-color: #2c3e50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin-top: 20px;
+        }
+
+        .btn-criar:hover {
+            background-color: #34495e;
+        }
+
+        .btn-voltar {
+            display: inline-block;
+            margin-bottom: 20px;
+            background-color: #7f8c8d;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-voltar:hover {
+            background-color: #95a5a6;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+            }
+
+            .sidebar .logo span,
+            .sidebar nav ul li a span {
+                display: none;
+            }
+
+            .content {
+                margin-left: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Escala</span>
+        </div>
+        <nav>
+            <ul>
+                <li>
+                    <a href="index.html#reuniao-semana">
+                        <i class="fas fa-users"></i>
+                        <span>Reunião Semana</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="index.html#fim-de-semana">
+                        <i class="fas fa-calendar-week"></i>
+                        <span>Fim de Semana</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="index.html#pregacao">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Pregação</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="index.html#estatisticas">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Estatísticas</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="index.html#nomes">
+                        <i class="fas fa-address-book"></i>
+                        <span>Nomes</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="index.html#painel">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Painel</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="index.html#criar" class="active">
+                        <i class="fas fa-plus"></i>
+                        <span>Criar</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <main class="content">
+        <a href="index.html#criar" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <h1>Criar Horário de Pregação</h1>
+
+        <div class="card">
+            <form id="horarioPregacaoForm">
+                <!-- Seção 1: Seleção de Ano -->
+                <div class="form-group">
+                    <label for="ano">Ano</label>
+                    <select id="ano">
+                        <option value="">Selecione o ano</option>
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                    </select>
+                </div>
+
+                <!-- Seção 2: Formulário para dias da semana -->
+                <h3 class="section-title">Dias da Semana</h3>
+                <div id="diasSemanaHorarios">
+                    <!-- Bloco inicial para Segunda-feira -->
+                    <div class="time-slots-group" id="segunda-horarios">
+                        <label>Segunda-feira</label>
+                        <div class="day-time-slot">
+                            <input type="time" name="horaSemana-segunda">
+                            <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                        </div>
+                        <button type="button" class="btn-add-time-day" data-day="segunda">Adicionar Horário</button>
+                    </div>
+
+                    <!-- Bloco para Terça-feira -->
+                    <div class="time-slots-group" id="terca-horarios">
+                        <label>Terça-feira</label>
+                        <div class="day-time-slot">
+                            <input type="time" name="horaSemana-terca">
+                            <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                        </div>
+                        <button type="button" class="btn-add-time-day" data-day="terca">Adicionar Horário</button>
+                    </div>
+
+                    <!-- Bloco para Quarta-feira -->
+                    <div class="time-slots-group" id="quarta-horarios">
+                        <label>Quarta-feira</label>
+                        <div class="day-time-slot">
+                            <input type="time" name="horaSemana-quarta">
+                            <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                        </div>
+                        <button type="button" class="btn-add-time-day" data-day="quarta">Adicionar Horário</button>
+                    </div>
+
+                    <!-- Bloco para Quinta-feira -->
+                    <div class="time-slots-group" id="quinta-horarios">
+                        <label>Quinta-feira</label>
+                        <div class="day-time-slot">
+                            <input type="time" name="horaSemana-quinta">
+                            <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                        </div>
+                        <button type="button" class="btn-add-time-day" data-day="quinta">Adicionar Horário</button>
+                    </div>
+
+                    <!-- Bloco para Sexta-feira -->
+                    <div class="time-slots-group" id="sexta-horarios">
+                        <label>Sexta-feira</label>
+                        <div class="day-time-slot">
+                            <input type="time" name="horaSemana-sexta">
+                            <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                        </div>
+                        <button type="button" class="btn-add-time-day" data-day="sexta">Adicionar Horário</button>
+                    </div>
+                </div>
+
+
+                <!-- Seção 3: Formulário para dias de fim de semana -->
+                <h3 class="section-title">Dias de Fim de Semana</h3>
+                <div id="diasFimDeSemanaHorarios">
+                    <!-- Bloco para Sábado -->
+                    <div class="time-slots-group" id="sabado-horarios">
+                        <label>Sábado</label>
+                        <div class="day-time-slot">
+                            <input type="time" name="horaFimDeSemana-sabado">
+                            <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                        </div>
+                        <button type="button" class="btn-add-time-day" data-day="sabado">Adicionar Horário</button>
+                    </div>
+
+                    <!-- Bloco para Domingo -->
+                    <div class="time-slots-group" id="domingo-horarios">
+                        <label>Domingo</label>
+                        <div class="day-time-slot">
+                            <input type="time" name="horaFimDeSemana-domingo">
+                            <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                        </div>
+                        <button type="button" class="btn-add-time-day" data-day="domingo">Adicionar Horário</button>
+                    </div>
+                </div>
+
+
+                <button type="submit" class="btn-criar">Guardar</button>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const horarioPregacaoForm = document.getElementById('horarioPregacaoForm');
+            const anoSelect = document.getElementById('ano');
+            const anoAtual = new Date().getFullYear();
+            let currentScheduleDocId = null; // To store the document ID if we are updating
+
+            // Function to populate the form with data
+            function populateForm(data) {
+                if (data && data["dias-semana-horarios"]) {
+                    Object.keys(data["dias-semana-horarios"]).forEach(day => {
+                        const dayHorariosGroup = document.getElementById(`${day}-horarios`);
+                        const horas = data["dias-semana-horarios"][day];
+                        // Clear existing time slots except the first one
+                        let timeSlots = dayHorariosGroup.querySelectorAll('.day-time-slot');
+                        for (let i = 1; i < timeSlots.length; i++) {
+                            timeSlots[i].remove();
+                        }
+                        timeSlots[0].querySelector('input[type="time"]').value = horas[0] || ''; // Set the first time slot
+
+                        // Add additional time slots if there are more times
+                        for (let i = 1; i < horas.length; i++) {
+                            const timeSlot = document.createElement('div');
+                            timeSlot.className = 'day-time-slot';
+                            timeSlot.innerHTML = `
+                                <input type="time" name="horaSemana-${day}" value="${horas[i]}">
+                                <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                            `;
+                            dayHorariosGroup.querySelector('.day-time-slot:last-of-type').after(timeSlot);
+                            // Add event listener for remove button for dynamically added slots
+                            timeSlot.querySelector('.btn-remove-time-day').addEventListener('click', function() {
+                                timeSlot.remove();
+                            });
+                        }
+                    });
+                }
+
+                if (data && data["dias-fimdesemana-horarios"]) {
+                    Object.keys(data["dias-fimdesemana-horarios"]).forEach(day => {
+                        const dayHorariosGroup = document.getElementById(`${day}-horarios`);
+                        const horas = data["dias-fimdesemana-horarios"][day];
+
+                        // Clear existing time slots except the first one
+                        let timeSlots = dayHorariosGroup.querySelectorAll('.day-time-slot');
+                        for (let i = 1; i < timeSlots.length; i++) {
+                            timeSlots[i].remove();
+                        }
+                        timeSlots[0].querySelector('input[type="time"]').value = horas[0] || ''; // Set the first time slot
+
+
+                        // Add additional time slots if there are more times
+                        for (let i = 1; i < horas.length; i++) {
+                            const timeSlot = document.createElement('div');
+                            timeSlot.className = 'day-time-slot';
+                            timeSlot.innerHTML = `
+                                <input type="time" name="horaFimDeSemana-${day}" value="${horas[i]}">
+                                <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                            `;
+                            dayHorariosGroup.querySelector('.day-time-slot:last-of-type').after(timeSlot);
+                            // Add event listener for remove button for dynamically added slots
+                            timeSlot.querySelector('.btn-remove-time-day').addEventListener('click', function() {
+                                timeSlot.remove();
+                            });
+                        }
+                    });
+                }
+            }
+
+
+            // Function to fetch the most recent schedule
+            function fetchMostRecentSchedule() {
+                db.collection('horarios')
+                    .where("tipo", "==", "pregacao")
+                    .orderBy("ano", "desc")
+                    .limit(1)
+                    .get()
+                    .then(snapshot => {
+                        if (!snapshot.empty) {
+                            const doc = snapshot.docs[0];
+                            const scheduleData = doc.data();
+                            currentScheduleDocId = doc.id;
+                            if (scheduleData.ano) {
+                                anoSelect.value = scheduleData.ano;
+                            } else {
+                                anoSelect.value = anoAtual; // Default to current year if year is missing
+                            }
+                            populateForm(scheduleData);
+                        } else {
+                            anoSelect.value = anoAtual; // Default to current year if no schedule exists
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error fetching schedule:", error);
+                        alert("Failed to load schedule. Please try again.");
+                        anoSelect.value = anoAtual; // Default to current year on error
+                    });
+            }
+
+
+            // Preencher o ano atual como padrão
+            for (let i = 0; i < anoSelect.options.length; i++) {
+                if (anoSelect.options[i].value == anoAtual) {
+                    anoSelect.options[i].selected = true;
+                    break;
+                }
+            }
+
+            // Fetch schedule on page load
+            fetchMostRecentSchedule();
+
+
+            // Adicionar evento para "Adicionar Horário" dentro de cada bloco de dia (Semana)
+            document.querySelectorAll('#diasSemanaHorarios .btn-add-time-day').forEach(button => {
+                button.addEventListener('click', function() {
+                    const day = this.dataset.day;
+                    const horariosContainer = this.parentElement; // time-slots-group
+                    const timeSlot = document.createElement('div');
+                    timeSlot.className = 'day-time-slot';
+                    timeSlot.innerHTML = `
+                        <input type="time" name="horaSemana-${day}">
+                        <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                    `;
+                    horariosContainer.querySelector('.day-time-slot:last-of-type').after(timeSlot); // Adiciona após o último .day-time-slot existente
+
+                    // Adicionar evento para remover o horário adicionado
+                    timeSlot.querySelector('.btn-remove-time-day').addEventListener('click', function() {
+                        timeSlot.remove();
+                    });
+                });
+            });
+
+             // Adicionar evento para "Adicionar Horário" dentro de cada bloco de dia (Fim de Semana)
+             document.querySelectorAll('#diasFimDeSemanaHorarios .btn-add-time-day').forEach(button => {
+                button.addEventListener('click', function() {
+                    const day = this.dataset.day;
+                    const horariosContainer = this.parentElement; // time-slots-group
+                    const timeSlot = document.createElement('div');
+                    timeSlot.className = 'day-time-slot';
+                    timeSlot.innerHTML = `
+                        <input type="time" name="horaFimDeSemana-${day}">
+                        <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                    `;
+                    horariosContainer.querySelector('.day-time-slot:last-of-type').after(timeSlot); // Adiciona após o último .day-time-slot existente
+
+                    // Adicionar evento para remover o horário adicionado
+                    timeSlot.querySelector('.btn-remove-time-day').addEventListener('click', function() {
+                        timeSlot.remove();
+                    });
+                });
+            });
+
+
+            // Adicionar eventos para remover horários existentes (Semana e FDS)
+            document.querySelectorAll('.btn-remove-time-day').forEach(button => {
+                button.addEventListener('click', function() {
+                    this.closest('.day-time-slot').remove();
+                });
+            });
+
+            // Submissão do formulário
+            horarioPregacaoForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                // Obter o ano selecionado
+                const ano = anoSelect.value;
+
+                // Obter horários da semana
+                const diasSemanaHorarios = {};
+                document.querySelectorAll('#diasSemanaHorarios .time-slots-group').forEach(dayGroup => {
+                    const dayName = dayGroup.id.split('-')[0]; // e.g., "segunda" from "segunda-horarios"
+                    const horas = [];
+                    dayGroup.querySelectorAll('input[type="time"]').forEach(input => {
+                        if (input.value) horas.push(input.value);
+                    });
+                    if (horas.length > 0) {
+                        diasSemanaHorarios[dayName] = horas;
+                    }
+                });
+
+                // Obter horários do fim de semana
+                const diasFimDeSemanaHorarios = {};
+                document.querySelectorAll('#diasFimDeSemanaHorarios .time-slots-group').forEach(dayGroup => {
+                    const dayName = dayGroup.id.split('-')[0]; // e.g., "sabado" from "sabado-horarios"
+                    const horas = [];
+                    dayGroup.querySelectorAll('input[type="time"]').forEach(input => {
+                        if (input.value) horas.push(input.value);
+                    });
+                    if (horas.length > 0) {
+                        diasFimDeSemanaHorarios[dayName] = horas;
+                    }
+                });
+
+
+                // Prepare data to save
+                const scheduleData = {
+                    tipo: "pregacao", // predefinido conforme solicitado
+                    ano: ano,
+                    "dias-semana-horarios": diasSemanaHorarios,
+                    "dias-fimdesemana-horarios": diasFimDeSemanaHorarios,
+                    dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+
+                // Save or Update in Firestore
+                const savePromise = currentScheduleDocId
+                    ? db.collection('horarios').doc(currentScheduleDocId).update(scheduleData) // Update existing document
+                    : db.collection('horarios').add(scheduleData); // Add new document
+
+
+                savePromise.then(function() {
+                    alert('Horário de pregação guardado com sucesso!');
+                    horarioPregacaoForm.reset();
+                    currentScheduleDocId = null; // Reset doc ID after successful save/update
+
+                    // Redefinir o ano atual após o reset
+                    for (let i = 0; i < anoSelect.options.length; i++) {
+                        if (anoSelect.options[i].value == anoAtual) {
+                            anoSelect.options[i].selected = true;
+                            break;
+                        }
+                    }
+
+                    // Limpar horários adicionais (mantém um horário inicial por dia)
+                    document.querySelectorAll('#diasSemanaHorarios .time-slots-group, #diasFimDeSemanaHorarios .time-slots-group').forEach(dayGroup => {
+                        const timeSlots = dayGroup.querySelectorAll('.day-time-slot');
+                        for (let i = 1; i < timeSlots.length; i++) { // Remove todos exceto o primeiro
+                            timeSlots[i].remove();
+                        }
+                        dayGroup.querySelector('input[type="time"]').value = ''; // Limpa o primeiro input de tempo
+                    });
+
+                    fetchMostRecentSchedule(); // Refresh the form with the latest data
+
+                })
+                .catch(function(error) {
+                    console.error('Erro ao guardar horário de pregação: ', error);
+                    alert('Erro ao guardar horário de pregação. Por favor, tente novamente.');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
