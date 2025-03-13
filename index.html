@@ -162,6 +162,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="#iniciar">
+                        <i class="fas fa-play"></i>
+                        <span>Iniciar</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="#criar">
                         <i class="fas fa-plus"></i>
                         <span>Criar</span>
@@ -211,6 +217,32 @@
             <h1>Painel</h1>
             <div class="card-container">
                 <!-- Content will be dynamically loaded -->
+            </div>
+        </div>
+
+        <div id="iniciar" class="section">
+            <h1>Iniciar</h1>
+            <div class="card-container">
+                <div class="card flow-card">
+                    <h2>Iniciar Fluxo Semanal</h2>
+                    <a href="#" class="btn-flow"><i class="fas fa-calendar-week"></i> Iniciar Fluxo Semanal</a>
+                </div>
+                <div class="card flow-card">
+                    <h2>Iniciar Fluxo Fim de Semana</h2>
+                    <a href="#" class="btn-flow"><i class="fas fa-calendar-alt"></i> Iniciar Fluxo Fim de Semana</a>
+                </div>
+                <div class="card flow-card">
+                    <h2>Iniciar Fluxo Técnico</h2>
+                    <a href="#" class="btn-flow"><i class="fas fa-cogs"></i> Iniciar Fluxo Técnico</a>
+                </div>
+                <div class="card flow-card">
+                    <h2>Iniciar Fluxo Pregação</h2>
+                    <a href="#" class="btn-flow"><i class="fas fa-bullhorn"></i> Iniciar Fluxo Pregação</a>
+                </div>
+                <div class="card flow-card">
+                    <h2>Iniciar Fluxo Carrinhos</h2>
+                    <a href="#" class="btn-flow"><i class="fas fa-cart-plus"></i> Iniciar Fluxo Carrinhos</a>
+                </div>
             </div>
         </div>
 
@@ -406,6 +438,39 @@
 
     .btn-criar:hover {
         background-color: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    }
+
+    .flow-card {
+        background: #34495e;
+    }
+
+    .flow-card h2 {
+        color: white;
+    }
+
+    .btn-flow {
+        background-color: #2ecc71;
+        color: white;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        width: 100%;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 15px;
+        text-decoration: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .btn-flow:hover {
+        background-color: #27ae60;
         transform: translateY(-2px);
         box-shadow: 0 6px 8px rgba(0,0,0,0.15);
     }
