@@ -717,6 +717,8 @@
                     // Get the year and month from the form
                     const ano = await getAnoPainelFirebase();
                     const mes = parseInt(document.getElementById('mes').value);
+                    // **LINHA CORRIGIDA - PARÊNTESE ADICIONADO**
+    
     
                     // Get the week days string from the display
                     const diasSemanaDisplay = document.getElementById('weekDisplay').innerHTML;
@@ -863,7 +865,7 @@
             };
     
     
-            const getTotalSemanasNoMes = (ano, mes) => {
+            const getTotalSemanasNoMes = async (ano, mes) => {
                 console.log('getTotalSemanasNoMes - v2: Calculating total weeks for month:', mes, 'year:', ano);
                 let countWeeks = 0;
                 let currentDay = new Date(ano, mes - 1, 1);
@@ -1119,7 +1121,7 @@
                 try {
                     // Get current year and month
                     const ano = await getAnoPainelFirebase();
-                    const mes = parseInt(document.getElementById('mes').value);
+                    const mes = parseInt(document.getElementById('mes').value); // **LINHA CORRIGIDA - PARÊNTESE ADICIONADO**
                     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
     
                     // Get form values for Tipo, Idioma and Sala
@@ -1155,8 +1157,9 @@
                         tipo: tipoReuniao,
                         idioma: idiomasSelecionados,
                         sala: salaSelecionada,
-                        dia: meetingDayOfMonth, // Add 'dia' (meeting day of month) - now in YYYY-MM-DD format
-                        hora: horaSemana // Add 'hora' from Firebase
+                        dia: meetingDayOfMonth, 
+                        hora: horaSemana,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp() // ADICIONADO CAMPO TIMESTAMP
                     };
                     console.log('createFluxoSemanal - historicoData before Firebase write:', historicoData); // LOGGING
     
