@@ -711,55 +711,88 @@
     
     
             const loadPeopleOptionsIntoSelects = async (designacao, container) => {
-    try {
-        const pessoasRef = db.collection('pessoas');
-
-        container.querySelectorAll('.designacao-instance-container').forEach((instanceContainer, instanceIndex) => {
-            instanceContainer.querySelectorAll('.form-select').forEach((participantSelect, participantIndex) => {
-                // Modified Firebase query: Removed 'privilegios' filter
-                let query = pessoasRef
-                    .where('fazDesignacoesReuniao', '==', true)
-                    .where('designacoesReuniao', 'array-contains', designacao.nome);
-
-                if (designacao.feitoPor === 'Masculino' || designacao.feitoPor === 'Feminino') {
-                    query = query.where('genero', '==', designacao.feitoPor);
-                }
-
-                if (designacao.numeroParticipantes > 1 && participantIndex === 0) { // Dirigente filter
-                    query = query.where('personalidade', '==', '+ à vontade');
-                }
-
-                const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
-                    .map(checkbox => checkbox.value);
-
-                query.get().then(snapshot => { // Execute query for each select
-                    participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
-                    snapshot.forEach(doc => {
-                        const pessoa = doc.data();
-
-                        // **Client-side filtering for 'privilegios'**
-                        const temPrivilegiosNecessarios = designacao.quemFaz.some(privilegio => pessoa.privilegios && pessoa.privilegios.includes(privilegio));
-
-                        let languageMatches = true;
-                        if (selectedLanguages.length > 0) {
-                            languageMatches = selectedLanguages.includes(pessoa.idioma);
-                        }
-
-                        if (languageMatches && temPrivilegiosNecessarios) { // **Include person only if language and privileges match**
-                            const option = document.createElement('option');
-                            option.value = doc.id;
-                            option.textContent = pessoa.nomePessoa;
-                            participantSelect.appendChild(option);
-                        }
+                try {
+                    const pessoasRef = db.collection('pessoas');
+    
+                    // Get the year and month from the form
+                    const ano = await getAnoPainelFirebase();
+                    const mes = parseInt(document.getElementById('mes').value);
+    
+                    // Get the week days string from the display
+                    const diasSemanaDisplay = document.getElementById('weekDisplay').innerHTML;
+                    // Extract the diasSemana string. It's a bit brittle as it relies on the text format. A better way might be to recalculate diasSemana using ano and mes again.
+                    const diasSemanaMatch = diasSemanaDisplay.match(/\((.*?)\)/);
+                    const diasSemana = diasSemanaMatch ? diasSemanaMatch[1] : null;
+    
+    
+                    // Get the day of the week for the meeting from Firebase (you might need to call getHorariosFromFirebase again or reuse if it's available in scope)
+                    const horariosData = await getHorariosFromFirebase(ano); // Make sure getHorariosFromFirebase is accessible here
+                    const diaSemanaReuniaoString = horariosData['dia-semana'];
+    
+                    // Calculate the designation day in YYYY-MM-DD format
+                    let designationDateFormatted = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString); // **CHANGED to let**
+    
+                    if (designationDateFormatted === null) {
+                        console.warn("Could not determine designation day, absence filter might not work correctly.");
+                        designationDateFormatted = null; // Indicate that the date is not available
+                    }
+    
+    
+                    container.querySelectorAll('.designacao-instance-container').forEach((instanceContainer, instanceIndex) => {
+                        instanceContainer.querySelectorAll('.form-select').forEach((participantSelect, participantIndex) => {
+                            let query = pessoasRef
+                                .where('fazDesignacoesReuniao', '==', true)
+                                .where('designacoesReuniao', 'array-contains', designacao.nome);
+    
+                            if (designacao.feitoPor === 'Masculino' || designacao.feitoPor === 'Feminino') {
+                                query = query.where('genero', '==', designacao.feitoPor);
+                            }
+    
+                            if (designacao.numeroParticipantes > 1 && participantIndex === 0) { // Dirigente filter
+                                query = query.where('personalidade', '==', '+ à vontade');
+                            }
+    
+                            const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
+                                .map(checkbox => checkbox.value);
+    
+    
+                            query.get().then(snapshot => { // Execute query for each select
+                                participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
+                                snapshot.forEach(async doc => { // Changed forEach to async forEach to use await inside
+                                    const pessoa = doc.data();
+    
+                                    // **Absence Filter Implementation**
+                                    let isAbsent = false;
+                                    if (designationDateFormatted) { // Only apply absence filter if designationDateFormatted is available
+                                        if (pessoa.ausencias && Array.isArray(pessoa.ausencias)) {
+                                            isAbsent = pessoa.ausencias.includes(designationDateFormatted);
+                                        }
+                                    }
+    
+    
+                                    // **Client-side filtering for 'privilegios'**
+                                    const temPrivilegiosNecessarios = designacao.quemFaz.some(privilegio => pessoa.privilegios && pessoa.privilegios.includes(privilegio));
+    
+                                    let languageMatches = true;
+                                    if (selectedLanguages.length > 0) {
+                                        languageMatches = selectedLanguages.includes(pessoa.idioma);
+                                    }
+    
+                                    if (languageMatches && temPrivilegiosNecessarios && !isAbsent) { // **Include person only if language, privileges match AND not absent**
+                                        const option = document.createElement('option');
+                                        option.value = doc.id;
+                                        option.textContent = pessoa.nomePessoa;
+                                        participantSelect.appendChild(option);
+                                    }
+                                });
+                            });
+                        });
                     });
-                });
-            });
-        });
-
-    } catch (error) {
-        console.error('Erro ao carregar pessoas elegíveis:', error);
-    }
-};
+    
+                } catch (error) {
+                    console.error('Erro ao carregar pessoas elegíveis:', error);
+                }
+            };
     
     
             const getAnoPainelFirebase = async () => {
@@ -1109,7 +1142,7 @@
     
     
                     // Calculate meeting day of month
-                    const meetingDayOfMonth = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString); // Use the correctly formatted diasSemana
+                    const meetingDayOfMonth = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString);
                     console.log('createFluxoSemanal - meetingDayOfMonth result:', meetingDayOfMonth); // LOGGING
     
     
@@ -1122,7 +1155,7 @@
                         tipo: tipoReuniao,
                         idioma: idiomasSelecionados,
                         sala: salaSelecionada,
-                        dia: meetingDayOfMonth, // Add 'dia' (meeting day of month)
+                        dia: meetingDayOfMonth, // Add 'dia' (meeting day of month) - now in YYYY-MM-DD format
                         hora: horaSemana // Add 'hora' from Firebase
                     };
                     console.log('createFluxoSemanal - historicoData before Firebase write:', historicoData); // LOGGING
@@ -1189,15 +1222,15 @@
             }
     
     
-            // --- Helper function to get meeting day of month ---
+            // --- Helper function to get meeting day of month (NOW RETURNS YYYY-MM-DD DATE) ---
             function getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao) {
-                console.log('getMeetingDayOfMonth - START', { diasSemanaString: diasSemanaString, diaSemanaReuniao: diaSemanaReuniao }); // LOG 11: Function start and inputs
+                console.log('getMeetingDayOfMonth - START', { diasSemanaString: diasSemanaString, diaSemanaReuniao: diaSemanaReuniao });
+    
                 if (!diasSemanaString || !diaSemanaReuniao) {
                     console.log('getMeetingDayOfMonth - Returning null because diasSemanaString or diaSemanaReuniao is empty/null');
                     return null;
                 }
     
-                // diasSemanaString format: "3 - 9 Mar" or "29 Fev - 7 Mar"
                 const parts = diasSemanaString.split(" - ");
                 if (parts.length !== 2) {
                     console.error("getMeetingDayOfMonth - Invalid diasSemanaString format (split parts):", parts);
@@ -1206,45 +1239,76 @@
                 const startDay = parseInt(parts[0]);
                 const endPart = parts[1].split(" ");
                 if (endPart.length !== 2) {
-                     console.error("getMeetingDayOfMonth - Invalid diasSemanaString format (endPart split):", endPart);
+                    console.error("getMeetingDayOfMonth - Invalid diasSemanaString format (endPart split):", endPart);
                     return null;
                 }
                 const endDay = parseInt(endPart[0]);
-                const monthStr = endPart[1]; // Month abbreviation like "Mar"
+                let startMonthStr = parts[0].split(" ")[1] || ""; // Extract start month string ("Mar")
+                const endMonthStr = endPart[1]; // End month string ("Abr")
     
                 const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-                const monthIndex = monthNames.indexOf(monthStr); // Month index (0-11)
+                let startMonthIndex = monthNames.indexOf(startMonthStr); // Month index for start month
+                const endMonthIndex = monthNames.indexOf(endMonthStr);     // Month index for end month
     
-                if (monthIndex === -1) {
-                    console.error("getMeetingDayOfMonth - Mês inválido na string de dias da semana:", monthStr);
+                // **CORRECTION: Use endMonthIndex as fallback for startMonthIndex if startMonthStr is empty**
+                if (startMonthIndex === -1) {
+                    startMonthIndex = endMonthIndex; // Use end month if start month is missing
+                }
+                if (startMonthIndex === -1) { // Double check if even endMonthIndex is invalid
+                    console.error("getMeetingDayOfMonth - Mês de início/fim inválido na string de dias da semana:", diasSemanaString);
+                    return null;
+                }
+                if (endMonthIndex === -1) {
+                    console.error("getMeetingDayOfMonth - Mês de fim inválido na string de dias da semana:", endMonthStr);
                     return null;
                 }
     
-                const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao); // Get day of week number (0-6)
-                console.log('getMeetingDayOfMonth - dayOfWeekMeetingNumber:', dayOfWeekMeetingNumber); // LOGGING
+    
+                const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
+                console.log('getMeetingDayOfMonth - dayOfWeekMeetingNumber:', dayOfWeekMeetingNumber);
                 if (dayOfWeekMeetingNumber === null) {
                     console.error("getMeetingDayOfMonth - Dia da semana da reunião inválido:", diaSemanaReuniao);
                     return null;
                 }
     
-                // Calculate the middle day of the week range
-                const startOfWeekDate = new Date(new Date().getFullYear(), monthIndex, startDay);
-                const endOfWeekDate = new Date(new Date().getFullYear(), monthIndex, endDay);
+                const currentYear = new Date().getFullYear(); // Get current year once
+                const startOfWeekDate = new Date(currentYear, startMonthIndex, startDay);
+                const endOfWeekDate = new Date(currentYear, endMonthIndex, endDay);
     
+    
+                let designationDateYYYYMMDD = null; // Variable to store formatted date
                 let middleDayOfMonth = null;
                 let currentDay = new Date(startOfWeekDate);
+                let loopCounter = 0;
     
                 for (let i = 0; currentDay <= endOfWeekDate; i++) {
+                    loopCounter++;
+                    console.log(`getMeetingDayOfMonth - LOOP #${loopCounter}:`);
+                    console.log(`  currentDay: ${currentDay}`);
+                    console.log(`  currentDay.getDay(): ${currentDay.getDay()} (Day of week 0-6, Sun-Sat)`);
+                    console.log(`  dayOfWeekMeetingNumber: ${dayOfWeekMeetingNumber} (Target day of week 0-6)`);
+    
                     if (currentDay.getDay() === dayOfWeekMeetingNumber) {
                         middleDayOfMonth = currentDay.getDate();
-                        break; // Found the meeting day, exit loop
+                        console.log(`getMeetingDayOfMonth - LOOP: MATCH FOUND! Day of month: ${middleDayOfMonth}`);
+    
+                        // **FORMAT DATE AS YYYY-MM-DD - START**
+                        const month = String(currentDay.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+                        const day = String(middleDayOfMonth).padStart(2, '0');
+                        designationDateYYYYMMDD = `${currentYear}-${month}-${day}`;
+                        console.log(`getMeetingDayOfMonth - Formatted date (YYYY-MM-DD): ${designationDateYYYYMMDD}`);
+                        // **FORMAT DATE AS YYYY-MM-DD - END**
+    
+    
+                        break;
                     }
-                    currentDay.setDate(currentDay.getDate() + 1); // Increment day
+                    currentDay.setDate(currentDay.getDate() + 1);
                 }
     
-                console.log('getMeetingDayOfMonth - END', { middleDayOfMonth: middleDayOfMonth }); // LOG 12: Function end and output
-                return middleDayOfMonth; // Return the day of the month
+                console.log('getMeetingDayOfMonth - END', { designationDateYYYYMMDD: designationDateYYYYMMDD, loopIterations: loopCounter }); // Return formatted date
+                return designationDateYYYYMMDD; // Return the formatted date string or null
             }
+    
     
     
             const loadDesignacoes = async () => {
