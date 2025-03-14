@@ -998,7 +998,7 @@
                     if (i === designationQuantity) {
                         quantityButton.classList.add('selected');
                     }
-                    quantityButton.addEventListener('click', (e) => {
+                    quantityButton.addEventListener('click', async (e) => { // ADDED ASYNC
                         e.stopPropagation();
                         const selectedQuantity = parseInt(quantityButton.dataset.quantityValue);
                         orderButton.dataset.quantity = selectedQuantity;
@@ -1006,6 +1006,27 @@
                         quantitySubmenu.querySelectorAll('.quantity-button').forEach(btn => btn.classList.remove('selected'));
                         quantityButton.classList.add('selected');
                         quantitySubmenu.classList.remove('active');
+
+                        // **--- FIX: Call updateActiveDesignationDisplay here ---**
+                        const designacaoIdForUpdate = quantitySubmenu.dataset.designacaoId;
+                        try {
+                            const designacaoDoc = await db.collection('designacoes').doc(designacaoIdForUpdate).get();
+                            if (designacaoDoc.exists) {
+                                const designacaoData = designacaoDoc.data();
+                                const designacaoInfo = {
+                                    id: designacaoIdForUpdate,
+                                    ordem: parseInt(orderButton.dataset.order) || 0, // Get current order
+                                    quantidade: selectedQuantity,
+                                    numeroParticipantes: designacaoData.numeroParticipantes,
+                                    quemFaz: designacaoData.quemFaz,
+                                    feitoPor: designacaoData.feitoPor,
+                                    nome: designacaoData.nome
+                                };
+                                updateActiveDesignationDisplay(designacaoInfo, designacaoInfo.ordem, selectedQuantity); // Call update display
+                            }
+                        } catch (error) {
+                            console.error('Erro ao buscar detalhes da designação para atualizar display:', error);
+                        }
                     });
                     quantitySubmenu.appendChild(quantityButton);
                 }
