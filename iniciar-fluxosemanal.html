@@ -889,7 +889,8 @@
                 console.log('updateWeekDisplay: Month selected:', mesSelecionado, 'Year from Firebase:', anoFirebase);
     
                 const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado) + 1;
-                const totalSemanas = getTotalSemanasNoMes(anoFirebase, mesSelecionado);
+                // **ADICIONADO AWAIT AQUI PARA ESPERAR O RESULTADO DE getTotalSemanasNoMes**
+                const totalSemanas = await getTotalSemanasNoMes(anoFirebase, mesSelecionado); 
                 const diasSemana = getDiasSemana(anoFirebase, mesSelecionado, semanaNumero);
     
                 console.log('updateWeekDisplay: Week Number:', semanaNumero, 'Total Weeks:', totalSemanas, 'Week Days:', diasSemana);
@@ -1063,7 +1064,7 @@
                     const instances = designationContainer.querySelectorAll('.designacao-instance-container');
     
                     summaryHTML += `<div class="popup-designation-item">`;
-                    summaryHTML += `<h4 class="popup-designation-name">${designacaoData.nome}</h4>`;
+                    summaryHTML += `<h4 class="popup-designacao-name">${designacaoData.nome}</h4>`;
     
                     for (let instanceIndex = 0; instanceIndex < instances.length; instanceIndex++) {
                         const instanceContainer = instances[instanceIndex];
@@ -1159,6 +1160,7 @@
                         sala: salaSelecionada,
                         dia: meetingDayOfMonth, 
                         hora: horaSemana,
+                        quando: "Semana", // ADICIONADO CAMPO "quando" com valor "Semana"
                         timestamp: firebase.firestore.FieldValue.serverTimestamp() // ADICIONADO CAMPO TIMESTAMP
                     };
                     console.log('createFluxoSemanal - historicoData before Firebase write:', historicoData); // LOGGING
@@ -1199,7 +1201,7 @@
                     thinkingIcon.style.display = 'none';
                     successIcon.style.display = 'inline-block';
     
-                    // Wait 2 seconds then refresh
+                    // Wait 2 segundos then refresh
                     setTimeout(() => {
                         window.location.reload();
                     }, 2000);
