@@ -97,6 +97,20 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             max-width: 600px;
             margin: 0 auto;
+            position: relative;
+        }
+
+        .card .edit-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .card .edit-icon:hover {
+            color: #34495e;
         }
 
         .card h2 {
@@ -196,6 +210,48 @@
 
         .btn-criar:hover {
             background-color: #34495e;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .checkbox-item:has(input[value="Ancião"]) {
+            background-color: #bbdefb;
+        }
+
+        .checkbox-item:has(input[value="Servo Ministerial"]) {
+            background-color: #c8e6c9;
+        }
+
+        .checkbox-item:has(input[value="Pioneiro Regular"]) {
+            background-color: #fff9c4;
+        }
+
+        .checkbox-item:has(input[value="Pioneiro Auxiliar"]) {
+            background-color: #ffecb3;
+        }
+
+        .checkbox-item:has(input[value="Publicador"]) {
+            background-color: #ffcdd2;
+        }
+
+        .checkbox-item:has(input[value="Publicador não Batizado"]) {
+            background-color: #f8bbd0;
         }
 
         .btn-voltar {
@@ -300,17 +356,17 @@
                 <div class="form-group">
                     <label for="feito-por">Feito por</label>
                     <select id="feito-por" name="feito-por" required class="form-select">
-                        <option value="homens">Apenas Homens</option>
-                        <option value="mulheres">Apenas Mulheres</option>
-                        <option value="ambos">Homens e Mulheres</option>
+                        <option value="Masculino">Apenas Homens</option>
+                        <option value="Feminino">Apenas Mulheres</option>
+                        <option value="Masculino Feminino">Homens e Mulheres</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="preferencia">Preferência</label>
                     <select id="preferencia" name="preferencia" required class="form-select">
-                        <option value="homens">Homens</option>
-                        <option value="mulheres">Mulheres</option>
-                        <option value="ambos">Homens e Mulheres</option>
+                        <option value="Masculino">Homens</option>
+                        <option value="Feminino">Mulheres</option>
+                        <option value="Masculino Feminino">Homens e Mulheres</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -330,8 +386,32 @@
                         <option value="pregacao">Pregação</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>Quem faz? (Opcional)</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="quem_faz" value="Ancião"> Ancião
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="quem_faz" value="Servo Ministerial"> Servo Ministerial
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="quem_faz" value="Pioneiro Regular"> Pioneiro Regular
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar"> Pioneiro Auxiliar
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="quem_faz" value="Publicador"> Publicador
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="quem_faz" value="Publicador não Batizado"> Publicador não Batizado
+                        </label>
+                    </div>
+                </div>
+
                 <div class="form-group switch-group">
-                    <label for="status">Ligado/Desligado</label>
+                    <label for="status">Desligado/Ligado</label>
                     <label class="switch">
                         <input type="checkbox" id="status" name="status">
                         <span class="slider round"></span>
@@ -343,8 +423,42 @@
     </main>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             const designacaoForm = document.getElementById('criar-designacao-form');
+            const submitButton = designacaoForm.querySelector('.btn-criar');
+            const urlParams = new URLSearchParams(window.location.search);
+            const designacaoId = urlParams.get('id');
+            let isEditing = false;
+
+            if (designacaoId) {
+                isEditing = true;
+                submitButton.textContent = 'Editar Designação';
+                document.querySelector('h1').textContent = 'Editar Designação';
+                
+                try {
+                    const doc = await db.collection('designacoes').doc(designacaoId).get();
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('nome-designacao').value = data.nome || '';
+                        document.getElementById('numero-participantes').value = data.numeroParticipantes || '';
+                        document.getElementById('feito-por').value = data.feitoPor || 'homens';
+                        document.getElementById('preferencia').value = data.preferencia || 'homens';
+                        document.getElementById('tipo').value = data.tipo || 'reuniao';
+                        document.getElementById('status').checked = data.status || false;
+                        
+                        // Set quem faz checkboxes
+                        if (data.quemFaz && Array.isArray(data.quemFaz)) {
+                            data.quemFaz.forEach(privilegio => {
+                                const checkbox = document.querySelector(`input[name="quem_faz"][value="${privilegio}"]`);
+                                if (checkbox) checkbox.checked = true;
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar designação:', error);
+                    alert('Erro ao carregar designação. Por favor, tente novamente.');
+                }
+            }
 
             designacaoForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
@@ -354,18 +468,26 @@
                     numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
                     feitoPor: document.getElementById('feito-por').value,
                     preferencia: document.getElementById('preferencia').value,
+                    quando: document.getElementById('quando').value,
                     tipo: document.getElementById('tipo').value,
                     status: document.getElementById('status').checked,
-                    dataCriacao: new Date()
+                    quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
+                    dataCriacao: isEditing ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
                 };
 
                 try {
-                    await db.collection('designacoes').add(designacao);
-                    alert('Designação criada com sucesso!');
-                    designacaoForm.reset();
+                    if (isEditing) {
+                        await db.collection('designacoes').doc(designacaoId).update(designacao);
+                        alert('Designação atualizada com sucesso!');
+                    } else {
+                        await db.collection('designacoes').add(designacao);
+                        alert('Designação criada com sucesso!');
+                        designacaoForm.reset();
+                    }
+                    window.location.href = 'index.html#painel';
                 } catch (error) {
-                    console.error('Erro ao criar designação:', error);
-                    alert('Erro ao criar designação. Por favor, tente novamente.');
+                    console.error('Erro ao ' + (isEditing ? 'atualizar' : 'criar') + ' designação:', error);
+                    alert('Erro ao ' + (isEditing ? 'atualizar' : 'criar') + ' designação. Por favor, tente novamente.');
                 }
             });
         });
