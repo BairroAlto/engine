@@ -472,6 +472,9 @@
             const currentMonth = new Date().getMonth() + 1;
             document.getElementById('mes').value = currentMonth;
     
+            // Firebase configuration (ensure this is correct and before this script in your HTML)
+            // ... firebaseConfig and firebase.initializeApp(firebaseConfig); const db = firebase.firestore(); ...
+    
             // Load nacionalidades from Firebase
             const loadNacionalidades = async () => {
                 const nacionalidadesRef = db.collection('nacionalidades');
@@ -666,30 +669,39 @@
             const loadPeopleOptionsIntoSelects = async (designacao, container) => {
                 try {
                     const pessoasRef = db.collection('pessoas');
-                    let query = pessoasRef.where('privilegios', 'array-contains-any', designacao.quemFaz);
     
-                    if (designacao.feitoPor === 'Masculino' || designacao.feitoPor === 'Feminino') {
-                        query = query.where('genero', '==', designacao.feitoPor);
-                    }
-                    const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
-                                                    .map(checkbox => checkbox.value);
+                    container.querySelectorAll('.designacao-instance-container').forEach((instanceContainer, instanceIndex) => { // Loop through instances
+                        instanceContainer.querySelectorAll('.form-select').forEach((participantSelect, participantIndex) => { // Loop through selects in each instance
+                            let query = pessoasRef.where('privilegios', 'array-contains-any', designacao.quemFaz);
     
-                    const snapshot = await query.get();
-    
-                    container.querySelectorAll('.form-select').forEach(participantSelect => {
-                        participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
-                        snapshot.forEach(doc => {
-                            const pessoa = doc.data();
-                            let languageMatches = true;
-                            if (selectedLanguages.length > 0) {
-                                languageMatches = selectedLanguages.includes(pessoa.idioma);
+                            if (designacao.feitoPor === 'Masculino' || designacao.feitoPor === 'Feminino') {
+                                query = query.where('genero', '==', designacao.feitoPor);
                             }
-                            if (languageMatches) {
-                                const option = document.createElement('option');
-                                option.value = doc.id;
-                                option.textContent = pessoa.nomePessoa;
-                                participantSelect.appendChild(option);
+    
+                            if (designacao.numeroParticipantes > 1 && participantIndex === 0) { // Dirigente filter
+                                query = query.where('personalidade', '==', '+ à vontade');
                             }
+    
+    
+                            const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
+                                .map(checkbox => checkbox.value);
+    
+                            query.get().then(snapshot => { // Execute query for each select
+                                participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
+                                snapshot.forEach(doc => {
+                                    const pessoa = doc.data();
+                                    let languageMatches = true;
+                                    if (selectedLanguages.length > 0) {
+                                        languageMatches = selectedLanguages.includes(pessoa.idioma);
+                                    }
+                                    if (languageMatches) {
+                                        const option = document.createElement('option');
+                                        option.value = doc.id;
+                                        option.textContent = pessoa.nomePessoa;
+                                        participantSelect.appendChild(option);
+                                    }
+                                });
+                            });
                         });
                     });
     
@@ -928,7 +940,20 @@
                     title.style.marginBottom = '10px';
                     designacaoInstanceContainer.appendChild(title);
     
+                    const participantRoles = ["Dirigente", "Morador", "Ajudante"]; // Roles for participants
+    
                     for (let i = 0; i < designacao.numeroParticipantes; i++) {
+                        if (designacao.numeroParticipantes > 1 || participantRoles[i] !== "Dirigente") { // Only show role label if more than 1 participant or not Dirigente if single
+                            const roleLabel = document.createElement('span');
+                            roleLabel.textContent = (designacao.numeroParticipantes > 1) ? participantRoles[i] : `Participante`; // Show role only if multiple participants
+                            roleLabel.style.fontSize = '0.9em';
+                            roleLabel.style.color = '#777';
+                            roleLabel.style.display = 'block';
+                            roleLabel.style.marginBottom = '3px';
+                            designacaoInstanceContainer.appendChild(roleLabel);
+                        }
+    
+    
                         const participantSelect = document.createElement('select');
                         participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
                         participantSelect.className = 'form-select';
