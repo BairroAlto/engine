@@ -607,10 +607,10 @@
                 const docAno = await painelRef.get();
 
                 if (docAno.exists && docAno.data().ano) {
-                    const currentYear = docAno.data().ano;
+                    const currentYear = parseInt(docAno.data().ano);
                     const horariosRef = db.collection('horarios');
                     const queryHorarios = await horariosRef
-                        .where('ano', '==', currentYear.toString())
+                        .where('ano', '==', currentYear)
                         .limit(1)
                         .get();
 
@@ -628,7 +628,7 @@
 
                         // Query specifically for preaching schedules (assuming separate preaching schedule data)
                         const preachingQuery = await horariosRef
-                            .where('ano', '==', currentYear.toString())
+                            .where('ano', '==', currentYear)
                             .where('tipo', '==', 'pregacao') // Adjust 'tipo' if needed for preaching schedules
                             .limit(1)
                             .get();
