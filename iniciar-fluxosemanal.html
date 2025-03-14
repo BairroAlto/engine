@@ -509,28 +509,197 @@
                 const designacoesSection = document.getElementById('designacoesSection');
                 designacoesSection.classList.add('active');
                 await loadDesignacoes();
-                
+
                 // Add smooth scroll to the designacoes section
                 designacoesSection.scrollIntoView({ behavior: 'smooth' });
             });
 
             // Handle form submission
-            document.getElementById('fluxoSemanalForm').addEventListener('submit', function(e) {
+            document.getElementById('fluxoSemanalForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const mes = document.getElementById('mes').value;
                 const tipo = document.getElementById('tipo').value;
                 const designacoes = {};
+                let designacoesAtivas = []; // Alterado para 'let' para podermos reordenar
 
-                // Collect all designation quantities
-                document.querySelectorAll('#designacoesList input[type="number"]').forEach(input => {
-                    designacoes[input.id] = parseInt(input.value);
-                });
+                // Collect all designation quantities and filter active ones
+                const designacoesInputs = document.querySelectorAll('#designacoesList input[type="number"]');
+                for (const input of designacoesInputs) {
+                    const quantidade = parseInt(input.value);
+                    designacoes[input.id] = quantidade;
+
+                    if (quantidade > 0 && tipo.toLowerCase() === 'normal') {
+                        try {
+                            // Get designation details from Firebase
+                            const designacaoDoc = await db.collection('designacoes').doc(input.id).get();
+                            if (designacaoDoc.exists) {
+                                const designacaoData = designacaoDoc.data();
+                                designacoesAtivas.push({
+                                    id: input.id,
+                                    quantidade: quantidade,
+                                    numeroParticipantes: designacaoData.numeroParticipantes,
+                                    quemFaz: designacaoData.quemFaz,
+                                    feitoPor: designacaoData.feitoPor,
+                                    nome: designacaoData.nome // ADICIONADO: Nome da designação
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Erro ao buscar detalhes da designação:', error);
+                        }
+                    }
+                }
+
+                if (tipo.toLowerCase() === 'normal' && designacoesAtivas.length > 0) {
+
+                    // ------------------------------------------------------------------
+                    // PRIORIZAR "LEITURA DA BÍBLIA" NO TOPO:
+                    // ------------------------------------------------------------------
+                    const leituraBibliaDesignacoes = [];
+                    const outrasDesignacoes = [];
+
+                    for (const designacao of designacoesAtivas) {
+                        if (designacao.nome === 'Leitura da Bíblia') { // Ou use designacao.id se for mais fiável para identificar
+                            leituraBibliaDesignacoes.push(designacao);
+                        } else {
+                            outrasDesignacoes.push(designacao);
+                        }
+                    }
+
+                    designacoesAtivas = leituraBibliaDesignacoes.concat(outrasDesignacoes); // Junta "Leitura da Bíblia" primeiro
+                    // ------------------------------------------------------------------
+
+
+                    // Clear previous content and create container for active designations
+                    const designacoesSection = document.getElementById('designacoesSection');
+                    const activeDesignationsContainer = document.getElementById('activeDesignationsContainer') || document.createElement('div');
+                    activeDesignationsContainer.id = 'activeDesignationsContainer';
+                    activeDesignationsContainer.innerHTML = '';
+                    activeDesignationsContainer.style.marginTop = '20px';
+                    designacoesSection.appendChild(activeDesignationsContainer);
+
+                    // Create participant selection fields for each active designation
+                    for (const designacao of designacoesAtivas) {
+                        // ------------------------------------------------------------------
+                        // NOVO LOOP EXTERNO PARA A QUANTIDADE:
+                        // ------------------------------------------------------------------
+                        for (let designacaoInstance = 1; designacaoInstance <= designacao.quantidade; designacaoInstance++) {
+                            const designacaoContainer = document.createElement('div');
+                            designacaoContainer.className = 'designacao-container';
+                            designacaoContainer.style.marginBottom = '20px';
+                            designacaoContainer.style.padding = '15px';
+                            designacaoContainer.style.backgroundColor = '#f8f9fa';
+                            designacaoContainer.style.borderRadius = '8px';
+
+                            const title = document.createElement('h5');
+
+                            // ------------------------------------------------------------------
+                            // MODIFICAÇÃO DO TÍTULO (para incluir o número da instância CONDICIONALMENTE):
+                            // ------------------------------------------------------------------
+                            // Usar designacao.nome se disponível, senão usar designacao.id como fallback
+                            let designacaoNome = designacao.nome || designacao.id;
+                            let tituloText = `Participantes para designação ${designacaoNome}`; // Título base com o nome
+
+                            // Adicionar o número da instância entre parênteses APENAS se a quantidade for > 1
+                            if (designacao.quantidade > 1) {
+                                tituloText = `Participantes para designação ${designacaoNome} (${designacaoInstance})`;
+                            }
+
+                            title.textContent = tituloText;
+                            // ------------------------------------------------------------------
+
+                            title.style.marginBottom = '10px';
+                            designacaoContainer.appendChild(title);
+
+                            // Create participant selection dropdowns based on numeroParticipantes (LOOP INTERNO - MANTÉM-SE IGUAL)
+                            for (let i = 0; i < designacao.numeroParticipantes; i++) {
+                                const participantSelect = document.createElement('select');
+                                participantSelect.id = `participant-${designacao.id}-${designacaoInstance}-${i}`; // Modificar o ID para ser único por instância
+                                participantSelect.className = 'form-select';
+                                participantSelect.style.marginBottom = '10px';
+                                participantSelect.style.width = '100%';
+                                participantSelect.style.padding = '8px';
+
+                                // Load eligible people from Firebase based on privileges and gender
+                                try {
+                                    const pessoasRef = db.collection('pessoas');
+                                    let query = pessoasRef.where('privilegios', 'array-contains-any', designacao.quemFaz); // ONLY filter by privileges in Firebase query
+
+                                    // Conditionally add gender filter ONLY if designacao.feitoPor is 'Masculino' or 'Feminino'
+                                    if (designacao.feitoPor === 'Masculino' || designacao.feitoPor === 'Feminino') {
+                                        query = query.where('genero', '==', designacao.feitoPor);
+                                    }
+
+                                    // ------------------------------------------------------------------
+                                    // NOVO FILTRO DE IDIOMA:
+                                    // ------------------------------------------------------------------
+                                    // 1. Obter os idiomas selecionados (fora do loop, uma vez por submissão do formulário - mover para fora do loop 'for' se necessário para otimizar)
+                                    const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
+                                                                    .map(checkbox => checkbox.value);
+
+                                    // 2. Adicionar filtro de idioma à query, SE houver idiomas selecionados
+                                    if (selectedLanguages.length > 0) {
+                                        // No need to add language filter to Firebase query anymore due to Firebase limitation
+                                        // query = query.where('idioma', 'in', selectedLanguages);
+                                    }
+                                    // ------------------------------------------------------------------
+
+
+                                    debugger; // Debugger ANTES da query
+                                    const snapshot = await query.get();
+                                    debugger; // Debugger DEPOIS da query
+                                    console.log(`Snapshot size (initial - before language filter) for ${designacao.id}: ${snapshot.size}`); // Log initial snapshot size
+
+                                    participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
+
+                                    let filteredPeopleCount = 0; // Counter for people after language filter
+
+                                    snapshot.forEach(doc => {
+                                        const pessoa = doc.data();
+                                        console.log("Pessoa object (before language filter):", pessoa);
+
+
+                                        // ------------------------------------------------------------------
+                                        // Client-side language filter:
+                                        let languageMatches = true; // Assume language matches if no languages selected
+                                        if (selectedLanguages.length > 0) {
+                                            languageMatches = selectedLanguages.includes(pessoa.idioma); // Check if person's language is in selected languages
+                                        }
+                                        // ------------------------------------------------------------------
+
+
+                                        if (languageMatches) { // Only add to dropdown if language matches (or no language filter)
+                                            filteredPeopleCount++;
+                                            console.log("Pessoa object (after language filter - MATCH):", pessoa);
+                                            const option = document.createElement('option');
+                                            option.value = doc.id;
+                                            option.textContent = pessoa.nomePessoa;
+                                            participantSelect.appendChild(option);
+                                        } else {
+                                            console.log("Pessoa object (after language filter - NO MATCH - language):", pessoa); // Log if language doesn't match
+                                        }
+                                    });
+                                    console.log(`Filtered people count (after language filter) for ${designacao.id}: ${filteredPeopleCount}`); // Log filtered count
+
+
+                                } catch (error) {
+                                    console.error('Erro ao carregar pessoas elegíveis:', error);
+                                    console.error("Firebase error details:", error); // Log full Firebase error details for debugging
+                                }
+
+                                designacaoContainer.appendChild(participantSelect);
+                            }
+                            activeDesignationsContainer.appendChild(designacaoContainer);
+                        }
+                        // ------------------------------------------------------------------
+                    }
+                }
 
                 console.log('Mês selecionado:', mes);
                 console.log('Tipo selecionado:', tipo);
                 console.log('Designações:', designacoes);
-
-                // TODO: Add Firebase integration and further processing
+                console.log('Designações Ativas (ordenadas):', designacoesAtivas); // Alterado log para mostrar array ordenado
             });
         });
     </script>
+</body>
+</html>
