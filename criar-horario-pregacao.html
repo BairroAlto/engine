@@ -640,7 +640,7 @@
                 // Prepare data to save
                 const scheduleData = {
                     tipo: "pregacao", // predefinido conforme solicitado
-                    ano: ano,
+                    ano: parseInt(ano), // Convert year to number
                     "dias-semana-horarios": diasSemanaHorarios,
                     "dias-fimdesemana-horarios": diasFimDeSemanaHorarios,
                     dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
