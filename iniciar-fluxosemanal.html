@@ -287,6 +287,27 @@
             background-color: #e0e0e0;
         }
 
+        /* Styles for turbo button */
+        .turbo-button-container {
+        display: flex;
+        justify-content: flex-end; /* Align to the right */
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+
+    .turbo-button {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        transition: color 0.3s ease;
+        margin-left: 10px; /* Add spacing between buttons */
+    }
+
+    .turbo-button:hover {
+        color: #2980b9; /* Keep the hover effect */
+    }
+
 
     </style>
 </head>
@@ -394,7 +415,7 @@
                     <label for="tipo">Tipo de Reunião:</label>
                     <select id="tipo" name="tipo" required>
                         <option value="normal">Normal</option>
-                        <option value="memorial">Memorial</option>
+                        <option value="memorial</option>
                         <option value="assembleia">Assembleia</option>
                         <option value="congresso">Congresso</option>
                         <option value="visita-servo">Visita do Servo</option>
@@ -422,6 +443,20 @@
                     <div id="designacoesList">
                         <!-- Designações will be loaded here -->
                     </div>
+                    <div id="turboButtonContainer" class="turbo-button-container">
+                        <button id="turboButton" class="turbo-button" title="Preencher Participantes Automaticamente" style="color: #2ecc71;"> <!-- Green -->
+                            <i class="fas fa-rocket"></i>
+                        </button>
+                        <button id="estatisticasButton" class="turbo-button" title="Estatísticas (Futuro)" style="color: #3498db;"> <!-- Blue -->
+                            <i class="fas fa-chart-bar"></i>
+                        </button>
+                        <button id="pesquisarButton" class="turbo-button" title="Pesquisar (Futuro)" style="color: #f39c12;"> <!-- Orange -->
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <button id="perfilButton" class="turbo-button" title="Perfil do Participante (Futuro)" style="color: #9b59b6;"> <!-- Purple -->
+                            <i class="fas fa-user"></i>
+                        </button>
+                    </div>
                     <div id="activeDesignationsContainer">
                         <!-- Active designation participant selections will be loaded here -->
                     </div>
@@ -436,13 +471,13 @@
             // Set current month as default
             const currentMonth = new Date().getMonth() + 1;
             document.getElementById('mes').value = currentMonth;
-
+    
             // Load nacionalidades from Firebase
             const loadNacionalidades = async () => {
                 const nacionalidadesRef = db.collection('nacionalidades');
                 const snapshot = await nacionalidadesRef.get();
                 const nacionalidadesDiv = document.getElementById('nacionalidades');
-
+    
                 snapshot.forEach(doc => {
                     const nacionalidade = doc.data();
                     const label = document.createElement('label');
@@ -459,24 +494,27 @@
                     nacionalidadesDiv.appendChild(label);
                 });
             };
-
+    
             // Call loadNacionalidades when page loads
             loadNacionalidades();
-
-            // Load designações from Firebase
+    
+            // Load designações from Firebase with filter
             const loadDesignacoes = async () => {
                 const designacoesRef = db.collection('designacoes');
-                const snapshot = await designacoesRef.get();
+                const query = designacoesRef
+                    .where('tipo', '==', 'reuniao')
+                    .where('quando', '==', 'Semana');
+                const snapshot = await query.get();
                 const designacoesList = document.getElementById('designacoesList');
                 designacoesList.innerHTML = '';
                 let nextOrderNumber = 1;
-
+    
                 snapshot.forEach(doc => {
                     const designacao = doc.data();
                     const div = document.createElement('div');
                     div.className = 'designacao-item';
                     div.dataset.designacaoId = doc.id;
-
+    
                     // Create order button
                     const orderButton = document.createElement('button');
                     orderButton.className = 'order-button';
@@ -489,27 +527,27 @@
                     orderButton.dataset.order = designationOrder;
                     orderButton.dataset.quantity = designationQuantity;
                     orderButton.textContent = designationOrder > 0 ? designationOrder : '';
-
+    
                     if (designationOrder > 0) {
                         orderButton.classList.add('ordered');
                         if (designationOrder >= 2) orderButton.classList.add('ordered-level-2');
                         if (designationOrder >= 3) orderButton.classList.add('ordered-level-3');
                     }
-
+    
                     // Create label
                     const label = document.createElement('label');
                     label.setAttribute('for', doc.id);
                     label.style.marginBottom = '0';
                     label.style.flexGrow = '1';
                     label.style.display = 'flex';
-
+    
                     label.appendChild(orderButton);
                     const textSpan = document.createElement('span');
                     textSpan.textContent = designacao.nome;
                     label.appendChild(textSpan);
-
+    
                     div.appendChild(label);
-
+    
                     // Create quantity submenu - initially hidden
                     const quantitySubmenu = document.createElement('div');
                     quantitySubmenu.className = 'quantity-submenu';
@@ -526,7 +564,7 @@
                             e.stopPropagation();
                             const selectedQuantity = parseInt(quantityButton.dataset.quantityValue);
                             orderButton.dataset.quantity = selectedQuantity;
-
+    
                             // Update button selection in submenu
                             quantitySubmenu.querySelectorAll('.quantity-button').forEach(btn => btn.classList.remove('selected'));
                             quantityButton.classList.add('selected');
@@ -535,15 +573,15 @@
                         quantitySubmenu.appendChild(quantityButton);
                     }
                     div.appendChild(quantitySubmenu);
-
+    
                     designacoesList.appendChild(div);
-
+    
                     orderButton.addEventListener('click', (event) => {
                         event.stopPropagation();
-
+    
                         let currentOrderValue = parseInt(orderButton.dataset.order) || 0;
                         let currentQuantity = parseInt(orderButton.dataset.quantity) || 0;
-
+    
                         if (currentOrderValue === 0) {
                             currentOrderValue = nextOrderNumber++;
                             if (currentQuantity === 0) {
@@ -564,10 +602,10 @@
                             quantitySubmenu.querySelectorAll('.quantity-button').forEach(btn => btn.classList.remove('selected'));
                             removeActiveDesignationDisplay(doc.id);
                         }
-
+    
                         orderButton.dataset.order = currentOrderValue;
                         orderButton.textContent = currentOrderValue > 0 ? currentOrderValue : '';
-
+    
                         orderButton.classList.remove('ordered', 'ordered-level-2', 'ordered-level-3');
                         if (currentOrderValue > 0) {
                             orderButton.classList.add('ordered');
@@ -575,18 +613,18 @@
                             if (currentOrderValue >= 3) orderButton.classList.add('ordered-level-3');
                         } else {
                             removeActiveDesignationDisplay(doc.id);
-                            reIndexOrderNumbers(); // Call re-indexing function when order removed
+                            reIndexOrderNumbers();
                         }
                         quantitySubmenu.classList.toggle('active', currentOrderValue > 0);
                     });
                 });
             };
-
+    
             const reIndexOrderNumbers = () => {
                 const designacaoItems = document.querySelectorAll('#designacoesList .designacao-item');
                 let currentOrder = 1;
                 let orderedDesignations = [];
-
+    
                 // Collect ordered designations
                 designacaoItems.forEach(item => {
                     const orderButton = item.querySelector('.order-button');
@@ -595,49 +633,49 @@
                         orderedDesignations.push({ item: item, order: order });
                     }
                 });
-
+    
                 // Sort ordered designations by their current order
                 orderedDesignations.sort((a, b) => a.order - b.order);
-
+    
                 // Re-index and update display
                 orderedDesignations.forEach(orderedDesignation => {
                     const orderButton = orderedDesignation.item.querySelector('.order-button');
                     orderButton.dataset.order = currentOrder;
                     orderButton.textContent = currentOrder;
-
+    
                     orderButton.classList.remove('ordered', 'ordered-level-2', 'ordered-level-3');
                     orderButton.classList.add('ordered');
                     if (currentOrder >= 2) orderButton.classList.add('ordered-level-2');
                     if (currentOrder >= 3) orderButton.classList.add('ordered-level-3');
-
+    
                     currentOrder++;
                 });
-
-                nextOrderNumber = currentOrder; // Update nextOrderNumber for subsequent ordering
+    
+                nextOrderNumber = currentOrder;
             };
-
-
+    
+    
             const removeActiveDesignationDisplay = (designacaoId) => {
                 const displayToRemove = document.getElementById(`active-designation-${designacaoId}`);
                 if (displayToRemove) {
                     displayToRemove.remove();
                 }
             };
-
-
+    
+    
             const loadPeopleOptionsIntoSelects = async (designacao, container) => {
                 try {
                     const pessoasRef = db.collection('pessoas');
                     let query = pessoasRef.where('privilegios', 'array-contains-any', designacao.quemFaz);
-
+    
                     if (designacao.feitoPor === 'Masculino' || designacao.feitoPor === 'Feminino') {
                         query = query.where('genero', '==', designacao.feitoPor);
                     }
                     const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
                                                     .map(checkbox => checkbox.value);
-
+    
                     const snapshot = await query.get();
-
+    
                     container.querySelectorAll('.form-select').forEach(participantSelect => {
                         participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
                         snapshot.forEach(doc => {
@@ -654,14 +692,14 @@
                             }
                         });
                     });
-
-
+    
+    
                 } catch (error) {
                     console.error('Erro ao carregar pessoas elegíveis:', error);
                 }
             };
-
-
+    
+    
             const getAnoPainelFirebase = async () => {
                 console.log('getAnoPainelFirebase: Starting to fetch year from Firebase');
                 const painelAnoRef = db.collection('painel').doc('ano');
@@ -675,7 +713,7 @@
                     return new Date().getFullYear();
                 }
             };
-
+    
             const countHistoricoSemanas = async (ano, mes) => {
                 console.log('countHistoricoSemanas: Counting historical weeks for year:', ano, 'and month:', mes);
                 const historicoRef = db.collection('historico');
@@ -687,55 +725,55 @@
                 console.log('countHistoricoSemanas: Number of historical weeks found:', count);
                 return count;
             };
-
+    
             const getDiasSemana = (ano, mes, semanaNumero) => {
                 console.log('getDiasSemana - v3: Calculating days for week number:', semanaNumero, 'of month:', mes, 'year:', ano);
-
+    
                 const primeiroDiaMes = new Date(ano, mes - 1, 1);
                 let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
                 if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7;
-
+    
                 let diasToAddForFirstMonday = 0;
                 if (diaSemanaPrimeiroDia !== 1) {
                     diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
                 }
-
+    
                 const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
                 const inicioSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7);
                 const fimSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7 + 6);
-
+    
                 const formatarData = (date) => {
                     return date.getDate();
                 };
-
+    
                 const formatarMes = (date) => {
                     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
                     return monthNames[date.getMonth()];
                 };
-
+    
                 const inicio_dia = formatarData(inicioSemanaDate);
                 const fim_dia = formatarData(fimSemanaDate);
                 const inicio_mes = formatarMes(inicioSemanaDate);
                 const fim_mes = formatarMes(fimSemanaDate);
-
+    
                 let diasSemanaString;
                 if (inicioSemanaDate.getMonth() !== fimSemanaDate.getMonth()) {
                     diasSemanaString = `${inicio_dia} ${inicio_mes} - ${fim_dia} ${fim_mes}`;
                 } else {
                     diasSemanaString = `${inicio_dia} - ${fim_dia} ${inicio_mes}`;
                 }
-
+    
                 console.log('getDiasSemana - v3: Calculated week days string:', diasSemanaString);
                 return diasSemanaString;
             };
-
-
+    
+    
             const getTotalSemanasNoMes = (ano, mes) => {
                 console.log('getTotalSemanasNoMes - v2: Calculating total weeks for month:', mes, 'year:', ano);
                 let countWeeks = 0;
                 let currentDay = new Date(ano, mes - 1, 1);
                 const lastDayOfMonth = new Date(ano, mes, 0);
-
+    
                 while (currentDay <= lastDayOfMonth) {
                     if (currentDay.getDay() === 1) {
                         countWeeks++;
@@ -745,30 +783,30 @@
                 console.log('getTotalSemanasNoMes - v2: Total weeks calculated:', countWeeks);
                 return countWeeks;
             };
-
-
+    
+    
             const updateWeekDisplay = async () => {
                 const mesSelecionado = document.getElementById('mes').value;
                 const anoFirebase = await getAnoPainelFirebase();
-
+    
                 console.log('updateWeekDisplay: Month selected:', mesSelecionado, 'Year from Firebase:', anoFirebase);
-
+    
                 const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado) + 1;
                 const totalSemanas = getTotalSemanasNoMes(anoFirebase, mesSelecionado);
                 const diasSemana = getDiasSemana(anoFirebase, mesSelecionado, semanaNumero);
-
+    
                 console.log('updateWeekDisplay: Week Number:', semanaNumero, 'Total Weeks:', totalSemanas, 'Week Days:', diasSemana);
-
+    
                 const weekDisplayText = `${semanaNumero}ª semana de ${totalSemanas} semanas <br>(${diasSemana})`;
                 document.getElementById('weekDisplay').innerHTML = weekDisplayText;
             };
-
-
+    
+    
             // Call updateWeekDisplay initially and when month changes
             updateWeekDisplay();
             document.getElementById('mes').addEventListener('change', updateWeekDisplay);
-
-
+    
+    
             // Handle "Seguinte" button click
             document.getElementById('btnSeguinte').addEventListener('click', async function() {
                 const designacoesSection = document.getElementById('designacoesSection');
@@ -776,11 +814,18 @@
                 await loadDesignacoes();
                 designacoesSection.scrollIntoView({ behavior: 'smooth' });
             });
-
-
+    
+    
             const activeDesignationsDisplay = {};
-
-
+    
+    
+            // Handle Turbo Button Click (for future functionality)
+            document.getElementById('turboButton').addEventListener('click', function() {
+                alert('Funcionalidade "Preencher Participantes Automaticamente" será implementada no futuro.');
+                // Future implementation for automatic participant filling will go here
+            });
+    
+    
             // Handle form submission
             document.getElementById('fluxoSemanalForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
@@ -789,7 +834,7 @@
                 let designacoesAtivas = [];
                 const activeDesignationsContainer = document.getElementById('activeDesignationsContainer');
                 activeDesignationsContainer.innerHTML = '';
-
+    
                 // Collect active designations with order and quantity
                 const designacoesItens = document.querySelectorAll('#designacoesList .designacao-item');
                 for (const designacaoItem of designacoesItens) {
@@ -797,8 +842,8 @@
                     const ordem = parseInt(orderButton.dataset.order) || 0;
                     const quantidade = parseInt(orderButton.dataset.quantity) || 0;
                     const designacaoId = designacaoItem.dataset.designacaoId;
-
-
+    
+    
                     if (ordem > 0 && tipo.toLowerCase() === 'normal') {
                         try {
                             const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
@@ -819,25 +864,25 @@
                         }
                     }
                 }
-
-
+    
+    
                 if (tipo.toLowerCase() === 'normal' && designacoesAtivas.length > 0) {
                     designacoesAtivas.sort((a, b) => a.ordem - b.ordem);
-
+    
                     // Create participant selection fields for each active designation NOW on submit
                     for (const designacao of designacoesAtivas) {
                         updateActiveDesignationDisplay(designacao, designacao.ordem, designacao.quantidade);
                     }
-
-
+    
+    
                     // Process designacoesAtivas for final submission (e.g., save to database)
                     console.log('Designações Ativas (ordenadas):', designacoesAtivas);
                 } else {
                     alert('Nenhuma designação ativa selecionada para iniciar o fluxo.');
                 }
             });
-
-
+    
+    
             // Close quantity submenu when clicking outside
             document.addEventListener('click', function(event) {
                 if (!event.target.closest('.designacao-item')) {
@@ -846,18 +891,18 @@
                     });
                 }
             });
-
-
+    
+    
             const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
                 const activeDesignationsContainer = document.getElementById('activeDesignationsContainer');
                 const designacaoId = designacao.id;
-
+    
                 removeActiveDesignationDisplay(designacaoId);
-
+    
                 if (quantity <= 0) {
                     return;
                 }
-
+    
                 const designationDisplayContainer = document.createElement('div');
                 designationDisplayContainer.id = `active-designation-${designacaoId}`;
                 designationDisplayContainer.className = 'active-designation-container';
@@ -866,13 +911,13 @@
                 designationDisplayContainer.style.backgroundColor = '#f8f9fa';
                 designationDisplayContainer.style.borderRadius = '8px';
                 designationDisplayContainer.dataset.designacaoId = designacaoId;
-
-
+    
+    
                 for (let designacaoInstance = 1; designacaoInstance <= quantity; designacaoInstance++) {
                     const designacaoInstanceContainer = document.createElement('div');
                     designacaoInstanceContainer.className = 'designacao-instance-container';
                     designacaoInstanceContainer.style.marginBottom = '20px';
-
+    
                     const title = document.createElement('h5');
                     let designacaoNome = designacao.nome || designacaoId;
                     let tituloText = `Participantes para designação ${designacaoNome}`;
@@ -882,7 +927,7 @@
                     title.textContent = tituloText;
                     title.style.marginBottom = '10px';
                     designacaoInstanceContainer.appendChild(title);
-
+    
                     for (let i = 0; i < designacao.numeroParticipantes; i++) {
                         const participantSelect = document.createElement('select');
                         participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
@@ -895,12 +940,12 @@
                     }
                     designationDisplayContainer.appendChild(designacaoInstanceContainer);
                 }
-
+    
                 activeDesignationsContainer.appendChild(designationDisplayContainer);
                 loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer);
             };
-
-
+    
+    
         });
     </script>
 </body>
