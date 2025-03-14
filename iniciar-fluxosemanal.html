@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Fluxo Semanal - Sistema de Escala</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.firebasestorage.app",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f6fa;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            height: 100vh;
+            position: fixed;
+        }
+
+        .logo {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .nav-list {
+            list-style: none;
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            padding: 10px 20px;
+        }
+
+        .nav-item a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-item i {
+            margin-right: 10px;
+            width: 20px;
+        }
+
+        .nav-item:hover {
+            background-color: #34495e;
+        }
+
+        .content {
+            margin-left: 250px;
+            padding: 30px;
+            flex-grow: 1;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            color: #2c3e50;
+            background-color: white;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 0;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52,152,219,0.3);
+        }
+
+        .btn-submit {
+            background-color: #2ecc71;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .btn-submit:hover {
+            background-color: #27ae60;
+            transform: translateY(-2px);
+        }
+
+        .designacoes-section {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+
+        .designacoes-section.active {
+            display: block;
+        }
+
+        .designacao-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            padding: 8px 16px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            min-height: 32px;
+        }
+
+        .designacao-item label {
+            margin-bottom: 0;
+            flex-grow: 1;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+
+        .designacao-item input[type="number"] {
+            width: 60px;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-left: 8px;
+            font-size: 12px;
+            height: 24px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <h2>Sistema de Escala</h2>
+        </div>
+        <nav>
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="index.html#reuniao-semana">
+                        <i class="fas fa-users"></i>
+                        <span>Reunião Semana</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="index.html#fim-de-semana">
+                        <i class="fas fa-calendar-week"></i>
+                        <span>Fim de Semana</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="index.html#pregacao">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Pregação</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="index.html#estatisticas">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Estatísticas</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="nomes.html">
+                        <i class="fas fa-address-book"></i>
+                        <span>Nomes</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="index.html#painel">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Painel</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="index.html#iniciar">
+                        <i class="fas fa-play"></i>
+                        <span>Iniciar</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="index.html#criar">
+                        <i class="fas fa-plus"></i>
+                        <span>Criar</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <main class="content">
+        <style>
+            .week-info {
+                margin-bottom: 20px;
+                padding: 15px;
+                background-color: #f8f9fa;
+                border-radius: 4px;
+                border: 1px solid #e9ecef;
+            }
+            .week-info p {
+                margin: 0;
+                color: #2c3e50;
+                font-size: 16px;
+                text-align: center;
+                line-height: 1.5em; /* Improve line height for multi-line text */
+            }
+        </style>
+
+        <div class="card">
+            <h1>Iniciar Fluxo Semanal</h1>
+            <div class="week-info">
+                <p id="weekDisplay">Carregando informações da semana...</p>
+            </div>
+            <form id="fluxoSemanalForm">
+                <div class="form-group">
+                    <label for="mes">Mês:</label>
+                    <select id="mes" name="mes" required>
+                        <option value="1">Janeiro</option>
+                        <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Maio</option>
+                        <option value="6">Junho</option>
+                        <option value="7">Julho</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tipo">Tipo de Reunião:</label>
+                    <select id="tipo" name="tipo" required>
+                        <option value="normal">Normal</option>
+                        <option value="memorial">Memorial</option>
+                        <option value="assembleia">Assembleia</option>
+                        <option value="congresso">Congresso</option>
+                        <option value="visita-servo">Visita do Servo</option>
+                        <option value="evento-especial">Evento Especial</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Com Grupo?</label>
+                    <div class="checkbox-group" id="nacionalidades">
+                        <!-- Nacionalidades will be loaded here -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="sala">Sala:</label>
+                    <select id="sala" name="sala" required>
+                        <option value="salao-principal" selected>Salão Principal</option>
+                        <option value="segunda-sala">Segunda Sala</option>
+                        <option value="terceira-sala">Terceira Sala</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-submit" id="btnSeguinte">Seguinte</button>
+
+                <div id="designacoesSection" class="designacoes-section">
+                    <h4>Designações</h4>
+                    <div id="designacoesList">
+                        <!-- Designações will be loaded here -->
+                    </div>
+                    <button type="submit" class="btn-submit" style="margin-top: 20px;">Iniciar Fluxo</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set current month as default
+            const currentMonth = new Date().getMonth() + 1;
+            document.getElementById('mes').value = currentMonth;
+
+            // Load nacionalidades from Firebase
+            const loadNacionalidades = async () => {
+                const nacionalidadesRef = db.collection('nacionalidades');
+                const snapshot = await nacionalidadesRef.get();
+                const nacionalidadesDiv = document.getElementById('nacionalidades');
+
+                snapshot.forEach(doc => {
+                    const nacionalidade = doc.data();
+                    const label = document.createElement('label');
+                    label.className = 'checkbox-item';
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.name = 'nacionalidades';
+                    input.value = nacionalidade.nome;
+                    if (nacionalidade.nome === 'Portugal') {
+                        input.checked = true;
+                    }
+                    label.appendChild(input);
+                    label.appendChild(document.createTextNode(nacionalidade.nome));
+                    nacionalidadesDiv.appendChild(label);
+                });
+            };
+
+            // Call loadNacionalidades when page loads
+            loadNacionalidades();
+
+            // Load designações from Firebase
+            const loadDesignacoes = async () => {
+                const designacoesRef = db.collection('designacoes');
+                const snapshot = await designacoesRef.get();
+                const designacoesList = document.getElementById('designacoesList');
+                designacoesList.innerHTML = '';
+
+                snapshot.forEach(doc => {
+                    const designacao = doc.data();
+                    const div = document.createElement('div');
+                    div.className = 'designacao-item';
+                    div.innerHTML = `
+                        <label for="${doc.id}">${designacao.nome}</label>
+                        <input type="number" id="${doc.id}" name="designacao_${doc.id}"
+                               min="0" value="${designacao.nome === 'Leitura da Bíblia' ? '1' : '0'}" required>
+                    `;
+                    designacoesList.appendChild(div);
+                });
+            };
+
+            const getAnoPainelFirebase = async () => {
+                console.log('getAnoPainelFirebase: Starting to fetch year from Firebase');
+                const painelAnoRef = db.collection('painel').doc('ano');
+                const doc = await painelAnoRef.get();
+                if (doc.exists) {
+                    const ano = doc.data().ano;
+                    console.log('getAnoPainelFirebase: Year fetched from Firebase:', ano);
+                    return ano;
+                } else {
+                    console.log("getAnoPainelFirebase: No such document, using current year as fallback");
+                    return new Date().getFullYear(); // Fallback to current year
+                }
+            };
+
+            const countHistoricoSemanas = async (ano, mes) => {
+                console.log('countHistoricoSemanas: Counting historical weeks for year:', ano, 'and month:', mes);
+                const historicoRef = db.collection('historico');
+                const querySnapshot = await historicoRef
+                    .where("ano", "==", ano)
+                    .where("mes", "==", parseInt(mes))
+                    .get();
+                const count = querySnapshot.size;
+                console.log('countHistoricoSemanas: Number of historical weeks found:', count);
+                return count;
+            };
+
+            const getDiasSemana = (ano, mes, semanaNumero) => {
+                console.log('getDiasSemana - v3: Calculating days for week number:', semanaNumero, 'of month:', mes, 'year:', ano);
+
+                const primeiroDiaMes = new Date(ano, mes - 1, 1);
+                let diaSemanaPrimeiroDia = primeiroDiaMes.getDay(); // 0 (Sunday) to 6 (Saturday)
+                if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7; // Sunday to 7
+
+                let diasToAddForFirstMonday = 0;
+                if (diaSemanaPrimeiroDia !== 1) { // If the first day is not Monday
+                    diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7; // Calculate days to add to reach Monday
+                }
+
+                const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
+                const inicioSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7);
+                const fimSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7 + 6);
+
+                const formatarData = (date) => {
+                    return date.getDate();
+                };
+
+                const formatarMes = (date) => {
+                    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+                    return monthNames[date.getMonth()];
+                };
+
+                const inicio_dia = formatarData(inicioSemanaDate);
+                const fim_dia = formatarData(fimSemanaDate);
+                const inicio_mes = formatarMes(inicioSemanaDate);
+                const fim_mes = formatarMes(fimSemanaDate);
+
+                let diasSemanaString;
+                if (inicioSemanaDate.getMonth() !== fimSemanaDate.getMonth()) {
+                    diasSemanaString = `${inicio_dia} ${inicio_mes} - ${fim_dia} ${fim_mes}`;
+                } else {
+                    diasSemanaString = `${inicio_dia} - ${fim_dia} ${inicio_mes}`;
+                }
+
+                console.log('getDiasSemana - v3: Calculated week days string:', diasSemanaString);
+                return diasSemanaString;
+            };
+
+
+            const getTotalSemanasNoMes = (ano, mes) => {
+                console.log('getTotalSemanasNoMes - v2: Calculating total weeks for month:', mes, 'year:', ano);
+                let countWeeks = 0;
+                let currentDay = new Date(ano, mes - 1, 1); // Start at the first day of the month
+                const lastDayOfMonth = new Date(ano, mes, 0); // Last day of the month
+
+                while (currentDay <= lastDayOfMonth) {
+                    if (currentDay.getDay() === 1) { // Monday (1 is Monday in getDay())
+                        countWeeks++;
+                    }
+                    currentDay.setDate(currentDay.getDate() + 1); // Move to the next day
+                }
+                console.log('getTotalSemanasNoMes - v2: Total weeks calculated:', countWeeks);
+                return countWeeks;
+            };
+
+
+            const updateWeekDisplay = async () => {
+                const mesSelecionado = document.getElementById('mes').value;
+                const anoFirebase = await getAnoPainelFirebase();
+
+                console.log('updateWeekDisplay: Month selected:', mesSelecionado, 'Year from Firebase:', anoFirebase);
+
+                const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado) + 1;
+                const totalSemanas = getTotalSemanasNoMes(anoFirebase, mesSelecionado);
+                const diasSemana = getDiasSemana(anoFirebase, mesSelecionado, semanaNumero);
+
+                console.log('updateWeekDisplay: Week Number:', semanaNumero, 'Total Weeks:', totalSemanas, 'Week Days:', diasSemana);
+
+                const weekDisplayText = `${semanaNumero}ª semana de ${totalSemanas} semanas <br>(${diasSemana})`;
+                document.getElementById('weekDisplay').innerHTML = weekDisplayText;
+            };
+
+
+            // Call updateWeekDisplay initially and when month changes
+            updateWeekDisplay();
+            document.getElementById('mes').addEventListener('change', updateWeekDisplay);
+
+
+            // Handle "Seguinte" button click
+            document.getElementById('btnSeguinte').addEventListener('click', async function() {
+                const designacoesSection = document.getElementById('designacoesSection');
+                designacoesSection.classList.add('active');
+                await loadDesignacoes();
+                
+                // Add smooth scroll to the designacoes section
+                designacoesSection.scrollIntoView({ behavior: 'smooth' });
+            });
+
+            // Handle form submission
+            document.getElementById('fluxoSemanalForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const mes = document.getElementById('mes').value;
+                const tipo = document.getElementById('tipo').value;
+                const designacoes = {};
+
+                // Collect all designation quantities
+                document.querySelectorAll('#designacoesList input[type="number"]').forEach(input => {
+                    designacoes[input.id] = parseInt(input.value);
+                });
+
+                console.log('Mês selecionado:', mes);
+                console.log('Tipo selecionado:', tipo);
+                console.log('Designações:', designacoes);
+
+                // TODO: Add Firebase integration and further processing
+            });
+        });
+    </script>
