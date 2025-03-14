@@ -4,24 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criar Horário de Reunião - Sistema de Escala</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script>
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
-            authDomain: "escalas-6e0f9.firebaseapp.com",
-            projectId: "escalas-6e0f9",
-            storageBucket: "escalas-6e0f9.firebasestorage.app",
-            messagingSenderId: "19118998563",
-            appId: "1:19118998563:web:5412be658ae34bd45add96"
-        };
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -33,7 +16,6 @@
             font-family: Arial, sans-serif;
             display: flex;
             min-height: 100vh;
-            background-color: #f5f6fa;
         }
 
         .sidebar {
@@ -41,53 +23,52 @@
             background-color: #2c3e50;
             color: white;
             padding: 20px 0;
-            height: 100vh;
             position: fixed;
+            height: 100vh;
         }
 
         .logo {
-            padding: 0 20px;
-            margin-bottom: 30px;
-            font-size: 24px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #34495e;
         }
 
-        .sidebar nav ul {
+        nav ul {
             list-style: none;
+            margin-top: 20px;
         }
 
-        .sidebar nav ul li a {
+        nav ul li {
+            margin-bottom: 10px;
+        }
+
+        nav ul li a {
+            color: white;
+            text-decoration: none;
             display: flex;
             align-items: center;
-            padding: 15px 20px;
-            color: #ecf0f1;
-            text-decoration: none;
             gap: 10px;
+            padding: 10px;
+            border-radius: 5px;
             transition: background-color 0.3s;
         }
 
-        .sidebar nav ul li a:hover,
-        .sidebar nav ul li a.active {
-            background-color: #34495e;
+        nav ul li a i {
+            margin-right: 10px;
+            width: 16px;
+            text-align: center;
         }
 
-        .sidebar nav ul li a i {
-            width: 20px;
-            text-align: center;
+        nav ul li a:hover,
+        nav ul li a.active {
+            background-color: #34495e;
         }
 
         .content {
             margin-left: 250px;
-            padding: 30px;
+            padding: 20px;
             flex-grow: 1;
-        }
-
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 30px;
-            font-size: 28px;
+            background-color: #f5f6fa;
         }
 
         .card {
@@ -95,91 +76,45 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            max-width: 600px;
-            margin: 0 auto 20px;
+            max-width: 800px;
+            margin: 0 auto;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             color: #2c3e50;
+            font-weight: 500;
         }
 
-        .form-group input[type="text"],
-        .form-group input[type="time"],
-        .form-group select {
+        .form-control {
             width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border: 1px solid #dcdde1;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 16px;
         }
 
-        .switch-group {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        .form-section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #dcdde1;
         }
 
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #e74c3c; /* Red for 'Não' */
-            transition: .4s;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-        }
-
-        input:checked + .slider {
-            background-color: #2ecc71; /* Green for 'Sim' */
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
-
-        .slider.round {
-            border-radius: 34px;
-        }
-
-        .slider.round:before {
-            border-radius: 50%;
+        .form-section h2 {
+            color: #2c3e50;
+            font-size: 20px;
+            margin-bottom: 20px;
         }
 
         .btn-criar {
             background-color: #2c3e50;
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
@@ -192,28 +127,23 @@
             background-color: #34495e;
         }
 
-        .btn-voltar {
-            display: inline-block;
-            margin-bottom: 20px;
-            background-color: #7f8c8d;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            text-decoration: none;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-
-        .btn-voltar:hover {
-            background-color: #95a5a6;
-        }
-
-        .section-title {
-            color: #2c3e50;
+        .message {
             margin-top: 20px;
-            margin-bottom: 10px;
-            font-size: 18px;
-            font-weight: bold;
+            padding: 12px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
 
         @media (max-width: 768px) {
@@ -277,6 +207,12 @@
                     </a>
                 </li>
                 <li>
+                    <a href="index.html#iniciar">
+                        <i class="fas fa-play"></i>
+                        <span>Iniciar</span>
+                    </a>
+                </li>
+                <li>
                     <a href="index.html#criar" class="active">
                         <i class="fas fa-plus"></i>
                         <span>Criar</span>
@@ -287,186 +223,194 @@
     </div>
 
     <main class="content">
-        <a href="index.html#criar" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
         <h1>Criar Horário de Reunião</h1>
-        
         <div class="card">
             <form id="horarioForm">
-                <!-- Seção 1: Seleção de Ano -->
                 <div class="form-group">
-                    <label for="ano">Ano</label>
-                    <select id="ano" required>
+                    <label for="ano">Ano:</label>
+                    <select id="ano" name="ano" class="form-control" required>
                         <option value="">Selecione o ano</option>
-                        <option value="2023">2023</option>
-                        <option value="2024">2024</option>
-                        <option value="2025">2025</option>
-                        <option value="2026">2026</option>
-                        <option value="2027">2027</option>
+                        <script>
+                            const currentYear = new Date().getFullYear();
+                            for (let year = currentYear; year <= currentYear + 5; year++) {
+                                document.write(`<option value="${year}">${year}</option>`);
+                            }
+                        </script>
                     </select>
                 </div>
-                
-                <!-- Seção 2: Formulário para dias da semana -->
-                <h3 class="section-title">Dias da Semana</h3>
-                <div class="form-group">
-                    <label for="diaSemana">Dia da Semana</label>
-                    <select id="diaSemana" required>
-                        <option value="">Selecione o dia</option>
-                        <option value="segunda">Segunda-feira</option>
-                        <option value="terca">Terça-feira</option>
-                        <option value="quarta">Quarta-feira</option>
-                        <option value="quinta">Quinta-feira</option>
-                        <option value="sexta">Sexta-feira</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Horários</label>
-                    <div class="time-slots" id="horariosSemana">
-                        <div class="time-slot">
-                            <input type="time" name="horaSemana" required>
-                            <button type="button" class="btn-remove-time"><i class="fas fa-times"></i></button>
-                        </div>
+
+                <div class="form-section">
+                    <h2>Horário da Semana</h2>
+                    <div class="form-group">
+                        <label for="diaSemana">Dia da Semana:</label>
+                        <select id="diaSemana" name="diaSemana" class="form-control" required>
+                            <option value="">Selecione o dia</option>
+                            <option value="segunda">Segunda</option>
+                            <option value="terça">Terça</option>
+                            <option value="quarta">Quarta</option>
+                            <option value="quinta">Quinta</option>
+                            <option value="sexta">Sexta</option>
+                        </select>
                     </div>
-                    <button type="button" class="btn-add-time" id="addHorarioSemana">Adicionar Horário</button>
-                </div>
-                
-                <!-- Seção 3: Formulário para dias de fim de semana -->
-                <h3 class="section-title">Dias de Fim de Semana</h3>
-                <div class="form-group">
-                    <label for="diaFimDeSemana">Dia do Fim de Semana</label>
-                    <select id="diaFimDeSemana" required>
-                        <option value="">Selecione o dia</option>
-                        <option value="sexta">Sexta-feira</option>
-                        <option value="sabado">Sábado</option>
-                        <option value="domingo">Domingo</option>
-                        <option value="segunda">Segunda-feira</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Horários</label>
-                    <div class="time-slots" id="horariosFimDeSemana">
-                        <div class="time-slot">
-                            <input type="time" name="horaFimDeSemana" required>
-                            <button type="button" class="btn-remove-time"><i class="fas fa-times"></i></button>
-                        </div>
+                    <div class="form-group">
+                        <label for="horaSemana">Horário:</label>
+                        <input type="time" id="horaSemana" name="horaSemana" class="form-control" required>
                     </div>
-                    <button type="button" class="btn-add-time" id="addHorarioFimDeSemana">Adicionar Horário</button>
                 </div>
-                
+
+                <div class="form-section">
+                    <h2>Horário do Fim de Semana</h2>
+                    <div class="form-group">
+                        <label for="diaFimSemana">Dia do Fim de Semana:</label>
+                        <select id="diaFimSemana" name="diaFimSemana" class="form-control" required>
+                            <option value="">Selecione o dia</option>
+                            <option value="sexta">Sexta</option>
+                            <option value="sábado">Sábado</option>
+                            <option value="domingo">Domingo</option>
+                            <option value="segunda">Segunda</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="horaFimSemana">Horário:</label>
+                        <input type="time" id="horaFimSemana" name="horaFimSemana" class="form-control" required>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn-criar">Guardar</button>
             </form>
+            <div id="message" class="message"></div>
         </div>
     </main>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const horarioForm = document.getElementById('horarioForm');
-            const addHorarioSemana = document.getElementById('addHorarioSemana');
-            const addHorarioFimDeSemana = document.getElementById('addHorarioFimDeSemana');
-            const horariosSemana = document.getElementById('horariosSemana');
-            const horariosFimDeSemana = document.getElementById('horariosFimDeSemana');
-            
-            // Preencher o ano atual como padrão
-            const anoAtual = new Date().getFullYear();
-            const anoSelect = document.getElementById('ano');
-            for (let i = 0; i < anoSelect.options.length; i++) {
-                if (anoSelect.options[i].value == anoAtual) {
-                    anoSelect.options[i].selected = true;
-                    break;
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.firebasestorage.app",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Form submission handler
+        document.getElementById('horarioForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const horarioData = {
+                tipo: 'reuniao',
+                ano: parseInt(document.getElementById('ano').value),
+                'dia-semana': document.getElementById('diaSemana').value,
+                'hora-semana': document.getElementById('horaSemana').value,
+                'dia-fimdesemana': document.getElementById('diaFimSemana').value,
+                'hora-fimdesemana': document.getElementById('horaFimSemana').value
+            };
+
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const year = urlParams.get('year');
+
+                if (year) {
+                    // Update existing schedule
+                    const querySnapshot = await db.collection('horarios')
+                        .where('ano', '==', parseInt(year))
+                        .where('tipo', '==', 'reuniao')
+                        .get();
+
+                    if (!querySnapshot.empty) {
+                        await db.collection('horarios').doc(querySnapshot.docs[0].id).update(horarioData);
+                        showMessage('Horário atualizado com sucesso!', 'success');
+                    } else {
+                        // If no existing schedule found, create a new one
+                        await db.collection('horarios').add(horarioData);
+                        showMessage('Horário guardado com sucesso!', 'success');
+                    }
+                } else {
+                    // Create new schedule
+                    await db.collection('horarios').add(horarioData);
+                    showMessage('Horário guardado com sucesso!', 'success');
+                }
+
+                document.getElementById('horarioForm').reset();
+                setTimeout(() => {
+                    window.location.href = 'index.html#painel';
+                }, 2000);
+            } catch (error) {
+                showMessage('Erro ao guardar horário: ' + error.message, 'error');
+            }
+        });
+
+        // Load existing schedule data if in edit mode
+        async function loadExistingSchedule() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const year = urlParams.get('year');
+
+            if (year) {
+                try {
+                    const querySnapshot = await db.collection('horarios')
+                        .where('ano', '==', parseInt(year))
+                        .where('tipo', '==', 'reuniao')
+                        .get();
+
+                    if (!querySnapshot.empty) {
+                        const data = querySnapshot.docs[0].data();
+                        console.log('Dados do Firebase carregados:', data); // Log para verificar os dados
+
+                        const anoSelect = document.getElementById('ano');
+                        anoSelect.value = year;
+
+                        const diaSemana = document.getElementById('diaSemana');
+                        const horaSemana = document.getElementById('horaSemana');
+                        const diaFimSemana = document.getElementById('diaFimSemana');
+                        const horaFimSemana = document.getElementById('horaFimSemana');
+
+                        // Função auxiliar para definir o valor do select e logar
+                        function setSelectValue(selectElement, value, fieldName) {
+                            if (value && selectElement.querySelector(`option[value="${value}"]`)) {
+                                selectElement.value = value;
+                                console.log(`Campo '${fieldName}' definido para: ${value}`);
+                            } else if (value) {
+                                console.warn(`Valor '${value}' para o campo '${fieldName}' não é uma opção válida no select.`);
+                            } else {
+                                console.warn(`Valor para o campo '${fieldName}' é indefinido ou nulo.`);
+                            }
+                        }
+
+                        setSelectValue(diaSemana, data['dia-semana'], 'dia-semana');
+                        horaSemana.value = data['hora-semana'] || ''; // Garante que não seja undefined
+                        setSelectValue(diaFimSemana, data['dia-fimdesemana'], 'dia-fimdesemana');
+                        horaFimSemana.value = data['hora-fimdesemana'] || ''; // Garante que não seja undefined
+
+
+                    } else {
+                        console.warn('Nenhum horário de reunião encontrado para o ano:', year);
+                        showMessage('Horário não encontrado para este ano.', 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar horário:', error);
+                    showMessage('Erro ao carregar horário: ' + error.message, 'error');
                 }
             }
+        }
 
-            // Função para adicionar horário na semana
-            addHorarioSemana.addEventListener('click', function() {
-                const timeSlot = document.createElement('div');
-                timeSlot.className = 'time-slot';
-                timeSlot.innerHTML = `
-                    <input type="time" name="horaSemana" required>
-                    <button type="button" class="btn-remove-time"><i class="fas fa-times"></i></button>
-                `;
-                horariosSemana.appendChild(timeSlot);
-                
-                // Adicionar evento para remover o horário
-                timeSlot.querySelector('.btn-remove-time').addEventListener('click', function() {
-                    timeSlot.remove();
-                });
-            });
+        // Call loadExistingSchedule when the page loads
+        document.addEventListener('DOMContentLoaded', loadExistingSchedule);
 
-            // Função para adicionar horário no fim de semana
-            addHorarioFimDeSemana.addEventListener('click', function() {
-                const timeSlot = document.createElement('div');
-                timeSlot.className = 'time-slot';
-                timeSlot.innerHTML = `
-                    <input type="time" name="horaFimDeSemana" required>
-                    <button type="button" class="btn-remove-time"><i class="fas fa-times"></i></button>
-                `;
-                horariosFimDeSemana.appendChild(timeSlot);
-                
-                // Adicionar evento para remover o horário
-                timeSlot.querySelector('.btn-remove-time').addEventListener('click', function() {
-                    timeSlot.remove();
-                });
-            });
-
-            // Adicionar eventos para remover horários existentes
-            document.querySelectorAll('.btn-remove-time').forEach(button => {
-                button.addEventListener('click', function() {
-                    this.closest('.time-slot').remove();
-                });
-            });
-
-            horarioForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Obter valores do formulário
-                const ano = document.getElementById('ano').value;
-                const diaSemana = document.getElementById('diaSemana').value;
-                const diaFimDeSemana = document.getElementById('diaFimDeSemana').value;
-                
-                // Obter horários da semana
-                const horasSemana = [];
-                document.querySelectorAll('input[name="horaSemana"]').forEach(input => {
-                    if (input.value) horasSemana.push(input.value);
-                });
-                
-                // Obter horários do fim de semana
-                const horasFimDeSemana = [];
-                document.querySelectorAll('input[name="horaFimDeSemana"]').forEach(input => {
-                    if (input.value) horasFimDeSemana.push(input.value);
-                });
-                
-                // Validar campos obrigatórios
-                if (!ano || !diaSemana || horasSemana.length === 0 || !diaFimDeSemana || horasFimDeSemana.length === 0) {
-                    alert('Por favor, preencha todos os campos obrigatórios.');
-                    return;
-                }
-                
-                // Salvar no Firestore
-                db.collection('horarios').add({
-                    tipo: "reuniao", // predefinido conforme solicitado
-                    ano: ano,
-                    "dia-semana": diaSemana,
-                    "hora-semana": horasSemana,
-                    "dia-fimdesemana": diaFimDeSemana,
-                    "hora-fimdesemana": horasFimDeSemana,
-                    dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
-                })
-                .then(function() {
-                    alert('Horário criado com sucesso!');
-                    horarioForm.reset();
-                    // Redefinir o ano atual após o reset
-                    for (let i = 0; i < anoSelect.options.length; i++) {
-                        if (anoSelect.options[i].value == anoAtual) {
-                            anoSelect.options[i].selected = true;
-                            break;
-                        }
-                    }
-                })
-                .catch(function(error) {
-                    console.error('Erro ao criar horário: ', error);
-                    alert('Erro ao criar horário. Por favor, tente novamente.');
-                });
-            });
-        });
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
     </script>
 </body>
 </html>
