@@ -323,6 +323,87 @@
         display: none; /* Initially hidden */
     }
 
+    /* Styles for the popup */
+    .popup-overlay {
+        display: none; /* Hidden by default */
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+        z-index: 1000; /* Ensure it's on top */
+        justify-content: center;
+        align-items: center;
+    }
+
+    .popup-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        width: 80%;
+        max-width: 700px;
+        position: relative; /* For close button positioning */
+    }
+
+    .popup-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+
+    .popup-title {
+        color: #2c3e50;
+        font-size: 24px;
+    }
+
+    .popup-close-button {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #777;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+
+    .popup-designation-list {
+        margin-bottom: 20px;
+    }
+
+    .popup-designation-item {
+        margin-bottom: 15px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+    }
+
+    .popup-designation-name {
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #34495e;
+    }
+
+    .popup-participant-list {
+        list-style: none;
+        padding-left: 20px;
+    }
+
+    .popup-participant-item {
+        margin-bottom: 3px;
+        color: #555;
+    }
+
+    .popup-actions {
+        text-align: right;
+    }
+
 
     </style>
 </head>
@@ -488,6 +569,25 @@
                 <button type="submit" class="btn-submit" style="margin-top: 20px;">Iniciar Fluxo</button>
             </form>
         </div>
+
+        <!-- Popup Overlay -->
+        <div id="confirmationPopup" class="popup-overlay">
+            <div class="popup-content">
+                <div class="popup-header">
+                    <h3 class="popup-title">Resumo do Fluxo Semanal</h3>
+                    <button class="popup-close-button" id="closePopup">×</button>
+                </div>
+                <div class="popup-body">
+                    <div id="popupDesignationSummary" class="popup-designation-list">
+                        <!-- Designation summary will be loaded here -->
+                    </div>
+                </div>
+                <div class="popup-actions">
+                    <button class="btn-submit" id="createFluxoSemanal">Criar Fluxo Semanal</button>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -674,7 +774,7 @@
                 };
 
                 const formatarMes = (date) => {
-                    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago, Set, Out, Nov, Dez"];
+                    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul, Ago, Set, Out, Nov, Dez"];
                     return monthNames[date.getMonth()];
                 };
 
@@ -736,6 +836,7 @@
 
             // Handle "Seguinte" button click
             document.getElementById('btnSeguinte').addEventListener('click', async function() {
+                console.log('btnSeguinte - clicked');
                 const designacoesSection = document.getElementById('designacoesSection');
                 const leituraBibliaSection = document.getElementById('leituraBibliaSection'); // Get Leitura Bíblia section
                 const iniciarFluxoButton = document.querySelector('#fluxoSemanalForm button[type="submit"].btn-submit'); // Get Iniciar Fluxo button
@@ -754,6 +855,7 @@
 
             // Handle Turbo Button Click (for future functionality)
             document.getElementById('turboButton').addEventListener('click', function() {
+                console.log('turboButton - clicked');
                 alert('Funcionalidade "Preencher Participantes Automaticamente" será implementada no futuro.');
                 // Future implementation for automatic participant filling will go here
             });
@@ -772,6 +874,8 @@
 
                         let currentOrderValue = parseInt(orderButton.dataset.order) || 0;
                         let currentQuantity = parseInt(orderButton.dataset.quantity) || 0;
+
+                        console.log('order-button - clicked', { designacaoId: designacaoId, currentOrderValue: currentOrderValue });
 
                         if (currentOrderValue === 0) {
                             currentOrderValue = nextOrderNumber;
@@ -861,14 +965,89 @@
             // **MODIFIED: Evento de submit do formulário "Iniciar Fluxo" - REMOVED ALERT - keep as is**
             document.getElementById('fluxoSemanalForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
+                console.log('fluxoSemanalForm - submit event - START');
+
+                // Prepare summary content
+                const summaryHTML = await generatePopupSummary();
+                document.getElementById('popupDesignationSummary').innerHTML = summaryHTML;
+
+                // Show the popup
+                console.log('Setting popup display to flex');
+                document.getElementById('confirmationPopup').style.display = 'flex';
+                console.log('fluxoSemanalForm - submit event - END');
+            });
+
+            // Function to generate the summary HTML for the popup
+            const generatePopupSummary = async () => {
+                console.log('generatePopupSummary - START');
+                let summaryHTML = '';
+                const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
+
+                for (const designationContainer of activeDesignationContainers) {
+                    const designacaoId = designationContainer.dataset.designacaoId;
+                    const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
+                    const designacaoData = designacaoDoc.data();
+                    const instances = designationContainer.querySelectorAll('.designacao-instance-container');
+
+                    summaryHTML += `<div class="popup-designation-item">`;
+                    summaryHTML += `<h4 class="popup-designation-name">${designacaoData.nome}</h4>`;
+
+                    for (let instanceIndex = 0; instanceIndex < instances.length; instanceIndex++) {
+                        const instanceContainer = instances[instanceIndex];
+                        const participantSelects = instanceContainer.querySelectorAll('.form-select');
+                        let instanceSummary = `<ul class="popup-participant-list">`;
+
+                        for (const select of participantSelects) { // Changed forEach to for...of for await
+                            const selectedPersonId = select.value;
+                            if (selectedPersonId) {
+                                try {
+                                    const personDoc = await db.collection('pessoas').doc(selectedPersonId).get(); // Added await
+                                    if (personDoc.exists) {
+                                        const personData = personDoc.data();
+                                        instanceSummary += `<li class="popup-participant-item">${personData.nomePessoa}</li>`;
+                                    } else {
+                                        instanceSummary += `<li class="popup-participant-item">Pessoa não encontrada</li>`;
+                                    }
+                                } catch (error) {
+                                    console.error('Erro ao buscar pessoa no popup summary:', error);
+                                    instanceSummary += `<li class=\"popup-participant-item\">Erro ao carregar participante</li>`;
+                                }
+                            } else {
+                                instanceSummary += `<li class=\"popup-participant-item\">Não selecionado</li>`;
+                            }
+                        }
+                        instanceSummary += `</ul>`;
+                        if (instances.length > 1) {
+                            summaryHTML += `<h5>Designação ${instanceIndex + 1}</h5>`;
+                        }
+                        summaryHTML += instanceSummary;
+                    }
+                    summaryHTML += `</div>`;
+                }
+                console.log('generatePopupSummary - END', { summaryHTML: summaryHTML });
+                return summaryHTML;
+            };
+
+
+            // Close popup event
+            document.getElementById('closePopup').addEventListener('click', function() {
+                console.log('closePopup - clicked');
+                document.getElementById('confirmationPopup').style.display = 'none';
+            });
+
+            // "Criar Fluxo Semanal" button event (for now, just console log)
+            document.getElementById('createFluxoSemanal').addEventListener('click', function() {
+                console.log('createFluxoSemanal - clicked');
+                // Here you would add the logic to actually create the "Fluxo Semanal"
+                alert('Funcionalidade "Criar Fluxo Semanal" será implementada no futuro. Verifique a consola para dados de submissão.');
+
                 const mes = document.getElementById('mes').value;
                 const tipo = document.getElementById('tipo').value;
 
                 const designacoesParticipantes = [];
                 const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container');
-                const leituraBibliaContainer = document.querySelector('#leituraBibliaDesignationContainer .active-designation-container'); // Get Leitura Bíblia container
+                const leituraBibliaContainer = document.querySelector('#leituraBibliaDesignationContainer .active-designation-container');
 
-                // Process active designations (excluding Leitura da Bíblia - if needed to exclude)
                 activeDesignationContainers.forEach(designationContainer => {
                     const designacaoId = designationContainer.dataset.designacaoId;
                     const instances = designationContainer.querySelectorAll('.designacao-instance-container');
@@ -888,7 +1067,6 @@
                     });
                 });
 
-                // Process Leitura da Bíblia designation if present
                 if (leituraBibliaContainer) {
                     const designacaoId = leituraBibliaContainer.dataset.designacaoId;
                     const instances = leituraBibliaContainer.querySelectorAll('.designacao-instance-container');
@@ -908,16 +1086,14 @@
                     });
                 }
 
-
                 console.log('Dados para Submeter:', {
                     mes: mes,
                     tipo: tipo,
                     designacoesParticipantes: designacoesParticipantes
                 });
 
-                // ** REPLACE ALERT WITH YOUR ACTUAL SUBMISSION LOGIC HERE **
-                // alert('Fluxo Semanal Iniciado! (Ação de submissão real seria aqui)'); // REMOVED ALERT
-                // alert('Dados prontos para submissão. Verifique a consola (F12).'); // Example feedback - REMOVED ALERT
+
+                document.getElementById('confirmationPopup').style.display = 'none'; // Hide popup after action
             });
 
 
@@ -940,6 +1116,7 @@
 
                     // Create order button
                     const orderButton = document.createElement('button');
+                    orderButton.type = 'button'; // Explicitly set type="button" - IMPORTANT
                     orderButton.className = 'order-button';
                     let designationOrder = 0;
                     let designationQuantity = 0;
@@ -999,7 +1176,10 @@
                         quantityButton.classList.add('selected');
                     }
                     quantityButton.addEventListener('click', async (e) => { // ADDED ASYNC
-                        e.stopPropagation();
+                        e.preventDefault(); // ADDED preventDefault - IMPORTANT
+                        e.stopPropagation(); // Ensure event propagation is stopped - CHECK THIS LINE
+                        console.log('quantity-button - clicked', { designacaoIdForUpdate: quantitySubmenu.dataset.designacaoId, selectedQuantity: quantityButton.dataset.quantityValue }); // Log at start
+
                         const selectedQuantity = parseInt(quantityButton.dataset.quantityValue);
                         orderButton.dataset.quantity = selectedQuantity;
 
@@ -1040,11 +1220,14 @@
                 const containerToUse = isLeituraBiblia ? document.getElementById('leituraBibliaDesignationContainer') : document.getElementById('activeDesignationsContainer'); // Decide container
                 const existingDisplay = containerToUse.querySelector(`#active-designation-${designacaoId}`);
 
+                console.log('updateActiveDesignationDisplay - START', { designacaoId: designacaoId, quantity: quantity, order: order });
 
                 if (quantity <= 0) {
                     if (existingDisplay) {
                         existingDisplay.remove(); // Remove if quantity is 0
+                        console.log('updateActiveDesignationDisplay - removed display for', designacaoId);
                     }
+                    console.log('updateActiveDesignationDisplay - END - quantity <= 0');
                     return;
                 }
 
@@ -1053,6 +1236,7 @@
                 if (existingDisplay) {
                     designationDisplayContainer = existingDisplay; // Reuse existing container if available
                     designationDisplayContainer.innerHTML = ''; // Clear existing content
+                    console.log('updateActiveDesignationDisplay - reusing existing display for', designacaoId);
                 } else {
                     designationDisplayContainer = document.createElement('div');
                     designationDisplayContainer.id = `active-designation-${designacaoId}`;
@@ -1062,6 +1246,7 @@
                     designationDisplayContainer.style.backgroundColor = '#f8f9fa';
                     designationDisplayContainer.style.borderRadius = '8px';
                     designationDisplayContainer.dataset.designacaoId = designacaoId;
+                    console.log('updateActiveDesignationDisplay - creating new display for', designacaoId);
                 }
 
 
@@ -1107,6 +1292,7 @@
 
                 containerToUse.appendChild(designationDisplayContainer); // Append to the correct container
                 loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer);
+                console.log('updateActiveDesignationDisplay - END');
             };
 
 
@@ -1127,6 +1313,7 @@
                 if (!event.target.closest('.designacao-item')) {
                     document.querySelectorAll('.quantity-submenu.active').forEach(submenu => {
                         submenu.classList.remove('active');
+                        console.log('document - click - closing quantity submenu');
                     });
                 }
             });
