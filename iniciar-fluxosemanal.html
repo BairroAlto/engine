@@ -181,6 +181,9 @@
             background-color: #f8f9fa;
             border-radius: 8px;
             min-height: 32px;
+            position: relative;
+            flex-direction: column;
+            align-items: flex-start;
         }
 
         .designacao-item label {
@@ -188,23 +191,103 @@
             flex-grow: 1;
             font-size: 16px;
             color: #2c3e50;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
         }
 
-        .designacao-item input[type="number"] {
-            width: 60px;
-            padding: 4px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        .designacao-item label > span {
+            flex-grow: 1;
             margin-left: 8px;
-            font-size: 12px;
-            height: 24px;
         }
+
 
         h1 {
             color: #2c3e50;
             margin-bottom: 30px;
             text-align: center;
         }
+
+        /* Styles for order buttons */
+        .order-button {
+            background-color: #ddd;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 8px;
+            color: #555;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .order-button.ordered {
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        .order-button.ordered-level-2 {
+            background-color: #3498db;
+        }
+
+        .order-button.ordered-level-3 {
+            background-color: #f39c12;
+        }
+
+        .order-display {
+            font-size: 14px;
+            color: #777;
+            margin-left: 4px;
+        }
+
+        /* Styles for quantity submenu */
+        .quantity-submenu {
+            position: relative;
+            left: 0;
+            top: auto;
+            bottom: auto;
+            transform: none;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+            display: none;
+            z-index: 10;
+            margin-top: 5px;
+        }
+
+
+        .quantity-submenu.active {
+            display: flex;
+            gap: 5px;
+        }
+
+        .quantity-button {
+            background-color: #f0f0f0;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333;
+            transition: background-color 0.3s ease;
+        }
+
+        .quantity-button.selected {
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        .quantity-button:hover {
+            background-color: #e0e0e0;
+        }
+
+
     </style>
 </head>
 <body>
@@ -280,7 +363,7 @@
                 color: #2c3e50;
                 font-size: 16px;
                 text-align: center;
-                line-height: 1.5em; /* Improve line height for multi-line text */
+                line-height: 1.5em;
             }
         </style>
 
@@ -339,6 +422,9 @@
                     <div id="designacoesList">
                         <!-- Designações will be loaded here -->
                     </div>
+                    <div id="activeDesignationsContainer">
+                        <!-- Active designation participant selections will be loaded here -->
+                    </div>
                     <button type="submit" class="btn-submit" style="margin-top: 20px;">Iniciar Fluxo</button>
                 </div>
             </form>
@@ -383,19 +469,198 @@
                 const snapshot = await designacoesRef.get();
                 const designacoesList = document.getElementById('designacoesList');
                 designacoesList.innerHTML = '';
+                let nextOrderNumber = 1;
 
                 snapshot.forEach(doc => {
                     const designacao = doc.data();
                     const div = document.createElement('div');
                     div.className = 'designacao-item';
-                    div.innerHTML = `
-                        <label for="${doc.id}">${designacao.nome}</label>
-                        <input type="number" id="${doc.id}" name="designacao_${doc.id}"
-                               min="0" value="${designacao.nome === 'Leitura da Bíblia' ? '1' : '0'}" required>
-                    `;
+                    div.dataset.designacaoId = doc.id;
+
+                    // Create order button
+                    const orderButton = document.createElement('button');
+                    orderButton.className = 'order-button';
+                    let designationOrder = 0;
+                    let designationQuantity = 0;
+                    if (designacao.nome === 'Leitura da Bíblia') {
+                        designationOrder = nextOrderNumber++;
+                        designationQuantity = 1;
+                    }
+                    orderButton.dataset.order = designationOrder;
+                    orderButton.dataset.quantity = designationQuantity;
+                    orderButton.textContent = designationOrder > 0 ? designationOrder : '';
+
+                    if (designationOrder > 0) {
+                        orderButton.classList.add('ordered');
+                        if (designationOrder >= 2) orderButton.classList.add('ordered-level-2');
+                        if (designationOrder >= 3) orderButton.classList.add('ordered-level-3');
+                    }
+
+                    // Create label
+                    const label = document.createElement('label');
+                    label.setAttribute('for', doc.id);
+                    label.style.marginBottom = '0';
+                    label.style.flexGrow = '1';
+                    label.style.display = 'flex';
+
+                    label.appendChild(orderButton);
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = designacao.nome;
+                    label.appendChild(textSpan);
+
+                    div.appendChild(label);
+
+                    // Create quantity submenu - initially hidden
+                    const quantitySubmenu = document.createElement('div');
+                    quantitySubmenu.className = 'quantity-submenu';
+                    quantitySubmenu.dataset.designacaoId = doc.id;
+                    for (let i = 1; i <= 7; i++) {
+                        const quantityButton = document.createElement('button');
+                        quantityButton.className = 'quantity-button';
+                        quantityButton.textContent = i;
+                        quantityButton.dataset.quantityValue = i;
+                        if (i === designationQuantity) {
+                            quantityButton.classList.add('selected');
+                        }
+                        quantityButton.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const selectedQuantity = parseInt(quantityButton.dataset.quantityValue);
+                            orderButton.dataset.quantity = selectedQuantity;
+
+                            // Update button selection in submenu
+                            quantitySubmenu.querySelectorAll('.quantity-button').forEach(btn => btn.classList.remove('selected'));
+                            quantityButton.classList.add('selected');
+                            quantitySubmenu.classList.remove('active');
+                        });
+                        quantitySubmenu.appendChild(quantityButton);
+                    }
+                    div.appendChild(quantitySubmenu);
+
                     designacoesList.appendChild(div);
+
+                    orderButton.addEventListener('click', (event) => {
+                        event.stopPropagation();
+
+                        let currentOrderValue = parseInt(orderButton.dataset.order) || 0;
+                        let currentQuantity = parseInt(orderButton.dataset.quantity) || 0;
+
+                        if (currentOrderValue === 0) {
+                            currentOrderValue = nextOrderNumber++;
+                            if (currentQuantity === 0) {
+                                currentQuantity = 1;
+                                orderButton.dataset.quantity = currentQuantity;
+                                quantitySubmenu.querySelectorAll('.quantity-button').forEach(btn => {
+                                    if (parseInt(btn.dataset.quantityValue) === currentQuantity) {
+                                        btn.classList.add('selected');
+                                    } else {
+                                        btn.classList.remove('selected');
+                                    }
+                                });
+                            }
+                        } else {
+                            currentOrderValue = 0;
+                            currentQuantity = 0;
+                            orderButton.dataset.quantity = currentQuantity;
+                            quantitySubmenu.querySelectorAll('.quantity-button').forEach(btn => btn.classList.remove('selected'));
+                            removeActiveDesignationDisplay(doc.id);
+                        }
+
+                        orderButton.dataset.order = currentOrderValue;
+                        orderButton.textContent = currentOrderValue > 0 ? currentOrderValue : '';
+
+                        orderButton.classList.remove('ordered', 'ordered-level-2', 'ordered-level-3');
+                        if (currentOrderValue > 0) {
+                            orderButton.classList.add('ordered');
+                            if (currentOrderValue >= 2) orderButton.classList.add('ordered-level-2');
+                            if (currentOrderValue >= 3) orderButton.classList.add('ordered-level-3');
+                        } else {
+                            removeActiveDesignationDisplay(doc.id);
+                            reIndexOrderNumbers(); // Call re-indexing function when order removed
+                        }
+                        quantitySubmenu.classList.toggle('active', currentOrderValue > 0);
+                    });
                 });
             };
+
+            const reIndexOrderNumbers = () => {
+                const designacaoItems = document.querySelectorAll('#designacoesList .designacao-item');
+                let currentOrder = 1;
+                let orderedDesignations = [];
+
+                // Collect ordered designations
+                designacaoItems.forEach(item => {
+                    const orderButton = item.querySelector('.order-button');
+                    const order = parseInt(orderButton.dataset.order) || 0;
+                    if (order > 0) {
+                        orderedDesignations.push({ item: item, order: order });
+                    }
+                });
+
+                // Sort ordered designations by their current order
+                orderedDesignations.sort((a, b) => a.order - b.order);
+
+                // Re-index and update display
+                orderedDesignations.forEach(orderedDesignation => {
+                    const orderButton = orderedDesignation.item.querySelector('.order-button');
+                    orderButton.dataset.order = currentOrder;
+                    orderButton.textContent = currentOrder;
+
+                    orderButton.classList.remove('ordered', 'ordered-level-2', 'ordered-level-3');
+                    orderButton.classList.add('ordered');
+                    if (currentOrder >= 2) orderButton.classList.add('ordered-level-2');
+                    if (currentOrder >= 3) orderButton.classList.add('ordered-level-3');
+
+                    currentOrder++;
+                });
+
+                nextOrderNumber = currentOrder; // Update nextOrderNumber for subsequent ordering
+            };
+
+
+            const removeActiveDesignationDisplay = (designacaoId) => {
+                const displayToRemove = document.getElementById(`active-designation-${designacaoId}`);
+                if (displayToRemove) {
+                    displayToRemove.remove();
+                }
+            };
+
+
+            const loadPeopleOptionsIntoSelects = async (designacao, container) => {
+                try {
+                    const pessoasRef = db.collection('pessoas');
+                    let query = pessoasRef.where('privilegios', 'array-contains-any', designacao.quemFaz);
+
+                    if (designacao.feitoPor === 'Masculino' || designacao.feitoPor === 'Feminino') {
+                        query = query.where('genero', '==', designacao.feitoPor);
+                    }
+                    const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
+                                                    .map(checkbox => checkbox.value);
+
+                    const snapshot = await query.get();
+
+                    container.querySelectorAll('.form-select').forEach(participantSelect => {
+                        participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
+                        snapshot.forEach(doc => {
+                            const pessoa = doc.data();
+                            let languageMatches = true;
+                            if (selectedLanguages.length > 0) {
+                                languageMatches = selectedLanguages.includes(pessoa.idioma);
+                            }
+                            if (languageMatches) {
+                                const option = document.createElement('option');
+                                option.value = doc.id;
+                                option.textContent = pessoa.nomePessoa;
+                                participantSelect.appendChild(option);
+                            }
+                        });
+                    });
+
+
+                } catch (error) {
+                    console.error('Erro ao carregar pessoas elegíveis:', error);
+                }
+            };
+
 
             const getAnoPainelFirebase = async () => {
                 console.log('getAnoPainelFirebase: Starting to fetch year from Firebase');
@@ -407,7 +672,7 @@
                     return ano;
                 } else {
                     console.log("getAnoPainelFirebase: No such document, using current year as fallback");
-                    return new Date().getFullYear(); // Fallback to current year
+                    return new Date().getFullYear();
                 }
             };
 
@@ -427,12 +692,12 @@
                 console.log('getDiasSemana - v3: Calculating days for week number:', semanaNumero, 'of month:', mes, 'year:', ano);
 
                 const primeiroDiaMes = new Date(ano, mes - 1, 1);
-                let diaSemanaPrimeiroDia = primeiroDiaMes.getDay(); // 0 (Sunday) to 6 (Saturday)
-                if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7; // Sunday to 7
+                let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
+                if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7;
 
                 let diasToAddForFirstMonday = 0;
-                if (diaSemanaPrimeiroDia !== 1) { // If the first day is not Monday
-                    diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7; // Calculate days to add to reach Monday
+                if (diaSemanaPrimeiroDia !== 1) {
+                    diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
                 }
 
                 const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
@@ -468,14 +733,14 @@
             const getTotalSemanasNoMes = (ano, mes) => {
                 console.log('getTotalSemanasNoMes - v2: Calculating total weeks for month:', mes, 'year:', ano);
                 let countWeeks = 0;
-                let currentDay = new Date(ano, mes - 1, 1); // Start at the first day of the month
-                const lastDayOfMonth = new Date(ano, mes, 0); // Last day of the month
+                let currentDay = new Date(ano, mes - 1, 1);
+                const lastDayOfMonth = new Date(ano, mes, 0);
 
                 while (currentDay <= lastDayOfMonth) {
-                    if (currentDay.getDay() === 1) { // Monday (1 is Monday in getDay())
+                    if (currentDay.getDay() === 1) {
                         countWeeks++;
                     }
-                    currentDay.setDate(currentDay.getDate() + 1); // Move to the next day
+                    currentDay.setDate(currentDay.getDate() + 1);
                 }
                 console.log('getTotalSemanasNoMes - v2: Total weeks calculated:', countWeeks);
                 return countWeeks;
@@ -509,38 +774,44 @@
                 const designacoesSection = document.getElementById('designacoesSection');
                 designacoesSection.classList.add('active');
                 await loadDesignacoes();
-
-                // Add smooth scroll to the designacoes section
                 designacoesSection.scrollIntoView({ behavior: 'smooth' });
             });
+
+
+            const activeDesignationsDisplay = {};
+
 
             // Handle form submission
             document.getElementById('fluxoSemanalForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const mes = document.getElementById('mes').value;
                 const tipo = document.getElementById('tipo').value;
-                const designacoes = {};
-                let designacoesAtivas = []; // Alterado para 'let' para podermos reordenar
+                let designacoesAtivas = [];
+                const activeDesignationsContainer = document.getElementById('activeDesignationsContainer');
+                activeDesignationsContainer.innerHTML = '';
 
-                // Collect all designation quantities and filter active ones
-                const designacoesInputs = document.querySelectorAll('#designacoesList input[type="number"]');
-                for (const input of designacoesInputs) {
-                    const quantidade = parseInt(input.value);
-                    designacoes[input.id] = quantidade;
+                // Collect active designations with order and quantity
+                const designacoesItens = document.querySelectorAll('#designacoesList .designacao-item');
+                for (const designacaoItem of designacoesItens) {
+                    const orderButton = designacaoItem.querySelector('.order-button');
+                    const ordem = parseInt(orderButton.dataset.order) || 0;
+                    const quantidade = parseInt(orderButton.dataset.quantity) || 0;
+                    const designacaoId = designacaoItem.dataset.designacaoId;
 
-                    if (quantidade > 0 && tipo.toLowerCase() === 'normal') {
+
+                    if (ordem > 0 && tipo.toLowerCase() === 'normal') {
                         try {
-                            // Get designation details from Firebase
-                            const designacaoDoc = await db.collection('designacoes').doc(input.id).get();
+                            const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
                             if (designacaoDoc.exists) {
                                 const designacaoData = designacaoDoc.data();
                                 designacoesAtivas.push({
-                                    id: input.id,
+                                    id: designacaoId,
+                                    ordem: ordem,
                                     quantidade: quantidade,
                                     numeroParticipantes: designacaoData.numeroParticipantes,
                                     quemFaz: designacaoData.quemFaz,
                                     feitoPor: designacaoData.feitoPor,
-                                    nome: designacaoData.nome // ADICIONADO: Nome da designação
+                                    nome: designacaoData.nome
                                 });
                             }
                         } catch (error) {
@@ -549,156 +820,87 @@
                     }
                 }
 
+
                 if (tipo.toLowerCase() === 'normal' && designacoesAtivas.length > 0) {
+                    designacoesAtivas.sort((a, b) => a.ordem - b.ordem);
 
-                    // ------------------------------------------------------------------
-                    // PRIORIZAR "LEITURA DA BÍBLIA" NO TOPO:
-                    // ------------------------------------------------------------------
-                    const leituraBibliaDesignacoes = [];
-                    const outrasDesignacoes = [];
-
+                    // Create participant selection fields for each active designation NOW on submit
                     for (const designacao of designacoesAtivas) {
-                        if (designacao.nome === 'Leitura da Bíblia') { // Ou use designacao.id se for mais fiável para identificar
-                            leituraBibliaDesignacoes.push(designacao);
-                        } else {
-                            outrasDesignacoes.push(designacao);
-                        }
+                        updateActiveDesignationDisplay(designacao, designacao.ordem, designacao.quantidade);
                     }
 
-                    designacoesAtivas = leituraBibliaDesignacoes.concat(outrasDesignacoes); // Junta "Leitura da Bíblia" primeiro
-                    // ------------------------------------------------------------------
+
+                    // Process designacoesAtivas for final submission (e.g., save to database)
+                    console.log('Designações Ativas (ordenadas):', designacoesAtivas);
+                } else {
+                    alert('Nenhuma designação ativa selecionada para iniciar o fluxo.');
+                }
+            });
 
 
-                    // Clear previous content and create container for active designations
-                    const designacoesSection = document.getElementById('designacoesSection');
-                    const activeDesignationsContainer = document.getElementById('activeDesignationsContainer') || document.createElement('div');
-                    activeDesignationsContainer.id = 'activeDesignationsContainer';
-                    activeDesignationsContainer.innerHTML = '';
-                    activeDesignationsContainer.style.marginTop = '20px';
-                    designacoesSection.appendChild(activeDesignationsContainer);
-
-                    // Create participant selection fields for each active designation
-                    for (const designacao of designacoesAtivas) {
-                        // ------------------------------------------------------------------
-                        // NOVO LOOP EXTERNO PARA A QUANTIDADE:
-                        // ------------------------------------------------------------------
-                        for (let designacaoInstance = 1; designacaoInstance <= designacao.quantidade; designacaoInstance++) {
-                            const designacaoContainer = document.createElement('div');
-                            designacaoContainer.className = 'designacao-container';
-                            designacaoContainer.style.marginBottom = '20px';
-                            designacaoContainer.style.padding = '15px';
-                            designacaoContainer.style.backgroundColor = '#f8f9fa';
-                            designacaoContainer.style.borderRadius = '8px';
-
-                            const title = document.createElement('h5');
-
-                            // ------------------------------------------------------------------
-                            // MODIFICAÇÃO DO TÍTULO (para incluir o número da instância CONDICIONALMENTE):
-                            // ------------------------------------------------------------------
-                            // Usar designacao.nome se disponível, senão usar designacao.id como fallback
-                            let designacaoNome = designacao.nome || designacao.id;
-                            let tituloText = `Participantes para designação ${designacaoNome}`; // Título base com o nome
-
-                            // Adicionar o número da instância entre parênteses APENAS se a quantidade for > 1
-                            if (designacao.quantidade > 1) {
-                                tituloText = `Participantes para designação ${designacaoNome} (${designacaoInstance})`;
-                            }
-
-                            title.textContent = tituloText;
-                            // ------------------------------------------------------------------
-
-                            title.style.marginBottom = '10px';
-                            designacaoContainer.appendChild(title);
-
-                            // Create participant selection dropdowns based on numeroParticipantes (LOOP INTERNO - MANTÉM-SE IGUAL)
-                            for (let i = 0; i < designacao.numeroParticipantes; i++) {
-                                const participantSelect = document.createElement('select');
-                                participantSelect.id = `participant-${designacao.id}-${designacaoInstance}-${i}`; // Modificar o ID para ser único por instância
-                                participantSelect.className = 'form-select';
-                                participantSelect.style.marginBottom = '10px';
-                                participantSelect.style.width = '100%';
-                                participantSelect.style.padding = '8px';
-
-                                // Load eligible people from Firebase based on privileges and gender
-                                try {
-                                    const pessoasRef = db.collection('pessoas');
-                                    let query = pessoasRef.where('privilegios', 'array-contains-any', designacao.quemFaz); // ONLY filter by privileges in Firebase query
-
-                                    // Conditionally add gender filter ONLY if designacao.feitoPor is 'Masculino' or 'Feminino'
-                                    if (designacao.feitoPor === 'Masculino' || designacao.feitoPor === 'Feminino') {
-                                        query = query.where('genero', '==', designacao.feitoPor);
-                                    }
-
-                                    // ------------------------------------------------------------------
-                                    // NOVO FILTRO DE IDIOMA:
-                                    // ------------------------------------------------------------------
-                                    // 1. Obter os idiomas selecionados (fora do loop, uma vez por submissão do formulário - mover para fora do loop 'for' se necessário para otimizar)
-                                    const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
-                                                                    .map(checkbox => checkbox.value);
-
-                                    // 2. Adicionar filtro de idioma à query, SE houver idiomas selecionados
-                                    if (selectedLanguages.length > 0) {
-                                        // No need to add language filter to Firebase query anymore due to Firebase limitation
-                                        // query = query.where('idioma', 'in', selectedLanguages);
-                                    }
-                                    // ------------------------------------------------------------------
+            // Close quantity submenu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('.designacao-item')) {
+                    document.querySelectorAll('.quantity-submenu.active').forEach(submenu => {
+                        submenu.classList.remove('active');
+                    });
+                }
+            });
 
 
-                                    debugger; // Debugger ANTES da query
-                                    const snapshot = await query.get();
-                                    debugger; // Debugger DEPOIS da query
-                                    console.log(`Snapshot size (initial - before language filter) for ${designacao.id}: ${snapshot.size}`); // Log initial snapshot size
+            const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
+                const activeDesignationsContainer = document.getElementById('activeDesignationsContainer');
+                const designacaoId = designacao.id;
 
-                                    participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
+                removeActiveDesignationDisplay(designacaoId);
 
-                                    let filteredPeopleCount = 0; // Counter for people after language filter
-
-                                    snapshot.forEach(doc => {
-                                        const pessoa = doc.data();
-                                        console.log("Pessoa object (before language filter):", pessoa);
-
-
-                                        // ------------------------------------------------------------------
-                                        // Client-side language filter:
-                                        let languageMatches = true; // Assume language matches if no languages selected
-                                        if (selectedLanguages.length > 0) {
-                                            languageMatches = selectedLanguages.includes(pessoa.idioma); // Check if person's language is in selected languages
-                                        }
-                                        // ------------------------------------------------------------------
-
-
-                                        if (languageMatches) { // Only add to dropdown if language matches (or no language filter)
-                                            filteredPeopleCount++;
-                                            console.log("Pessoa object (after language filter - MATCH):", pessoa);
-                                            const option = document.createElement('option');
-                                            option.value = doc.id;
-                                            option.textContent = pessoa.nomePessoa;
-                                            participantSelect.appendChild(option);
-                                        } else {
-                                            console.log("Pessoa object (after language filter - NO MATCH - language):", pessoa); // Log if language doesn't match
-                                        }
-                                    });
-                                    console.log(`Filtered people count (after language filter) for ${designacao.id}: ${filteredPeopleCount}`); // Log filtered count
-
-
-                                } catch (error) {
-                                    console.error('Erro ao carregar pessoas elegíveis:', error);
-                                    console.error("Firebase error details:", error); // Log full Firebase error details for debugging
-                                }
-
-                                designacaoContainer.appendChild(participantSelect);
-                            }
-                            activeDesignationsContainer.appendChild(designacaoContainer);
-                        }
-                        // ------------------------------------------------------------------
-                    }
+                if (quantity <= 0) {
+                    return;
                 }
 
-                console.log('Mês selecionado:', mes);
-                console.log('Tipo selecionado:', tipo);
-                console.log('Designações:', designacoes);
-                console.log('Designações Ativas (ordenadas):', designacoesAtivas); // Alterado log para mostrar array ordenado
-            });
+                const designationDisplayContainer = document.createElement('div');
+                designationDisplayContainer.id = `active-designation-${designacaoId}`;
+                designationDisplayContainer.className = 'active-designation-container';
+                designationDisplayContainer.style.marginTop = '20px';
+                designationDisplayContainer.style.padding = '15px';
+                designationDisplayContainer.style.backgroundColor = '#f8f9fa';
+                designationDisplayContainer.style.borderRadius = '8px';
+                designationDisplayContainer.dataset.designacaoId = designacaoId;
+
+
+                for (let designacaoInstance = 1; designacaoInstance <= quantity; designacaoInstance++) {
+                    const designacaoInstanceContainer = document.createElement('div');
+                    designacaoInstanceContainer.className = 'designacao-instance-container';
+                    designacaoInstanceContainer.style.marginBottom = '20px';
+
+                    const title = document.createElement('h5');
+                    let designacaoNome = designacao.nome || designacaoId;
+                    let tituloText = `Participantes para designação ${designacaoNome}`;
+                    if (quantity > 1) {
+                        tituloText = `Participantes para designação ${designacaoNome} (${designacaoInstance})`;
+                    }
+                    title.textContent = tituloText;
+                    title.style.marginBottom = '10px';
+                    designacaoInstanceContainer.appendChild(title);
+
+                    for (let i = 0; i < designacao.numeroParticipantes; i++) {
+                        const participantSelect = document.createElement('select');
+                        participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
+                        participantSelect.className = 'form-select';
+                        participantSelect.style.marginBottom = '10px';
+                        participantSelect.style.width = '100%';
+                        participantSelect.style.padding = '8px';
+                        participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
+                        designacaoInstanceContainer.appendChild(participantSelect);
+                    }
+                    designationDisplayContainer.appendChild(designacaoInstanceContainer);
+                }
+
+                activeDesignationsContainer.appendChild(designationDisplayContainer);
+                loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer);
+            };
+
+
         });
     </script>
 </body>
