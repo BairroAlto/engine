@@ -310,6 +310,61 @@
         color: #2980b9; /* Keep the hover effect */
     }
 
+    .turbo-button[title*="Filtrar"] {
+        transform-origin: center;
+        transition: transform 0.3s ease, color 0.3s ease;
+    }
+
+    .turbo-button[title*="Filtrar"]:hover {
+        color: #e67e22;
+        transform: rotate(15deg) scale(1.1);
+    }
+
+    .turbo-button[title*="Preencher Participantes Automaticamente"] {
+        transform-origin: center;
+        transition: transform 0.3s ease, color 0.3s ease;
+    }
+
+    .turbo-button[title*="Preencher Participantes Automaticamente"]:hover {
+        color: #27ae60;
+        transform: translateY(-5px) scale(1.1);
+        animation: rocket-shake 0.5s ease infinite;
+    }
+
+    @keyframes rocket-shake {
+        0%, 100% { transform: translateY(-5px) rotate(0deg); }
+        25% { transform: translateY(-5px) rotate(-2deg); }
+        75% { transform: translateY(-5px) rotate(2deg); }
+    }
+
+    @keyframes rocket-loading {
+        0% { transform: translateY(0) rotate(0deg); }
+        15% { transform: translateY(0) rotate(-90deg); }
+        30% { transform: translateY(0) rotate(-90deg); }
+        50% { transform: translateY(-200px) rotate(-90deg); }
+        70% { transform: translateY(-350px) rotate(-90deg); }
+        90% { transform: translateY(-450px) rotate(-90deg); opacity: 0.3; }
+        100% { transform: translateY(-500px) rotate(-90deg); opacity: 0; }
+    }
+
+    @keyframes rocket-return {
+        0% { transform: translateY(-500px) rotate(180deg); opacity: 0; }
+        20% { transform: translateY(-400px) rotate(180deg); opacity: 0.2; }
+        40% { transform: translateY(-300px) rotate(180deg); opacity: 0.4; }
+        60% { transform: translateY(-200px) rotate(180deg); opacity: 0.6; }
+        80% { transform: translateY(-100px) rotate(180deg); opacity: 0.8; }
+        90% { transform: translateY(-50px) rotate(180deg); opacity: 0.9; }
+        100% { transform: translateY(0) rotate(180deg); opacity: 1; }
+    }
+
+    .turbo-button[title*="Preencher Participantes Automaticamente"].loading {
+        animation: rocket-loading 1s forwards;
+    }
+
+    .turbo-button[title*="Preencher Participantes Automaticamente"].returning {
+        animation: rocket-return 1s forwards;
+    }
+
     /* Initially hide Leitura da Bíblia section */
     #leituraBibliaSection {
         display: none; /* Initially hidden */
@@ -1068,7 +1123,20 @@
     
             // --- Modificar Evento do Botão Turbo (já existente - manter) - REMOVENDO POPUP ---
             document.getElementById('turboButton').addEventListener('click', async function() {
-                await autoFillDesignations();
+                const rocketButton = this;
+                rocketButton.classList.add('loading');
+                
+                try {
+                    await autoFillDesignations();
+                } finally {
+                    rocketButton.classList.remove('loading');
+                    rocketButton.classList.add('returning');
+                    
+                    // Remove the 'returning' class after animation completes
+                    setTimeout(() => {
+                        rocketButton.classList.remove('returning');
+                    }, 1000);
+                }
             });
     
     
