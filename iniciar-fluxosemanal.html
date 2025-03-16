@@ -1704,96 +1704,89 @@
                    }
                }
     
+               let temporaryPreferences = {}; // Objeto para guardar as preferências temporárias
+
+
           // Function to open the preferences popup and populate it with dropdowns
           const openPreferencesPopup = async () => {
                 const preferencesPopup = document.getElementById('preferencesPopup');
                 const preferencesPopupList = document.getElementById('popupPreferencesList');
-    
+
                 // Clear any existing content in the popup list before adding new preferences
                 preferencesPopupList.innerHTML = '';
-    
+
                 // Get all ordered designation items
                 const orderedDesignationItems = document.querySelectorAll('#designacoesList .designacao-item');
-    
+
                 for (const item of orderedDesignationItems) {
                     const designacaoId = item.dataset.designacaoId;
                     const orderButton = item.querySelector('.order-button');
-                    const order = parseInt(orderButton.dataset.order) || 0;
+                    const quantity = parseInt(orderButton.dataset.quantity) || 0; // Get quantity instead of order
                     const designationName = item.querySelector('label > span').textContent; // Get designation name
-    
-                    if (order > 0) { // Only create preference dropdowns for ordered designations
+
+                    if (quantity > 0) { // Check quantity instead of order
                         // **FETCH DESIGNACAO DOCUMENT FROM FIREBASE**
                         const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
                         const designacaoData = designacaoDoc.data();
-                        const firebasePreference = designacaoData.preferencia; // Get preferencia from Firebase
-    
-                        // --- LOGGING START ---
-                        if (designationName === "Leitura da Bíblia") {
-                            console.log("Processando designação: Leitura da Bíblia");
-                            console.log("Valor de firebasePreference retornado do Firebase:", firebasePreference);
-                        }
-                        // --- LOGGING END ---
-    
-    
-                        const preferenceDiv = document.createElement('div');
-                        preferenceDiv.className = 'popup-designation-preference';
-                        preferenceDiv.dataset.designacaoId = designacaoId;
-    
-                        const label = document.createElement('label');
-                        label.setAttribute('for', `preferencia-${designacaoId}`);
-                        label.textContent = `Preferência para ${designationName}:`; // Use designation name in label
-                        preferenceDiv.appendChild(label);
-    
-                        const select = document.createElement('select');
-                        select.id = `preferencia-${designacaoId}`;
-                        select.name = `preferencia-${designacaoId}`;
-    
-    
-                        // Add preference options - customize these as needed
-                        const options = [
-                            { value: 'Masculino Feminino', text: 'Masculino Feminino' },
-                            { value: 'Masculino', text: 'Masculino' },
-                            { value: 'Feminino', text: 'Feminino' },
-                            { value: 'null', text: 'Sem preferência definida' } // ADDED "null" OPTION
-                        ];
-                        options.forEach(option => {
-                            const optionElement = document.createElement('option');
-                            optionElement.value = option.value;
-                            optionElement.textContent = option.text;
-                            select.appendChild(optionElement);
-                        });
-                        preferenceDiv.appendChild(select);
-                        preferencesPopupList.appendChild(preferenceDiv);
-    
-                        // --- SELECIONAR A OPÇÃO CORRETA DIRETAMENTE ---
-                        if (firebasePreference) { // Só tenta selecionar se houver uma preferência do Firebase
-                            for (let i = 0; i < select.options.length; i++) {
-                                if (select.options[i].value === firebasePreference) {
-                                    select.selectedIndex = i; // Define o selectedIndex para selecionar a opção
-                                    break; // Termina o loop assim que encontrar a correspondência
-                                }
+                        let firebasePreference = designacaoData.preferencia; // Get preferencia from Firebase
+
+                        // Loop through instances based on quantity
+                        for (let instanceIndex = 1; instanceIndex <= quantity; instanceIndex++) { // Loop for quantity
+                            const preferenceDiv = document.createElement('div');
+                            preferenceDiv.className = 'popup-designation-preference';
+                            preferenceDiv.dataset.designacaoId = designacaoId;
+                            preferenceDiv.dataset.instanceIndex = instanceIndex; // Store instance index
+
+                            const label = document.createElement('label');
+                            label.setAttribute('for', `preferencia-${designacaoId}-${instanceIndex}`); // Unique ID for each instance
+                            let labelText = `Preferência para ${designationName}`; // Base label text
+                            if (quantity > 1) {
+                                labelText += ` (${instanceIndex})`; // Add instance number if quantity > 1
                             }
-                        } else {
-                            // Se firebasePreference for null ou undefined, selecionar a opção "null" (Sem preferência definida)
-                            for (let i = 0; i < select.options.length; i++) {
-                                if (select.options[i].value === 'null') {
-                                    select.selectedIndex = i;
-                                    break;
-                                }
+                            label.textContent = labelText + ":"; // Set label text
+                            preferenceDiv.appendChild(label);
+
+                            const select = document.createElement('select');
+                            select.id = `preferencia-${designacaoId}-${instanceIndex}`; // Unique ID for each instance
+                            select.name = `preferencia-${designacaoId}-${instanceIndex}`; // Unique name for each instance
+
+                            // **REDUCED OPTIONS LIST**
+                            const options = [
+                                { value: 'Masculino Feminino', text: 'Masculino Feminino' },
+                                { value: 'Masculino', text: 'Masculino' },
+                                { value: 'Feminino', text: 'Feminino' }
+                            ];
+                            options.forEach(option => {
+                                const optionElement = document.createElement('option');
+                                optionElement.value = option.value;
+                                optionElement.textContent = option.text;
+                                select.appendChild(optionElement);
+                            });
+                            preferenceDiv.appendChild(select);
+                            preferencesPopupList.appendChild(preferenceDiv);
+
+                            // --- SELECIONAR A OPÇÃO CORRETA DIRETAMENTE ---
+                            let defaultOptionValue = 'Masculino Feminino'; // Default value if no Firebase preference or invalid preference
+
+                            // **CHECK TEMPORARY PREFERENCES FIRST**
+                            const tempPreferenceKey = `${designacaoId}-${instanceIndex}`;
+                            if (temporaryPreferences[tempPreferenceKey]) {
+                                defaultOptionValue = temporaryPreferences[tempPreferenceKey]; // Use temporary preference if available
+                            } else if (firebasePreference === 'Masculino' || firebasePreference === 'Feminino' || firebasePreference === 'Masculino Feminino') {
+                                defaultOptionValue = firebasePreference; // Fallback to Firebase preference if no temporary preference
                             }
+                            select.value = defaultOptionValue; // Set default value
+
+                            // **ADD EVENT LISTENER TO STORE TEMPORARY PREFERENCE**
+                            select.addEventListener('change', function(event) {
+                                temporaryPreferences[`${designacaoId}-${instanceIndex}`] = event.target.value; // Store preference on change
+                            });
+
+
                         }
-    
-    
-                        // --- INSPECIONAR ELEMENTO SELECT APÓS SELEÇÃO DIRETA ---
-                        if (designationName === "Leitura da Bíblia") {
-                            console.log("Elemento <select> para Leitura da Bíblia após seleção direta:", select);
-                            console.log("select.value após seleção direta:", select.value);
-                            console.log("Texto da opção selecionada após seleção direta:", select.options[select.selectedIndex]?.text); // Safe access in case no option is selected
-                        }
-                        // --- FIM DA INSPEÇÃO ---
                     }
                 }
-    
+
                 preferencesPopup.style.display = 'flex';
             };
     
