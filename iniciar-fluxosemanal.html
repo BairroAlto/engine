@@ -307,6 +307,22 @@
             background-color: #f39c12;
         }
 
+        .order-button.ordered-level-4 {
+            background-color: #9b59b6;
+        }
+
+        .order-button.ordered-level-5 {
+            background-color: #e74c3c;
+        }
+
+        .order-button.ordered-level-6 {
+            background-color: #1abc9c;
+        }
+
+        .order-button.ordered-level-7 {
+            background-color: #f1c40f;
+        }
+
         .order-display {
             font-size: 14px;
             color: #777;
@@ -762,10 +778,14 @@
                     orderButton.dataset.order = currentOrder;
                     orderButton.textContent = currentOrder;
 
-                    orderButton.classList.remove('ordered', 'ordered-level-2', 'ordered-level-3');
+                    orderButton.classList.remove('ordered', 'ordered-level-2', 'ordered-level-3', 'ordered-level-4', 'ordered-level-5', 'ordered-level-6', 'ordered-level-7');
                     orderButton.classList.add('ordered');
                     if (currentOrder >= 2) orderButton.classList.add('ordered-level-2');
                     if (currentOrder >= 3) orderButton.classList.add('ordered-level-3');
+                    if (currentOrder >= 4) orderButton.classList.add('ordered-level-4');
+                    if (currentOrder >= 5) orderButton.classList.add('ordered-level-5');
+                    if (currentOrder >= 6) orderButton.classList.add('ordered-level-6');
+                    if (currentOrder >= 7) orderButton.classList.add('ordered-level-7');
 
                     currentOrder++;
                 });
@@ -1636,7 +1656,7 @@
             designationDisplayContainer.className = 'active-designation-container';
             designationDisplayContainer.style.marginTop = '20px';
             designationDisplayContainer.style.padding = '15px';
-            designationDisplayContainer.style.backgroundColor = '#f8f9fa';
+            // The background color will be set dynamically based on order level
             designationDisplayContainer.style.borderRadius = '8px';
             designationDisplayContainer.dataset.designacaoId = designacao.id;
             containerToUse.appendChild(designationDisplayContainer); // Append only if new
@@ -1649,6 +1669,26 @@
         const designacaoInstanceContainer = document.createElement('div');
         designacaoInstanceContainer.className = 'designacao-instance-container';
         designacaoInstanceContainer.style.marginBottom = '20px';
+        
+        // Set background color based on order level
+        const orderLevel = designacao.ordem || 0;
+        if (orderLevel === 1) {
+            designationDisplayContainer.style.backgroundColor = 'rgba(46, 204, 113, 0.1)';
+        } else if (orderLevel === 2) {
+            designationDisplayContainer.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+        } else if (orderLevel === 3) {
+            designationDisplayContainer.style.backgroundColor = 'rgba(243, 156, 18, 0.1)';
+        } else if (orderLevel === 4) {
+            designationDisplayContainer.style.backgroundColor = 'rgba(155, 89, 182, 0.1)';
+        } else if (orderLevel === 5) {
+            designationDisplayContainer.style.backgroundColor = 'rgba(231, 76, 60, 0.1)';
+        } else if (orderLevel === 6) {
+            designationDisplayContainer.style.backgroundColor = 'rgba(26, 188, 156, 0.1)';
+        } else if (orderLevel === 7) {
+            designationDisplayContainer.style.backgroundColor = 'rgba(241, 196, 15, 0.1)';
+        } else {
+            designationDisplayContainer.style.backgroundColor = '#f8f9fa';
+        }
 
         const title = document.createElement('h5');
         let designacaoNome = designacao.nome || designacaoId;
@@ -1765,6 +1805,7 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
                 const selectedGender = e.target.value;
                 // Recarregar as opções de pessoas, aplicando o filtro de género
                 loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGender); // Passar selectedGender para loadPeopleOptionsIntoSelects
+                filterPopup.classList.remove('active'); // **ADD THIS LINE TO CLOSE POPUP**
             });
 
 
@@ -1797,12 +1838,12 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
 
         } else {
              // **DEFINIR VALOR PADRÃO DO FILTRO DE GENERO PARA POPUPS REUTILIZADOS (se necessário)**
-            const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia');
-            generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos'; // Define valor padrão também para popups reutilizados, para garantir consistência
-             generoPreferenciaSelect.addEventListener('change', (e) => {
+             const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia');
+            generoPreferenciaSelect.addEventListener('change', (e) => {
                 const selectedGender = e.target.value;
                 // Recarregar as opções de pessoas, aplicando o filtro de género
                 loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGender); // Passar selectedGender para loadPeopleOptionsIntoSelects
+                filterPopup.classList.remove('active'); // **ADD THIS LINE TO CLOSE POPUP**
             });
         }
 
@@ -1867,5 +1908,3 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
     </script>
 </body>
 </html>
-
-
