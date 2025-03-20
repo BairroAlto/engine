@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8"> 
+    <meta name="viewport" contenta="width=device-width, initial-scale=1.0">
     <title>Iniciar Fluxo Semanal - Sistema de Escala</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -188,6 +188,71 @@
             align-items: flex-start;
         }
 
+        .filter-icon {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            cursor: pointer;
+            color: #666;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+
+        .filter-popup {
+            display: none;
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .filter-popup.active {
+            display: block;
+        }
+
+        .filter-popup h4 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+
+        .filter-popup select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #2c3e50;
+            margin-top: 8px;
+        }
+
+        .filter-icon:hover {
+            color: #2c3e50;
+        }
+
+        .filter-popup {
+            display: none;
+            position: absolute;
+            bottom: 40px;
+            left: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .filter-popup.active {
+            display: block;
+        }
+
         .designacao-item label {
             margin-bottom: 0;
             flex-grow: 1;
@@ -312,7 +377,7 @@
 
     .turbo-button[title*="Filtrar"] {
         transform-origin: center;
-        transition: transform 0.3s ease, color 0.3s ease;
+        transition: transform 0.3s ease, color, 0.3s ease;
     }
 
     .turbo-button[title*="Filtrar"]:hover {
@@ -322,7 +387,7 @@
 
     .turbo-button[title*="Preencher Participantes Automaticamente"] {
         transform-origin: center;
-        transition: transform 0.3s ease, color 0.3s ease;
+        transition: transform 0.3s ease, color, 0.3s ease;
     }
 
     .turbo-button[title*="Preencher Participantes Automaticamente"]:hover {
@@ -482,85 +547,6 @@
         text-align: right;
     }
 
-    /* Styles for Preferences Popup */
-    #preferencesPopup .popup-content {
-        max-width: 500px; /* Slightly narrower max-width */
-        padding: 20px; /* Further reduced padding */
-        max-height: 75vh; /* Slightly reduced max-height if needed */
-        overflow-y: auto;
-    }
-
-    #preferencesPopup .popup-designation-preference {
-        margin-bottom: 15px; /* Further reduced margin */
-        padding: 10px; /* Further reduced padding */
-        border: 1px solid #ddd;
-        border-radius: 6px; /* Slightly smaller border-radius */
-        background-color: #f9f9f9;
-    }
-
-    #preferencesPopup .popup-designation-preference:last-child {
-        margin-bottom: 0;
-    }
-
-    #preferencesPopup .popup-designation-preference label {
-        display: block;
-        margin-bottom: 5px; /* Further reduced margin */
-        font-weight: bold;
-        color: #34495e;
-        font-size: 0.8em; /*  REDUCED LABEL FONT SIZE TO 0.8em (H5 equivalent) */
-    }
-
-    #preferencesPopup .popup-designation-preference select {
-        width: 100%;
-        padding: 6px; /* Further reduced padding */
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 12px; /* Further reduced select font size */
-        color: #2c3e50;
-        background-color: white;
-    }
-
-    #preferencesPopup .popup-title h2 {
-        font-size: 20px; /* Further reduced popup title font size */
-        margin-bottom: 10px; /* Further reduced margin */
-    }
-
-    #preferencesPopup .popup-designation-preference {
-        margin-bottom: 20px; /* Increase margin between designations */
-        padding: 15px; /* Add padding inside each designation box */
-        border: 1px solid #ddd; /* Add a border to visually separate designations */
-        border-radius: 8px; /* Keep border-radius consistent */
-        background-color: #f9f9f9; /* Keep background color, or adjust if needed */
-    }
-
-    #preferencesPopup .popup-designation-preference:last-child {
-        margin-bottom: 0; /* Remove margin from the last designation */
-    }
-
-    #preferencesPopup .popup-designation-preference label {
-        display: block;
-        margin-bottom: 8px; /* Slightly more space below labels */
-        font-weight: bold;
-        color: #34495e;
-        font-size: 1.1em; /* Slightly larger label font */
-    }
-
-    #preferencesPopup .popup-designation-preference select {
-        width: 100%;
-        padding: 10px; /* Slightly larger padding in dropdowns */
-        border: 1px solid #ccc; /* Slightly darker border for dropdowns */
-        border-radius: 4px;
-        font-size: 14px;
-        color: #2c3e50;
-        background-color: white;
-    }
-
-    #preferencesPopup .popup-title h2 {
-        font-size: 26px; /* Slightly larger popup title */
-        margin-bottom: 15px; /* More space below title */
-    }
-
-
     </style>
 </head>
 <body>
@@ -661,9 +647,6 @@
                         <button id="perfilButton" class="turbo-button" title="Perfil do Participante (Futuro)" style="color: #9b59b6;">
                             <i class="fas fa-user"></i>
                         </button>
-                        <button id="filterButton" class="turbo-button" type="button" title="Filtrar por Preferências" style="color: #e67e22;">
-                            <i class="fas fa-filter"></i>
-                        </button>
                     </div>
                 </div>
 
@@ -704,27 +687,6 @@
             </div>
         </div>
 
-        <!-- Preferences Popup Overlay -->
-        <div id="preferencesPopup" class="popup-overlay">
-            <div class="popup-content">
-                <div class="popup-header">
-                    <div class="popup-title">
-                        <h2>Preferências de Filtro</h2>
-                    </div>
-                    <button class="popup-close-button" id="closePreferencesPopup">×</button>
-                </div>
-                <div class="popup-body">
-                    <div id="popupPreferencesList" class="popup-designation-list">
-                        <!-- Designation preferences dropdowns will be loaded here -->
-                    </div>
-                </div>
-                <div class="popup-actions">
-                    <button class="btn-submit" id="applyPreferencesFilters">Aplicar Filtros</button>
-                </div>
-            </div>
-        </div>
-
-    </main>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -737,23 +699,23 @@
                 messagingSenderId: "19118998563",
                 appId: "1:19118998563:web:5412be658ae34bd45add96"
             };
-    
+
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
             }
             const db = firebase.firestore();
-    
+
             // Set current month as default
             const currentMonth = new Date().getMonth() + 1;
             document.getElementById('mes').value = currentMonth;
-    
-    
+
+
             // Load nacionalidades from Firebase
             const loadNacionalidades = async () => {
                 const nacionalidadesRef = db.collection('nacionalidades');
                 const snapshot = await nacionalidadesRef.get();
                 const nacionalidadesDiv = document.getElementById('nacionalidades');
-    
+
                 nacionalidadesDiv.innerHTML = ''; // Clear existing checkboxes
                 snapshot.forEach(doc => {
                     const nacionalidade = doc.data();
@@ -771,16 +733,16 @@
                     nacionalidadesDiv.appendChild(label);
                 });
             };
-    
+
             // Call loadNacionalidades when page loads
             loadNacionalidades();
-    
-    
+
+
             const reIndexOrderNumbers = () => {
                 const designacaoItems = document.querySelectorAll('#designacoesList .designacao-item');
                 let currentOrder = 1;
                 let orderedDesignations = [];
-    
+
                 // Collect ordered designations
                 designacaoItems.forEach(item => {
                     const orderButton = item.querySelector('.order-button');
@@ -789,69 +751,73 @@
                         orderedDesignations.push({ item: item, order: order });
                     }
                 });
-    
+
                 // Sort ordered designations by their current order
                 orderedDesignations.sort((a, b) => a.order - b.order);
-    
+
                 // Re-index and update display
                 orderedDesignations.forEach(orderedDesignation => {
                     const orderButton = orderedDesignation.item.querySelector('.order-button');
                     orderButton.dataset.order = currentOrder;
                     orderButton.textContent = currentOrder;
-    
+
                     orderButton.classList.remove('ordered', 'ordered-level-2', 'ordered-level-3');
                     orderButton.classList.add('ordered');
                     if (currentOrder >= 2) orderButton.classList.add('ordered-level-2');
                     if (currentOrder >= 3) orderButton.classList.add('ordered-level-3');
-    
+
                     currentOrder++;
                 });
             };
-    
-    
+
+
             const removeActiveDesignationDisplay = (designacaoId) => {
                 const displayToRemove = document.getElementById(`active-designation-${designacaoId}`);
                 if (displayToRemove) {
                     displayToRemove.remove();
                 }
             };
-    
-    
-            const loadPeopleOptionsIntoSelects = async (designacao, container, preferences = {}, diasSemana, diaSemanaReuniaoString) => {
-    console.log("[loadPeopleOptionsIntoSelects] START - Designation:", designacao.nome, ", Preferences:", preferences); // **LOG START**
+
+
+            const loadPeopleOptionsIntoSelects = async (designacao, container, preferences = {}, diasSemana, diaSemanaReuniaoString, genderPreference = 'masculino feminino') => { // Valor padrão alterado para "masculino feminino" para consistência
+    console.log("[loadPeopleOptionsIntoSelects] START - Designation:", designacao.nome, ", Preferences:", preferences, ", Gender Preference:", genderPreference); // **LOG START**
     try {
         const pessoasRef = db.collection('pessoas');
-        const preferenceForDesignation = preferences[designacao.id]; 
+        const preferenceForDesignation = preferences[designacao.id];
         let query = pessoasRef
             .where('fazDesignacoesReuniao', '==', true)
             .where('designacoesReuniao', 'array-contains', designacao.nome);
 
-        if (preferenceForDesignation === 'Masculino') {
+
+            if (genderPreference === 'masculino') { // Aplicar filtro de género se a preferência for 'masculino'
             query = query.where('genero', '==', 'Masculino');
-        } else if (preferenceForDesignation === 'Feminino') {
+        } else if (genderPreference === 'feminino') { // Aplicar filtro de género se a preferência for 'feminino'
+            query = query.where('genero', '==', 'Feminino');
+        } else if (designacao.feitoPor === 'Masculino' && genderPreference === 'masculino feminino') { // Se 'masculino feminino' e designacao.feitoPor Masculino
+            query = query.where('genero', '==', 'Masculino');
+        } else if (designacao.feitoPor === 'Feminino' && genderPreference === 'masculino feminino') { // Se 'masculino feminino' e designacao.feitoPor Feminino
             query = query.where('genero', '==', 'Feminino');
         }
 
-        if (designacao.feitoPor === 'Masculino' || designacao.feitoPor === 'Feminino') {
-            query = query.where('genero', '==', designacao.feitoPor);
+
+
+        if (designacao.numeroParticipantes > 1) {
+            query = query.where('personalidade', '==', '+ à vontade');
         }
 
         const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
             .map(checkbox => checkbox.value);
 
-        query.get().then(snapshot => { 
+        query.get().then(snapshot => {
             container.querySelectorAll('.designacao-instance-container').forEach((instanceContainer, instanceIndex) => {
-                instanceContainer.querySelectorAll('.form-select').forEach((participantSelect, participantIndex) => { 
+                instanceContainer.querySelectorAll('.form-select').forEach((participantSelect, participantIndex) => {
                     participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
-                    if (designacao.numeroParticipantes > 1 && participantIndex === 0) { 
-                        query = query.where('personalidade', '==', '+ à vontade');
-                    }
 
-                    snapshot.forEach(async doc => { 
+                    snapshot.forEach(async doc => {
                         const pessoa = doc.data();
                         let isAbsent = false;
-                        const designationDateFormatted = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString); 
-                        if (designationDateFormatted) { 
+                        const designationDateFormatted = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString);
+                        if (designationDateFormatted) {
                             if (pessoa.ausencias && Array.isArray(pessoa.ausencias)) {
                                 isAbsent = pessoa.ausencias.includes(designationDateFormatted);
                             }
@@ -864,25 +830,25 @@
                             languageMatches = selectedLanguages.includes(pessoa.idioma);
                         }
 
-                        if (languageMatches && temPrivilegiosNecessarios && !isAbsent) { 
+                        if (languageMatches && temPrivilegiosNecessarios && !isAbsent) {
                             const option = document.createElement('option');
                             option.value = doc.id;
                             option.textContent = pessoa.nomePessoa;
                             participantSelect.appendChild(option);
                         }
                     });
-                }); 
+                });
             });
-            console.log("[loadPeopleOptionsIntoSelects] END - Designation:", designacao.nome); // **LOG END**
+            console.log("[loadPeopleOptionsIntoSelects] END - Designation:", designacao.nome, ", Gender Preference:", genderPreference); // **LOG END**
         });
 
     } catch (error) {
         console.error('Erro ao carregar pessoas elegíveis:', error);
-        console.log("[loadPeopleOptionsIntoSelects] ERROR - Designation:", designacao.nome, ", Error:", error); // **LOG ERROR**
+        console.log("[loadPeopleOptionsIntoSelects] ERROR - Designation:", designacao.nome, ", Error:", error, ", Gender Preference:", genderPreference); // **LOG ERROR**
     }
 };
-    
-    
+
+
             const getAnoPainelFirebase = async () => {
                 const painelAnoRef = db.collection('painel').doc('ano');
                 const doc = await painelAnoRef.get();
@@ -892,7 +858,7 @@
                     return new Date().getFullYear();
                 }
             };
-    
+
             const countHistoricoSemanas = async (ano, mes) => {
                 const historicoRef = db.collection('historico');
                 const querySnapshot = await historicoRef
@@ -901,35 +867,35 @@
                     .get();
                 return querySnapshot.size;
             };
-    
+
             const getDiasSemana = (ano, mes, semanaNumero) => {
                 const primeiroDiaMes = new Date(ano, mes - 1, 1);
                 let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
                 if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7;
-    
+
                 let diasToAddForFirstMonday = 0;
                 if (diaSemanaPrimeiroDia !== 1) {
                     diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
                 }
-    
+
                 const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
                 const inicioSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7);
                 const fimSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7 + 6);
-    
+
                 const formatarData = (date) => {
                     return date.getDate();
                 };
-    
+
                 const formatarMes = (date) => {
                     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago, Set, Out, Nov, Dez"];
                     return monthNames[date.getMonth()];
                 };
-    
+
                 const inicio_dia = formatarData(inicioSemanaDate);
                 const fim_dia = formatarData(fimSemanaDate);
                 const inicio_mes = formatarMes(inicioSemanaDate);
                 const fim_mes = formatarMes(fimSemanaDate);
-    
+
                 let diasSemanaString;
                 if (inicioSemanaDate.getMonth() !== fimSemanaDate.getMonth()) {
                     diasSemanaString = `${inicio_dia} ${inicio_mes} - ${fim_dia} ${fim_mes}`;
@@ -938,13 +904,13 @@
                 }
                 return diasSemanaString;
             };
-    
-    
+
+
             const getTotalSemanasNoMes = async (ano, mes) => {
                 let countWeeks = 0;
                 let currentDay = new Date(ano, mes - 1, 1);
                 const lastDayOfMonth = new Date(ano, mes, 0);
-    
+
                 while (currentDay <= lastDayOfMonth) {
                     if (currentDay.getDay() === 1) {
                         countWeeks++;
@@ -953,46 +919,46 @@
                 }
                 return countWeeks;
             };
-    
-    
+
+
             const updateWeekDisplay = async () => {
                 const mesSelecionado = document.getElementById('mes').value;
                 const anoFirebase = await getAnoPainelFirebase();
                 const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado) + 1;
                 const totalSemanas = await getTotalSemanasNoMes(anoFirebase, mesSelecionado);
                 const diasSemana = getDiasSemana(anoFirebase, mesSelecionado, semanaNumero);
-    
+
                 // Update the hidden input field
                 document.getElementById('semanaNumero').value = semanaNumero;
-    
+
                 const weekDisplayText = `${semanaNumero}ª semana de ${totalSemanas} semanas <br>(${diasSemana})`;
                 document.getElementById('weekDisplay').innerHTML = weekDisplayText;
             };
-    
-    
+
+
             // Call updateWeekDisplay initially and when month changes
             updateWeekDisplay();
             document.getElementById('mes').addEventListener('change', updateWeekDisplay);
-    
-    
+
+
             // Handle "Seguinte" button click
             document.getElementById('btnSeguinte').addEventListener('click', async function() {
                 const designacoesSection = document.getElementById('designacoesSection');
                 const leituraBibliaSection = document.getElementById('leituraBibliaSection'); // Get Leitura Bíblia section
                 const iniciarFluxoButton = document.querySelector('#fluxoSemanalForm button[type="submit"].btn-submit'); // Get Iniciar Fluxo button
-    
-    
+
+
                 designacoesSection.classList.add('active');
                 leituraBibliaSection.style.display = 'block'; // Show Leitura Bíblia section
                 iniciarFluxoButton.style.display = 'block'; // Show Iniciar Fluxo button
                 await loadDesignacoes();
                 designacoesSection.scrollIntoView({ behavior: 'smooth' });
             });
-    
-    
+
+
             const activeDesignationsDisplay = {};
-    
-    
+
+
             // --- Nova Função: getEligiblePeopleForDropdown (já existente - manter) ---
             const getEligiblePeopleForDropdown = (dropdown) => {
                 const peopleIds = [];
@@ -1004,23 +970,23 @@
                 });
                 return peopleIds;
             };
-    
-    
+
+
             // --- Função rankPeopleByDesignationCount - IMPLEMENTAÇÃO COMPLETA (já existente - manter) ---
             const rankPeopleByDesignationCount = async (eligiblePeopleIds, designationName, ano) => {
                 const historicoRef = db.collection('historico');
                 const historicoQuery = historicoRef
                     .where("ano", "==", ano)
                     .where("quando", "==", "Semana"); // Assumindo "Escola" = "Semana" - VERIFICAR SE É SEMPRE ASSIM
-    
+
                 const historicoSnapshot = await historicoQuery.get();
                 const designationCounts = {}; // Contador geral e específico por pessoa
-    
+
                 // Inicializar contadores para todas as pessoas elegíveis
                 eligiblePeopleIds.forEach(personId => {
                     designationCounts[personId] = { total: 0, specific: 0 };
                 });
-    
+
                 historicoSnapshot.forEach(doc => {
                     const historicoData = doc.data();
                     historicoData.designacoes.forEach(designacaoHistorico => {
@@ -1034,8 +1000,8 @@
                         });
                     });
                 });
-    
-    
+
+
                 // Função para obter o ID da designação pelo nome (necessário para comparação) (já existente - manter)
                 function getDesignationIdByName(designationName) {
                     const designacoesListElements = document.querySelectorAll('#designacoesList .designacao-item');
@@ -1047,15 +1013,15 @@
                     }
                     return null; // Retorna null se não encontrar
                 }
-    
-    
+
+
                 // Converter o objeto designationCounts para array para poder ordenar (já existente - manter)
                 const rankedPeopleArray = eligiblePeopleIds.map(personId => ({
                     personId: personId,
                     totalDesignations: designationCounts[personId].total,
                     specificDesignations: designationCounts[personId].specific
                 }));
-    
+
                 // Ordenar primeiro por designações totais (ascendente) e depois por designações específicas (ascendente) (já existente - manter)
                 rankedPeopleArray.sort((a, b) => {
                     if (a.totalDesignations !== b.totalDesignations) {
@@ -1064,40 +1030,40 @@
                         return a.specificDesignations - b.specificDesignations; // Menos designações específicas em caso de empate
                     }
                 });
-    
+
                 const rankedPeopleIds = rankedPeopleArray.map(item => item.personId);
                 return rankedPeopleIds;
             };
-    
-    
-    
+
+
+
             // --- Função autoFillDesignations - MODIFICADA para regra de unicidade (já existente - MODIFICADA) ---
             const autoFillDesignations = async () => {
                 const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
                 const ano = await getAnoPainelFirebase(); // Obter o ano para filtrar o histórico
-    
+
                 for (const designationContainer of activeDesignationContainers) {
                     const designacaoId = designationContainer.dataset.designacaoId;
                     const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
                     const designacaoData = designacaoDoc.data();
                     const designationName = designacaoData.nome;
-    
+
                     const instances = designationContainer.querySelectorAll('.designacao-instance-container');
-    
+
                     for (let instanceIndex = 0; instanceIndex < instances.length; instanceIndex++) {
                         const instanceContainer = instances[instanceIndex];
                         const participantSelects = instanceContainer.querySelectorAll('.form-select');
                         const assignedPeopleInInstance = new Set(); // Manter pessoas já assignadas nesta instância
-    
+
                         for (const select of participantSelects) {
                             let eligiblePeopleIds = getEligiblePeopleForDropdown(select);
                             // Filtrar pessoas já assignadas nesta instância
                             eligiblePeopleIds = eligiblePeopleIds.filter(personId => !assignedPeopleInInstance.has(personId));
-    
+
                             if (eligiblePeopleIds.length > 0) {
                                 const rankedPeopleIds = await rankPeopleByDesignationCount(eligiblePeopleIds, designationName, ano); // Passa o ano agora
                                 let bestPersonId = null;
-    
+
                                 // Escolher a melhor pessoa que ainda não foi assignada nesta instância
                                 for (const personId of rankedPeopleIds) {
                                     if (!assignedPeopleInInstance.has(personId)) {
@@ -1105,7 +1071,7 @@
                                         break; // Pega a primeira pessoa disponível e sai do loop
                                     }
                                 }
-    
+
                                 if (bestPersonId) {
                                     select.value = bestPersonId;
                                     assignedPeopleInInstance.add(bestPersonId); // Adiciona à lista de assignados
@@ -1119,27 +1085,27 @@
                     }
                 };
             };
-    
-    
+
+
             // --- Modificar Evento do Botão Turbo (já existente - manter) - REMOVENDO POPUP ---
             document.getElementById('turboButton').addEventListener('click', async function() {
                 const rocketButton = this;
                 rocketButton.classList.add('loading');
-                
+
                 try {
                     await autoFillDesignations();
                 } finally {
                     rocketButton.classList.remove('loading');
                     rocketButton.classList.add('returning');
-                    
+
                     // Remove the 'returning' class after animation completes
                     setTimeout(() => {
                         rocketButton.classList.remove('returning');
                     }, 1000);
                 }
             });
-    
-    
+
+
             // **MODIFIED: Evento de clique dos botões de ordenar (já existente - manter)**
             document.querySelectorAll('#designacoesList').forEach(designacoesList => {
                 designacoesList.addEventListener('click', async function(event) {
@@ -1150,10 +1116,10 @@
                         const quantitySubmenu = designacaoItem.querySelector('.quantity-submenu');
                         let nextOrderNumber = getNextOrderNumber();
                         const leituraBibliaSection = document.getElementById('leituraBibliaSection'); // Get Leitura Bíblia section
-    
+
                         let currentOrderValue = parseInt(orderButton.dataset.order) || 0;
                         let currentQuantity = parseInt(orderButton.dataset.quantity) || 0;
-    
+
                         if (currentOrderValue === 0) {
                             currentOrderValue = nextOrderNumber;
                             if (currentQuantity === 0) {
@@ -1166,20 +1132,23 @@
                             currentQuantity = 0;
                             orderButton.dataset.quantity = currentQuantity;
                             updateQuantitySubmenuSelection(quantitySubmenu, currentQuantity);
-                            removeActiveDesignationDisplay(designacaoId);
-                            removeLeituraBibliaDisplay(designacaoId); // Ensure removal from Leitura Bíblia section
+                            // Remove all instances when un-ordering
+                            for (let instanceIndex = 1; instanceIndex <= 7; instanceIndex++) { // Loop through max possible instances to ensure removal
+                                removeActiveDesignationDisplay(designacaoId, instanceIndex);
+                                removeLeituraBibliaDisplay(designacaoId, instanceIndex);
+                            }
                             if (designacaoItem.querySelector('label > span').textContent === 'Leitura da Bíblia') {
                                 leituraBibliaSection.style.display = 'none'; // Hide Leitura Bíblia Section if un-ordering Leitura Bíblia
                             }
                         }
-    
+
                         orderButton.dataset.order = currentOrderValue;
                         orderButton.textContent = currentOrderValue > 0 ? currentOrderValue : '';
-    
+
                         updateOrderButtonClasses(orderButton, currentOrderValue);
                         reIndexOrderNumbers();
                         quantitySubmenu.classList.toggle('active', currentOrderValue > 0);
-    
+
                         // ** UPDATED:  Immediately update participant display after order change (já existente - manter)**
                         try {
                             const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
@@ -1197,10 +1166,10 @@
                                 const diasSemanaDisplay = document.getElementById('weekDisplay').innerHTML; // Get diasSemana again
                                 const diasSemanaMatch = diasSemanaDisplay.match(/\((.*?)\)/);
                                 const diasSemana = diasSemanaMatch ? diasSemanaMatch[1] : null;
-    
+
                                 const horariosData = await getHorariosFromFirebase(await getAnoPainelFirebase()); // Fetch horariosData
                                 const diaSemanaReuniaoString = horariosData['dia-semana']; // Get diaSemanaReuniaoString
-    
+
                                 updateActiveDesignationDisplay(designacaoInfo, currentOrderValue, currentQuantity, {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences); // Call update display and pass diasSemana and diaSemanaReuniaoString
                                  if (designacaoInfo.nome === 'Leitura da Bíblia' && currentOrderValue > 0) {
                                     leituraBibliaSection.style.display = 'block'; // Ensure section is visible when ordering Leitura Bíblia
@@ -1212,8 +1181,8 @@
                     }
                 });
             });
-    
-    
+
+
             // Funções auxiliares para o evento de clique dos botões de ordenar (para manter o código mais organizado) (já existente - manter)
             const getNextOrderNumber = () => {
                 const designacaoItems = document.querySelectorAll('#designacoesList .designacao-item');
@@ -1225,7 +1194,7 @@
                 });
                 return maxOrder + 1;
             };
-    
+
             const updateQuantitySubmenuSelection = (quantitySubmenu, quantity) => {
                 quantitySubmenu.querySelectorAll('.quantity-button').forEach(btn => {
                     if (parseInt(btn.dataset.quantityValue) === quantity) {
@@ -1235,7 +1204,7 @@
                     }
                 });
             };
-    
+
             const updateOrderButtonClasses = (orderButton, orderValue) => {
                 orderButton.classList.remove('ordered', 'ordered-level-2', 'ordered-level-3');
                 if (orderValue > 0) {
@@ -1244,39 +1213,39 @@
                     if (orderValue >= 3) orderButton.classList.add('ordered-level-3');
                 }
             };
-    
-    
+
+
             // **MODIFIED: Evento de submit do formulário "Iniciar Fluxo" - REMOVED POPUP on submit, keeping for summary (já existente - manter)**
             document.getElementById('fluxoSemanalForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
-    
+
                 // Prepare summary content
                 const summaryHTML = await generatePopupSummary();
                 document.getElementById('popupDesignationSummary').innerHTML = summaryHTML;
-    
+
                 // Show the popup
                 document.getElementById('confirmationPopup').style.display = 'flex';
             });
-    
+
             // Function to generate the summary HTML for the popup (já existente - manter)
             const generatePopupSummary = async () => {
                 let summaryHTML = '';
                 const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
-    
+
                 for (const designationContainer of activeDesignationContainers) {
                     const designacaoId = designationContainer.dataset.designacaoId;
                     const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
                     const designacaoData = designacaoDoc.data();
                     const instances = designationContainer.querySelectorAll('.designacao-instance-container');
-    
+
                     summaryHTML += `<div class="popup-designation-item">`;
                     summaryHTML += `<h4 class="popup-designacao-name">${designacaoData.nome}</h4>`;
-    
+
                     for (let instanceIndex = 0; instanceIndex < instances.length; instanceIndex++) {
                         const instanceContainer = instances[instanceIndex];
                         const participantSelects = instanceContainer.querySelectorAll('.form-select');
                         let instanceSummary = `<ul class="popup-participant-list">`;
-    
+
                         for (const select of participantSelects) { // Changed forEach to for...of for await
                             const selectedPersonId = select.value;
                             if (selectedPersonId) {
@@ -1305,49 +1274,49 @@
                 }
                 return summaryHTML;
             };
-    
-    
+
+
             // Close popup event (já existente - manter)
             document.getElementById('closePopup').addEventListener('click', function() {
                 document.getElementById('confirmationPopup').style.display = 'none';
             });
-    
+
             // "Criar Fluxo Semanal" button event (já existente - manter)
             document.getElementById('createFluxoSemanal').addEventListener('click', async function() {
                 const titleElement = document.querySelector('.popup-title');
                 const thinkingIcon = titleElement.querySelector('.thinking');
                 const successIcon = titleElement.querySelector('.success');
-    
+
                 // Show thinking icon
                 thinkingIcon.style.display = 'inline-block';
                 successIcon.style.display = 'none';
-    
+
                 try {
                     // Get current year and month (já existente - manter)
                     const ano = await getAnoPainelFirebase();
                     const mes = parseInt(document.getElementById('mes').value); // **LINHA CORRIGIDA - PARÊNTESE ADICIONADO**
                     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
-    
+
                     // Get form values for Tipo, Idioma and Sala (já existente - manter)
                     const tipoReuniao = document.getElementById('tipo').value;
                     const idiomasSelecionados = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
                         .map(checkbox => checkbox.value);
                     const salaSelecionada = document.getElementById('sala').value;
-    
+
                     // --- Get diasSemanaString in correct format from updateWeekDisplay (já existente - manter) ---
                     const diasSemana = getDiasSemana(ano, mes, semanaNumero); // Re-calculate diasSemana to ensure correct format
-    
-    
+
+
                     // --- Fetch horarios from Firebase (já existente - manter) ---
                     const horariosData = await getHorariosFromFirebase(ano);
                     const diaSemanaReuniaoString = horariosData['dia-semana']; // Get dia-semana from Firebase
                     const horaSemana = horariosData['hora-semana']; // Get hora-semana from Firebase
-    
-    
+
+
                     // Calculate meeting day of month (já existente - manter)
                     const meetingDayOfMonth = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString);
-    
-    
+
+
                     // Prepare historico data (já existente - manter)
                     const historicoData = {
                         ano: ano,
@@ -1362,26 +1331,26 @@
                         quando: "Semana", // ADICIONADO CAMPO "quando" com valor "Semana"
                         timestamp: firebase.firestore.FieldValue.serverTimestamp() // ADICIONADO CAMPO TIMESTAMP
                     };
-    
-    
+
+
                     // Collect all designations (já existente - manter)
                     const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
-    
+
                     for (const designationContainer of activeDesignationContainers) {
                         const designacaoId = designationContainer.dataset.designacaoId;
                         const instances = designationContainer.querySelectorAll('.designacao-instance-container');
-    
+
                         for (let instanceIndex = 0; instanceIndex < instances.length; instanceIndex++) {
                             const instanceContainer = instances[instanceIndex];
                             const participantSelects = instanceContainer.querySelectorAll('.form-select');
-    
+
                             const participantes = [];
                             for (const select of participantSelects) {
                                 if (select.value) {
                                     participantes.push(select.value);
                                 }
                             }
-    
+
                             if (participantes.length > 0) {
                                 historicoData.designacoes.push({
                                     designacaoId: designacaoId,
@@ -1391,18 +1360,18 @@
                             }
                         }
                     }
-    
+
                     const docRef = await db.collection("historico").add(historicoData);
-    
+
                     // Show success icon (já existente - manter)
                     thinkingIcon.style.display = 'none';
                     successIcon.style.display = 'inline-block';
-    
+
                     // Wait 2 segundos then refresh (já existente - manter)
                     setTimeout(() => {
                         window.location.reload();
                     }, 2000);
-    
+
                 } catch (error) {
                     console.error("Erro ao adicionar documento: ", error);
                     // Hide both icons in case of error (já existente - manter)
@@ -1411,8 +1380,8 @@
                     alert('Erro ao criar fluxo semanal: ' + error.message);
                 }
             });
-    
-    
+
+
             // --- Helper function to get day of week number (Sunday: 0, Monday: 1, ..., Saturday: 6) (já existente - manter) ---
             function getDayOfWeekNumber(dayOfWeekString) {
                 const daysOfWeek = {
@@ -1422,16 +1391,16 @@
                 const normalizedDayOfWeekString = dayOfWeekString.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Normalize and remove accents
                 return daysOfWeek[normalizedDayOfWeekString] !== undefined ? daysOfWeek[normalizedDayOfWeekString] : null;
             }
-    
-    
+
+
             // --- Helper function to get meeting day of month (NOW RETURNS YYYY-MM-DD DATE) (já existente - manter) ---
             function getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao) { // REMOVE diaSemanaReuniaoString parameter
-    
-    
+
+
                 if (!diasSemanaString || !diaSemanaReuniao) {
                     return null;
                 }
-    
+
                 const parts = diasSemanaString.split(" - ");
                 if (parts.length !== 2) {
                     return null;
@@ -1444,11 +1413,11 @@
                 const endDay = parseInt(endPart[0]);
                 let startMonthStr = parts[0].split(" ")[1] || ""; // Extract start month string ("Mar")
                 const endMonthStr = endPart[1]; // End month string ("Abr")
-    
+
                 const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set, Out, Nov, Dez"];
                 let startMonthIndex = monthNames.indexOf(startMonthStr); // Month index for start month
                 const endMonthIndex = monthNames.indexOf(endMonthStr);     // Month index for end month
-    
+
                 // **CORRECTION: Use endMonthIndex as fallback for startMonthIndex if startMonthStr is empty** (já existente - manter)
                 if (startMonthIndex === -1) {
                     startMonthIndex = endMonthIndex; // Use end month if start month is missing
@@ -1459,48 +1428,48 @@
                 if (endMonthIndex === -1) {
                     return null;
                 }
-    
-    
+
+
                 const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
                 if (dayOfWeekMeetingNumber === null) {
                     return null;
                 }
-    
+
                 const currentYear = new Date().getFullYear(); // Get current year once (já existente - manter)
                 const startOfWeekDate = new Date(currentYear, startMonthIndex, startDay);
                 const endOfWeekDate = new Date(currentYear, endMonthIndex, endDay);
-    
-    
+
+
                 let designationDateYYYYMMDD = null; // Variable to store formatted date (já existente - manter)
                 let middleDayOfMonth = null;
                 let currentDay = new Date(startOfWeekDate);
                 let loopCounter = 0;
-    
+
                 for (let i = 0; currentDay <= endOfWeekDate; i++) {
                     loopCounter++;
-    
-    
+
+
                     if (currentDay.getDay() === dayOfWeekMeetingNumber) {
                         middleDayOfMonth = currentDay.getDate();
-    
-    
+
+
                         // **FORMAT DATE AS YYYY-MM-DD - START** (já existente - manter)
                         const month = String(currentDay.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
                         const day = String(middleDayOfMonth).padStart(2, '0');
                         designationDateYYYYMMDD = `${currentYear}-${month}-${day}`;
                         // **FORMAT DATE AS YYYY-MM-DD - END** (já existente - manter)
-    
-    
+
+
                         break;
                     }
                     currentDay.setDate(currentDay.getDate() + 1);
                 }
-    
+
                 return designationDateYYYYMMDD; // Return the formatted date string or null (já existente - manter)
             }
-    
-    
-    
+
+
+
             const loadDesignacoes = async () => { // (já existente - manter)
                 const designacoesRef = db.collection('designacoes');
                 const query = designacoesRef
@@ -1511,21 +1480,21 @@
                 designacoesList.innerHTML = '';
                 let nextOrderNumber = 1;
                 let leituraBibliaDesignacao = null; // To store Leitura da Bíblia data
-    
+
                 const horariosData = await getHorariosFromFirebase(await getAnoPainelFirebase()); // Fetch horariosData here
                 const diaSemanaReuniaoString = horariosData['dia-semana']; // Get diaSemanaReuniaoString
-    
+
                 const diasSemanaDisplay = document.getElementById('weekDisplay').innerHTML; // Get diasSemana
                 const diasSemanaMatch = diasSemanaDisplay.match(/\((.*?)\)/);
                 const diasSemana = diasSemanaMatch ? diasSemanaMatch[1] : null;
-    
-    
+
+
                 for (const doc of snapshot.docs) { // Use for...of loop for synchronous processing
                     const designacao = doc.data();
                     const div = document.createElement('div');
                     div.className = 'designacao-item';
                     div.dataset.designacaoId = doc.id;
-    
+
                     // Create order button
                     const orderButton = document.createElement('button');
                     orderButton.type = 'button'; // Explicitly set type="button" - IMPORTANT
@@ -1540,41 +1509,41 @@
                     orderButton.dataset.order = designationOrder;
                     orderButton.dataset.quantity = designationQuantity;
                     orderButton.textContent = designationOrder > 0 ? designationOrder : '';
-    
+
                     if (designationOrder > 0) {
                         orderButton.classList.add('ordered');
                         if (designationOrder >= 2) orderButton.classList.add('ordered-level-2');
                         if (designationOrder >= 3) orderButton.classList.add('ordered-level-3');
                     }
-    
+
                     // Create label
                     const label = document.createElement('label');
                     label.setAttribute('for', doc.id);
                     label.style.marginBottom = '0';
                     label.style.flexGrow = '1';
                     label.style.display = 'flex';
-    
+
                     label.appendChild(orderButton);
                     const textSpan = document.createElement('span');
                     textSpan.textContent = designacao.nome;
                     label.appendChild(textSpan);
-    
+
                     div.appendChild(label);
-    
+
                     // Create quantity submenu
                     const quantitySubmenu = createQuantitySubmenu(doc.id, designationQuantity, orderButton); // Helper function to create submenu
                     div.appendChild(quantitySubmenu);
-    
+
                     designacoesList.appendChild(div);
                 }
-    
+
                 // After loading all designations, if Leitura da Bíblia was found and ordered, display it
                 if (leituraBibliaDesignacao) { // Check if leituraBibliaDesignacao is not null
                     updateLeituraBibliaDisplay(leituraBibliaDesignacao, leituraBibliaDesignacao.ordem, leituraBibliaDesignacao.quantidade, {}, diasSemana, diaSemanaReuniaoString); // pass diaSemanaReuniaoString here
                 }
             };
-    
-    
+
+
             const createQuantitySubmenu = (designacaoId, designationQuantity, orderButton) => { // (já existente - manter)
                 const quantitySubmenu = document.createElement('div');
                 quantitySubmenu.className = 'quantity-submenu';
@@ -1590,15 +1559,15 @@
                     quantityButton.addEventListener('click', async (e) => { // ADDED ASYNC
                         e.preventDefault(); // ADDED preventDefault - IMPORTANT
                         e.stopPropagation(); // Ensure event propagation is stopped - CHECK THIS LINE
-    
-    
+
+
                         const selectedQuantity = parseInt(quantityButton.dataset.quantityValue);
                         orderButton.dataset.quantity = selectedQuantity;
-    
+
                         quantitySubmenu.querySelectorAll('.quantity-button').forEach(btn => btn.classList.remove('selected'));
                         quantityButton.classList.add('selected');
                         quantitySubmenu.classList.remove('active');
-    
+
                         // **--- FIX: Call updateActiveDesignationDisplay here ---**
                         const designacaoIdForUpdate = quantitySubmenu.dataset.designacaoId;
                         try {
@@ -1636,47 +1605,53 @@
                 }
                 return quantitySubmenu;
             };
-    
-    
+
+
             const updateActiveDesignationDisplay = async (designacao, order, quantity, instancePreferences = {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences = {}) => {
     const designacaoId = designacao.id;
     const isLeituraBiblia = designacao.nome === 'Leitura da Bíblia';
     const containerToUse = isLeituraBiblia ? document.getElementById('leituraBibliaDesignationContainer') : document.getElementById('activeDesignationsContainer');
-    const existingDisplay = containerToUse.querySelector(`#active-designation-${designacaoId}`);
 
     if (quantity <= 0) {
-        if (existingDisplay) {
-            existingDisplay.remove();
+        // Remove all instances if quantity becomes 0 (já a funcionar)
+        for (let instanceIndex = 1; instanceIndex <= 7; instanceIndex++) {
+            const existingDisplay = containerToUse.querySelector(`#active-designation-${designacaoId}-${instanceIndex}`);
+            if (existingDisplay) {
+                existingDisplay.remove();
+            }
         }
         return;
     }
 
-    let designationDisplayContainer;
-    if (existingDisplay) {
-        designationDisplayContainer = existingDisplay;
-        designationDisplayContainer.innerHTML = '';
-    } else {
-        designationDisplayContainer = document.createElement('div');
-        designationDisplayContainer.id = `active-designation-${designacaoId}`;
-        designationDisplayContainer.className = 'active-designation-container';
-        designationDisplayContainer.style.marginTop = '20px';
-        designationDisplayContainer.style.padding = '15px';
-        designationDisplayContainer.style.backgroundColor = '#f8f9fa';
-        designationDisplayContainer.style.borderRadius = '8px';
-        designationDisplayContainer.dataset.designacaoId = designacao.id;
-    }
+     // Loop through each instance to create/update containers
+     for (let designacaoInstance = 1; designacaoInstance <= quantity; designacaoInstance++) {
+        let designationDisplayContainer;
+        const containerId = `active-designation-${designacaoId}-${designacaoInstance}`;
+        let existingDisplay = containerToUse.querySelector(`#${containerId}`);
 
-    for (let designacaoInstance = 1; designacaoInstance <= quantity; designacaoInstance++) {
+        if (!existingDisplay) {
+            designationDisplayContainer = document.createElement('div');
+            designationDisplayContainer.id = containerId;
+            designationDisplayContainer.className = 'active-designation-container';
+            designationDisplayContainer.style.marginTop = '20px';
+            designationDisplayContainer.style.padding = '15px';
+            designationDisplayContainer.style.backgroundColor = '#f8f9fa';
+            designationDisplayContainer.style.borderRadius = '8px';
+            designationDisplayContainer.dataset.designacaoId = designacao.id;
+            containerToUse.appendChild(designationDisplayContainer); // Append only if new
+        } else {
+            designationDisplayContainer = existingDisplay; // Reuse existing container
+            designationDisplayContainer.innerHTML = ''; // IMPORTANT: Clear only the content inside designationDisplayContainer, not the container itself. We will rebuild the instance container part.
+        }
+
+
         const designacaoInstanceContainer = document.createElement('div');
         designacaoInstanceContainer.className = 'designacao-instance-container';
         designacaoInstanceContainer.style.marginBottom = '20px';
 
         const title = document.createElement('h5');
         let designacaoNome = designacao.nome || designacaoId;
-        let tituloText = `Participantes para designação ${designacaoNome}`;
-        if (quantity > 1) {
-            tituloText = `Participantes para designação ${designacaoNome} (${designacaoInstance})`;
-        }
+        let tituloText = `${designacaoNome} (${designacaoInstance})`; // Title now includes instance number
         title.textContent = tituloText;
         title.style.marginBottom = '10px';
         designacaoInstanceContainer.appendChild(title);
@@ -1685,9 +1660,9 @@
         const instanceKey = `participantes-${designacaoId}-${designacaoInstance}`;
         if (temporaryPreferences[instanceKey]) {
             numeroParticipantesDynamic = parseInt(temporaryPreferences[instanceKey]);
-        } else if (instancePreferences && instancePreferences.numeroParticipantes && designacaoInstance === 1) {
+        } else if (instancePreferences && instancePreferences.numeroParticipantes && designacaoInstance === 1) { //Instance preference is only relevant for the first instance in this structure
             numeroParticipantesDynamic = parseInt(instancePreferences.numeroParticipantes);
-        } else if (designacao.numeroParticipantes && designacaoInstance === 1) {
+        } else if (designacao.numeroParticipantes && designacaoInstance === 1) { //Designation's default participant number is only relevant for the first instance in this structure
             numeroParticipantesDynamic = parseInt(designacao.numeroParticipantes);
         }
 
@@ -1700,7 +1675,12 @@
             participantRoles.push("Dirigente", "Morador", "Ajudante");
         }
 
+        // Get existing select elements within designacaoInstanceContainer
+        const existingSelects = Array.from(designacaoInstanceContainer.querySelectorAll('.form-select'));
+        let selectCount = existingSelects.length;
 
+
+        // Add or update participant selects
         for (let i = 0; i < numeroParticipantesDynamic; i++) {
             const roleLabel = document.createElement('span');
             roleLabel.textContent = (numeroParticipantesDynamic > 1) ? participantRoles[i] : `Participante`;
@@ -1710,36 +1690,143 @@
             roleLabel.style.marginBottom = '3px';
             designacaoInstanceContainer.appendChild(roleLabel);
 
-            const participantSelect = document.createElement('select');
-            participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
-            participantSelect.className = 'form-select';
-            participantSelect.style.marginBottom = '10px';
-            participantSelect.style.width = '100%';
-            participantSelect.style.padding = '8px';
-            participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
-            designacaoInstanceContainer.appendChild(participantSelect);
+            let participantSelect;
+            if (i < selectCount) {
+                // Reuse existing select element
+                participantSelect = existingSelects[i];
+                participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>'; // Clear options, keep the select element
+            } else {
+                // Create new select element
+                participantSelect = document.createElement('select');
+                participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
+                participantSelect.className = 'form-select';
+                participantSelect.style.marginBottom = '10px';
+                participantSelect.style.width = '100%';
+                participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
+                designacaoInstanceContainer.appendChild(participantSelect);
+            }
         }
-        designationDisplayContainer.appendChild(designacaoInstanceContainer);
-    }
 
-    // **MODIFIED: AWAIT loadPeopleOptionsIntoSelects - RETURN the promise from loadPeopleOptionsIntoSelects**
-    await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, { [designacaoId]: instancePreferences.preferenciaGenero }, diasSemana, diaSemanaReuniaoString); 
-    containerToUse.appendChild(designationDisplayContainer);
+
+        // Remove extra select elements if needed
+        while (designacaoInstanceContainer.children.length > (numeroParticipantesDynamic * 2 + 1)) { // *2 for label and select, +1 for title
+             designacaoInstanceContainer.removeChild(designacaoInstanceContainer.lastChild); // Remove from the end
+        }
+
+
+        designationDisplayContainer.appendChild(designacaoInstanceContainer);
+        designationDisplayContainer.style.position = 'relative';
+
+        const filterIcon = designationDisplayContainer.querySelector('.filter-icon') || document.createElement('i'); // Reuse or create filter icon
+        filterIcon.className = 'fas fa-filter filter-icon';
+        filterIcon.title = 'Filtrar';
+
+        let filterPopup = designationDisplayContainer.querySelector('.filter-popup'); // Reuse or create filter popup
+        if (!filterPopup) {
+            filterPopup = document.createElement('div');
+            filterPopup.className = 'filter-popup';
+            // **ALTERAÇÃO AQUI: MUDAR "Ambos os Sexos" PARA "Masculino Feminino"**
+            filterPopup.innerHTML = `
+                <h4>Filtros</h4>
+                <div class="filter-options">
+                    <label for="num-participantes">Número de Participantes</label>
+                    <select id="num-participantes">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+                <div class="filter-options" style="margin-top: 15px;">
+                    <label for="genero-preferencia">Preferência de Género</label>
+                    <select id="genero-preferencia">
+                        <option value="masculino feminino">Masculino Feminino</option>
+                        <option value="masculino">Masculino</option>
+                        <option value="feminino">Feminino</option>
+                    </select>
+                </div>
+            `;
+
+
+            // Set the initial value from Firebase data (only if popup was newly created)
+            const numParticipantesSelect = filterPopup.querySelector('#num-participantes');
+            const filterInstanceKey = `participantes-${designacao.id}-${designacaoInstance}`;
+            if (temporaryPreferences[filterInstanceKey]) {
+                numParticipantesSelect.value = temporaryPreferences[filterInstanceKey];
+            } else if (designacao.numeroParticipantes) {
+                numParticipantesSelect.value = designacao.numeroParticipantes;
+            }
+
+// **DEFINIR VALOR PADRÃO DO FILTRO DE GENERO E EVENT LISTENER**
+const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia');
+            generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos'; // Define valor padrão com base em designacao.feitoPor
+
+            generoPreferenciaSelect.addEventListener('change', (e) => {
+                const selectedGender = e.target.value;
+                // Recarregar as opções de pessoas, aplicando o filtro de género
+                loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGender); // Passar selectedGender para loadPeopleOptionsIntoSelects
+            });
+
+
+              // Update temporary preferences when the dropdown value changes (only if popup was newly created)
+              numParticipantesSelect.addEventListener('change', (e) => {
+                temporaryPreferences[filterInstanceKey] = e.target.value;
+                updateActiveDesignationDisplay(designacao, order, quantity, instancePreferences, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
+            });
+
+             filterIcon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const allPopups = document.querySelectorAll('.filter-popup');
+                allPopups.forEach(popup => {
+                    if (popup !== filterPopup) {
+                        popup.classList.remove('active');
+                    }
+                });
+                filterPopup.classList.toggle('active');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!filterPopup.contains(e.target) && !filterIcon.contains(e.target)) {
+                    filterPopup.classList.remove('active');
+                }
+            });
+
+
+            designationDisplayContainer.appendChild(filterPopup);
+            designationDisplayContainer.appendChild(filterIcon); // Append filter icon only if popup was newly created (or just always append it - doesn't really matter)
+
+        } else {
+             // **DEFINIR VALOR PADRÃO DO FILTRO DE GENERO PARA POPUPS REUTILIZADOS (se necessário)**
+            const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia');
+            generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos'; // Define valor padrão também para popups reutilizados, para garantir consistência
+             generoPreferenciaSelect.addEventListener('change', (e) => {
+                const selectedGender = e.target.value;
+                // Recarregar as opções de pessoas, aplicando o filtro de género
+                loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGender); // Passar selectedGender para loadPeopleOptionsIntoSelects
+            });
+        }
+
+
+        // **MODIFIED: AWAIT loadPeopleOptionsIntoSelects - RETURN the promise from loadPeopleOptionsIntoSelects**
+        const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia'); // Buscar o dropdown de género *agora*, depois de ter sido (re)criado
+        const selectedGenderOnLoad = generoPreferenciaSelect.value; // Obter o valor *inicial* do dropdown de género
+        await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGenderOnLoad); // Passar selectedGenderOnLoad para loadPeopleOptionsIntoSelects
+
+    }
 };
-    
-    
+
+
             const updateLeituraBibliaDisplay = async (designacao, order, quantity, preferences = {}, diasSemana, diaSemanaReuniaoString) => { // ADD diaSemanaReuniaoString parameter
                 updateActiveDesignationDisplay(designacao, order, quantity, preferences, diasSemana, diaSemanaReuniaoString, temporaryPreferences); // Reuse updateActiveDesignationDisplay for Leitura Bíblia, pass diaSemanaReuniaoString and temporaryPreferences
             };
-    
+
             const removeLeituraBibliaDisplay = (designacaoId) => { // (já existente - manter)
                 const displayToRemove = document.getElementById('leituraBibliaDesignationContainer').querySelector(`#active-designation-${designacaoId}`);
                 if (displayToRemove) {
                     displayToRemove.remove();
                 }
             };
-    
-    
+
+
             // Evento para fechar submenu de quantidade (keep as is) (já existente - manter)
             document.addEventListener('click', function(event) {
                 if (!event.target.closest('.designacao-item')) {
@@ -1748,7 +1835,7 @@
                     });
                 }
             });
-    
+
             // --- Fetch horarios from Firebase (já existente - manter) ---
             async function getHorariosFromFirebase(ano) {
                 try {
@@ -1757,7 +1844,7 @@
                         .where('ano', '==', ano)
                         .limit(1) // Assuming only one document per year
                         .get();
-    
+
                     if (!querySnapshot.empty) {
                         const doc = querySnapshot.docs[0];
                         const data = doc.data();
@@ -1769,197 +1856,10 @@
                     return { 'dia-semana': null, 'hora-semana': null }; // Return default or null values in case of error
                 }
             }
-    
+
             let temporaryPreferences = {}; // Objeto para guardar as preferências temporárias
-    
-    
-         // Function to open the preferences popup and populate it with dropdowns
-            const openPreferencesPopup = async () => {
-                const preferencesPopup = document.getElementById('preferencesPopup');
-                const preferencesPopupList = document.getElementById('popupPreferencesList');
-    
-                // Clear any existing content in the popup list before adding new preferences
-                preferencesPopupList.innerHTML = '';
-    
-                // Get all ordered designation items
-                const orderedDesignationItems = document.querySelectorAll('#designacoesList .designacao-item');
-    
-                for (const item of orderedDesignationItems) {
-                    const designacaoId = item.dataset.designacaoId;
-                    const orderButton = item.querySelector('.order-button');
-                    const quantity = parseInt(orderButton.dataset.quantity) || 0; // Get quantity instead of order
-                    const designationName = item.querySelector('label > span').textContent; // Get designation name
-    
-                    if (quantity > 0) { // Check quantity instead of order
-                        
-                        // **FETCH DESIGNACAO DOCUMENT FROM FIREBASE**
-                        const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
-                        const designacaoData = designacaoDoc.data();
-                        let firebasePreference = designacaoData.preferencia; // Get preferencia from Firebase
-                        let firebaseNumeroParticipantes = designacaoData.numeroParticipantes; // Get numeroParticipantes from Firebase
-    
-    
-                        // Loop through instances based on quantity
-                        for (let instanceIndex = 1; instanceIndex <= quantity; instanceIndex++) { // Loop for quantity
-                            const preferenceDiv = document.createElement('div');
-                            preferenceDiv.className = 'popup-designation-preference';
-                            preferenceDiv.dataset.designacaoId = designacaoId;
-                            preferenceDiv.dataset.instanceIndex = instanceIndex; // Store instance index
-    
-                            // **PREFERENCE DROPDOWN - GENDER**
-                            const labelPreferencia = document.createElement('label');
-                            labelPreferencia.setAttribute('for', `preferencia-${designacaoId}-${instanceIndex}`); // Unique ID for each instance
-                            let labelTextPreferencia = `Preferência para ${designationName}`; // Base label text
-                            if (quantity > 1) {
-                                labelTextPreferencia += ` (${instanceIndex})`; // Add instance number if quantity > 1
-                            }
-                            labelPreferencia.textContent = labelTextPreferencia + ":"; // Set label text
-                            preferenceDiv.appendChild(labelPreferencia);
-    
-                            const selectPreferencia = document.createElement('select');
-                            selectPreferencia.id = `preferencia-${designacaoId}-${instanceIndex}`; // Unique ID for each instance
-                            selectPreferencia.name = `preferencia-${designacaoId}-${instanceIndex}`; // Unique name for each instance
-    
-                            // **REDUCED GENDER OPTIONS LIST**
-                            const optionsPreferencia = [
-                                { value: 'Masculino Feminino', text: 'Masculino Feminino' },
-                                { value: 'Masculino', text: 'Masculino' },
-                                { value: 'Feminino', text: 'Feminino' }
-                            ];
-                            optionsPreferencia.forEach(option => {
-                                const optionElement = document.createElement('option');
-                                optionElement.value = option.value;
-                                optionElement.textContent = option.text;
-                                selectPreferencia.appendChild(optionElement);
-                            });
-                            preferenceDiv.appendChild(selectPreferencia);
-    
-    
-                            // --- SELECT GENDER OPTION ---
-                            let defaultOptionValue = 'Masculino Feminino'; // Default value if no Firebase preference or invalid preference
-    
-                            // **CHECK TEMPORARY PREFERENCES FIRST - GENDER**
-                            const tempPreferenceKey = `preferencia-${designacaoId}-${instanceIndex}`; // Unique key for gender preference
-                            if (temporaryPreferences[tempPreferenceKey]) {
-                                defaultOptionValue = temporaryPreferences[tempPreferenceKey]; // Use temporary preference if available
-                            } else if (firebasePreference === 'Masculino' || firebasePreference === 'Feminino' || firebasePreference === 'Masculino Feminino') {
-                                defaultOptionValue = firebasePreference; // Fallback to Firebase preference if no temporary preference
-                            }
-                            selectPreferencia.value = defaultOptionValue; // Set default value
-    
-    
-                            // **NUMBER OF PARTICIPANTS DROPDOWN**
-                            const labelParticipantes = document.createElement('label');
-                            labelParticipantes.setAttribute('for', `participantes-${designacaoId}-${instanceIndex}`);
-                            labelParticipantes.textContent = `Número de Participantes:`;
-                            preferenceDiv.appendChild(labelParticipantes);
-    
-                            const selectParticipantes = document.createElement('select');
-                            selectParticipantes.id = `participantes-${designacaoId}-${instanceIndex}`;
-                            selectParticipantes.name = `participantes-${designacaoId}-${instanceIndex}`;
-                            const optionsParticipantes = [
-                                { value: '1', text: '1' },
-                                { value: '2', text: '2' },
-                                { value: '3', text: '3' }
-                            ];
-                            optionsParticipantes.forEach(option => {
-                                const optionElement = document.createElement('option');
-                                optionElement.value = option.value;
-                                optionElement.textContent = option.text;
-                                selectParticipantes.appendChild(optionElement);
-                            });
-                            preferenceDiv.appendChild(selectParticipantes);
-    
-    
-                            // --- SELECT NUMBER OF PARTICIPANTS OPTION ---
-                            let defaultParticipantesValue = '1'; // Default to '1'
-                            const tempParticipantesKey = `participantes-${designacaoId}-${instanceIndex}`;
-                            if (temporaryPreferences[tempParticipantesKey]) {
-                                defaultParticipantesValue = temporaryPreferences[tempParticipantesKey];
-                            } else if (firebaseNumeroParticipantes) {
-                                defaultParticipantesValue = String(firebaseNumeroParticipantes);
-                            }
-                             selectParticipantes.value = defaultParticipantesValue; // Set participants default value
-    
-    
-                            preferencesPopupList.appendChild(preferenceDiv);
-    
-    
-                            // **ADD EVENT LISTENER TO STORE TEMPORARY PREFERENCE - GENDER**
-                            selectPreferencia.addEventListener('change', function(event) {
-                                temporaryPreferences[`preferencia-${designacaoId}-${instanceIndex}`] = event.target.value; // Store preference on change
-                            });
-    
-                            // **ADD EVENT LISTENER TO STORE TEMPORARY PREFERENCE - PARTICIPANTS NUMBER**
-                            selectParticipantes.addEventListener('change', function(event) {
-                                temporaryPreferences[`participantes-${designacaoId}-${instanceIndex}`] = event.target.value; // Store participants number on change
-                                console.log(`[selectParticipantes.onChange] Key: participantes-${designacaoId}-${instanceIndex}, Value: ${event.target.value}`); // LOGGING
-                                console.log("[selectParticipantes.onChange] temporaryPreferences object:", JSON.stringify(temporaryPreferences)); // LOGGING the whole object as JSON
-                            });
-    
-                        }
-                    }
-                }
-    
-                preferencesPopup.style.display = 'flex';
-            };
-    
-    
-            // **ADICIONE ESTA LINHA PARA ASSOCIAR O CLIQUE DO BOTÃO À FUNÇÃO openPreferencesPopup**
-            document.getElementById('filterButton').addEventListener('click', openPreferencesPopup);
-    
-    
-            // Event listener for close Preferences Popup button
-            document.getElementById('closePreferencesPopup').addEventListener('click', function() {
-                document.getElementById('preferencesPopup').style.display = 'none';
-            });
-    
-    
-            // Event listener for "Apply Filters" button in preferences popup
-            document.getElementById('applyPreferencesFilters').addEventListener('click', async function() {
-    const preferencesPopup = document.getElementById('preferencesPopup');
-    console.log("Temporary Preferences before applying filters:", temporaryPreferences);
-
-    const orderedDesignationItems = document.querySelectorAll('#designacoesList .designacao-item');
-    let updateCallCount = 0; // Initialize a counter
-
-    for (const item of orderedDesignationItems) {
-        const designacaoId = item.dataset.designacaoId;
-        const orderButton = item.querySelector('.order-button');
-        const quantity = parseInt(orderButton.dataset.quantity) || 0;
-
-        if (quantity > 0) {
-            for (let instanceIndex = 1; instanceIndex <= quantity; instanceIndex++) {
-                const instancePreferences = {
-                    preferenciaGenero: temporaryPreferences[`preferencia-${designacaoId}-${instanceIndex}`],
-                    numeroParticipantes: temporaryPreferences[`participantes-${designacaoId}-${instanceIndex}`]
-                };
-                console.log(`Applying filters for Designation ID: ${designacaoId}, Instance: ${instanceIndex}`);
-                console.log("Instance Preferences:", instancePreferences);
-
-                const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
-                if (designacaoDoc.exists) {
-                    const designacaoData = designacaoDoc.data();
-                    const designacaoInfo = { ...designacaoData, id: designacaoId, ordem: parseInt(orderButton.dataset.order) || 0, quantidade: quantity }; // Include quantity here
 
 
-                    const diasSemanaDisplay = document.getElementById('weekDisplay').innerHTML;
-                    const diasSemanaMatch = diasSemanaDisplay.match(/\((.*?)\)/);
-                    const diasSemana = diasSemanaMatch ? diasSemanaMatch[1] : null;
-                    const horariosData = await getHorariosFromFirebase(await getAnoPainelFirebase());
-                    const diaSemanaReuniaoString = horariosData['dia-semana'];
-
-                    console.log(`[applyPreferencesFilters] Calling updateActiveDesignationDisplay - Call Count: ${++updateCallCount}, Instance: ${instanceIndex}, Designation: ${designacaoInfo.nome}`); // **LOG CALL COUNT**
-                    await updateActiveDesignationDisplay(designacaoInfo, designacaoInfo.ordem, quantity, instancePreferences, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
-                }
-            }
-        }
-    }
-
-    preferencesPopup.style.display = 'none';
-});
-    
-    
             // Initial load of designacoes
             loadDesignacoes();
         });
