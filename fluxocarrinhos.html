@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Escala - Iniciar Fluxo Carrinhos</title>
+    
+    <!-- Links para Ícones e Firebase -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- SCRIPTS CORRIGIDOS PARA GERAR PDF (na ordem correta) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.autotable.min.js"></script>
+
+    <style>
+        /* Estilos Gerais (inalterados) */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; }
+        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding: 20px 0; height: 100vh; position: fixed; z-index: 100; }
+        .logo { text-align: center; padding: 20px 0; border-bottom: 1px solid #34495e; }
+        .logo h2 { margin: 0; }
+        .nav-list { list-style: none; padding: 20px 0; }
+        .nav-item { padding: 10px 20px; }
+        .nav-item a { color: white; text-decoration: none; display: flex; align-items: center; }
+        .nav-item i { margin-right: 10px; width: 20px; text-align: center; }
+        .nav-item:hover { background-color: #34495e; }
+        .content { margin-left: 250px; padding: 30px; flex-grow: 1; }
+        h1 { color: #2c3e50; margin-bottom: 30px; font-size: 28px; }
+        .controls-card, .schedule-display-card { background-color: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .control-group { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+        .control-group label { font-weight: bold; color: #34495e; }
+        .control-group select, .control-group input[type="number"] { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; }
+        .btn-action { background-color: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; transition: background-color 0.3s; }
+        .btn-action:hover { background-color: #2980b9; }
+        .btn-save { background-color: #2ecc71; }
+        .btn-save:hover { background-color: #27ae60; }
+        #schedule-container { margin-top: 20px; }
+        .date-section { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .date-header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .date-header { color: #2c3e50; font-size: 20px; margin-bottom: 0; }
+        .lock-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: #3498db; padding: 5px; }
+        .lock-btn.locked { color: #e74c3c; }
+        .group-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .group-card { background-color: #f8f9fa; border-radius: 6px; padding: 15px; border: 1px solid #e9ecef; position: relative; }
+        .group-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .group-card-controls { display: flex; align-items: center; }
+        .partnership-count { font-size: 14px; color: #34495e; font-weight: bold; margin-right: 8px; background-color: #e0e0e0; padding: 2px 6px; border-radius: 4px; }
+        .remove-group-btn { position: relative; background: none; border: none; font-size: 24px; color: #c0392b; cursor: pointer; font-weight: bold; line-height: 1; padding: 0 5px; opacity: 0.5; transition: opacity 0.2s; }
+        .remove-group-btn:hover { opacity: 1; }
+        .group-card h4 { color: #34495e; margin: 0; flex-grow: 1; }
+        .auto-generate-info { font-size: 14px; color: #555; margin-top: 15px; padding: 10px; background-color: #ecf0f1; border-radius: 4px; }
+        .group-card .person-input, .group-card .location-input { width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: #fff; }
+        #loader { display: none; text-align: center; padding: 20px; }
+        #loader .fas { font-size: 3em; color: #3498db; animation: fa-spin 2s infinite linear; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 8% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: 8px; position: relative; }
+        .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-btn:hover, .close-btn:focus { color: black; }
+        #person-search-input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        .modal-body { display: flex; gap: 20px; margin-top: 20px; max-height: 60vh; }
+        .modal-list-container { flex: 1; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 4px; }
+        .modal-history-container { flex: 2; padding: 10px; display: flex; flex-direction: column; }
+        .modal-history-content { flex-grow: 1; }
+        .modal-person-item { padding: 8px; cursor: pointer; border-radius: 4px; }
+        .modal-person-item:hover { background-color: #f1f1f1; }
+        .modal-person-item.selected { background-color: #d4eaf7; font-weight: bold; }
+        #modal-history-display h4 { margin-bottom: 10px; color: #2c3e50; }
+        #modal-history-display ul { list-style-type: none; padding-left: 0; }
+        #modal-history-display li { background-color: #f8f9fa; padding: 8px; border-radius: 3px; margin-bottom: 5px; font-size: 14px; transition: background-color 0.3s; }
+        #modal-history-display li.highlight-partner { background-color: #d4edda; border-left: 4px solid #155724; font-weight: bold; }
+        .select-person-btn, .remove-person-btn { color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 20px; }
+        .select-person-btn { background-color: #2ecc71; }
+        .select-person-btn:hover { background-color: #27ae60; }
+        .remove-person-btn { background-color: #e74c3c; margin-left: 10px; }
+        .remove-person-btn:hover { background-color: #c0392b; }
+        #location-feedback { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+
+
+
+
+
+<body>
+    <div class="sidebar">
+        <div class="logo"><h2>Sistema de Escala</h2></div>
+        <nav>
+            <ul class="nav-list">
+                <li class="nav-item"><a href="index.html#painel"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
+                <li class="nav-item"><a href="index.html#reuniao-semana"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
+                <li class="nav-item"><a href="index.html#fim-de-semana"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
+                <li class="nav-item"><a href="index.html#pregacao"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
+                <li class="nav-item"><a href="index.html#estatisticas"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
+                <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
+                <li class="nav-item"><a href="index.html#iniciar"><i class="fas fa-play"></i><span>Iniciar</span></a></li>
+                <li class="nav-item"><a href="index.html#criar"><i class="fas fa-plus"></i><span>Criar</span></a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <main class="content">
+        <h1>Atribuição para Carrinhos</h1>
+        <div class="controls-card">
+            <div class="control-group">
+                <div><label for="year-select">Ano:</label><select id="year-select"></select></div>
+                <div><label for="month-select">Mês:</label><select id="month-select"></select></div>
+                <div>
+                    <label for="day-select">Dia da Semana:</label>
+                    <select id="day-select">
+                        <option value="0">Domingo</option><option value="1">Segunda-feira</option><option value="2">Terça-feira</option><option value="3">Quarta-feira</option><option value="4">Quinta-feira</option><option value="5">Sexta-feira</option><option value="6">Sábado</option>
+                    </select>
+                </div>
+                <button id="generate-schedule-btn" class="btn-action"><i class="fas fa-rocket"></i> Gerar Escala</button>
+                <button id="save-schedule-btn" class="btn-action btn-save" style="display: none;"><i class="fas fa-save"></i> Salvar Escala</button>
+                <button id="update-schedule-btn" class="btn-action" style="display: none; background-color: #f39c12;"><i class="fas fa-pencil-alt"></i> Guardar Edição</button>
+                <button id="load-schedule-btn" class="btn-action" style="background-color: #9b59b6;" title="Carregar Escala Antiga"><i class="fas fa-calendar-alt"></i></button>
+                <button id="settings-btn" class="btn-action" style="background-color: #7f8c8d;" title="Gerir Locais"><i class="fas fa-cog"></i></button>
+                <button id="download-pdf-btn" class="btn-action" style="background-color: #c0392b;" title="Descarregar PDF"><i class="fas fa-file-pdf"></i></button>
+            </div>
+            <div class="auto-generate-info">
+                <i class="fas fa-info-circle"></i> O sistema irá calcular automaticamente o número ideal de grupos por dia para distribuir os publicadores disponíveis de forma equilibrada pelo mês. Dias bloqueados são tidos em conta.
+            </div>
+        </div>
+        <div class="schedule-display-card">
+            <div id="loader"><i class="fas fa-spinner fa-spin"></i><p>A carregar...</p></div>
+            <div id="schedule-container"><p>Selecione o mês, o dia e clique em "Gerar Escala" para começar. Ou clique no calendário para carregar uma escala antiga.</p></div>
+        </div>
+    </main>
+
+    <div id="people-modal" class="modal"><div class="modal-content"><span class="close-btn">×</span><h2>Selecionar Pessoa</h2><input type="text" id="person-search-input" placeholder="Pesquisar por nome..."><div class="modal-body"><div id="modal-people-list" class="modal-list-container"></div><div id="modal-history-display" class="modal-history-container"></div></div></div></div>
+    <div id="locations-modal" class="modal"><div class="modal-content"><span class="close-btn">×</span><h2>Gerir Locais</h2><div class="modal-body" style="flex-direction: column; max-height: none;"><label for="new-location-input"><strong>Nome do Novo Local:</strong></label><input type="text" id="new-location-input" placeholder="Ex: Praça Central" style="padding: 10px; font-size: 16px;"><button id="save-location-btn" class="btn-action btn-save" style="margin-top: 10px;">Gravar Novo Local</button><div id="location-feedback"></div></div></div></div>
+    <div id="load-schedule-modal" class="modal"><div class="modal-content" style="max-width: 500px;"><span class="close-btn">×</span><h2>Carregar Escala Antiga</h2><div class="modal-body" style="flex-direction: column; max-height: none;"><div class="control-group" style="gap: 15px;"><div><label for="load-year-select">Ano:</label><select id="load-year-select"></select></div><div><label for="load-month-select">Mês:</label><select id="load-month-select"></select></div></div><button id="load-old-schedule-btn" class="btn-action" style="margin-top: 20px; background-color: #9b59b6;">Carregar</button></div></div></div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A", // Substitua pela sua chave de API
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.appspot.com",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            const yearSelect = document.getElementById('year-select');
+            const monthSelect = document.getElementById('month-select');
+            const daySelect = document.getElementById('day-select');
+            const generateBtn = document.getElementById('generate-schedule-btn');
+            const saveBtn = document.getElementById('save-schedule-btn');
+            const updateBtn = document.getElementById('update-schedule-btn');
+            const scheduleContainer = document.getElementById('schedule-container');
+            const loader = document.getElementById('loader');
+            const peopleModal = document.getElementById('people-modal');
+            const locationsModal = document.getElementById('locations-modal');
+            const loadScheduleModal = document.getElementById('load-schedule-modal');
+            
+            let locations = [], allEligiblePeople = [], fullHistory = [], activePersonInput = null;
+            let lockedDates = new Set(), loadedDocIds = new Set();
+    
+            // --- FUNÇÃO DE DATA ATUALIZADA ---
+            function getSchedulingDates(year, month, targetDayOfWeek) {
+                const dates = [];
+                // 1. Encontra a primeira segunda-feira do mês selecionado.
+                let startDate = new Date(year, month, 1);
+                // getDay() retorna 0 para Domingo, 1 para Segunda, ..., 6 para Sábado.
+                // Se o dia não for Segunda (1), avança. Se for Domingo (0), precisa de um ajuste para não pular uma semana.
+                let dayOfWeek = startDate.getDay();
+                if (dayOfWeek !== 1) {
+                    // Se for Domingo (0), recua para o Sábado anterior para o cálculo ficar correto.
+                    // Se for Terça a Sábado, avança até à próxima segunda.
+                    let offset = (dayOfWeek === 0) ? -6 : 1 - dayOfWeek;
+                    startDate.setDate(startDate.getDate() + offset + 7);
+                }
+                
+                // Correção: A lógica acima pode ser simplificada
+                startDate = new Date(year, month, 1);
+                while (startDate.getDay() !== 1) { // 1 = Segunda-feira
+                    startDate.setDate(startDate.getDate() + 1);
+                }
+    
+    
+                // 2. Encontra o Domingo a seguir ao fim do mês calendário.
+                let endDate = new Date(year, month + 1, 0); // Último dia do mês selecionado
+                while (endDate.getDay() !== 0) { // 0 = Domingo
+                    endDate.setDate(endDate.getDate() + 1);
+                }
+    
+                // 3. Itera do início ao fim do período da escala e coleciona os dias pretendidos.
+                let currentDate = new Date(startDate);
+                while (currentDate <= endDate) {
+                    if (currentDate.getDay() === targetDayOfWeek) {
+                        dates.push(new Date(currentDate)); // Adiciona uma nova instância para evitar problemas de referência
+                    }
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                
+                return dates;
+            }
+    
+    
+            async function initialize() { 
+                populateYearSelect(yearSelect); 
+                populateMonthSelect(monthSelect); 
+                await fetchInitialData(); 
+                setupEventListeners(); 
+                updateLocationsDatalist(); 
+            }
+    
+            async function fetchInitialData() { 
+                loader.style.display = 'block'; 
+                try { 
+                    const [locationsSnap, peopleSnap, historySnap] = await Promise.all([ 
+                        db.collection('locais').get(), 
+                        db.collection('pessoas').where('fazDesignacoesPregacao', '==', true).get(), 
+                        db.collection('historicoPregacao').orderBy('timestamp', 'desc').get() 
+                    ]); 
+                    locations = locationsSnap.docs.map(doc => doc.data().nome); 
+                    allEligiblePeople = peopleSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+                    fullHistory = historySnap.docs.map(doc => doc.data()); 
+                } catch (error) { 
+                    console.error("Erro ao carregar dados iniciais:", error); 
+                    alert("Não foi possível carregar os dados."); 
+                } finally { 
+                    loader.style.display = 'none'; 
+                } 
+            }
+    
+            /**
+             * Gera e descarrega um ficheiro PDF da escala atualmente visível.
+             * A função lê a estrutura da página, formata os dados e utiliza
+             * a biblioteca jsPDF-AutoTable para criar um documento bem organizado.
+             */
+            function handlePdfDownload() {
+                // Pega a referência ao construtor da biblioteca jsPDF
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+    
+                // --- VERIFICAÇÃO DE SEGURANÇA ---
+                // Verifica se a biblioteca autoTable foi carregada corretamente.
+                if (typeof doc.autoTable !== 'function') {
+                    alert("Erro ao gerar PDF: A biblioteca de tabelas (jsPDF-AutoTable) não foi carregada. Verifique a sua ligação à internet ou desative bloqueadores de anúncios e tente novamente.");
+                    return;
+                }
+                // ------------------------------------
+    
+                const dateSections = document.querySelectorAll('.date-section');
+                
+                if (dateSections.length === 0 || document.querySelector('.group-card') === null) {
+                    alert("Não há escala visível para descarregar. Por favor, gere ou carregue uma escala primeiro.");
+                    return;
+                }
+    
+                // Tenta extrair o mês e ano do primeiro cabeçalho para o título
+                const firstDateHeader = dateSections[0].querySelector('.date-header').textContent;
+                const dateParts = firstDateHeader.split(' de ');
+                const monthYear = dateParts.length > 2 ? `${dateParts[1]} de ${dateParts[2]}` : "Escala Atual";
+    
+                // Título Principal do Documento
+                doc.setFontSize(18);
+                doc.text(`Escala de Carrinhos - ${monthYear}`, 14, 22);
+    
+                // Posição Y inicial para a primeira tabela
+                let startY = 30;
+    
+                dateSections.forEach(section => {
+                    const groupCards = section.querySelectorAll('.group-card');
+                    
+                    // Pula secções de data que não tenham grupos
+                    if (groupCards.length === 0) {
+                        return; 
+                    }
+    
+                    const dateHeader = section.querySelector('.date-header').textContent;
+                    const tableRows = [];
+    
+                    // Itera sobre cada grupo para extrair os seus dados
+                    groupCards.forEach(card => {
+                        const groupTitle = card.querySelector('h4').textContent.trim();
+                        
+                        const peopleNames = Array.from(card.querySelectorAll('.person-input'))
+                            .map(input => input.value.trim())
+                            .filter(name => name) // Filtra nomes em branco
+                            .join(', ');
+                        
+                        const location = card.querySelector('.location-input').value.trim();
+    
+                        // Adiciona a linha à tabela apenas se houver publicadores no grupo
+                        if (peopleNames) {
+                            tableRows.push([groupTitle, peopleNames, location || 'N/A']);
+                        }
+                    });
+    
+                    // Desenha a tabela para esta secção apenas se contiver linhas
+                    if (tableRows.length > 0) {
+                        doc.autoTable({
+                            head: [['Grupo', 'Publicadores', 'Local']],
+                            body: tableRows,
+                            startY: startY,
+                            // Hook para desenhar o cabeçalho da data antes de cada tabela
+                            didDrawPage: (data) => {
+                                doc.setFontSize(12);
+                                doc.setFont(undefined, 'bold');
+                                doc.text(dateHeader, data.settings.margin.left, startY - 6);
+                            },
+                            headStyles: { fillColor: [44, 62, 80] }, // Cor de cabeçalho da tabela
+                            margin: { top: startY > 30 ? startY : 40 } // Garante espaço para o título
+                        });
+                        
+                        // Atualiza a posição Y para a próxima tabela
+                        startY = doc.autoTable.previous.finalY + 15;
+                    }
+                });
+    
+                // Guarda o ficheiro PDF com um nome descritivo
+                doc.save(`escala_carrinhos_${monthYear.replace(/ /g, '_')}.pdf`);
+            }
+    
+            function setupEventListeners() { 
+                document.getElementById('download-pdf-btn')?.addEventListener('click', handlePdfDownload);
+                generateBtn.addEventListener('click', handleGenerateClick); 
+                saveBtn.addEventListener('click', handleSaveClick); 
+                updateBtn.addEventListener('click', handleUpdateClick); 
+                
+                if (peopleModal) { 
+                    peopleModal.querySelector('.close-btn')?.addEventListener('click', closePeopleModal); 
+                    peopleModal.querySelector('#person-search-input')?.addEventListener('input', (e) => {
+                        const groupCard = activePersonInput?.closest('.group-card');
+                        const partnerIds = groupCard ? Array.from(groupCard.querySelectorAll('.person-input'))
+                            .filter(inp => inp !== activePersonInput)
+                            .map(inp => inp.dataset.personId)
+                            .filter(Boolean) : [];
+                        populatePeopleListInModal(e.target.value, partnerIds);
+                    });
+                } 
+                if (locationsModal) { 
+                    document.getElementById('settings-btn')?.addEventListener('click', openLocationsModal); 
+                    locationsModal.querySelector('.close-btn')?.addEventListener('click', closeLocationsModal); 
+                    locationsModal.querySelector('#save-location-btn')?.addEventListener('click', handleSaveLocation); 
+                } 
+                if (loadScheduleModal) { 
+                    document.getElementById('load-schedule-btn')?.addEventListener('click', openLoadScheduleModal); 
+                    loadScheduleModal.querySelector('.close-btn')?.addEventListener('click', closeLoadScheduleModal); 
+                    loadScheduleModal.querySelector('#load-old-schedule-btn')?.addEventListener('click', handleLoadOldSchedule); 
+                } 
+                window.addEventListener('click', (event) => { 
+                    if (event.target == peopleModal) closePeopleModal(); 
+                    if (event.target == locationsModal) closeLocationsModal(); 
+                    if (event.target == loadScheduleModal) closeLoadScheduleModal(); 
+                }); 
+                scheduleContainer.addEventListener('click', (event) => { 
+                    if (event.target.classList.contains('person-input')) openPeopleModal(event.target); 
+                    const lockBtn = event.target.closest('.lock-btn'); 
+                    if (lockBtn) toggleLockState(lockBtn); 
+                    if (event.target.classList.contains('remove-group-btn')) { 
+                        event.target.closest('.group-card')?.remove(); 
+                    }
+                }); 
+            }
+    
+            function openPeopleModal(inputElement) {
+                const modalHistoryDisplay = peopleModal.querySelector('#modal-history-display');
+                activePersonInput = inputElement;
+                const groupCard = inputElement.closest('.group-card');
+                const otherPersonInputs = Array.from(groupCard.querySelectorAll('.person-input')).filter(inp => inp !== inputElement);
+                const partnerIds = otherPersonInputs.map(inp => inp.dataset.personId).filter(Boolean);
+                peopleModal.querySelector('#person-search-input').value = '';
+                populatePeopleListInModal('', partnerIds);
+                modalHistoryDisplay.innerHTML = `<div class="modal-history-content"><p>Clique numa pessoa da lista para ver o seu histórico.</p></div><div class="modal-actions"><button class="remove-person-btn">Remover Atribuição</button></div>`;
+                modalHistoryDisplay.querySelector('.remove-person-btn').addEventListener('click', removePersonInModal);
+                peopleModal.style.display = 'block';
+                peopleModal.querySelector('#person-search-input').focus();
+            }
+    
+            function closePeopleModal() { 
+                peopleModal.style.display = 'none'; 
+                activePersonInput = null;
+                updatePartnershipCounts();
+            }
+            
+            function openLocationsModal() { locationsModal.querySelector('#new-location-input').value = ''; locationsModal.querySelector('#location-feedback').textContent = ''; locationsModal.style.display = 'block'; locationsModal.querySelector('#new-location-input').focus(); }
+            function closeLocationsModal() { locationsModal.style.display = 'none'; }
+            function openLoadScheduleModal() { populateYearSelect(loadScheduleModal.querySelector('#load-year-select')); populateMonthSelect(loadScheduleModal.querySelector('#load-month-select'), false); loadScheduleModal.style.display = 'block'; }
+            function closeLoadScheduleModal() { loadScheduleModal.style.display = 'none'; }
+    
+            function populatePeopleListInModal(searchText = '', partnerIds = []) {
+                const modalPeopleList = peopleModal.querySelector('#modal-people-list');
+                modalPeopleList.innerHTML = '';
+                const lowerCaseSearchText = searchText.trim().toLowerCase();
+                const filteredPeople = allEligiblePeople.filter(person => 
+                    person.nomePessoa.toLowerCase().includes(lowerCaseSearchText)
+                );
+                filteredPeople.sort((a, b) => a.nomePessoa.localeCompare(b.nomePessoa)).forEach(person => {
+                    const item = document.createElement('div');
+                    item.className = 'modal-person-item';
+                    item.textContent = person.nomePessoa;
+                    item.dataset.personId = person.id;
+                    item.addEventListener('click', () => {
+                        modalPeopleList.querySelectorAll('.modal-person-item').forEach(el => el.classList.remove('selected'));
+                        item.classList.add('selected');
+                        displayHistoryForPerson(person, partnerIds);
+                    });
+                    modalPeopleList.appendChild(item);
+                });
+            }
+            
+            function displayHistoryForPerson(person, currentPartners = []) {
+                const modalHistoryDisplay = peopleModal.querySelector('#modal-history-display');
+                const personHistory = fullHistory.filter(entry => 
+                    Object.values(entry).some(val => typeof val === 'object' && val !== null && val.id === person.id)
+                );
+                let historyHtml = `<h4>Histórico de ${person.nomePessoa}</h4>`;
+                if (personHistory.length === 0) {
+                    historyHtml += '<p>Nenhum histórico encontrado.</p>';
+                } else {
+                    historyHtml += '<ul>';
+                    personHistory.slice(0, 15).forEach(entry => {
+                        const allPartnersInEntry = [entry.Pessoa1, entry.Pessoa2, entry.Pessoa3].filter(p => p && p.id !== person.id);
+                        const partnerIdsInEntry = allPartnersInEntry.map(p => p.id);
+                        const hasWorkedWithCurrentPartner = currentPartners.length > 0 && partnerIdsInEntry.some(id => currentPartners.includes(id));
+                        const highlightClass = hasWorkedWithCurrentPartner ? 'highlight-partner' : '';
+                        const partnerNames = allPartnersInEntry.map(p => p.nome).join(', ') || 'ninguém';
+                        historyHtml += `<li class="${highlightClass}"><strong>${entry.data}</strong> com ${partnerNames} no local: ${entry.local || 'N/A'}</li>`;
+                    });
+                    historyHtml += '</ul>';
+                }
+                modalHistoryDisplay.innerHTML = `<div class="modal-history-content">${historyHtml}</div><div class="modal-actions"><button class="select-person-btn">Selecionar</button><button class="remove-person-btn">Remover</button></div>`;
+                modalHistoryDisplay.querySelector('.select-person-btn').addEventListener('click', () => selectPersonInModal(person));
+                modalHistoryDisplay.querySelector('.remove-person-btn').addEventListener('click', removePersonInModal);
+            }
+    
+            function selectPersonInModal(person) { 
+                if (activePersonInput) { 
+                    activePersonInput.value = person.nomePessoa; 
+                    activePersonInput.dataset.personId = person.id; 
+                } 
+                closePeopleModal(); 
+            }
+    
+            function removePersonInModal() { 
+                if (activePersonInput) { 
+                    activePersonInput.value = ''; 
+                    activePersonInput.dataset.personId = ''; 
+                } 
+                closePeopleModal(); 
+            }
+            
+            async function handleSaveLocation() { 
+                const newLocationInput = locationsModal.querySelector('#new-location-input');
+                const locationFeedback = locationsModal.querySelector('#location-feedback');
+                const saveLocationBtn = locationsModal.querySelector('#save-location-btn');
+                const newLocationName = newLocationInput.value.trim();
+                if (!newLocationName) {
+                    locationFeedback.textContent = 'O nome do local não pode estar vazio.';
+                    locationFeedback.style.color = 'red';
+                    return;
+                }
+                if (locations.some(loc => loc.toLowerCase() === newLocationName.toLowerCase())) {
+                    locationFeedback.textContent = 'Este local já existe.';
+                    locationFeedback.style.color = 'red';
+                    return;
+                }
+                saveLocationBtn.disabled = true;
+                locationFeedback.textContent = 'A gravar...';
+                try {
+                    await db.collection('locais').add({ nome: newLocationName });
+                    locations.push(newLocationName);
+                    locations.sort((a,b) => a.localeCompare(b));
+                    updateLocationsDatalist();
+                    locationFeedback.textContent = 'Local gravado com sucesso!';
+                    locationFeedback.style.color = 'green';
+                    newLocationInput.value = '';
+                } catch (error) {
+                    console.error("Erro ao gravar novo local:", error);
+                    locationFeedback.textContent = 'Erro ao gravar. Tente novamente.';
+                    locationFeedback.style.color = 'red';
+                } finally {
+                    saveLocationBtn.disabled = false;
+                }
+            }
+            
+            async function handleLoadOldSchedule() {
+                const year = parseInt(loadScheduleModal.querySelector('#load-year-select').value, 10);
+                const monthSelectEl = loadScheduleModal.querySelector('#load-month-select');
+                const month = monthSelectEl.options[monthSelectEl.selectedIndex].text;
+                loader.style.display = 'block';
+                scheduleContainer.innerHTML = '';
+                closeLoadScheduleModal();
+                try {
+                    const snapshot = await db.collection('historicoPregacao').where('ano', '==', year).where('mes', '==', month).get();
+                    if (snapshot.empty) {
+                        scheduleContainer.innerHTML = `<p>Nenhuma escala encontrada para ${month} de ${year}.</p>`;
+                        return;
+                    }
+                    loadedDocIds.clear();
+                    const scheduleMap = new Map();
+                    snapshot.forEach(doc => {
+                        loadedDocIds.add(doc.id);
+                        const data = doc.data();
+                        const { data: dateString, grupo, local, ...peopleData } = data;
+                        if (!scheduleMap.has(dateString)) scheduleMap.set(dateString, { displayDate: dateString, groups: [] });
+                        const daySchedule = scheduleMap.get(dateString);
+                        let groupData = daySchedule.groups[grupo - 1];
+                        if (!groupData) {
+                            daySchedule.groups[grupo - 1] = { people: [], location: local, docId: doc.id };
+                            groupData = daySchedule.groups[grupo - 1];
+                        }
+                        groupData.docId = doc.id;
+                        groupData.location = local;
+                        for (let i = 1; i <= 3; i++) {
+                            if (peopleData[`Pessoa${i}`]) groupData.people.push({ id: peopleData[`Pessoa${i}`].id, nomePessoa: peopleData[`Pessoa${i}`].nome });
+                        }
+                    });
+                    const finalSchedule = Array.from(scheduleMap.values());
+                    finalSchedule.forEach(day => day.groups = day.groups.filter(g => g));
+                    finalSchedule.sort((a, b) => new Date(a.displayDate.split(', ')[1].replace(/ de /g, ' ')).getTime() - new Date(b.displayDate.split(', ')[1].replace(/ de /g, ' ')).getTime());
+                    renderSchedule(finalSchedule);
+                    saveBtn.style.display = 'none';
+                    updateBtn.style.display = 'inline-flex';
+                } catch (error) {
+                    console.error("Erro ao carregar escala antiga:", error);
+                    scheduleContainer.innerHTML = `<p style="color:red;">Ocorreu um erro.</p>`;
+                } finally {
+                    loader.style.display = 'none';
+                }
+            }
+    
+            function handleGenerateClick() {
+                loader.style.display = 'block';
+                saveBtn.style.display = 'none';
+                updateBtn.style.display = 'none';
+                loadedDocIds.clear();
+                loader.querySelector('p').textContent = 'A avaliar publicadores e a planear a escala...';
+    
+                setTimeout(() => {
+                    try {
+                        // --- CHAMADA À FUNÇÃO DE DATA ATUALIZADA ---
+                        const allTargetDates = getSchedulingDates(
+                            parseInt(yearSelect.value, 10), 
+                            parseInt(monthSelect.value, 10), 
+                            parseInt(daySelect.value, 10)
+                        );
+                        
+                        if (allTargetDates.length === 0) {
+                            throw new Error("Nenhum dia correspondente encontrado no período da escala.");
+                        }
+                        const unlockedTargetDates = allTargetDates.filter(date => !lockedDates.has(date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })));
+                        if (unlockedTargetDates.length === 0) {
+                            throw new Error("Todos os dias aplicáveis estão bloqueados. Desbloqueie pelo menos um para gerar a escala.");
+                        }
+                        
+                        const totalPeople = allEligiblePeople.length;
+                        const totalGroupsToForm = Math.floor(totalPeople / 2);
+                        const numAvailableDays = unlockedTargetDates.length;
+                        
+                        let daysToUse = unlockedTargetDates;
+                        if (totalGroupsToForm > 1) { 
+                            const maxDaysPossible = Math.floor(totalGroupsToForm / 2);
+                            const effectiveDaysCount = Math.min(numAvailableDays, maxDaysPossible);
+                            if (effectiveDaysCount > 0) {
+                                daysToUse = unlockedTargetDates.slice(0, effectiveDaysCount);
+                            } else {
+                                daysToUse = (totalGroupsToForm > 0) ? unlockedTargetDates.slice(0, 1) : [];
+                            }
+                        }
+    
+                        const baseGroupsPerDay = daysToUse.length > 0 ? Math.floor(totalGroupsToForm / daysToUse.length) : 0;
+                        let extraGroups = daysToUse.length > 0 ? totalGroupsToForm % daysToUse.length : 0;
+    
+                        const dailyGroupPlan = daysToUse.map(date => {
+                            let groupsForThisDay = baseGroupsPerDay;
+                            if (extraGroups > 0) {
+                                groupsForThisDay++;
+                                extraGroups--;
+                            }
+                            return { date: date, groupCount: groupsForThisDay };
+                        });
+                        
+                        const generatedSchedule = generateDefinitiveSchedule(allEligiblePeople, dailyGroupPlan);
+                        
+                        const finalSchedule = allTargetDates.map(date => {
+                            const dateString = date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+                            if (lockedDates.has(dateString)) {
+                                return { date: date, groups: [] };
+                            }
+                            const generatedDay = generatedSchedule.find(d => d.date?.getTime() === date.getTime());
+                            // Se o dia não foi usado para grupos, retorna uma estrutura vazia para ele aparecer na lista
+                            return generatedDay || { date: date, groups: [] };
+                        });
+    
+                        renderSchedule(finalSchedule.filter(Boolean));
+                        saveBtn.style.display = 'inline-flex';
+    
+                    } catch (error) {
+                        console.error("Erro na Geração da Escala:", error);
+                        scheduleContainer.innerHTML = `<p class="error" style="color: red; text-align: center;"><b>Ocorreu um erro:</b> ${error.message}</p>`;
+                    } finally {
+                        loader.style.display = 'none';
+                    }
+                }, 50);
+            }
+            
+            function renderSchedule(schedule) {
+                scheduleContainer.innerHTML = '';
+                schedule.forEach(daySchedule => {
+                    const displayDate = daySchedule.date ? daySchedule.date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : daySchedule.displayDate;
+                    const isLocked = lockedDates.has(displayDate);
+                    const dateSection = document.createElement('div');
+                    dateSection.className = 'date-section';
+    
+                    let groupsHTML = '';
+                    if (daySchedule.groups && daySchedule.groups.length > 0) {
+                        daySchedule.groups.forEach((group, index) => {
+                            let peopleInputs = '';
+                            for (let i = 0; i < 3; i++) {
+                                const person = group.people[i];
+                                peopleInputs += `<input type="text" class="person-input" value="${person?.nomePessoa || ''}" data-person-id="${person?.id || ''}" placeholder="Pessoa ${i + 1}" readonly>`;
+                            }
+                            groupsHTML += `
+                                <div class="group-card" data-group-index="${index}" data-doc-id="${group.docId || ''}">
+                                    <div class="group-card-header">
+                                        <h4>Grupo ${index + 1}</h4>
+                                        <div class="group-card-controls">
+                                            <span class="partnership-count" title="Vezes que este grupo exato esteve junto">0</span>
+                                            <button class="remove-group-btn" title="Remover Grupo">×</button>
+                                        </div>
+                                    </div>
+                                    ${peopleInputs}
+                                    <input list="locations-datalist" class="location-input" placeholder="Atribuir local..." value="${group.location || ''}">
+                                </div>`;
+                        });
+                    }
+                    
+                    dateSection.innerHTML = `
+                        <div class="date-header-container">
+                            <h3 class="date-header">${displayDate}</h3>
+                            <button class="lock-btn ${isLocked ? 'locked' : ''}" data-date-string="${displayDate}">
+                                <i class="fas ${isLocked ? 'fa-lock' : 'fa-lock-open'}"></i>
+                            </button>
+                        </div>
+                        <div class="group-container">${groupsHTML}</div>`;
+                    scheduleContainer.appendChild(dateSection);
+                });
+                updateLocationsDatalist();
+                updatePartnershipCounts();
+            }
+    
+            function updatePartnershipCounts() {
+                if (fullHistory.length === 0) {
+                     document.querySelectorAll('.partnership-count').forEach(el => el.textContent = '0');
+                     return;
+                }
+                document.querySelectorAll('.group-card').forEach(card => {
+                    const personInputs = card.querySelectorAll('.person-input');
+                    const groupPersonIds = new Set(Array.from(personInputs).map(input => input.dataset.personId).filter(id => id));
+                    let count = 0;
+                    if (groupPersonIds.size >= 2) {
+                        count = fullHistory.filter(entry => {
+                            const historyPersonIds = new Set();
+                            if (entry.Pessoa1?.id) historyPersonIds.add(entry.Pessoa1.id);
+                            if (entry.Pessoa2?.id) historyPersonIds.add(entry.Pessoa2.id);
+                            if (entry.Pessoa3?.id) historyPersonIds.add(entry.Pessoa3.id);
+                            return historyPersonIds.size === groupPersonIds.size && 
+                                   [...groupPersonIds].every(id => historyPersonIds.has(id));
+                        }).length;
+                    }
+                    const countElement = card.querySelector('.partnership-count');
+                    if (countElement) countElement.textContent = count;
+                });
+            }
+    
+            async function handleSaveClick() { 
+                loader.style.display = 'block';
+                loader.querySelector('p').textContent = 'A salvar...';
+                const batch = db.batch();
+                const anoParaSalvar = parseInt(yearSelect.value, 10);
+                const mesParaSalvar = monthSelect.options[monthSelect.selectedIndex].text;
+                document.querySelectorAll('.group-card').forEach(card => {
+                    const dateString = card.closest('.date-section').querySelector('.date-header').textContent;
+                    const locationInput = card.querySelector('.location-input');
+                    const personInputs = card.querySelectorAll('.person-input');
+                    const assignment = { data: dateString, local: locationInput.value || '', timestamp: firebase.firestore.FieldValue.serverTimestamp(), ano: anoParaSalvar, mes: mesParaSalvar, diadasemana: dateString.split(',')[0], grupo: parseInt(card.dataset.groupIndex) + 1, };
+                    let personCount = 0;
+                    personInputs.forEach((input, index) => {
+                        if (input.value) {
+                            assignment[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
+                            personCount++;
+                        }
+                    });
+                    if (personCount > 0) batch.set(db.collection('historicoPregacao').doc(), assignment);
+                });
+                try {
+                    await batch.commit();
+                    alert('Escala salva com sucesso!');
+                    scheduleContainer.innerHTML = '<p>A escala foi salva. Pode gerar uma nova ou carregar uma antiga.</p>';
+                    saveBtn.style.display = 'none';
+                    lockedDates.clear();
+                    await fetchInitialData();
+                } catch (error) {
+                    console.error("Erro ao salvar escala:", error);
+                    alert('Falha ao salvar a escala.');
+                } finally {
+                    loader.style.display = 'none';
+                }
+            }
+    
+            async function handleUpdateClick() {
+                loader.style.display = 'block';
+                loader.querySelector('p').textContent = 'A guardar alterações...';
+                const batch = db.batch();
+                const visibleDocIds = new Set();
+                document.querySelectorAll('.group-card').forEach(card => {
+                    const docId = card.dataset.docId;
+                    if (!docId) return;
+                    visibleDocIds.add(docId);
+                    const locationInput = card.querySelector('.location-input');
+                    const personInputs = card.querySelectorAll('.person-input');
+                    const updateData = { local: locationInput.value || '', Pessoa1: firebase.firestore.FieldValue.delete(), Pessoa2: firebase.firestore.FieldValue.delete(), Pessoa3: firebase.firestore.FieldValue.delete() };
+                    personInputs.forEach((input, index) => {
+                        if (input.value) updateData[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
+                    });
+                    batch.update(db.collection('historicoPregacao').doc(docId), updateData);
+                });
+                loadedDocIds.forEach(docId => {
+                    if (!visibleDocIds.has(docId)) batch.delete(db.collection('historicoPregacao').doc(docId));
+                });
+                try {
+                    await batch.commit();
+                    alert('Edições guardadas com sucesso!');
+                    scheduleContainer.innerHTML = '<p>As suas alterações foram guardadas.</p>';
+                    updateBtn.style.display = 'none';
+                    loadedDocIds.clear();
+                } catch (error) {
+                    console.error("Erro ao guardar edições:", error);
+                    alert('Falha ao guardar as edições.');
+                } finally {
+                    loader.style.display = 'none';
+                }
+            }
+            
+            function populateMonthSelect(selectElement, setSelected = true) {
+                const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                const currentMonth = new Date().getMonth();
+                selectElement.innerHTML = '';
+                months.forEach((month, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = month;
+                    if (setSelected && index === currentMonth) option.selected = true;
+                    selectElement.appendChild(option);
+                });
+            }
+    
+            function populateYearSelect(selectElement) {
+                const currentYear = new Date().getFullYear();
+                selectElement.innerHTML = '';
+                for (let i = currentYear - 2; i <= currentYear + 2; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = i;
+                    if (i === currentYear) option.selected = true;
+                    selectElement.appendChild(option);
+                }
+            }
+    
+            function updateLocationsDatalist() {
+                if (document.getElementById('locations-datalist')) {
+                    document.getElementById('locations-datalist').remove();
+                }
+                const datalist = document.createElement('datalist');
+                datalist.id = 'locations-datalist';
+                datalist.innerHTML = locations.map(loc => `<option value="${loc}"></option>`).join('');
+                document.body.appendChild(datalist);
+            }
+    
+            function toggleLockState(buttonElement) {
+                const dateString = buttonElement.dataset.dateString;
+                const icon = buttonElement.querySelector('i');
+                if (lockedDates.has(dateString)) {
+                    lockedDates.delete(dateString);
+                    buttonElement.classList.remove('locked');
+                    icon.classList.remove('fa-lock');
+                    icon.classList.add('fa-lock-open');
+                } else {
+                    lockedDates.add(dateString);
+                    buttonElement.classList.add('locked');
+                    icon.classList.remove('fa-lock-open');
+                    icon.classList.add('fa-lock');
+                }
+            }
+    
+            function partitionPeople(people) {
+                const familyUnits = [], coupleUnits = [], singleMen = [], singleWomen = [];
+                const processedIds = new Set();
+                const peopleMap = new Map(people.map(p => [p.nomePessoa, p]));
+                for (const person of people) {
+                    if (processedIds.has(person.id)) continue;
+                    if (person.familia && Array.isArray(person.familia) && person.familia.length > 0) {
+                        const familyUnit = [person];
+                        processedIds.add(person.id);
+                        for (const memberName of person.familia) {
+                            const member = peopleMap.get(memberName);
+                            if (member && !processedIds.has(member.id)) {
+                                familyUnit.push(member);
+                                processedIds.add(member.id);
+                            }
+                        }
+                        familyUnits.push(familyUnit);
+                    }
+                }
+                for (const person of people) {
+                    if (processedIds.has(person.id)) continue;
+                    if (person.casadoCom) {
+                        const spouse = peopleMap.get(person.casadoCom);
+                        if (spouse && !processedIds.has(spouse.id)) {
+                            coupleUnits.push([person, spouse]);
+                            processedIds.add(person.id);
+                            processedIds.add(spouse.id);
+                        }
+                    }
+                }
+                for (const person of people) {
+                    if (!processedIds.has(person.id)) {
+                        (person.genero === 'Masculino' ? singleMen : singleWomen).push(person);
+                    }
+                }
+                return { familyUnits, coupleUnits, singleMen, singleWomen };
+            }
+            
+            function generateDefinitiveSchedule(people, dailyGroupPlan) {
+                // Baralhar a lista de pessoas para garantir aleatoriedade
+                const shuffle = arr => arr.sort(() => 0.5 - Math.random());
+                shuffle(people);
+    
+                // 1. Particionar as pessoas
+                const pools = partitionPeople(people);
+                
+                // 2. Preparar os dias para receber as pessoas
+                const dailyAssignments = dailyGroupPlan.map(plan => ({
+                    date: plan.date,
+                    // O alvo de pessoas para o dia. Ex: 3 grupos -> 6 pessoas
+                    targetPersonCount: plan.groupCount * 2, 
+                    people: [],
+                    groups: []
+                })).filter(day => day.targetPersonCount > 0); // Só consideramos dias que terão grupos
+    
+                // Função auxiliar para encontrar o melhor dia para alocar uma unidade
+                // "Melhor" = o dia que tem espaço e está mais vazio (proporcionalmente)
+                const findBestDayForUnit = (unitSize) => {
+                    let bestDay = null;
+                    let lowestFillRatio = Infinity;
+    
+                    // Ordena os dias para dar preferência aos mais vazios
+                    const sortedDays = dailyAssignments.sort((a, b) => (a.people.length / a.targetPersonCount) - (b.people.length / b.targetPersonCount));
+    
+                    for (const day of sortedDays) {
+                        if (day.people.length + unitSize <= day.targetPersonCount + 1) { // Permite alguma flexibilidade
+                           return day;
+                        }
+                    }
+                    // Se nenhum dia tiver espaço ideal, retorna o primeiro dia (o mais vazio) como recurso final
+                    return sortedDays.length > 0 ? sortedDays[0] : null;
+                };
+    
+                // 3. FASE 1: Distribuir Unidades de Agendamento pelos Dias
+    
+                // a. Distribuir famílias primeiro (são as unidades maiores)
+                shuffle(pools.familyUnits).forEach(family => {
+                    const day = findBestDayForUnit(family.length);
+                    if (day) {
+                        day.people.push(...family);
+                        // Famílias são um grupo coeso por si só
+                        day.groups.push({ people: family, location: '' });
+                    }
+                });
+    
+                // b. Distribuir casais. Esta é a regra principal.
+                shuffle(pools.coupleUnits).forEach(couple => {
+                    const day = findBestDayForUnit(2); // Um casal ocupa 2 lugares
+                    if (day) {
+                        day.people.push(...couple); // Ambos são adicionados ao mesmo dia
+                    }
+                });
+    
+                // c. Distribuir todos os solteiros restantes
+                const allSingles = [...pools.singleMen, ...pools.singleWomen];
+                shuffle(allSingles).forEach(person => {
+                    const day = findBestDayForUnit(1);
+                    if (day) {
+                        day.people.push(person);
+                    }
+                });
+    
+                // 4. FASE 2: Formar Grupos Dentro de Cada Dia
+    
+                dailyAssignments.forEach(day => {
+                    // Pega apenas as pessoas que não estão numa família (que já formam um grupo)
+                    const peopleToGroup = day.people.filter(p => 
+                        !day.groups.some(g => g.people.some(gp => gp.id === p.id))
+                    );
+    
+                    const men = peopleToGroup.filter(p => p.genero === 'Masculino');
+                    const women = peopleToGroup.filter(p => p.genero === 'Feminino');
+    
+                    // Formar grupos de homens
+                    while (men.length >= 2) {
+                        day.groups.push({ people: [men.pop(), men.pop()], location: '' });
+                    }
+                    // Formar grupos de mulheres
+                    while (women.length >= 2) {
+                        day.groups.push({ people: [women.pop(), women.pop()], location: '' });
+                    }
+    
+                    // Lidar com sobras (formar trios)
+                    if (men.length > 0) {
+                        const man = men.pop();
+                        // Tenta adicionar a um grupo de 2 homens
+                        let targetGroup = day.groups.find(g => g.people.length === 2 && g.people.every(p => p.genero === 'Masculino'));
+                        if (targetGroup) targetGroup.people.push(man);
+                        // else { day.groups.push({ people: [man], location: '' }); } // Evitar grupos de 1 se possível
+                    }
+                     if (women.length > 0) {
+                        const woman = women.pop();
+                        // Tenta adicionar a um grupo de 2 mulheres
+                        let targetGroup = day.groups.find(g => g.people.length === 2 && g.people.every(p => p.genero === 'Feminino'));
+                        if (targetGroup) targetGroup.people.push(woman);
+                        // else { day.groups.push({ people: [woman], location: '' }); }
+                    }
+                });
+    
+                // 5. Formatar a saída para o renderizador
+                const finalSchedule = dailyGroupPlan.map(plan => {
+                    const assignedDay = dailyAssignments.find(d => d.date === plan.date);
+                    return {
+                        date: plan.date,
+                        groups: assignedDay ? assignedDay.groups : []
+                    };
+                });
+    
+                return finalSchedule;
+            }
+            
+            initialize();
+        });
+    </script>
+</body>
+</html>
