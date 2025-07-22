@@ -567,6 +567,93 @@
     </style>
 </head>
 <body>
+    <!-- =================================================================== -->
+<!-- ============= INÍCIO: POPUP DE PERFIL DO PARTICIPANTE ============= -->
+<!-- =================================================================== -->
+<div id="perfilPopup" class="popup-overlay">
+    <div class="popup-content" style="max-width: 90%; width: 1200px;">
+        <div class="popup-header">
+            <h2 class="popup-title">Perfil do Participante</h2>
+            <button class="popup-close-button" id="closePerfilPopup">×</button>
+        </div>
+        <div class="popup-body">
+
+            <!-- Caixa de Pesquisa -->
+            <div class="form-group" style="position: relative;">
+                <label for="pesquisaPessoa">Pesquisar Participante:</label>
+                <input type="text" id="pesquisaPessoa" class="form-control" placeholder="Comece a digitar um nome..." autocomplete="off">
+                <div id="pesquisaSugestoes" class="search-suggestions">
+                    <!-- Sugestões de nomes aparecerão aqui -->
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div id="perfilFiltrosContainer" class="estatisticas-filtros-container" style="display: none;">
+                <div class="form-group">
+                    <label for="perfilFiltroAno">Ano:</label>
+                    <select id="perfilFiltroAno"></select>
+                </div>
+                <div class="form-group">
+                    <label for="perfilFiltroMes">Mês:</label>
+                    <select id="perfilFiltroMes">
+                        <option value="">Todos</option>
+                        <option value="1">Janeiro</option>
+                        <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Maio</option>
+                        <option value="6">Junho</option>
+                        <option value="7">Julho</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="perfilFiltroDesignacao">Designação:</label>
+                    <select id="perfilFiltroDesignacao"></select>
+                </div>
+                <div class="form-group">
+                    <label for="perfilFiltroPapel">Meu Papel:</label>
+                    <select id="perfilFiltroPapel">
+                        <option value="">Todos</option>
+                        <option value="dirigente">Dirigente</option>
+                        <option value="morador">Morador</option>
+                        <option value="ajudante">Ajudante</option>
+                        <option value="participante">Participante</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tabela de Histórico -->
+            <div id="perfilLoading" style="text-align: center; padding: 40px; font-size: 18px; display: none;">
+                <i class="fas fa-spinner fa-spin"></i> A carregar histórico...
+            </div>
+            <div id="perfilTableContainer" style="overflow-x: auto; max-height: 55vh; display: none;">
+                <table class="estatisticas-table">
+                    <thead>
+                        <tr>
+                            <th>Ano</th>
+                            <th>Data</th>
+                            <th>Designação</th>
+                            <th>Companheiro(s)</th>
+                            <th>Meu Papel</th>
+                        </tr>
+                    </thead>
+                    <tbody id="perfilTableBody">
+                        <!-- Linhas do histórico serão inseridas aqui -->
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+<!-- =================================================================== -->
+<!-- ================ FIM: POPUP DE PERFIL DO PARTICIPANTE =============== -->
+<!-- =================================================================== -->
     <!-- Statistics Popup Overlay -->
     <div id="estatisticasPopup" class="popup-overlay">
         <div class="popup-content" style="max-width: 90%; width: 1200px;">
@@ -633,6 +720,41 @@
 
     <main class="content">
         <style>
+
+            /* =================================================================== */
+/* ============= CSS PARA SUGESTÕES DE PESQUISA DE PERFIL ============ */
+/* =================================================================== */
+.search-suggestions {
+    display: none; /* Escondido por padrão */
+    position: absolute;
+    border: 1px solid #ddd;
+    border-top: none;
+    background-color: white;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 2000; /* Deve ficar sobre os outros elementos */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.suggestion-item {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.suggestion-item:hover {
+    background-color: #f1f1f1;
+}
+
+/* Garante que o input do formulário tenha a classe para aplicar estilos */
+#pesquisaPessoa {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
             .week-info {
                 margin-bottom: 20px;
                 padding: 15px;
@@ -776,14 +898,13 @@
                         <button id="estatisticasButton" class="turbo-button" type="button" title="Estatísticas" style="color: #3498db;">
                             <i class="fas fa-chart-bar"></i>
                         </button>
-                        <button id="pesquisarButton" class="turbo-button" title="Pesquisar (Futuro)" style="color: #f39c12;">
+                        <button id="pesquisarButton" class="turbo-button" type="button" title="Pesquisar (Futuro)" style="color: #f39c12;">
                             <i class="fas fa-search"></i>
                         </button>
-                        <button id="perfilButton" class="turbo-button" title="Perfil do Participante (Futuro)" style="color: #9b59b6;">
+                        <button id="perfilButton" class="turbo-button" type="button" title="Perfil do Participante (Futuro)" style="color: #9b59b6;">
                             <i class="fas fa-user"></i>
                         </button>
                     </div>
-                </div>
 
                 <div id="leituraBibliaSection" class="designacoes-section">
                     <h4>Leitura da Bíblia - Participantes</h4>
@@ -844,6 +965,10 @@
             const currentMonth = new Date().getMonth() + 1;
             document.getElementById('mes').value = currentMonth;
 
+
+
+
+            
             // --- INÍCIO: LÓGICA DO POPUP DE ESTATÍSTICAS (VERSÃO COM FILTROS) ---
 
             const estatisticasButton = document.getElementById('estatisticasButton');
@@ -1036,6 +1161,298 @@
             
             // --- FIM: LÓGICA DO POPUP DE ESTATÍSTICAS (VERSÃO COM FILTROS) ---
 
+
+// ======================================================================== //
+// ============ INÍCIO: LÓGICA DO POPUP DE PERFIL DE PARTICIPANTE ========== //
+// ======================================================================== //
+
+// --- Elementos da DOM ---
+const perfilButton = document.getElementById('perfilButton');
+const perfilPopup = document.getElementById('perfilPopup');
+const closePerfilPopup = document.getElementById('closePerfilPopup');
+const pesquisaInput = document.getElementById('pesquisaPessoa');
+const sugestoesDiv = document.getElementById('pesquisaSugestoes');
+const perfilFiltros = document.getElementById('perfilFiltrosContainer');
+const perfilLoading = document.getElementById('perfilLoading');
+const perfilTableContainer = document.getElementById('perfilTableContainer');
+const perfilTableBody = document.getElementById('perfilTableBody');
+
+// --- Filtros ---
+const perfilFiltroAno = document.getElementById('perfilFiltroAno'); // NOME CORRIGIDO
+const perfilFiltroMes = document.getElementById('perfilFiltroMes'); // NOME CORRIGIDO
+const perfilFiltroDesignacao = document.getElementById('perfilFiltroDesignacao');
+const perfilFiltroPapel = document.getElementById('perfilFiltroPapel');
+
+// --- Armazenamento de dados em cache para performance ---
+let allPeople = [];
+let allDesignationsMap = new Map();
+let allPessoasMap = new Map();
+let currentPersonParticipationRecords = []; // Armazena os registros processados da pessoa selecionada
+
+// --- Função para abrir a popup de perfil ---
+perfilButton.addEventListener('click', () => {
+    perfilPopup.style.display = 'flex';
+    if (allPeople.length === 0) { // Carrega os dados apenas na primeira vez que abre
+        initializeProfileData();
+    }
+});
+
+// --- Função para fechar a popup de perfil ---
+closePerfilPopup.addEventListener('click', () => {
+    perfilPopup.style.display = 'none';
+});
+
+// --- Inicializa os dados necessários (pessoas e designações) ---
+const initializeProfileData = async () => {
+    try {
+        const [pessoasSnapshot, designacoesSnapshot] = await Promise.all([
+            db.collection('pessoas').orderBy('nomePessoa').get(),
+            db.collection('designacoes').get()
+        ]);
+
+        // Mapeia pessoas para a pesquisa e para consulta de nomes
+        pessoasSnapshot.forEach(doc => {
+            allPeople.push({ id: doc.id, nome: doc.data().nomePessoa });
+            allPessoasMap.set(doc.id, doc.data().nomePessoa);
+        });
+
+    // Apenas mapeia os nomes das designações para uso futuro, NÃO popula o filtro
+designacoesSnapshot.forEach(doc => {
+    allDesignationsMap.set(doc.id, doc.data().nome);
+});
+
+
+
+
+    } catch (error) {
+        console.error("Erro ao inicializar dados do perfil:", error);
+        alert("Não foi possível carregar os dados necessários. Tente novamente.");
+    }
+};
+
+// --- Lógica da caixa de pesquisa com sugestões ---
+pesquisaInput.addEventListener('input', () => {
+    const query = pesquisaInput.value.toLowerCase();
+    sugestoesDiv.innerHTML = '';
+
+    if (query.length === 0) {
+        sugestoesDiv.style.display = 'none';
+        return;
+    }
+
+    const filteredPeople = allPeople.filter(p => p.nome.toLowerCase().includes(query));
+
+    filteredPeople.forEach(person => {
+        const item = document.createElement('div');
+        item.className = 'suggestion-item';
+        item.textContent = person.nome;
+        item.addEventListener('click', () => {
+            pesquisaInput.value = person.nome;
+            sugestoesDiv.style.display = 'none';
+            // Inicia a busca no histórico para a pessoa selecionada
+            loadParticipantProfile(person.id);
+        });
+        sugestoesDiv.appendChild(item);
+    });
+
+    sugestoesDiv.style.display = filteredPeople.length > 0 ? 'block' : 'none';
+});
+
+// --- Função principal para carregar o histórico de um participante ---
+const loadParticipantProfile = async (personId) => {
+    perfilLoading.style.display = 'block';
+    perfilTableContainer.style.display = 'none';
+    perfilFiltros.style.display = 'none';
+    perfilTableBody.innerHTML = '';
+    currentPersonParticipationRecords = []; // Limpa registros anteriores
+
+    try {
+        const historicoSnapshot = await db.collection('historico').get();
+        let records = [];
+        let years = new Set();
+        let designacoesDaPessoa = new Set();
+
+        historicoSnapshot.forEach(doc => {
+            const historico = doc.data();
+            years.add(historico.ano); // Coleta todos os anos para o filtro
+
+            if (historico.designacoes && Array.isArray(historico.designacoes)) {
+                historico.designacoes.forEach(designacaoHist => {
+                    const participantes = designacaoHist.participantes;
+                    let meuPapel = '';
+                    let todosOsIDs = [];
+
+                    // Lógica para encontrar o papel da pessoa e os IDs dos parceiros
+                    if (participantes && typeof participantes === 'object') {
+                        todosOsIDs = Object.values(participantes);
+                        for (const [papel, id] of Object.entries(participantes)) {
+                            if (id === personId) {
+                                meuPapel = papel;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Se a pessoa foi encontrada nesta designação, processa o registro
+                    if (meuPapel) {
+    // 1. Defina a variável designacaoNome PRIMEIRO.
+    const designacaoNome = allDesignationsMap.get(designacaoHist.designacaoId) || 'Designação Desconhecida';
+
+    // 2. Adicione-a ao Set para popular o filtro mais tarde.
+    designacoesDaPessoa.add(designacaoNome);
+
+    // 3. Calcule os nomes dos companheiros.
+    const companheirosIDs = todosOsIDs.filter(id => id !== personId);
+    const companheirosNomes = companheirosIDs.map(id => allPessoasMap.get(id) || 'N/A').join(', ');
+    
+    // 4. Crie e adicione o registo completo ao array.
+    records.push({
+        ano: historico.ano,
+        dia: historico.dia,
+        designacaoNome: designacaoNome, // Agora usa a variável que já existe
+        companheiros: companheirosNomes,
+        meuPapel: meuPapel.charAt(0).toUpperCase() + meuPapel.slice(1)
+    });
+}
+                });
+            }
+        });
+
+        // Ordena os registros pela data, do mais antigo para o mais recente
+        records.sort((a, b) => new Date(a.dia) - new Date(b.dia));
+        currentPersonParticipationRecords = records;
+
+        // Popula o filtro de anos
+        perfilFiltroAno.innerHTML = '<option value="">Todos</option>'; // NOME CORRIGIDO
+Array.from(years).sort((a, b) => b - a).forEach(year => {
+
+
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year;
+    perfilFiltroAno.appendChild(option); // NOME CORRIGIDO
+});
+
+
+perfilFiltroDesignacao.innerHTML = '<option value="">Todas</option>';
+const sortedDesignations = Array.from(designacoesDaPessoa).sort();
+sortedDesignations.forEach(nome => {
+    const option = document.createElement('option');
+    option.value = nome;
+    option.textContent = nome;
+    perfilFiltroDesignacao.appendChild(option);
+});
+
+
+
+        // Exibe os filtros e a tabela
+        perfilLoading.style.display = 'none';
+        perfilFiltros.style.display = 'flex';
+        perfilTableContainer.style.display = 'block';
+        renderProfileTable(); // Renderiza a tabela com os dados processados
+
+    } catch (error) {
+        console.error("Erro ao carregar perfil do participante:", error);
+        perfilLoading.innerHTML = 'Ocorreu um erro ao carregar o histórico.';
+    }
+};
+
+// --- Função para renderizar/filtrar a tabela ---
+const renderProfileTable = () => {
+    // Log 1: Confirma que a função foi chamada
+    console.log("--- renderProfileTable chamada ---");
+
+    perfilTableBody.innerHTML = '';
+
+    const ano = perfilFiltroAno.value;
+    const mes = perfilFiltroMes.value;
+    const designacao = perfilFiltroDesignacao.value;
+    const papel = perfilFiltroPapel.value;
+
+    // Log 2: Mostra os valores dos filtros que estão a ser usados
+    console.log("Filtros Atuais:", { ano, mes, designacao, papel });
+
+    const filteredRecords = currentPersonParticipationRecords.filter(rec => {
+        const recDate = new Date(rec.dia);
+        const recMonth = recDate.getMonth() + 1;
+        let keepRecord = true; // Começamos por assumir que o registo deve ser mantido
+
+        if (ano && rec.ano.toString() !== ano) {
+            keepRecord = false;
+        }
+        if (mes && recMonth.toString() !== mes) {
+            keepRecord = false;
+        }
+        if (papel && rec.meuPapel.toLowerCase() !== papel) {
+            keepRecord = false;
+        }
+
+        // --- Lógica de Depuração para a Designação ---
+        if (designacao) { // Apenas se um filtro de designação estiver ativo
+            const recordDesignacao = rec.designacaoNome;
+            const filtroDesignacao = designacao;
+            
+            // Log 3: Compara os valores exatos para cada linha da tabela
+            console.log(`Comparando: [${recordDesignacao}] com filtro [${filtroDesignacao}] | Iguais? ${recordDesignacao === filtroDesignacao}`);
+            
+            if (recordDesignacao !== filtroDesignacao) {
+                keepRecord = false;
+            }
+        }
+        // --- Fim da Lógica de Depuração ---
+        
+        return keepRecord;
+    });
+    
+    // Log 4: Mostra quantos registos passaram no filtro
+    console.log(`Número de registos após o filtro: ${filteredRecords.length}`);
+
+    if (filteredRecords.length === 0) {
+        perfilTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nenhum registro encontrado para os filtros selecionados.</td></tr>';
+        return;
+    }
+    
+    filteredRecords.forEach(rec => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${rec.ano}</td>
+            <td>${formatDateForDisplay(rec.dia)}</td>
+            <td>${rec.designacaoNome}</td>
+            <td>${rec.companheiros || 'Nenhum'}</td>
+            <td>${rec.meuPapel}</td>
+        `;
+        perfilTableBody.appendChild(tr);
+    });
+};
+
+// --- Adiciona listeners para os filtros ---
+[perfilFiltroAno, perfilFiltroMes, perfilFiltroDesignacao, perfilFiltroPapel].forEach(filtro => {
+    filtro.addEventListener('change', renderProfileTable);
+});
+
+
+// --- Helper para formatar a data ---
+const formatDateForDisplay = (dateString) => {
+    if (!dateString) return 'Data Inválida';
+    const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const [ano, mes, dia] = dateString.split('-');
+    return `${parseInt(dia)} ${meses[parseInt(mes) - 1]} ${ano}`;
+};
+
+
+// Fecha as sugestões se clicar fora da caixa
+document.addEventListener('click', function(event) {
+    if (!pesquisaInput.contains(event.target) && !sugestoesDiv.contains(event.target)) {
+        sugestoesDiv.style.display = 'none';
+    }
+});
+
+// ======================================================================== //
+// ============== FIM: LÓGICA DO POPUP DE PERFIL DE PARTICIPANTE ========== //
+// ======================================================================== //
+
+
+            
             // Load nacionalidades from Firebase
             const loadNacionalidades = async () => {
                 const nacionalidadesRef = db.collection('nacionalidades');
