@@ -1653,9 +1653,10 @@
 
             // "Criar Fluxo Semanal" button event (já existente - manter)
             document.getElementById('createFluxoSemanal').addEventListener('click', async function() {
-                const titleElement = document.querySelector('.popup-title');
-                const thinkingIcon = titleElement.querySelector('.thinking');
-                const successIcon = titleElement.querySelector('.success');
+                const confirmationPopup = document.getElementById('confirmationPopup');
+const titleElement = confirmationPopup.querySelector('.popup-title');
+const thinkingIcon = titleElement.querySelector('.thinking');
+const successIcon = titleElement.querySelector('.success');
 
                 // Show thinking icon
                 thinkingIcon.style.display = 'inline-block';
@@ -2272,3 +2273,4 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
     </script>
 </body>
 </html>
+
