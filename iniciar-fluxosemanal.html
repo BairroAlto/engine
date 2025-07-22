@@ -567,6 +567,60 @@
     </style>
 </head>
 <body>
+    <!-- Statistics Popup Overlay -->
+    <div id="estatisticasPopup" class="popup-overlay">
+        <div class="popup-content" style="max-width: 90%; width: 1200px;">
+            <div class="popup-header">
+                <h2 class="popup-title">Estatísticas de Participação</h2>
+                <button class="popup-close-button" id="closeEstatisticasPopup">×</button>
+            </div>
+            <div class="popup-body">
+                
+                <!-- NOVO: Contêiner dos Filtros -->
+                <div id="estatisticasFiltros" class="estatisticas-filtros-container">
+                    <div class="form-group">
+                        <label for="filtroAno">Ano:</label>
+                        <select id="filtroAno" name="filtroAno"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filtroMes">Mês:</label>
+                        <select id="filtroMes" name="filtroMes">
+                            <option value="">Todos os Meses</option>
+                            <option value="1">Janeiro</option>
+                            <option value="2">Fevereiro</option>
+                            <option value="3">Março</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Maio</option>
+                            <option value="6">Junho</option>
+                            <option value="7">Julho</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filtroGenero">Género:</label>
+                        <select id="filtroGenero" name="filtroGenero">
+                            <option value="">Todos os Géneros</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="estatisticasLoading" style="text-align: center; padding: 40px; font-size: 18px;">
+                    <i class="fas fa-spinner fa-spin"></i> A carregar estatísticas...
+                </div>
+                <div id="estatisticasTableContainer" style="overflow-x: auto; max-height: 65vh;">
+                    <!-- A tabela de estatísticas será gerada aqui pelo JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <div class="sidebar">
         <div class="logo">
             <h2>Sistema de Escala</h2>
@@ -593,6 +647,70 @@
                 text-align: center;
                 line-height: 1.5em;
             }
+                    /* Styles for Statistics Table */
+        #estatisticasTableContainer {
+            display: none; /* Começa escondido */
+        }
+
+        .estatisticas-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .estatisticas-table th,
+        .estatisticas-table td {
+            border: 1px solid #ddd;
+            padding: 10px 12px;
+            text-align: left;
+        }
+
+        .estatisticas-table thead th {
+            background-color: #34495e;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .estatisticas-table thead th:first-child {
+            min-width: 200px;
+        }
+
+        .estatisticas-table tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .estatisticas-table tbody tr:hover {
+            background-color: #e9ecef;
+        }
+        
+        .estatisticas-table td:not(:first-child) {
+            text-align: center;
+        }
+
+        .estatisticas-filtros-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            align-items: flex-end;
+        }
+
+        .estatisticas-filtros-container .form-group {
+            margin-bottom: 0;
+        }
+
+        .estatisticas-filtros-container select {
+            width: 180px; /* Largura fixa para os selects */
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
         </style>
 
         <div class="card">
@@ -655,7 +773,7 @@
                         <button id="turboButton" class="turbo-button" type="button" title="Preencher Participantes Automaticamente" style="color: #2ecc71;">
                             <i class="fas fa-rocket"></i>
                         </button>
-                        <button id="estatisticasButton" class="turbo-button" title="Estatísticas (Futuro)" style="color: #3498db;">
+                        <button id="estatisticasButton" class="turbo-button" type="button" title="Estatísticas" style="color: #3498db;">
                             <i class="fas fa-chart-bar"></i>
                         </button>
                         <button id="pesquisarButton" class="turbo-button" title="Pesquisar (Futuro)" style="color: #f39c12;">
@@ -726,6 +844,197 @@
             const currentMonth = new Date().getMonth() + 1;
             document.getElementById('mes').value = currentMonth;
 
+            // --- INÍCIO: LÓGICA DO POPUP DE ESTATÍSTICAS (VERSÃO COM FILTROS) ---
+
+            const estatisticasButton = document.getElementById('estatisticasButton');
+            const estatisticasPopup = document.getElementById('estatisticasPopup');
+            const closeEstatisticasPopup = document.getElementById('closeEstatisticasPopup');
+            const loadingDiv = document.getElementById('estatisticasLoading');
+            const tableContainer = document.getElementById('estatisticasTableContainer');
+
+            // Dropdowns de filtro
+            const filtroAno = document.getElementById('filtroAno');
+            const filtroMes = document.getElementById('filtroMes');
+            const filtroGenero = document.getElementById('filtroGenero');
+
+            let areYearsPopulated = false; // Flag para popular os anos apenas uma vez
+
+            // Evento para abrir o popup
+            estatisticasButton.addEventListener('click', async () => {
+                estatisticasPopup.style.display = 'flex';
+                loadingDiv.style.display = 'block';
+                tableContainer.style.display = 'none';
+                tableContainer.innerHTML = '';
+
+                // Popula o dropdown de anos se ainda não foi feito
+                if (!areYearsPopulated) {
+                    await populateYearFilter();
+                }
+
+                // Gera a tabela com os filtros padrão (tudo)
+                await generateStatisticsTable();
+            });
+
+            // Evento para fechar o popup
+            closeEstatisticasPopup.addEventListener('click', () => {
+                estatisticasPopup.style.display = 'none';
+            });
+            
+            // Eventos para os filtros mudarem
+            [filtroAno, filtroMes, filtroGenero].forEach(filtro => {
+                filtro.addEventListener('change', () => {
+                    loadingDiv.style.display = 'block';
+                    tableContainer.style.display = 'none';
+                    generateStatisticsTable(); // Regera a tabela com os novos valores dos filtros
+                });
+            });
+
+            // Função para popular o dropdown de anos dinamicamente
+            const populateYearFilter = async () => {
+                try {
+                    const historicoSnapshot = await db.collection('historico').get();
+                    const years = new Set();
+                    historicoSnapshot.forEach(doc => {
+                        if (doc.data().ano) {
+                            years.add(doc.data().ano);
+                        }
+                    });
+
+                    const sortedYears = Array.from(years).sort((a, b) => b - a);
+                    
+                    filtroAno.innerHTML = '<option value="">Todos os Anos</option>'; // Limpa e adiciona a opção padrão
+                    sortedYears.forEach(year => {
+                        const option = document.createElement('option');
+                        option.value = year;
+                        option.textContent = year;
+                        filtroAno.appendChild(option);
+                    });
+                    
+                    areYearsPopulated = true;
+                } catch (error) {
+                    console.error("Erro ao popular filtro de anos:", error);
+                }
+            };
+            
+            /**
+             * Calcula o intervalo de datas para a consulta baseado na regra de "semanas de segunda-feira".
+             * @param {number} year - O ano selecionado.
+             * @param {number} month - O mês selecionado (1-12).
+             * @returns {{startDate: string, endDate: string}} - As datas de início e fim no formato YYYY-MM-DD.
+             */
+            const getMondayBasedDateRange = (year, month) => {
+                // Encontrar a primeira segunda-feira do mês selecionado
+                let startDate = new Date(year, month - 1, 1);
+                while (startDate.getDay() !== 1) { // 1 = Segunda-feira
+                    startDate.setDate(startDate.getDate() + 1);
+                }
+
+                // Encontrar a primeira segunda-feira do mês seguinte
+                let endDate = new Date(year, month, 1); // JS trata o mês 12 corretamente (vai para o ano seguinte)
+                while (endDate.getDay() !== 1) {
+                    endDate.setDate(endDate.getDate() + 1);
+                }
+
+                const formatDate = (date) => date.toISOString().split('T')[0];
+
+                return {
+                    startDate: formatDate(startDate),
+                    endDate: formatDate(endDate)
+                };
+            };
+
+
+            // Função principal refatorada para usar os filtros
+            const generateStatisticsTable = async () => {
+                const anoSelecionado = filtroAno.value ? parseInt(filtroAno.value) : null;
+                const mesSelecionado = filtroMes.value ? parseInt(filtroMes.value) : null;
+                const generoSelecionado = filtroGenero.value;
+
+                try {
+                    // 1. Construir a consulta ao histórico com base nos filtros de data
+                    let historicoQuery = db.collection('historico');
+                    if (anoSelecionado && mesSelecionado) {
+                        const { startDate, endDate } = getMondayBasedDateRange(anoSelecionado, mesSelecionado);
+                        historicoQuery = historicoQuery.where('dia', '>=', startDate).where('dia', '<', endDate);
+                    } else if (anoSelecionado) {
+                        historicoQuery = historicoQuery.where('ano', '==', anoSelecionado);
+                    }
+                    
+                    // 2. Buscar os dados necessários em paralelo
+                    const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
+                        db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get(),
+                        db.collection('designacoes').where('quando', '==', 'Semana').get(),
+                        historicoQuery.get() // Usa a query construída
+                    ]);
+                    
+                    // 3. Processar designações e pessoas
+                    const designationsMap = new Map();
+                    const designationsInOrder = [];
+                    designacoesSnapshot.forEach(doc => {
+                        designationsMap.set(doc.id, doc.data().nome);
+                        designationsInOrder.push({ id: doc.id, name: doc.data().nome });
+                    });
+                    designationsInOrder.sort((a, b) => a.name.localeCompare(b.name));
+
+                    // Mapear pessoas, aplicando o filtro de gênero
+                    const peopleMap = new Map();
+                    pessoasSnapshot.forEach(doc => {
+                        const pessoa = doc.data();
+                        // Se um gênero foi selecionado, só adiciona pessoas daquele gênero
+                        if (!generoSelecionado || pessoa.genero === generoSelecionado) {
+                            const personCounts = new Map();
+                            designationsInOrder.forEach(desig => personCounts.set(desig.id, 0));
+                            peopleMap.set(doc.id, { name: pessoa.nomePessoa, counts: personCounts });
+                        }
+                    });
+
+                    // 4. Iterar sobre o histórico (já filtrado) para preencher as contagens
+                    historicoSnapshot.forEach(doc => {
+                        const historico = doc.data();
+                        if (historico.designacoes && Array.isArray(historico.designacoes)) {
+                            historico.designacoes.forEach(histDesig => {
+                                if (histDesig.participantes && Array.isArray(histDesig.participantes)) {
+                                    histDesig.participantes.forEach(participanteId => {
+                                        if (peopleMap.has(participanteId) && peopleMap.get(participanteId).counts.has(histDesig.designacaoId)) {
+                                            const personData = peopleMap.get(participanteId);
+                                            const currentCount = personData.counts.get(histDesig.designacaoId);
+                                            personData.counts.set(histDesig.designacaoId, currentCount + 1);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+
+                    // 5. Construir a tabela HTML com os dados processados
+                    let tableHTML = '<table class="estatisticas-table"><thead><tr><th>Participante</th>';
+                    designationsInOrder.forEach(desig => { tableHTML += `<th>${desig.name}</th>`; });
+                    tableHTML += '</tr></thead><tbody>';
+
+                    const sortedPeople = [...peopleMap.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name));
+
+                    for (const [personId, personData] of sortedPeople) {
+                        tableHTML += `<tr><td>${personData.name}</td>`;
+                        designationsInOrder.forEach(desig => {
+                            tableHTML += `<td>${personData.counts.get(desig.id)}</td>`;
+                        });
+                        tableHTML += '</tr>';
+                    }
+                    tableHTML += '</tbody></table>';
+
+                    // 6. Exibir a tabela
+                    loadingDiv.style.display = 'none';
+                    tableContainer.innerHTML = tableHTML;
+                    tableContainer.style.display = 'block';
+
+                } catch (error) {
+                    console.error("Erro ao gerar estatísticas:", error);
+                    loadingDiv.innerHTML = "Ocorreu um erro ao carregar as estatísticas.";
+                    tableContainer.style.display = 'none';
+                }
+            };
+            
+            // --- FIM: LÓGICA DO POPUP DE ESTATÍSTICAS (VERSÃO COM FILTROS) ---
 
             // Load nacionalidades from Firebase
             const loadNacionalidades = async () => {
@@ -1011,14 +1320,37 @@
                 historicoSnapshot.forEach(doc => {
                     const historicoData = doc.data();
                     historicoData.designacoes.forEach(designacaoHistorico => {
-                        designacaoHistorico.participantes.forEach(participanteId => {
-                            if (eligiblePeopleIds.includes(participanteId)) {
-                                designationCounts[participanteId].total++;
-                                if (designacaoHistorico.designacaoId === getDesignationIdByName(designationName)) { // Comparar designacaoId
-                                    designationCounts[participanteId].specific++;
-                                }
-                            }
-                        });
+                        if (designacaoHistorico.participantes) {
+    let listaDeParticipantes = [];
+
+    // Verifica se o formato é o novo (Objeto) ou o antigo (Array)
+    if (Array.isArray(designacaoHistorico.participantes)) {
+        // Formato antigo: é um array, pode usar diretamente
+        listaDeParticipantes = designacaoHistorico.participantes;
+    } else if (typeof designacaoHistorico.participantes === 'object') {
+        // Formato novo: é um objeto, extrai apenas os valores (os IDs)
+        listaDeParticipantes = Object.values(designacaoHistorico.participantes);
+    }
+
+    // Agora, itera sobre a lista de IDs, que sempre será um array
+    listaDeParticipantes.forEach(participanteId => {
+        if (eligiblePeopleIds.includes(participanteId)) {
+            // Verifica se a chave existe antes de incrementar
+            if (!designationCounts[participanteId]) {
+                designationCounts[participanteId] = { total: 0, specific: 0 };
+            }
+            designationCounts[participanteId].total++;
+            
+            // Compara o ID da designação
+            const designacaoIdNoHistorico = designacaoHistorico.designacaoId || designacaoHistorico.designacao;
+            if (designacaoIdNoHistorico === getDesignationIdByName(designationName)) {
+                designationCounts[participanteId].specific++;
+            }
+        }
+    });
+}
+                        
+
                     });
                 });
 
@@ -1060,9 +1392,14 @@
 
             // --- Função autoFillDesignations - MODIFICADA para regra de unicidade (já existente - MODIFICADA) ---
             const autoFillDesignations = async () => {
-                const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
-                const ano = await getAnoPainelFirebase(); // Obter o ano para filtrar o histórico
+                // NOVO: Inicia um Set para rastrear pessoas já designadas NESTA semana.
+                // Um Set é usado por ser muito eficiente para verificar se um item já existe.
+                const assignedPeopleThisWeek = new Set();
 
+                const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
+                const ano = await getAnoPainelFirebase();
+
+                // O loop externo percorre cada tipo de designação (Leitura, Discurso, etc.)
                 for (const designationContainer of activeDesignationContainers) {
                     const designacaoId = designationContainer.dataset.designacaoId;
                     const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
@@ -1071,42 +1408,54 @@
 
                     const instances = designationContainer.querySelectorAll('.designacao-instance-container');
 
+                    // O loop do meio percorre as instâncias (caso uma designação ocorra mais de uma vez)
                     for (let instanceIndex = 0; instanceIndex < instances.length; instanceIndex++) {
                         const instanceContainer = instances[instanceIndex];
                         const participantSelects = instanceContainer.querySelectorAll('.form-select');
-                        const assignedPeopleInInstance = new Set(); // Manter pessoas já assignadas nesta instância
 
+
+
+
+
+
+
+
+
+
+
+
+
+                        
+                        // O loop interno percorre cada vaga de participante (Dirigente, Morador, etc.)
                         for (const select of participantSelects) {
                             let eligiblePeopleIds = getEligiblePeopleForDropdown(select);
-                            // Filtrar pessoas já assignadas nesta instância
-                            eligiblePeopleIds = eligiblePeopleIds.filter(personId => !assignedPeopleInInstance.has(personId));
+                            
+                            // MODIFICADO: Antes de fazer qualquer outra coisa, filtramos a lista de pessoas elegíveis,
+                            // removendo qualquer um que já tenha sido designado nesta execução do "foguetão".
+                            eligiblePeopleIds = eligiblePeopleIds.filter(personId => !assignedPeopleThisWeek.has(personId));
 
                             if (eligiblePeopleIds.length > 0) {
-                                const rankedPeopleIds = await rankPeopleByDesignationCount(eligiblePeopleIds, designationName, ano); // Passa o ano agora
-                                let bestPersonId = null;
-
-                                // Escolher a melhor pessoa que ainda não foi assignada nesta instância
-                                for (const personId of rankedPeopleIds) {
-                                    if (!assignedPeopleInInstance.has(personId)) {
-                                        bestPersonId = personId;
-                                        break; // Pega a primeira pessoa disponível e sai do loop
-                                    }
-                                }
+                                // A função de ranking agora só vai trabalhar com pessoas que ainda não foram designadas esta semana.
+                                const rankedPeopleIds = await rankPeopleByDesignationCount(eligiblePeopleIds, designationName, ano);
+                                
+                                // O primeiro da lista ranqueada é a melhor escolha, pois a lista já está pré-filtrada.
+                                const bestPersonId = rankedPeopleIds[0];
 
                                 if (bestPersonId) {
                                     select.value = bestPersonId;
-                                    assignedPeopleInInstance.add(bestPersonId); // Adiciona à lista de assignados
+                                    
+                                    // NOVO: Adiciona a pessoa selecionada ao nosso tracker da semana para que não seja escolhida novamente.
+                                    assignedPeopleThisWeek.add(bestPersonId);
                                 } else {
-                                    console.warn(`autoFillDesignations - Nenhuma pessoa ranqueada e única disponível para designação: ${designationName}, dropdown.`);
+                                    console.warn(`autoFillDesignations - Nenhuma pessoa ranqueada e ÚNICA disponível para a designação: ${designationName}.`);
                                 }
                             } else {
-                                console.warn(`autoFillDesignations - Nenhuma pessoa elegível no dropdown para designação: ${designationName}, dropdown.`);
+                                console.warn(`autoFillDesignations - Nenhuma pessoa elegível e ÚNICA no dropdown para a designação: ${designationName}.`);
                             }
                         }
                     }
-                };
+                }
             };
-
 
             // --- Modificar Evento do Botão Turbo (já existente - manter) - REMOVENDO POPUP ---
             document.getElementById('turboButton').addEventListener('click', async function() {
@@ -1365,20 +1714,35 @@
                             const instanceContainer = instances[instanceIndex];
                             const participantSelects = instanceContainer.querySelectorAll('.form-select');
 
-                            const participantes = [];
-                            for (const select of participantSelects) {
-                                if (select.value) {
-                                    participantes.push(select.value);
-                                }
-                            }
+                       
+                            
+                            const participantesPorFuncao = {};
+const numParticipantes = participantSelects.length;
 
-                            if (participantes.length > 0) {
-                                historicoData.designacoes.push({
-                                    designacaoId: designacaoId,
-                                    instanceIndex: instanceIndex,
-                                    participantes: participantes
-                                });
-                            }
+if (numParticipantes === 1 && participantSelects[0].value) {
+    // Caso com apenas 1 participante
+    participantesPorFuncao.participante = participantSelects[0].value;
+} else if (numParticipantes === 2) {
+    // Caso com 2 participantes: Dirigente e Morador
+    if (participantSelects[0].value) participantesPorFuncao.dirigente = participantSelects[0].value;
+    if (participantSelects[1].value) participantesPorFuncao.morador = participantSelects[1].value;
+} else if (numParticipantes >= 3) {
+    // Caso com 3 ou mais participantes: Dirigente, Morador e Ajudante
+    if (participantSelects[0].value) participantesPorFuncao.dirigente = participantSelects[0].value;
+    if (participantSelects[1].value) participantesPorFuncao.morador = participantSelects[1].value;
+    if (participantSelects[2].value) participantesPorFuncao.ajudante = participantSelects[2].value;
+}
+
+// Adiciona ao histórico apenas se pelo menos um participante foi selecionado
+if (Object.keys(participantesPorFuncao).length > 0) {
+    historicoData.designacoes.push({
+        designacaoId: designacaoId,
+        instanceIndex: instanceIndex,
+        participantes: participantesPorFuncao // Agora é um objeto
+    });
+}
+
+
                         }
                     }
 
