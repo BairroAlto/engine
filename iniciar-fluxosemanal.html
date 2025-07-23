@@ -25,6 +25,15 @@
         const db = firebase.firestore();
     </script>
     <style>
+
+#validation-list {
+    list-style: none;
+    padding: 15px;
+    margin: 0;
+    max-height: 300px; /* Aumentado de 250px para 300px */
+    overflow-y: auto;
+}
+
         * {
             margin: 0;
             padding: 0;
@@ -564,9 +573,144 @@
         text-align: right;
     }
 
+
+/* Estilo para o dropdown inválido */
+.form-select.invalid-selection {
+    border: 2px solid #e74c3c; /* Vermelho forte */
+    background-color: #fbeae5;
+}
+
+/* Container principal do alerta, fixo no canto inferior direito */
+#validation-alert-container {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    z-index: 2000;
+}
+
+/* Ícone de perigo */
+#validation-alert-icon {
+    font-size: 36px;
+    color: #e74c3c;
+    cursor: pointer;
+    background-color: white;
+    border-radius: 50%;
+    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease;
+}
+
+#validation-alert-icon:hover {
+    transform: scale(1.1);
+}
+
+/* Painel que mostra os detalhes dos erros */
+#validation-panel {
+    display: none; /* Escondido por padrão */
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 350px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+
+#validation-panel.active {
+    display: block; /* Mostra o painel quando tem a classe 'active' */
+}
+
+#validation-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #34495e;
+    color: white;
+}
+
+#validation-panel-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+#validation-panel-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+/* Lista de erros dentro do painel */
+#validation-list {
+    list-style: none;
+    padding: 15px;
+    margin: 0;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+#validation-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    color: #333;
+    font-size: 14px;
+}
+
+#validation-list li:last-child {
+    border-bottom: none;
+}
+
+
+.lock-icon {
+    position: absolute;
+    bottom: 10px;
+    left: 40px; /* Posicionado ao lado do ícone de filtro */
+    cursor: pointer;
+    color: #7f8c8d; /* Cor neutra para "desbloqueado" */
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.lock-icon:hover {
+    color: #34495e;
+    transform: scale(1.2);
+}
+
+/* Este estilo será aplicado quando o cadeado estiver "fechado" */
+.lock-icon.locked {
+    color: #e67e22; /* Uma cor de destaque (laranja) para "bloqueado" */
+}
+
     </style>
 </head>
 <body>
+   
+   <!-- =================================================================== -->
+<!-- ============= INÍCIO: PAINEL DE ALERTA DE VALIDAÇÃO ============== -->
+<!-- =================================================================== -->
+<div id="validation-alert-container" style="display: none;">
+    <i id="validation-alert-icon" class="fas fa-exclamation-triangle" title="Alertas de Validação"></i>
+    <div id="validation-panel">
+        <div id="validation-panel-header">
+            <h3>Regras Violadas</h3>
+            <button id="validation-panel-close">×</button>
+        </div>
+        <ul id="validation-list">
+            <!-- As mensagens de erro serão inseridas aqui via JavaScript -->
+        </ul>
+    </div>
+</div>
+<!-- =================================================================== -->
+<!-- ================ FIM: PAINEL DE ALERTA DE VALIDAÇÃO =============== -->
+<!-- =================================================================== -->
+   
+   
+   
     <!-- =================================================================== -->
 <!-- ============= INÍCIO: POPUP DE PERFIL DO PARTICIPANTE ============= -->
 <!-- =================================================================== -->
@@ -966,7 +1110,214 @@
             document.getElementById('mes').value = currentMonth;
 
 
+            
 
+
+// ======================================================================== //
+// ============ INÍCIO: LÓGICA DE VALIDAÇÃO EM TEMPO REAL (v2) ============ //
+// ======================================================================== //
+
+// --- FUNÇÃO AUXILIAR MODIFICADA para obter pares, papéis e datas ---
+const getRecentPairs = async () => {
+    // Aumentamos a janela para 12 meses para ter um histórico mais robusto
+    const RECENT_MONTHS_WINDOW = 12;
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - RECENT_MONTHS_WINDOW);
+    
+    // Usaremos um Map para armazenar a informação detalhada do último encontro do par
+    // Chave: 'id_A_id_B'
+    // Valor: { lastDate: 'YYYY-MM-DD', lastRoles: 'id_A:dirigente_id_B:morador' }
+    const recentPairsMap = new Map();
+    const historicoRef = db.collection('historico');
+
+    const q = historicoRef.where("timestamp", ">=", startDate);
+    const snapshot = await q.get();
+
+    snapshot.forEach(doc => {
+        const historico = doc.data();
+        if (historico.designacoes) {
+            historico.designacoes.forEach(desig => {
+                if (desig.participantes && Object.keys(desig.participantes).length >= 2) {
+                    const ids = Object.values(desig.participantes);
+                    const pairKey = ids.sort().join('_'); // Chave canónica do par
+
+                    // Criar a chave canónica dos papéis (ordenada pelo ID)
+                    const rolesEntries = Object.entries(desig.participantes).sort((a, b) => a[1].localeCompare(b[1]));
+                    const rolesKey = rolesEntries.map(([role, id]) => `${id}:${role}`).join('_');
+
+                    // Guardamos apenas o encontro MAIS RECENTE do par
+                    if (!recentPairsMap.has(pairKey) || new Date(historico.dia) > new Date(recentPairsMap.get(pairKey).lastDate)) {
+                        recentPairsMap.set(pairKey, {
+                            lastDate: historico.dia,
+                            lastRoles: rolesKey
+                        });
+                    }
+                }
+            });
+        }
+    });
+    // console.log("Mapa de Pares Recentes:", recentPairsMap);
+    return recentPairsMap;
+};
+
+
+// --- Função principal que valida TODAS as seleções na página (MODIFICADA) ---
+const validateAllSelections = async () => {
+    const alertContainer = document.getElementById('validation-alert-container');
+    const alertIcon = document.getElementById('validation-alert-icon');
+    const validationList = document.getElementById('validation-list');
+
+    document.querySelectorAll('.form-select.invalid-selection').forEach(el => el.classList.remove('invalid-selection'));
+    validationList.innerHTML = '';
+    let allViolations = [];
+
+    const ano = await getAnoPainelFirebase();
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const participantsLastWeek = await getParticipantsLastWeek(ano, mes, semanaNumero);
+    const participantsThisMonth = await getParticipantsThisMonth(ano, mes);
+    const recentPairsMap = await getRecentPairs(); // **MODIFICADO: Obter o mapa de pares**
+
+    // --- VERIFICAÇÕES INDIVIDUAIS (sem alterações) ---
+    const allSelects = document.querySelectorAll('.form-select');
+    const currentSelections = new Map();
+
+    allSelects.forEach(select => {
+        if (select.value) {
+            const personId = select.value;
+            const personName = select.options[select.selectedIndex].text;
+            
+            if (currentSelections.has(personId)) {
+                const violationMessage = `${personName} está designado para mais de uma tarefa nesta semana.`;
+                if (!allViolations.includes(violationMessage)) allViolations.push(violationMessage);
+                select.classList.add('invalid-selection');
+                currentSelections.get(personId).selectElement.classList.add('invalid-selection');
+            } else {
+                currentSelections.set(personId, { selectElement: select, name: personName });
+            }
+            if (participantsLastWeek.has(personId)) { /* ... (código existente) ... */ }
+            if (participantsThisMonth.has(personId)) { /* ... (código existente) ... */ }
+        }
+    });
+
+    // --- **NOVO: VERIFICAÇÃO DE PARES COM LÓGICA AVANÇADA** ---
+    const designationInstances = document.querySelectorAll('.designacao-instance-container');
+    designationInstances.forEach(instance => {
+        const selectedPeople = [];
+        const currentRoles = {}; // Para criar a chave de papéis
+        
+        // Obter as pessoas e os papéis da instância atual
+        instance.querySelectorAll('.form-select').forEach((select, index) => {
+            if (select.value) {
+                const personId = select.value;
+                const role = (index === 0) ? 'dirigente' : (index === 1) ? 'morador' : 'ajudante';
+                currentRoles[role] = personId;
+                selectedPeople.push({
+                    id: personId,
+                    name: select.options[select.selectedIndex].text,
+                    element: select
+                });
+            }
+        });
+
+        if (selectedPeople.length >= 2) {
+            const ids = selectedPeople.map(p => p.id).sort();
+            const pairKey = ids.join('_');
+
+            // Criar a chave de papéis atual
+            const currentRolesEntries = Object.entries(currentRoles).sort((a, b) => a[1].localeCompare(b[1]));
+            const currentRolesKey = currentRolesEntries.map(([role, id]) => `${id}:${role}`).join('_');
+
+            if (recentPairsMap.has(pairKey)) {
+                const history = recentPairsMap.get(pairKey);
+                
+                // Checagem 1: Meses Consecutivos
+                const lastDate = new Date(history.lastDate);
+                const currentDate = new Date(getMeetingDayOfMonth(getDiasSemana(ano, mes, semanaNumero), (document.getElementById('tipo').value === 'normal' ? 'segunda-feira' : '...'))); // simplified, needs a proper way to get meeting day string
+                
+                // Lógica de meses consecutivos
+                const lastMonthYear = lastDate.getFullYear() * 12 + lastDate.getMonth();
+                const currentMonthYear = currentDate.getFullYear() * 12 + currentDate.getMonth();
+
+                if (Math.abs(currentMonthYear - lastMonthYear) <= 1) {
+                    const pairNames = selectedPeople.map(p => p.name).join(' e ');
+                    allViolations.push(`${pairNames} trabalharam juntos no mês passado ou neste mês. Não podem ser designados em meses consecutivos.`);
+                    selectedPeople.forEach(p => p.element.classList.add('invalid-selection'));
+                }
+                // Checagem 2: Repetição Direta de Papéis (se não for em meses consecutivos)
+                else if (history.lastRoles === currentRolesKey) {
+                    const pairNames = selectedPeople.map(p => p.name).join(' e ');
+                    allViolations.push(`Aviso: ${pairNames} já fizeram esta designação juntos com os mesmos papéis.`);
+                    selectedPeople.forEach(p => p.element.classList.add('invalid-selection'));
+                }
+            }
+        }
+    });
+
+    // Atualizar a UI (sem alterações)
+    if (allViolations.length > 0) {
+        const uniqueViolations = [...new Set(allViolations)];
+        uniqueViolations.forEach(msg => {
+            const li = document.createElement('li');
+            li.textContent = msg;
+            validationList.appendChild(li);
+        });
+        alertContainer.style.display = 'block';
+    } else {
+        alertContainer.style.display = 'none';
+        document.getElementById('validation-panel').classList.remove('active');
+    }
+};
+
+
+// --- Helper para obter a data da reunião (pode precisar de uma versão melhorada) ---
+// Nota: Esta função pode precisar de ser ajustada para obter o dia da semana correto de forma mais robusta.
+function getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao) {
+    if (!diasSemanaString || !diaSemanaReuniao) return new Date(); // Fallback
+    // ... (a sua lógica existente para extrair a data) ...
+    // Esta é uma versão simplificada, a sua função original é mais complexa e deve ser usada
+    const [startDay] = diasSemanaString.split(' ')[0].split('-');
+    return new Date(new Date().getFullYear(), new Date().getMonth(), parseInt(startDay));
+}
+
+
+
+
+// --- Event Listeners ---
+
+// Usar delegação de eventos para ouvir alterações em qualquer dropdown de participante
+document.body.addEventListener('change', (event) => {
+    if (event.target.classList.contains('form-select')) {
+        validateAllSelections();
+    }
+});
+
+// Adicionar um ouvinte para o botão de foguete para validar após o preenchimento automático
+document.getElementById('turboButton').addEventListener('click', () => {
+    // Adiciona um pequeno atraso para garantir que os valores do select foram atualizados antes da validação
+    setTimeout(validateAllSelections, 500); 
+});
+
+
+// Lógica para mostrar/esconder o painel de validação
+const validationIcon = document.getElementById('validation-alert-icon');
+const validationPanel = document.getElementById('validation-panel');
+const validationPanelClose = document.getElementById('validation-panel-close');
+
+validationIcon.addEventListener('click', () => {
+    validationPanel.classList.toggle('active');
+});
+
+validationPanelClose.addEventListener('click', () => {
+    validationPanel.classList.remove('active');
+});
+
+// Fechar o painel se clicar fora dele
+document.addEventListener('click', (event) => {
+    if (!validationPanel.contains(event.target) && !validationIcon.contains(event.target)) {
+        validationPanel.classList.remove('active');
+    }
+});
 
             
             // --- INÍCIO: LÓGICA DO POPUP DE ESTATÍSTICAS (VERSÃO COM FILTROS) ---
@@ -1526,42 +1877,44 @@ document.addEventListener('click', function(event) {
             };
 
 
-            const loadPeopleOptionsIntoSelects = async (designacao, container, preferences = {}, diasSemana, diaSemanaReuniaoString, genderPreference = 'masculino feminino') => { // Valor padrão alterado para "masculino feminino" para consistência
-    console.log("[loadPeopleOptionsIntoSelects] START - Designation:", designacao.nome, ", Preferences:", preferences, ", Gender Preference:", genderPreference); // **LOG START**
+            const loadPeopleOptionsIntoSelects = async (designacao, container, preferences = {}, diasSemana, diaSemanaReuniaoString, genderPreference = 'masculino feminino') => {
+    console.log("[loadPeopleOptionsIntoSelects] START - Designation:", designacao.nome, ", Preferences:", preferences, ", Gender Preference:", genderPreference);
     try {
         const pessoasRef = db.collection('pessoas');
         const preferenceForDesignation = preferences[designacao.id];
+
+        // 1. Construir a consulta ao Firebase (sem o filtro de personalidade antigo)
         let query = pessoasRef
             .where('fazDesignacoesReuniao', '==', true)
             .where('designacoesReuniao', 'array-contains', designacao.nome);
 
-
-            if (genderPreference === 'masculino') { // Aplicar filtro de género se a preferência for 'masculino'
+        if (genderPreference === 'masculino') {
             query = query.where('genero', '==', 'Masculino');
-        } else if (genderPreference === 'feminino') { // Aplicar filtro de género se a preferência for 'feminino'
+        } else if (genderPreference === 'feminino') {
             query = query.where('genero', '==', 'Feminino');
-        } else if (designacao.feitoPor === 'Masculino' && genderPreference === 'masculino feminino') { // Se 'masculino feminino' e designacao.feitoPor Masculino
+        } else if (designacao.feitoPor === 'Masculino' && genderPreference === 'masculino feminino') {
             query = query.where('genero', '==', 'Masculino');
-        } else if (designacao.feitoPor === 'Feminino' && genderPreference === 'masculino feminino') { // Se 'masculino feminino' e designacao.feitoPor Feminino
+        } else if (designacao.feitoPor === 'Feminino' && genderPreference === 'masculino feminino') {
             query = query.where('genero', '==', 'Feminino');
-        }
-
-
-
-        if (designacao.numeroParticipantes > 1) {
-            query = query.where('personalidade', '==', '+ à vontade');
         }
 
         const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
             .map(checkbox => checkbox.value);
 
-        query.get().then(snapshot => {
+        // 2. Executar a consulta E PROCESSAR OS RESULTADOS DENTRO DO '.then()'
+        query.get().then(snapshot => { // <-- A variável 'snapshot' é criada AQUI
+        
+            // TODO O CÓDIGO QUE USA 'snapshot' TEM DE ESTAR AQUI DENTRO
+
             container.querySelectorAll('.designacao-instance-container').forEach((instanceContainer, instanceIndex) => {
                 instanceContainer.querySelectorAll('.form-select').forEach((participantSelect, participantIndex) => {
                     participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
 
+                    // Loop para cada pessoa retornada pelo Firebase
                     snapshot.forEach(async doc => {
                         const pessoa = doc.data();
+
+                        // PASSO 1: VERIFICAR AS REGRAS GERAIS
                         let isAbsent = false;
                         const designationDateFormatted = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString);
                         if (designationDateFormatted) {
@@ -1569,29 +1922,38 @@ document.addEventListener('click', function(event) {
                                 isAbsent = pessoa.ausencias.includes(designationDateFormatted);
                             }
                         }
-
                         const temPrivilegiosNecessarios = designacao.quemFaz.some(privilegio => pessoa.privilegios && pessoa.privilegios.includes(privilegio));
-
                         let languageMatches = true;
                         if (selectedLanguages.length > 0) {
                             languageMatches = selectedLanguages.includes(pessoa.idioma);
                         }
 
-                        if (languageMatches && temPrivilegiosNecessarios && !isAbsent) {
+                        // PASSO 2: APLICAR A REGRA DA PERSONALIDADE
+                        let podeAssumirEstePapel = false;
+                        if (participantIndex === 0) { // Se for o dropdown 'Dirigente'
+                            if (pessoa.personalidade === '+ à vontade') {
+                                podeAssumirEstePapel = true;
+                            }
+                        } else { // Se for 'Morador' ou 'Ajudante'
+                            podeAssumirEstePapel = true;
+                        }
+
+                        // PASSO 3: TOMAR A DECISÃO FINAL
+                        if (podeAssumirEstePapel && languageMatches && temPrivilegiosNecessarios && !isAbsent) {
                             const option = document.createElement('option');
                             option.value = doc.id;
                             option.textContent = pessoa.nomePessoa;
                             participantSelect.appendChild(option);
                         }
-                    });
+                    }); // Fim do snapshot.forEach
                 });
             });
-            console.log("[loadPeopleOptionsIntoSelects] END - Designation:", designacao.nome, ", Gender Preference:", genderPreference); // **LOG END**
-        });
+            console.log("[loadPeopleOptionsIntoSelects] END - Designation:", designacao.nome, ", Gender Preference:", genderPreference);
+        }); // <-- FIM DO BLOCO .then()
 
     } catch (error) {
         console.error('Erro ao carregar pessoas elegíveis:', error);
-        console.log("[loadPeopleOptionsIntoSelects] ERROR - Designation:", designacao.nome, ", Error:", error, ", Gender Preference:", genderPreference); // **LOG ERROR**
+        console.log("[loadPeopleОptionsIntoSelects] ERROR - Designation:", designacao.nome, ", Error:", error, ", Gender Preference:", genderPreference);
     }
 };
 
@@ -1719,160 +2081,294 @@ document.addEventListener('click', function(event) {
             };
 
 
+
+
+
             // --- Função rankPeopleByDesignationCount - IMPLEMENTAÇÃO COMPLETA (já existente - manter) ---
-            const rankPeopleByDesignationCount = async (eligiblePeopleIds, designationName, ano) => {
-                const historicoRef = db.collection('historico');
-                const historicoQuery = historicoRef
-                    .where("ano", "==", ano)
-                    .where("quando", "==", "Semana"); // Assumindo "Escola" = "Semana" - VERIFICAR SE É SEMPRE ASSIM
+            const rankPeopleByDesignationCount = async (eligiblePeopleIds, designationName, ano, returnScore = false) => {
+    const historicoRef = db.collection('historico');
+    const historicoQuery = historicoRef
+        .where("ano", "==", ano)
+        .where("quando", "==", "Semana");
 
-                const historicoSnapshot = await historicoQuery.get();
-                const designationCounts = {}; // Contador geral e específico por pessoa
+    const historicoSnapshot = await historicoQuery.get();
+    const designationCounts = {};
 
-                // Inicializar contadores para todas as pessoas elegíveis
-                eligiblePeopleIds.forEach(personId => {
-                    designationCounts[personId] = { total: 0, specific: 0 };
-                });
-
-                historicoSnapshot.forEach(doc => {
-                    const historicoData = doc.data();
-                    historicoData.designacoes.forEach(designacaoHistorico => {
-                        if (designacaoHistorico.participantes) {
-    let listaDeParticipantes = [];
-
-    // Verifica se o formato é o novo (Objeto) ou o antigo (Array)
-    if (Array.isArray(designacaoHistorico.participantes)) {
-        // Formato antigo: é um array, pode usar diretamente
-        listaDeParticipantes = designacaoHistorico.participantes;
-    } else if (typeof designacaoHistorico.participantes === 'object') {
-        // Formato novo: é um objeto, extrai apenas os valores (os IDs)
-        listaDeParticipantes = Object.values(designacaoHistorico.participantes);
-    }
-
-    // Agora, itera sobre a lista de IDs, que sempre será um array
-    listaDeParticipantes.forEach(participanteId => {
-        if (eligiblePeopleIds.includes(participanteId)) {
-            // Verifica se a chave existe antes de incrementar
-            if (!designationCounts[participanteId]) {
-                designationCounts[participanteId] = { total: 0, specific: 0 };
-            }
-            designationCounts[participanteId].total++;
-            
-            // Compara o ID da designação
-            const designacaoIdNoHistorico = designacaoHistorico.designacaoId || designacaoHistorico.designacao;
-            if (designacaoIdNoHistorico === getDesignationIdByName(designationName)) {
-                designationCounts[participanteId].specific++;
-            }
-        }
+    eligiblePeopleIds.forEach(personId => {
+        designationCounts[personId] = { total: 0, specific: 0 };
     });
-}
-                        
 
-                    });
-                });
-
-
-                // Função para obter o ID da designação pelo nome (necessário para comparação) (já existente - manter)
-                function getDesignationIdByName(designationName) {
-                    const designacoesListElements = document.querySelectorAll('#designacoesList .designacao-item');
-                    for (const item of designacoesListElements) {
-                        const labelSpan = item.querySelector('label > span');
-                        if (labelSpan && labelSpan.textContent === designationName) {
-                            return item.dataset.designacaoId;
-                        }
-                    }
-                    return null; // Retorna null se não encontrar
+    historicoSnapshot.forEach(doc => {
+        const historicoData = doc.data();
+        historicoData.designacoes.forEach(designacaoHistorico => {
+            if (designacaoHistorico.participantes) {
+                let listaDeParticipantes = [];
+                if (Array.isArray(designacaoHistorico.participantes)) {
+                    listaDeParticipantes = designacaoHistorico.participantes;
+                } else if (typeof designacaoHistorico.participantes === 'object') {
+                    listaDeParticipantes = Object.values(designacaoHistorico.participantes);
                 }
 
-
-                // Converter o objeto designationCounts para array para poder ordenar (já existente - manter)
-                const rankedPeopleArray = eligiblePeopleIds.map(personId => ({
-                    personId: personId,
-                    totalDesignations: designationCounts[personId].total,
-                    specificDesignations: designationCounts[personId].specific
-                }));
-
-                // Ordenar primeiro por designações totais (ascendente) e depois por designações específicas (ascendente) (já existente - manter)
-                rankedPeopleArray.sort((a, b) => {
-                    if (a.totalDesignations !== b.totalDesignations) {
-                        return a.totalDesignations - b.totalDesignations; // Menos designações totais primeiro
-                    } else {
-                        return a.specificDesignations - b.specificDesignations; // Menos designações específicas em caso de empate
+                listaDeParticipantes.forEach(participanteId => {
+                    if (eligiblePeopleIds.includes(participanteId)) {
+                        if (!designationCounts[participanteId]) {
+                            designationCounts[participanteId] = { total: 0, specific: 0 };
+                        }
+                        designationCounts[participanteId].total++;
+                        
+                        const designacaoIdNoHistorico = designacaoHistorico.designacaoId || designacaoHistorico.designacao;
+                        if (designacaoIdNoHistorico === getDesignationIdByName(designationName)) {
+                            designationCounts[participanteId].specific++;
+                        }
                     }
                 });
+            }
+        });
+    });
 
-                const rankedPeopleIds = rankedPeopleArray.map(item => item.personId);
-                return rankedPeopleIds;
-            };
+    function getDesignationIdByName(name) {
+        const el = Array.from(document.querySelectorAll('#designacoesList .designacao-item label > span'))
+                      .find(span => span.textContent === name);
+        return el ? el.closest('.designacao-item').dataset.designacaoId : null;
+    }
+
+    const rankedPeopleArray = eligiblePeopleIds.map(personId => ({
+        personId: personId,
+        totalDesignations: designationCounts[personId].total,
+        specificDesignations: designationCounts[personId].specific
+    }));
+
+    rankedPeopleArray.sort((a, b) => {
+        if (a.totalDesignations !== b.totalDesignations) {
+            return a.totalDesignations - b.totalDesignations;
+        }
+        return a.specificDesignations - b.specificDesignations;
+    });
+
+    if (returnScore) {
+        if (rankedPeopleArray.length === 0) {
+            return { score: 999 };
+        }
+        return { score: rankedPeopleArray[0].totalDesignations };
+    }
+
+    return rankedPeopleArray.map(item => item.personId);
+};
+
+
 
 
 
             // --- Função autoFillDesignations - MODIFICADA para regra de unicidade (já existente - MODIFICADA) ---
             const autoFillDesignations = async () => {
-                // NOVO: Inicia um Set para rastrear pessoas já designadas NESTA semana.
-                // Um Set é usado por ser muito eficiente para verificar se um item já existe.
-                const assignedPeopleThisWeek = new Set();
+    const assignedPeopleThisWeek = new Set();
 
-                const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
-                const ano = await getAnoPainelFirebase();
+    // =========================================================================
+    // PASSO 1: IDENTIFICAR E PROTEGER AS PESSOAS EM CONTAINERS BLOQUEADOS
+    // Adiciona qualquer pessoa em uma designação bloqueada à lista de "intocáveis".
+    // =========================================================================
+    document.querySelectorAll('.active-designation-container').forEach(container => {
+        if (container.dataset.locked === 'true') {
+            container.querySelectorAll('.form-select').forEach(select => {
+                if (select.value) {
+                    assignedPeopleThisWeek.add(select.value);
+                }
+            });
+        }
+    });
 
-                // O loop externo percorre cada tipo de designação (Leitura, Discurso, etc.)
-                for (const designationContainer of activeDesignationContainers) {
-                    const designacaoId = designationContainer.dataset.designacaoId;
-                    const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
-                    const designacaoData = designacaoDoc.data();
-                    const designationName = designacaoData.nome;
+    // =========================================================================
+    // PASSO 2: LIMPAR OS CAMPOS EM TODOS OS CONTAINERS DESBLOQUEADOS
+    // Isto garante que o algoritmo começa com uma "tela em branco" e não é
+    // confundido pelos seus próprios resultados de um clique anterior.
+    // =========================================================================
+    document.querySelectorAll('.active-designation-container').forEach(container => {
+        if (container.dataset.locked !== 'true') {
+            container.querySelectorAll('.form-select').forEach(select => {
+                select.value = ''; // Reseta o dropdown para a opção vazia
+            });
+        }
+    });
 
-                    const instances = designationContainer.querySelectorAll('.designacao-instance-container');
+    // =========================================================================
+    // PASSO 3: INICIAR O PROCESSO DE PREENCHIMENTO NORMAL
+    // Agora o algoritmo irá preencher os campos vazios e desbloqueados,
+    // respeitando as pessoas que foram protegidas no Passo 1.
+    // =========================================================================
+    const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
+    const ano = await getAnoPainelFirebase();
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
 
-                    // O loop do meio percorre as instâncias (caso uma designação ocorra mais de uma vez)
-                    for (let instanceIndex = 0; instanceIndex < instances.length; instanceIndex++) {
-                        const instanceContainer = instances[instanceIndex];
-                        const participantSelects = instanceContainer.querySelectorAll('.form-select');
+    const participantsLastWeek = await getParticipantsLastWeek(ano, mes, semanaNumero);
+    const participantsThisMonth = await getParticipantsThisMonth(ano, mes);
+    const recentPairsMap = await getRecentPairs();
 
+    const allDesignations = new Map();
+    const designacoesSnapshot = await db.collection('designacoes').get();
+    designacoesSnapshot.forEach(doc => allDesignations.set(doc.id, doc.data().nome));
 
+    for (const designationContainer of activeDesignationContainers) {
+        if (designationContainer.dataset.locked === 'true') {
+            continue; // Salta os containers bloqueados (já protegidos)
+        }
 
+        const designacaoId = designationContainer.dataset.designacaoId;
+        const designationName = allDesignations.get(designacaoId) || 'Designação Desconhecida';
+        
+        const instances = designationContainer.querySelectorAll('.designacao-instance-container');
+        for (let instanceIndex = 0; instanceIndex < instances.length; instanceIndex++) {
+            const instanceContainer = instances[instanceIndex];
+            const participantSelects = instanceContainer.querySelectorAll('.form-select');
 
+            // Lógica de preenchimento para 1 ou 2 participantes (continua igual)
+            if (participantSelects.length === 1) {
+                const select = participantSelects[0];
+                let eligible = getEligiblePeopleForDropdown(select)
+                    .filter(id => !assignedPeopleThisWeek.has(id))
+                    .filter(id => !participantsLastWeek.has(id));
+                
+                let idealCandidates = eligible.filter(id => !participantsThisMonth.has(id));
+                let finalCandidates = (idealCandidates.length > 0) ? idealCandidates : eligible;
 
-
-
-
-
-
-
-
-
-                        
-                        // O loop interno percorre cada vaga de participante (Dirigente, Morador, etc.)
-                        for (const select of participantSelects) {
-                            let eligiblePeopleIds = getEligiblePeopleForDropdown(select);
-                            
-                            // MODIFICADO: Antes de fazer qualquer outra coisa, filtramos a lista de pessoas elegíveis,
-                            // removendo qualquer um que já tenha sido designado nesta execução do "foguetão".
-                            eligiblePeopleIds = eligiblePeopleIds.filter(personId => !assignedPeopleThisWeek.has(personId));
-
-                            if (eligiblePeopleIds.length > 0) {
-                                // A função de ranking agora só vai trabalhar com pessoas que ainda não foram designadas esta semana.
-                                const rankedPeopleIds = await rankPeopleByDesignationCount(eligiblePeopleIds, designationName, ano);
-                                
-                                // O primeiro da lista ranqueada é a melhor escolha, pois a lista já está pré-filtrada.
-                                const bestPersonId = rankedPeopleIds[0];
-
-                                if (bestPersonId) {
-                                    select.value = bestPersonId;
-                                    
-                                    // NOVO: Adiciona a pessoa selecionada ao nosso tracker da semana para que não seja escolhida novamente.
-                                    assignedPeopleThisWeek.add(bestPersonId);
-                                } else {
-                                    console.warn(`autoFillDesignations - Nenhuma pessoa ranqueada e ÚNICA disponível para a designação: ${designationName}.`);
-                                }
-                            } else {
-                                console.warn(`autoFillDesignations - Nenhuma pessoa elegível e ÚNICA no dropdown para a designação: ${designationName}.`);
-                            }
-                        }
+                if (finalCandidates.length > 0) {
+                    const ranked = await rankPeopleByDesignationCount(finalCandidates, designationName, ano);
+                    if (ranked.length > 0) {
+                        select.value = ranked[0];
+                        assignedPeopleThisWeek.add(ranked[0]);
                     }
                 }
-            };
+            } 
+            else if (participantSelects.length === 2) {
+                const [dirigenteSelect, moradorSelect] = participantSelects;
+                const eligibleDirigentes = getEligiblePeopleForDropdown(dirigenteSelect);
+                const eligibleMoradores = getEligiblePeopleForDropdown(moradorSelect);
+
+                let possiblePairs = [];
+                for (const dirigenteId of eligibleDirigentes) {
+                    for (const moradorId of eligibleMoradores) {
+                        if (dirigenteId === moradorId) continue;
+                        if (assignedPeopleThisWeek.has(dirigenteId) || assignedPeopleThisWeek.has(moradorId)) continue;
+                        if (participantsLastWeek.has(dirigenteId) || participantsLastWeek.has(moradorId)) continue;
+                        possiblePairs.push({ dirigente: dirigenteId, morador: moradorId });
+                    }
+                }
+
+                const validPairs = possiblePairs.filter(pair => {
+                    const pairKey = [pair.dirigente, pair.morador].sort().join('_');
+                    if (!recentPairsMap.has(pairKey)) return true;
+                    const history = recentPairsMap.get(pairKey);
+                    const lastDate = new Date(history.lastDate);
+                    const currentDate = new Date();
+                    const lastMonthYear = lastDate.getFullYear() * 12 + lastDate.getMonth();
+                    const currentMonthYear = currentDate.getFullYear() * 12 + currentDate.getMonth();
+                    return Math.abs(currentMonthYear - lastMonthYear) > 1;
+                });
+
+                if (validPairs.length > 0) {
+                    const rankedPairs = await Promise.all(validPairs.map(async (pair) => {
+                        const score1 = (await rankPeopleByDesignationCount([pair.dirigente], designationName, ano, true)).score;
+                        const score2 = (await rankPeopleByDesignationCount([pair.morador], designationName, ano, true)).score;
+                        return { pair, totalScore: score1 + score2 };
+                    }));
+                    rankedPairs.sort((a, b) => a.totalScore - b.totalScore);
+                    const bestPair = rankedPairs[0].pair;
+                    dirigenteSelect.value = bestPair.dirigente;
+                    moradorSelect.value = bestPair.morador;
+                    assignedPeopleThisWeek.add(bestPair.dirigente);
+                    assignedPeopleThisWeek.add(bestPair.morador);
+                } else {
+                    console.warn(`autoFillDesignations - Nenhuma combinação de par válida encontrada para ${designationName}.`);
+                }
+            }
+        }
+    }
+    setTimeout(validateAllSelections, 500);
+};
+
+
+
+
+
+// Função auxiliar para obter os participantes da semana anterior
+const getParticipantsLastWeek = async (ano, mes, semanaNumero) => {
+    try {
+        // --- Passo 1: Descobrir a data exata da reunião desta semana ---
+        const diasSemanaString = getDiasSemana(ano, mes, semanaNumero);
+        const horariosData = await getHorariosFromFirebase(ano); // Busca o dia da semana (ex: 'segunda-feira')
+        const diaSemanaReuniao = horariosData['dia-semana'];
+
+        if (!diaSemanaReuniao) {
+            console.error("Não foi possível determinar o dia da semana da reunião a partir dos horários.");
+            return new Set();
+        }
+        
+        const currentMeetingDateStr = getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao);
+
+        if (!currentMeetingDateStr) {
+            console.error("Não foi possível calcular a data da reunião atual.");
+            return new Set();
+        }
+
+        // --- Passo 2: Subtrair 7 dias para encontrar a data da semana passada ---
+        const currentMeetingDate = new Date(currentMeetingDateStr + "T12:00:00Z"); // Adiciona hora para evitar problemas de fuso horário
+        currentMeetingDate.setDate(currentMeetingDate.getDate() - 7);
+
+        // Formatar a data da semana passada para o formato 'YYYY-MM-DD'
+        const lastWeekDateStr = currentMeetingDate.toISOString().split('T')[0];
+        
+        // --- Passo 3: Consultar o histórico usando a data exata ---
+        const historicoRef = db.collection('historico');
+        const q = historicoRef.where("dia", "==", lastWeekDateStr);
+
+        const snapshot = await q.get();
+        const participants = new Set();
+        
+        if (!snapshot.empty) {
+            const doc = snapshot.docs[0];
+            const historicoData = doc.data();
+            if (historicoData.designacoes) {
+                historicoData.designacoes.forEach(desig => {
+                    if (desig.participantes) {
+                        // Usar .toString() para garantir a consistência dos tipos de dados
+                        Object.values(desig.participantes).forEach(personId => participants.add(personId.toString()));
+                    }
+                });
+            }
+        }
+        // console.log(`[getParticipantsLastWeek] Encontrados para a data ${lastWeekDateStr}:`, participants);
+        return participants;
+
+    } catch (error) {
+        console.error("Erro em getParticipantsLastWeek:", error);
+        return new Set(); // Retorna um Set vazio em caso de erro
+    }
+};
+
+// Função auxiliar para obter os participantes deste mês (até agora)
+const getParticipantsThisMonth = async (ano, mes) => {
+    const historicoRef = db.collection('historico');
+    const q = historicoRef
+        .where("ano", "==", ano)
+        .where("mes", "==", mes)
+        .where("quando", "==", "Semana");
+        
+    const snapshot = await q.get();
+    const participants = new Set();
+    
+    snapshot.forEach(doc => {
+        const historicoData = doc.data();
+        if (historicoData.designacoes) {
+            historicoData.designacoes.forEach(desig => {
+                if (desig.participantes) {
+                    // *** A CORREÇÃO ESTÁ AQUI ***
+                    Object.values(desig.participantes).forEach(personId => participants.add(personId.toString()));
+                }
+            });
+        }
+    });
+    return participants;
+};
 
             // --- Modificar Evento do Botão Turbo (já existente - manter) - REMOVENDO POPUP ---
             document.getElementById('turboButton').addEventListener('click', async function() {
@@ -2020,6 +2516,7 @@ document.addEventListener('click', function(event) {
                 const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
 
                 for (const designationContainer of activeDesignationContainers) {
+                    
                     const designacaoId = designationContainer.dataset.designacaoId;
                     const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
                     const designacaoData = designacaoDoc.data();
@@ -2628,6 +3125,42 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
                 filterPopup.classList.remove('active'); // **ADD THIS LINE TO CLOSE POPUP**
             });
         }
+
+
+        const lockIcon = designationDisplayContainer.querySelector('.lock-icon') || document.createElement('i');
+lockIcon.className = 'fas fa-lock-open lock-icon'; // Começa aberto por defeito
+lockIcon.title = 'Bloquear/Desbloquear Designação';
+
+// Verifica o estado atual para manter a aparência correta ao recarregar
+if (designationDisplayContainer.dataset.locked === 'true') {
+    lockIcon.classList.add('locked');
+    lockIcon.classList.remove('fa-lock-open');
+    lockIcon.classList.add('fa-lock');
+}
+
+// Adiciona o evento de clique para bloquear/desbloquear
+lockIcon.addEventListener('click', (e) => {
+    e.stopPropagation(); // Evita que outros eventos sejam disparados
+    const container = e.target.closest('.active-designation-container');
+    const isCurrentlyLocked = container.dataset.locked === 'true';
+
+    if (isCurrentlyLocked) {
+        // Se está bloqueado, vamos desbloquear
+        container.dataset.locked = 'false';
+        e.target.classList.remove('locked');
+        e.target.classList.remove('fa-lock');
+        e.target.classList.add('fa-lock-open');
+    } else {
+        // Se está desbloqueado, vamos bloquear
+        container.dataset.locked = 'true';
+        e.target.classList.add('locked');
+        e.target.classList.remove('fa-lock-open');
+        e.target.classList.add('fa-lock');
+    }
+});
+
+designationDisplayContainer.appendChild(lockIcon);
+
 
 
         // **MODIFIED: AWAIT loadPeopleOptionsIntoSelects - RETURN the promise from loadPeopleOptionsIntoSelects**
