@@ -1311,10 +1311,10 @@ const validateAllSelections = async () => {
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
     const participantsLastWeek = await getParticipantsLastWeek(ano, mes, semanaNumero);
     const participantsThisMonth = await getParticipantsThisMonth(ano, mes);
-    const recentPairsMap = await getRecentPairs(); // **MODIFICADO: Obter o mapa de pares**
+    const recentPairsMap = await getRecentPairs();
 
-    // --- VERIFICAÇÕES INDIVIDUAIS (sem alterações) ---
-    const allSelects = document.querySelectorAll('.form-select');
+    // --- VERIFICAÇÕES INDIVIDUAIS (COM SELETOR CORRIGIDO) ---
+    const allSelects = document.querySelectorAll('#activeDesignationsContainer .form-select, #leituraBibliaDesignationContainer .form-select');
     const currentSelections = new Map();
 
     allSelects.forEach(select => {
@@ -1335,13 +1335,12 @@ const validateAllSelections = async () => {
         }
     });
 
-    // --- **NOVO: VERIFICAÇÃO DE PARES COM LÓGICA AVANÇADA** ---
-    const designationInstances = document.querySelectorAll('.designacao-instance-container');
+    // --- VERIFICAÇÃO DE PARES (COM SELETOR CORRIGIDO) ---
+    const designationInstances = document.querySelectorAll('#activeDesignationsContainer .designacao-instance-container, #leituraBibliaDesignationContainer .designacao-instance-container');
     designationInstances.forEach(instance => {
         const selectedPeople = [];
-        const currentRoles = {}; // Para criar a chave de papéis
+        const currentRoles = {};
         
-        // Obter as pessoas e os papéis da instância atual
         instance.querySelectorAll('.form-select').forEach((select, index) => {
             if (select.value) {
                 const personId = select.value;
@@ -1359,18 +1358,14 @@ const validateAllSelections = async () => {
             const ids = selectedPeople.map(p => p.id).sort();
             const pairKey = ids.join('_');
 
-            // Criar a chave de papéis atual
             const currentRolesEntries = Object.entries(currentRoles).sort((a, b) => a[1].localeCompare(b[1]));
             const currentRolesKey = currentRolesEntries.map(([role, id]) => `${id}:${role}`).join('_');
 
             if (recentPairsMap.has(pairKey)) {
                 const history = recentPairsMap.get(pairKey);
-                
-                // Checagem 1: Meses Consecutivos
                 const lastDate = new Date(history.lastDate);
-                const currentDate = new Date(getMeetingDayOfMonth(getDiasSemana(ano, mes, semanaNumero), (document.getElementById('tipo').value === 'normal' ? 'segunda-feira' : '...'))); // simplified, needs a proper way to get meeting day string
+                const currentDate = new Date(getMeetingDayOfMonth(getDiasSemana(ano, mes, semanaNumero), (document.getElementById('tipo').value === 'normal' ? 'segunda-feira' : '...')));
                 
-                // Lógica de meses consecutivos
                 const lastMonthYear = lastDate.getFullYear() * 12 + lastDate.getMonth();
                 const currentMonthYear = currentDate.getFullYear() * 12 + currentDate.getMonth();
 
@@ -1379,7 +1374,6 @@ const validateAllSelections = async () => {
                     allViolations.push(`${pairNames} trabalharam juntos no mês passado ou neste mês. Não podem ser designados em meses consecutivos.`);
                     selectedPeople.forEach(p => p.element.classList.add('invalid-selection'));
                 }
-                // Checagem 2: Repetição Direta de Papéis (se não for em meses consecutivos)
                 else if (history.lastRoles === currentRolesKey) {
                     const pairNames = selectedPeople.map(p => p.name).join(' e ');
                     allViolations.push(`Aviso: ${pairNames} já fizeram esta designação juntos com os mesmos papéis.`);
@@ -2301,13 +2295,19 @@ document.addEventListener('click', function(event) {
         return a.specificDesignations - b.specificDesignations;
     });
 
+    // =================================================================
+    // =========== INÍCIO DA CORREÇÃO AQUI =============================
+    // =================================================================
     if (returnScore) {
-        if (rankedPeopleArray.length === 0) {
-            return { score: 999 };
-        }
-        return { score: rankedPeopleArray[0].totalDesignations };
+        // Agora, em vez de retornar apenas UMA pontuação, retornamos o ARRAY COMPLETO
+        // de objetos classificados. A função chamadora pode então usar .slice().
+        return rankedPeopleArray;
     }
+    // =================================================================
+    // ============ FIM DA CORREÇÃO AQUI ===============================
+    // =================================================================
 
+    // O comportamento padrão (quando returnScore é false) continua o mesmo.
     return rankedPeopleArray.map(item => item.personId);
 };
 
@@ -3549,29 +3549,32 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
     const selectionContainer = document.getElementById('labSelectionContainer');
     const suggestionsContainer = document.getElementById('labSuggestionsContainer');
     
-    // ==========================================================
-    // INÍCIO: CORREÇÃO PARA O POPUP VAZIO
-    // ==========================================================
-    // 1. Primeiro, guardamos os valores selecionados dos dropdowns originais
+    // Lógica para clonar os dropdowns e manter os valores (já estava correta)
     const originalSelects = originalContainer.querySelectorAll('.form-select');
     const originalValues = Array.from(originalSelects).map(select => select.value);
-
-    // 2. Clonamos a estrutura
     const instanceContainer = originalContainer.querySelector('.designacao-instance-container').cloneNode(true);
     selectionContainer.innerHTML = '';
     selectionContainer.appendChild(instanceContainer);
-
-    // 3. Agora, aplicamos os valores guardados aos dropdowns clonados
     const popupSelects = instanceContainer.querySelectorAll('.form-select');
     popupSelects.forEach((popupSelect, index) => {
         popupSelect.value = originalValues[index];
     });
-    // ==========================================================
-    // FIM: CORREÇÃO PARA O POPUP VAZIO
-    // ==========================================================
 
-    suggestionsContainer.innerHTML = 'A gerar sugestões...';
+    suggestionsContainer.innerHTML = 'A procurar as melhores alternativas...';
     popup.style.display = 'flex';
+
+    // =========================================================================
+    // INÍCIO: BUSCAR TODOS OS DADOS NECESSÁRIOS PARA AS SUGESTÕES INTELIGENTES
+    // =========================================================================
+    const ano = await getAnoPainelFirebase();
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    
+    const participantsLastWeek = await getParticipantsLastWeek(ano, mes, semanaNumero);
+    const recentPairsMap = await getRecentPairs();
+    // =========================================================================
+    // FIM: BUSCAR TODOS OS DADOS NECESSÁRIOS
+    // =========================================================================
 
     const currentParticipants = [];
     popupSelects.forEach((select, index) => {
@@ -3579,22 +3582,23 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
             currentParticipants.push({
                 id: select.value,
                 name: select.options[select.selectedIndex].text,
-                role: (index === 0) ? 'dirigente' : 'morador' // Identifica o papel
+                role: (index === 0) ? 'dirigente' : 'morador'
             });
         }
     });
     
-    // Busca o objeto completo da designação para passar para as outras funções
     const designacaoId = originalContainer.dataset.designacaoId;
     const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
     if (!designacaoDoc.exists) {
         suggestionsContainer.innerHTML = 'Erro: Designação não encontrada.';
         return;
     }
-    const designacao = designacaoDoc.data();
+    const designacao = { id: designacaoDoc.id, ...designacaoDoc.data() };
     
-    const suggestions = await generateSuggestions(designacao, currentParticipants);
+    // Chama a nossa nova função de sugestões "inteligente"
+    const suggestions = await generateSuggestions(designacao, currentParticipants, participantsLastWeek, recentPairsMap, ano);
     
+    // Lógica para mostrar as sugestões (sem alterações)
     suggestionsContainer.innerHTML = '';
     currentParticipants.forEach(participant => {
         const group = document.createElement('div');
@@ -3602,7 +3606,7 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
         group.innerHTML = `<h4>Alternativas para ${participant.name}:</h4>`;
 
         if (suggestions[participant.id] && suggestions[participant.id].length > 0) {
-            suggestions[participant.id].slice(0, 5).forEach(suggestion => { // Limita a 5 sugestões
+            suggestions[participant.id].forEach(suggestion => {
                 const item = document.createElement('div');
                 item.className = 'suggestion-item';
                 item.innerHTML = `${suggestion.name} <span class="suggestion-justification">(${suggestion.justification})</span>`;
@@ -3614,7 +3618,7 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
                 group.appendChild(item);
             });
         } else {
-            group.innerHTML += '<p>Nenhuma alternativa encontrada.</p>';
+            group.innerHTML += '<p>Nenhuma alternativa válida encontrada.</p>';
         }
         suggestionsContainer.appendChild(group);
     });
@@ -3624,48 +3628,57 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
             originalSelects[index].value = popupSelect.value;
         });
         popup.style.display = 'none';
-        validateAllSelections(); // Valida as novas alterações
+        validateAllSelections();
     };
 }
 
 
 // Função-chave para gerar as sugestões
-async function generateSuggestions(designacao, currentParticipants) {
+async function generateSuggestions(designacao, currentParticipants, participantsLastWeek, recentPairsMap, ano) {
     const suggestions = {};
+    const currentParticipantIds = currentParticipants.map(p => p.id);
 
-    // 1. Encontra todos os elegíveis para cada papel
-    const eligibleDirigentes = await getEligiblePeopleForRole(designacao, 'dirigente');
-    const eligibleMoradores = await getEligiblePeopleForRole(designacao, 'morador');
-
-    // 2. Para cada participante atual, encontra alternativas
-    currentParticipants.forEach(participant => {
+    // Para cada pessoa na seleção atual (ex: Susana), vamos encontrar alternativas
+    for (const participant of currentParticipants) {
+        const partner = currentParticipants.find(p => p.id !== participant.id);
         suggestions[participant.id] = [];
-        const participantRole = (participant.role === 'dirigente') ? 'Dirigente' : 'Morador/Ajudante';
 
-        // Sugere alternativas para Dirigente
-        if (participant.role === 'dirigente') {
-            eligibleDirigentes.forEach(suggestion => {
-                if (suggestion.id !== participant.id && !currentParticipants.some(p => p.id === suggestion.id)) {
-                    suggestions[participant.id].push({
-                        ...suggestion,
-                        justification: 'Qualificado para ser Dirigente.'
-                    });
-                }
-            });
-        }
-        // Sugere alternativas para Morador
-        else {
-            eligibleMoradores.forEach(suggestion => {
-                if (suggestion.id !== participant.id && !currentParticipants.some(p => p.id === suggestion.id)) {
-                    suggestions[participant.id].push({
-                        ...suggestion,
-                        justification: 'Qualificado para ser Morador/Ajudante.'
-                    });
-                }
-            });
-        }
-    });
+        // 1. Encontra todos os que são ELEGÍVEIS para o papel da pessoa que queremos substituir
+        const allEligibleForRole = await getEligiblePeopleForRole(designacao, participant.role);
 
+        // 2. Filtra essa lista com as regras do "Foguetão"
+        const validCandidates = allEligibleForRole.filter(candidate => {
+            if (currentParticipantIds.includes(candidate.id)) return false;
+            if (participantsLastWeek.has(candidate.id)) return false;
+            
+            if (partner) {
+                const newPairKey = [candidate.id, partner.id].sort().join('_');
+                if (recentPairsMap.has(newPairKey)) {
+                    return false; 
+                }
+            }
+            return true;
+        });
+        
+        if (validCandidates.length > 0) {
+            // 3. Rankeia os candidatos válidos (os que têm menos partes aparecem primeiro)
+            const candidateIds = validCandidates.map(c => c.id);
+            
+            // Esta chamada agora retorna um ARRAY de objetos, graças à correção acima.
+            const rankedCandidates = await rankPeopleByDesignationCount(candidateIds, designacao.nome, ano, true);
+
+            // 4. Cria as sugestões com uma justificação
+            // A linha abaixo AGORA FUNCIONA, pois rankedCandidates é um array.
+            for (const rankedCand of rankedCandidates.slice(0, 5)) {
+                const candidateData = validCandidates.find(c => c.id === rankedCand.personId);
+                suggestions[participant.id].push({
+                    id: candidateData.id,
+                    name: candidateData.name,
+                    justification: `${rankedCand.totalDesignations} designações este ano.`
+                });
+            }
+        }
+    }
     return suggestions;
 }
 
