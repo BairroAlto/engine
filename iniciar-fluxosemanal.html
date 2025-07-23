@@ -26,6 +26,44 @@
     </script>
     <style>
 
+.lupa-icon {
+    position: absolute;
+    bottom: 10px;
+    left: 70px; /* Ao lado do cadeado (que está em 40px) */
+    cursor: pointer;
+    color: #3498db; /* Azul */
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+.lupa-icon:hover {
+    transform: scale(1.2) rotate(-10deg);
+}
+
+/* Estilos para o novo Popup de Análise de Par */
+.analysis-popup .tabs {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 15px;
+}
+.analysis-popup .tab-button {
+    padding: 10px 15px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-size: 16px;
+    border-bottom: 3px solid transparent;
+}
+.analysis-popup .tab-button.active {
+    border-bottom: 3px solid #3498db;
+    font-weight: bold;
+}
+.analysis-popup .tab-content {
+    display: none;
+}
+.analysis-popup .tab-content.active {
+    display: block;
+}
+
 #validation-list {
     list-style: none;
     padding: 15px;
@@ -686,10 +724,85 @@
     color: #e67e22; /* Uma cor de destaque (laranja) para "bloqueado" */
 }
 
+
+
+.lab-icon {
+    position: absolute;
+    bottom: 10px;
+    left: 100px; /* Ao lado da lupa (que está em 70px) */
+    cursor: pointer;
+    color: #9b59b6; /* Roxo */
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+.lab-icon:hover {
+    transform: scale(1.2) rotate(10deg);
+}
+
+/* Estilos para o popup do laboratório */
+.lab-popup .lab-container {
+    display: flex;
+    gap: 30px;
+}
+.lab-popup .lab-current-selection {
+    flex: 1;
+}
+.lab-popup .lab-suggestions {
+    flex: 1;
+    border-left: 1px solid #eee;
+    padding-left: 30px;
+}
+.lab-popup .suggestion-group h4 {
+    margin-bottom: 10px;
+}
+.lab-popup .suggestion-item {
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 5px;
+}
+.lab-popup .suggestion-item:hover {
+    background-color: #f1f1f1;
+}
+.lab-popup .suggestion-justification {
+    font-size: 0.8em;
+    color: #777;
+    margin-left: 10px;
+}
+
     </style>
 </head>
 <body>
    
+
+    <!-- =================================================================== -->
+<!-- =========== INÍCIO: POPUP LABORATÓRIO DE COMBINAÇÕES ============= -->
+<!-- =================================================================== -->
+<div id="labPopup" class="popup-overlay">
+    <div class="popup-content lab-popup" style="max-width: 90%; width: 1000px;">
+        <div class="popup-header">
+            <h2 class="popup-title">Laboratório de Combinações</h2>
+            <button class="popup-close-button" id="closeLabPopup">×</button>
+        </div>
+        <div class="popup-body">
+            <div class="lab-container">
+                <div class="lab-current-selection" id="labSelectionContainer">
+                    <!-- A réplica dos dropdowns aparecerá aqui -->
+                </div>
+                <div class="lab-suggestions" id="labSuggestionsContainer">
+                    <!-- As sugestões aparecerão aqui -->
+                </div>
+            </div>
+            <div class="popup-actions" style="margin-top: 20px;">
+                <button class="btn-submit" id="applyLabChanges">Aplicar Modificação</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- =================================================================== -->
+<!-- ============ FIM: POPUP LABORATÓRIO DE COMBINAÇÕES ============== -->
+<!-- =================================================================== -->
+
    <!-- =================================================================== -->
 <!-- ============= INÍCIO: PAINEL DE ALERTA DE VALIDAÇÃO ============== -->
 <!-- =================================================================== -->
@@ -709,7 +822,29 @@
 <!-- ================ FIM: PAINEL DE ALERTA DE VALIDAÇÃO =============== -->
 <!-- =================================================================== -->
    
-   
+   <!-- =================================================================== -->
+<!-- ============= INÍCIO: POPUP DE ANÁLISE DE PAR/TRIO =============== -->
+<!-- =================================================================== -->
+<div id="pairAnalysisPopup" class="popup-overlay">
+    <div class="popup-content analysis-popup" style="max-width: 90%; width: 1200px;">
+        <div class="popup-header">
+            <h2 class="popup-title" id="pairAnalysisTitle">Análise de Designação</h2>
+            <button class="popup-close-button" id="closePairAnalysisPopup">×</button>
+        </div>
+        <div class="popup-body">
+            <div id="pairAnalysisTabsContainer" class="tabs">
+                <!-- As abas (tabs) serão inseridas aqui via JS -->
+            </div>
+            <div id="pairAnalysisContentContainer">
+                <!-- O conteúdo de cada aba será inserido aqui via JS -->
+            </div>
+        </div>
+    </div>
+</div>
+<!-- =================================================================== -->
+<!-- =============== FIM: POPUP DE ANÁLISE DE PAR/TRIO ================= -->
+<!-- =================================================================== -->
+
    
     <!-- =================================================================== -->
 <!-- ============= INÍCIO: POPUP DE PERFIL DO PARTICIPANTE ============= -->
@@ -1540,6 +1675,7 @@ let allDesignationsMap = new Map();
 let allPessoasMap = new Map();
 let currentPersonParticipationRecords = []; // Armazena os registros processados da pessoa selecionada
 
+
 // --- Função para abrir a popup de perfil ---
 perfilButton.addEventListener('click', () => {
     perfilPopup.style.display = 'flex';
@@ -1580,6 +1716,22 @@ designacoesSnapshot.forEach(doc => {
         alert("Não foi possível carregar os dados necessários. Tente novamente.");
     }
 };
+
+
+async function loadAllPeopleMap() {
+    try {
+        // Busca todas as pessoas que podem participar nas reuniões
+        const pessoasSnapshot = await db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get();
+        // Limpa o mapa global e preenche-o com os dados mais recentes
+        allPessoasMap = new Map();
+        pessoasSnapshot.forEach(doc => {
+            allPessoasMap.set(doc.id, doc.data().nomePessoa);
+        });
+        console.log("Mapa global de pessoas carregado com sucesso.");
+    } catch (error) {
+        console.error("Erro ao carregar o mapa global de pessoas:", error);
+    }
+}
 
 // --- Lógica da caixa de pesquisa com sugestões ---
 pesquisaInput.addEventListener('input', () => {
@@ -1827,6 +1979,10 @@ document.addEventListener('click', function(event) {
                     nacionalidadesDiv.appendChild(label);
                 });
             };
+
+             // CHAME A NOVA FUNÇÃO AQUI:
+    loadAllDesignationsMap();
+    loadAllPeopleMap();
 
             // Call loadNacionalidades when page loads
             loadNacionalidades();
@@ -2204,7 +2360,7 @@ document.addEventListener('click', function(event) {
     const participantsThisMonth = await getParticipantsThisMonth(ano, mes);
     const recentPairsMap = await getRecentPairs();
 
-    const allDesignations = new Map();
+    allDesignations = new Map();
     const designacoesSnapshot = await db.collection('designacoes').get();
     designacoesSnapshot.forEach(doc => allDesignations.set(doc.id, doc.data().nome));
 
@@ -2844,6 +3000,248 @@ if (Object.keys(participantesPorFuncao).length > 0) {
             };
 
 
+
+            // Função principal que abre o popup de análise de par
+            async function openPairAnalysisPopup(participants) {
+    const popup = document.getElementById('pairAnalysisPopup');
+    const title = document.getElementById('pairAnalysisTitle');
+    const tabsContainer = document.getElementById('pairAnalysisTabsContainer');
+    const contentContainer = document.getElementById('pairAnalysisContentContainer');
+
+    tabsContainer.innerHTML = 'A carregar...';
+    contentContainer.innerHTML = '';
+
+    const participantNames = participants.map(p => p.name).join(' & ');
+    title.textContent = `Análise de: ${participantNames}`;
+    popup.style.display = 'flex';
+
+    const participantIds = participants.map(p => p.id);
+    const pairHistory = await fetchPairHistory(participantIds);
+
+    tabsContainer.innerHTML = '';
+    contentContainer.innerHTML = '';
+
+    // =================================================================
+    // =========== INÍCIO: CORREÇÃO NOS NOMES DOS ALVOS E IDs ==========
+    // =================================================================
+    // Aba 1: Histórico do Par - O alvo AGORA é "content-history"
+    const historyTab = createTab('Histórico do Par', 'content-history', true);
+    const historyContent = createTabContent('content-history', true);
+    historyContent.appendChild(buildHistoryTable(pairHistory, "Histórico de Colaboração"));
+    tabsContainer.appendChild(historyTab);
+    contentContainer.appendChild(historyContent);
+    
+    // Abas 2, 3, ...: Perfis Individuais - O alvo AGORA é "content-pX"
+    participants.forEach((participant, index) => {
+        const tab = createTab(participant.name, `content-p${index}`, false);
+        const content = createTabContent(`content-p${index}`, false);
+        content.innerHTML = `<p>A carregar perfil de ${participant.name}...</p>`;
+        
+        tabsContainer.appendChild(tab);
+        contentContainer.appendChild(content);
+
+        tab.addEventListener('click', async () => {
+            if (content.dataset.loaded !== 'true') {
+                const individualHistory = await fetchIndividualHistory(participant.id);
+                content.innerHTML = '';
+                content.appendChild(buildHistoryTable(individualHistory, `Histórico Completo de ${participant.name}`));
+                content.dataset.loaded = 'true';
+            }
+        });
+    });
+    // =================================================================
+    // ============ FIM: CORREÇÃO NOS NOMES DOS ALVOS E IDs ============
+    // =================================================================
+
+    setupTabClickListeners();
+}
+
+
+// Função para buscar o histórico onde TODOS os participantes estiveram juntos
+async function fetchPairHistory(participantIds) {
+    const historicoSnapshot = await db.collection('historico').get();
+    const records = [];
+    historicoSnapshot.forEach(doc => {
+        const historico = doc.data();
+        if (historico.designacoes && Array.isArray(historico.designacoes)) {
+            historico.designacoes.forEach(designacao => {
+                const allParticipantIdsInDesig = Object.values(designacao.participantes);
+                // Verifica se TODOS os IDs do nosso par estão na designação
+                const allMembersPresent = participantIds.every(id => allParticipantIdsInDesig.includes(id));
+                if (allMembersPresent) {
+                    records.push({
+                        dia: historico.dia,
+                        designacaoNome: allDesignations.get(designacao.designacaoId) || 'Desconhecida',
+                        papeis: designacao.participantes
+                    });
+                }
+            });
+        }
+    });
+    return records.sort((a, b) => new Date(b.dia) - new Date(a.dia));
+}
+
+// Reutilizar a sua lógica de buscar histórico, mas de forma mais simples
+async function fetchIndividualHistory(personId) {
+    const historicoSnapshot = await db.collection('historico').get();
+    let records = [];
+
+    historicoSnapshot.forEach(doc => {
+        const historico = doc.data();
+        if (historico.designacoes && Array.isArray(historico.designacoes)) {
+            historico.designacoes.forEach(designacao => {
+                
+                // Primeiro, verifica se a pessoa participou, independentemente do formato
+                let allParticipantIdsInDesig = [];
+                if (Array.isArray(designacao.participantes)) {
+                    allParticipantIdsInDesig = designacao.participantes;
+                } else if (designacao.participantes && typeof designacao.participantes === 'object') {
+                    allParticipantIdsInDesig = Object.values(designacao.participantes);
+                }
+
+                if (allParticipantIdsInDesig.includes(personId)) {
+                    
+                    // ==========================================================
+                    // INÍCIO: LÓGICA INTELIGENTE PARA DETERMINAR OS PAPÉIS
+                    // ==========================================================
+                    let papeisCorrigidos = {};
+                    if (Array.isArray(designacao.participantes)) {
+                        // Se for um array, vamos assumir os papéis pela posição
+                        if(designacao.participantes[0]) papeisCorrigidos.Dirigente = designacao.participantes[0];
+                        if(designacao.participantes[1]) papeisCorrigidos.Morador = designacao.participantes[1];
+                        if(designacao.participantes[2]) papeisCorrigidos.Ajudante = designacao.participantes[2];
+                    } else {
+                        // Se já for um objeto, usa-o diretamente
+                        papeisCorrigidos = designacao.participantes;
+                    }
+                    // ==========================================================
+                    // FIM: LÓGICA INTELIGENTE PARA DETERMINAR OS PAPÉIS
+                    // ==========================================================
+
+                    records.push({
+                        dia: historico.dia, // Garanta que todos os docs de histórico têm este campo
+                        designacaoNome: allDesignations.get(designacao.designacaoId) || 'Designação Desconhecida',
+                        papeis: papeisCorrigidos // Usa o nosso novo objeto de papéis corrigido
+                    });
+                }
+            });
+        }
+    });
+
+    return records.sort((a, b) => new Date(b.dia) - new Date(a.dia));
+}
+
+async function loadAllDesignationsMap() {
+    try {
+        const designacoesSnapshot = await db.collection('designacoes').get();
+        // Limpa o Map e preenche-o com os dados mais recentes
+        allDesignations = new Map(); 
+        designacoesSnapshot.forEach(doc => {
+            allDesignations.set(doc.id, doc.data().nome);
+        });
+        console.log("Mapa global de designações carregado com sucesso.");
+    } catch (error) {
+        console.error("Erro ao carregar o mapa global de designações:", error);
+    }
+}
+
+// Funções de ajuda para criar os elementos das abas
+function createTab(text, target, isActive) {
+    const button = document.createElement('button');
+    button.className = 'tab-button' + (isActive ? ' active' : '');
+    button.textContent = text;
+    button.dataset.target = '#' + target;
+    return button;
+}
+function createTabContent(id, isActive) {
+    const div = document.createElement('div');
+    div.className = 'tab-content' + (isActive ? ' active' : '');
+    div.id = id;
+    return div;
+}
+
+// Lógica de clique para as abas
+function setupTabClickListeners() {
+    const tabs = document.querySelectorAll('.analysis-popup .tab-button');
+    const contents = document.querySelectorAll('.analysis-popup .tab-content');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            document.querySelector(tab.dataset.target).classList.add('active');
+        });
+    });
+}
+
+// Lógica para o botão de fechar o novo popup
+document.getElementById('closePairAnalysisPopup').addEventListener('click', () => {
+    document.getElementById('pairAnalysisPopup').style.display = 'none';
+});
+
+function buildHistoryTable(records, titleText) {
+    const container = document.createElement('div');
+    
+    const title = document.createElement('h3');
+    title.style.marginBottom = '15px';
+    title.textContent = titleText;
+    container.appendChild(title);
+
+    if (!records || records.length === 0) {
+        container.innerHTML += '<p>Nenhum histórico encontrado para os critérios selecionados.</p>';
+        return container;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'estatisticas-table'; // Reutiliza o estilo da sua tabela de estatísticas
+
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Designação</th>
+                <th>Papéis Desempenhados</th>
+            </tr>
+        </thead>
+    `;
+
+    const tbody = document.createElement('tbody');
+    records.forEach(record => {
+        const tr = document.createElement('tr');
+        
+        // Formata a data (reutiliza a sua função existente)
+        const formattedDate = formatDateForDisplay(record.dia); 
+        
+        // Formata os papéis para serem mais legíveis
+        let rolesHtml = '<ul style="padding-left: 15px; margin: 0;">';
+        if (record.papeis && typeof record.papeis === 'object') {
+            for (const [role, personId] of Object.entries(record.papeis)) {
+                // `allPessoasMap` é o Map que você já carrega para outros fins
+                const personName = allPessoasMap.get(personId) || 'Participante Desconhecido';
+                const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
+                rolesHtml += `<li><strong>${formattedRole}:</strong> ${personName}</li>`;
+            }
+        } else {
+            rolesHtml += '<li>Informação de papéis indisponível</li>';
+        }
+        rolesHtml += '</ul>';
+
+        tr.innerHTML = `
+            <td>${formattedDate}</td>
+            <td>${record.designacaoNome}</td>
+            <td>${rolesHtml}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    table.appendChild(tbody);
+    container.appendChild(table);
+    
+    return container;
+}
+
+
+
             const createQuantitySubmenu = (designacaoId, designationQuantity, orderButton) => { // (já existente - manter)
                 const quantitySubmenu = document.createElement('div');
                 quantitySubmenu.className = 'quantity-submenu';
@@ -2922,6 +3320,26 @@ if (Object.keys(participantesPorFuncao).length > 0) {
         }
         return;
     }
+
+
+    async function getEligiblePeopleForRole(designacao, role) {
+    let query = db.collection('pessoas')
+        .where('fazDesignacoesReuniao', '==', true)
+        .where('designacoesReuniao', 'array-contains', designacao.nome);
+
+    // Aplica a regra de personalidade com base no papel
+    if (role === 'dirigente') {
+        query = query.where('personalidade', '==', '+ à vontade');
+    }
+
+    const snapshot = await query.get();
+    const eligiblePeople = [];
+    snapshot.forEach(doc => {
+        // Você pode adicionar mais filtros aqui se necessário (idioma, privilégios, etc.)
+        eligiblePeople.push({ id: doc.id, name: doc.data().nomePessoa });
+    });
+    return eligiblePeople;
+}
 
      // Loop through each instance to create/update containers
      for (let designacaoInstance = 1; designacaoInstance <= quantity; designacaoInstance++) {
@@ -3126,6 +3544,137 @@ const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia')
             });
         }
 
+        async function openLabPopup(originalContainer) {
+    const popup = document.getElementById('labPopup');
+    const selectionContainer = document.getElementById('labSelectionContainer');
+    const suggestionsContainer = document.getElementById('labSuggestionsContainer');
+    
+    // ==========================================================
+    // INÍCIO: CORREÇÃO PARA O POPUP VAZIO
+    // ==========================================================
+    // 1. Primeiro, guardamos os valores selecionados dos dropdowns originais
+    const originalSelects = originalContainer.querySelectorAll('.form-select');
+    const originalValues = Array.from(originalSelects).map(select => select.value);
+
+    // 2. Clonamos a estrutura
+    const instanceContainer = originalContainer.querySelector('.designacao-instance-container').cloneNode(true);
+    selectionContainer.innerHTML = '';
+    selectionContainer.appendChild(instanceContainer);
+
+    // 3. Agora, aplicamos os valores guardados aos dropdowns clonados
+    const popupSelects = instanceContainer.querySelectorAll('.form-select');
+    popupSelects.forEach((popupSelect, index) => {
+        popupSelect.value = originalValues[index];
+    });
+    // ==========================================================
+    // FIM: CORREÇÃO PARA O POPUP VAZIO
+    // ==========================================================
+
+    suggestionsContainer.innerHTML = 'A gerar sugestões...';
+    popup.style.display = 'flex';
+
+    const currentParticipants = [];
+    popupSelects.forEach((select, index) => {
+        if (select.value) {
+            currentParticipants.push({
+                id: select.value,
+                name: select.options[select.selectedIndex].text,
+                role: (index === 0) ? 'dirigente' : 'morador' // Identifica o papel
+            });
+        }
+    });
+    
+    // Busca o objeto completo da designação para passar para as outras funções
+    const designacaoId = originalContainer.dataset.designacaoId;
+    const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
+    if (!designacaoDoc.exists) {
+        suggestionsContainer.innerHTML = 'Erro: Designação não encontrada.';
+        return;
+    }
+    const designacao = designacaoDoc.data();
+    
+    const suggestions = await generateSuggestions(designacao, currentParticipants);
+    
+    suggestionsContainer.innerHTML = '';
+    currentParticipants.forEach(participant => {
+        const group = document.createElement('div');
+        group.className = 'suggestion-group';
+        group.innerHTML = `<h4>Alternativas para ${participant.name}:</h4>`;
+
+        if (suggestions[participant.id] && suggestions[participant.id].length > 0) {
+            suggestions[participant.id].slice(0, 5).forEach(suggestion => { // Limita a 5 sugestões
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.innerHTML = `${suggestion.name} <span class="suggestion-justification">(${suggestion.justification})</span>`;
+                
+                item.addEventListener('click', () => {
+                    const selectToChange = Array.from(popupSelects).find(s => s.value === participant.id);
+                    if (selectToChange) selectToChange.value = suggestion.id;
+                });
+                group.appendChild(item);
+            });
+        } else {
+            group.innerHTML += '<p>Nenhuma alternativa encontrada.</p>';
+        }
+        suggestionsContainer.appendChild(group);
+    });
+
+    document.getElementById('applyLabChanges').onclick = () => {
+        popupSelects.forEach((popupSelect, index) => {
+            originalSelects[index].value = popupSelect.value;
+        });
+        popup.style.display = 'none';
+        validateAllSelections(); // Valida as novas alterações
+    };
+}
+
+
+// Função-chave para gerar as sugestões
+async function generateSuggestions(designacao, currentParticipants) {
+    const suggestions = {};
+
+    // 1. Encontra todos os elegíveis para cada papel
+    const eligibleDirigentes = await getEligiblePeopleForRole(designacao, 'dirigente');
+    const eligibleMoradores = await getEligiblePeopleForRole(designacao, 'morador');
+
+    // 2. Para cada participante atual, encontra alternativas
+    currentParticipants.forEach(participant => {
+        suggestions[participant.id] = [];
+        const participantRole = (participant.role === 'dirigente') ? 'Dirigente' : 'Morador/Ajudante';
+
+        // Sugere alternativas para Dirigente
+        if (participant.role === 'dirigente') {
+            eligibleDirigentes.forEach(suggestion => {
+                if (suggestion.id !== participant.id && !currentParticipants.some(p => p.id === suggestion.id)) {
+                    suggestions[participant.id].push({
+                        ...suggestion,
+                        justification: 'Qualificado para ser Dirigente.'
+                    });
+                }
+            });
+        }
+        // Sugere alternativas para Morador
+        else {
+            eligibleMoradores.forEach(suggestion => {
+                if (suggestion.id !== participant.id && !currentParticipants.some(p => p.id === suggestion.id)) {
+                    suggestions[participant.id].push({
+                        ...suggestion,
+                        justification: 'Qualificado para ser Morador/Ajudante.'
+                    });
+                }
+            });
+        }
+    });
+
+    return suggestions;
+}
+
+
+// Lógica para fechar o popup do laboratório
+document.getElementById('closeLabPopup').addEventListener('click', () => {
+    document.getElementById('labPopup').style.display = 'none';
+});
+
 
         const lockIcon = designationDisplayContainer.querySelector('.lock-icon') || document.createElement('i');
 lockIcon.className = 'fas fa-lock-open lock-icon'; // Começa aberto por defeito
@@ -3162,6 +3711,58 @@ lockIcon.addEventListener('click', (e) => {
 designationDisplayContainer.appendChild(lockIcon);
 
 
+const lupaIcon = designationDisplayContainer.querySelector('.lupa-icon') || document.createElement('i');
+lupaIcon.className = 'fas fa-search-plus lupa-icon';
+lupaIcon.title = 'Analisar Histórico';
+
+lupaIcon.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const container = e.target.closest('.active-designation-container');
+    const selectedParticipants = [];
+    container.querySelectorAll('.form-select').forEach(select => {
+        if (select.value) {
+            selectedParticipants.push({
+                id: select.value,
+                name: select.options[select.selectedIndex].text
+            });
+        }
+    });
+
+    if (selectedParticipants.length === 0) {
+        alert("Por favor, selecione pelo menos um participante para analisar.");
+        return;
+    }
+
+    // Comportamento para 1 pessoa: reutiliza o popup de perfil existente
+    if (selectedParticipants.length === 1) {
+        const participant = selectedParticipants[0];
+        const perfilPopup = document.getElementById('perfilPopup');
+        const pesquisaInput = document.getElementById('pesquisaPessoa');
+        
+        pesquisaInput.value = participant.name;
+        loadParticipantProfile(participant.id); // Esta função já existe no seu código
+        perfilPopup.style.display = 'flex';
+    } 
+    // Comportamento para 2 ou mais pessoas: abre o novo popup de análise
+    else {
+        openPairAnalysisPopup(selectedParticipants);
+    }
+});
+
+designationDisplayContainer.appendChild(lupaIcon);
+
+const labIcon = designationDisplayContainer.querySelector('.lab-icon') || document.createElement('i');
+labIcon.className = 'fas fa-flask lab-icon';
+labIcon.title = 'Laboratório de Combinações';
+
+labIcon.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const container = e.target.closest('.active-designation-container');
+    openLabPopup(container);
+});
+
+designationDisplayContainer.appendChild(labIcon);
+
 
         // **MODIFIED: AWAIT loadPeopleOptionsIntoSelects - RETURN the promise from loadPeopleOptionsIntoSelects**
         const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia'); // Buscar o dropdown de género *agora*, depois de ter sido (re)criado
@@ -3170,6 +3771,7 @@ designationDisplayContainer.appendChild(lockIcon);
 
     }
 };
+
 
 
             const updateLeituraBibliaDisplay = async (designacao, order, quantity, preferences = {}, diasSemana, diaSemanaReuniaoString) => { // ADD diaSemanaReuniaoString parameter
