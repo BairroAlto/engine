@@ -1250,7 +1250,9 @@
 
 
     <script>
+        
         document.addEventListener('DOMContentLoaded', function() {
+        
             // Firebase configuration
             const firebaseConfig = {
                 apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
@@ -1260,6 +1262,8 @@
                 messagingSenderId: "19118998563",
                 appId: "1:19118998563:web:5412be658ae34bd45add96"
             };
+
+            
 
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
@@ -1271,7 +1275,68 @@
             document.getElementById('mes').value = currentMonth;
 
 
-            
+ // ======================================================================== //
+// ============ INÍCIO: LÓGICA DE SINCRONIZAÇÃO DE GÊNERO  ============== //
+// ======================================================================== //
+
+const handleGenderSync = (changedSelect) => {
+    const instanceContainer = changedSelect.closest('.designacao-instance-container');
+    if (!instanceContainer) return;
+
+    const allSelectsInInstance = instanceContainer.querySelectorAll('.form-select');
+    const selectedPersonId = changedSelect.value;
+
+    if (!selectedPersonId) {
+        allSelectsInInstance.forEach(select => {
+            Array.from(select.options).forEach(option => {
+                option.style.display = ''; 
+            });
+        });
+        // Quando um campo é limpo, revalida as seleções restantes
+        allSelectsInInstance.forEach(select => {
+            if (select.value) handleGenderSync(select);
+        });
+        return;
+    }
+
+    const personData = allPeopleDataMap.get(selectedPersonId);
+    if (!personData || !personData.genero) return;
+
+    const requiredGender = personData.genero;
+
+    allSelectsInInstance.forEach(select => {
+        if (select !== changedSelect && select.value) {
+            const otherPersonData = allPeopleDataMap.get(select.value);
+            if (!otherPersonData || otherPersonData.genero !== requiredGender) {
+                select.value = ''; 
+            }
+        }
+        
+        Array.from(select.options).forEach(option => {
+            if (!option.value) {
+                option.style.display = '';
+                return;
+            }
+            const optionPersonData = allPeopleDataMap.get(option.value);
+            if (optionPersonData && optionPersonData.genero === requiredGender) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+    });
+};
+
+document.body.addEventListener('change', (event) => {
+    if (event.target.classList.contains('form-select')) {
+        handleGenderSync(event.target);
+    }
+});
+
+// ======================================================================== //
+// ============= FIM: LÓGICA DE SINCRONIZAÇÃO DE GÊNERO  =============== //
+// ======================================================================== //
+
 
 
 // ======================================================================== //
@@ -1692,7 +1757,7 @@ const perfilFiltroPapel = document.getElementById('perfilFiltroPapel');
 // --- Armazenamento de dados em cache para performance ---
 let allPeople = [];
 let allDesignationsMap = new Map();
-let allPessoasMap = new Map();
+let allPeopleDataMap = new Map();
 let currentPersonParticipationRecords = []; // Armazena os registros processados da pessoa selecionada
 
 
@@ -1710,30 +1775,32 @@ closePerfilPopup.addEventListener('click', () => {
 });
 
 // --- Inicializa os dados necessários (pessoas e designações) ---
-const initializeProfileData = async () => {
+const initializeSystemData = async () => {
     try {
         const [pessoasSnapshot, designacoesSnapshot] = await Promise.all([
             db.collection('pessoas').orderBy('nomePessoa').get(),
             db.collection('designacoes').get()
         ]);
 
-        // Mapeia pessoas para a pesquisa e para consulta de nomes
+        // Limpa e preenche os mapas
+        allPeople = [];
+        allPeopleDataMap.clear();
+        allDesignationsMap.clear();
+
         pessoasSnapshot.forEach(doc => {
-            allPeople.push({ id: doc.id, nome: doc.data().nomePessoa });
-            allPessoasMap.set(doc.id, doc.data().nomePessoa);
+            const pessoaData = doc.data();
+            allPeople.push({ id: doc.id, nome: pessoaData.nomePessoa });
+            // GUARDA O GÊNERO AQUI
+            allPeopleDataMap.set(doc.id, { nome: pessoaData.nomePessoa, genero: pessoaData.genero });
         });
 
-    // Apenas mapeia os nomes das designações para uso futuro, NÃO popula o filtro
-designacoesSnapshot.forEach(doc => {
-    allDesignationsMap.set(doc.id, doc.data().nome);
-});
+        designacoesSnapshot.forEach(doc => {
+            allDesignationsMap.set(doc.id, doc.data().nome);
+        });
 
-
-
-
+        console.log("Dados do sistema (Pessoas e Designações) inicializados.");
     } catch (error) {
-        console.error("Erro ao inicializar dados do perfil:", error);
-        alert("Não foi possível carregar os dados necessários. Tente novamente.");
+        console.error("Erro ao inicializar dados do sistema:", error);
     }
 };
 
@@ -1743,9 +1810,9 @@ async function loadAllPeopleMap() {
         // Busca todas as pessoas que podem participar nas reuniões
         const pessoasSnapshot = await db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get();
         // Limpa o mapa global e preenche-o com os dados mais recentes
-        allPessoasMap = new Map();
+        allPeopleDataMap = new Map();
         pessoasSnapshot.forEach(doc => {
-            allPessoasMap.set(doc.id, doc.data().nomePessoa);
+            allPeopleDataMap.set(doc.id, doc.data().nomePessoa);
         });
         console.log("Mapa global de pessoas carregado com sucesso.");
     } catch (error) {
@@ -1826,7 +1893,7 @@ const loadParticipantProfile = async (personId) => {
 
     // 3. Calcule os nomes dos companheiros.
     const companheirosIDs = todosOsIDs.filter(id => id !== personId);
-    const companheirosNomes = companheirosIDs.map(id => allPessoasMap.get(id) || 'N/A').join(', ');
+    const companheirosNomes = companheirosIDs.map(id => allPeopleDataMap.get(id) || 'N/A').join(', ');
     
     // 4. Crie e adicione o registo completo ao array.
     records.push({
@@ -1975,6 +2042,7 @@ document.addEventListener('click', function(event) {
 // ======================================================================== //
 
 
+
             
             // Load nacionalidades from Firebase
             const loadNacionalidades = async () => {
@@ -2003,6 +2071,7 @@ document.addEventListener('click', function(event) {
              // CHAME A NOVA FUNÇÃO AQUI:
     loadAllDesignationsMap();
     loadAllPeopleMap();
+    initializeSystemData();
 
             // Call loadNacionalidades when page loads
             loadNacionalidades();
@@ -2064,18 +2133,13 @@ document.addEventListener('click', function(event) {
             .where('fazDesignacoesReuniao', '==', true)
             .where('designacoesReuniao', 'array-contains', designacao.nome);
 
-        if (genderPreference === 'masculino') {
+            if (genderPreference === 'masculino') {
             query = query.where('genero', '==', 'Masculino');
         } else if (genderPreference === 'feminino') {
             query = query.where('genero', '==', 'Feminino');
-        } else if (designacao.feitoPor === 'Masculino' && genderPreference === 'masculino feminino') {
-            query = query.where('genero', '==', 'Masculino');
-        } else if (designacao.feitoPor === 'Feminino' && genderPreference === 'masculino feminino') {
-            query = query.where('genero', '==', 'Feminino');
         }
-
         const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
-            .map(checkbox => checkbox.value);
+        .map(checkbox => checkbox.value);
 
         // 2. Executar a consulta E PROCESSAR OS RESULTADOS DENTRO DO '.then()'
         query.get().then(snapshot => { // <-- A variável 'snapshot' é criada AQUI
@@ -2246,15 +2310,19 @@ document.addEventListener('click', function(event) {
 
             // --- Nova Função: getEligiblePeopleForDropdown (já existente - manter) ---
             const getEligiblePeopleForDropdown = (dropdown) => {
-                const peopleIds = [];
-                const options = dropdown.querySelectorAll('option');
-                options.forEach(option => {
-                    if (option.value && option.value !== "") {
-                        peopleIds.push(option.value);
-                    }
-                });
-                return peopleIds;
-            };
+    const peopleIds = [];
+    const options = dropdown.querySelectorAll('option');
+    
+    options.forEach(option => {
+        // A CONDIÇÃO MAIS IMPORTANTE ESTÁ AQUI:
+        // Só considera a opção se ela tiver um valor E se não estiver escondida (style.display !== 'none')
+        if (option.value && option.style.display !== 'none') {
+            peopleIds.push(option.value);
+        }
+    });
+    
+    return peopleIds;
+};
 
 
 
@@ -2342,13 +2410,9 @@ document.addEventListener('click', function(event) {
 
 
             // --- Função autoFillDesignations - MODIFICADA para regra de unicidade (já existente - MODIFICADA) ---
-            const autoFillDesignations = async () => {
+        const autoFillDesignations = async () => {
     const assignedPeopleThisWeek = new Set();
 
-    // =========================================================================
-    // PASSO 1: IDENTIFICAR E PROTEGER AS PESSOAS EM CONTAINERS BLOQUEADOS
-    // Adiciona qualquer pessoa em uma designação bloqueada à lista de "intocáveis".
-    // =========================================================================
     document.querySelectorAll('.active-designation-container').forEach(container => {
         if (container.dataset.locked === 'true') {
             container.querySelectorAll('.form-select').forEach(select => {
@@ -2359,24 +2423,16 @@ document.addEventListener('click', function(event) {
         }
     });
 
-    // =========================================================================
-    // PASSO 2: LIMPAR OS CAMPOS EM TODOS OS CONTAINERS DESBLOQUEADOS
-    // Isto garante que o algoritmo começa com uma "tela em branco" e não é
-    // confundido pelos seus próprios resultados de um clique anterior.
-    // =========================================================================
     document.querySelectorAll('.active-designation-container').forEach(container => {
         if (container.dataset.locked !== 'true') {
             container.querySelectorAll('.form-select').forEach(select => {
-                select.value = ''; // Reseta o dropdown para a opção vazia
+                select.value = '';
+                // IMPORTANTE: Reseta a visibilidade das opções para o foguetão
+                Array.from(select.options).forEach(opt => opt.style.display = '');
             });
         }
     });
 
-    // =========================================================================
-    // PASSO 3: INICIAR O PROCESSO DE PREENCHIMENTO NORMAL
-    // Agora o algoritmo irá preencher os campos vazios e desbloqueados,
-    // respeitando as pessoas que foram protegidas no Passo 1.
-    // =========================================================================
     const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
     const ano = await getAnoPainelFirebase();
     const mes = parseInt(document.getElementById('mes').value);
@@ -2386,13 +2442,14 @@ document.addEventListener('click', function(event) {
     const participantsThisMonth = await getParticipantsThisMonth(ano, mes);
     const recentPairsMap = await getRecentPairs();
 
-    allDesignations = new Map();
+    // Garante que o mapa de designações está atualizado
+    const allDesignations = new Map();
     const designacoesSnapshot = await db.collection('designacoes').get();
     designacoesSnapshot.forEach(doc => allDesignations.set(doc.id, doc.data().nome));
 
     for (const designationContainer of activeDesignationContainers) {
         if (designationContainer.dataset.locked === 'true') {
-            continue; // Salta os containers bloqueados (já protegidos)
+            continue;
         }
 
         const designacaoId = designationContainer.dataset.designacaoId;
@@ -2403,7 +2460,7 @@ document.addEventListener('click', function(event) {
             const instanceContainer = instances[instanceIndex];
             const participantSelects = instanceContainer.querySelectorAll('.form-select');
 
-            // Lógica de preenchimento para 1 ou 2 participantes (continua igual)
+            // Lógica para 1 participante (continua igual)
             if (participantSelects.length === 1) {
                 const select = participantSelects[0];
                 let eligible = getEligiblePeopleForDropdown(select)
@@ -2421,8 +2478,13 @@ document.addEventListener('click', function(event) {
                     }
                 }
             } 
-            else if (participantSelects.length === 2) {
+            // Lógica para 2 participantes (COM A CORREÇÃO DE GÊNERO)
+            else if (participantSelects.length >= 2) {
                 const [dirigenteSelect, moradorSelect] = participantSelects;
+                
+                // IMPORTANTE: Resetamos os filtros visuais antes de obter os candidatos
+                handleGenderSync(dirigenteSelect);
+
                 const eligibleDirigentes = getEligiblePeopleForDropdown(dirigenteSelect);
                 const eligibleMoradores = getEligiblePeopleForDropdown(moradorSelect);
 
@@ -2432,6 +2494,21 @@ document.addEventListener('click', function(event) {
                         if (dirigenteId === moradorId) continue;
                         if (assignedPeopleThisWeek.has(dirigenteId) || assignedPeopleThisWeek.has(moradorId)) continue;
                         if (participantsLastWeek.has(dirigenteId) || participantsLastWeek.has(moradorId)) continue;
+
+                        // ==========================================================
+                        // ============ NOVA VERIFICAÇÃO DE GÊNERO AQUI =============
+                        // ==========================================================
+                        const dirigenteData = allPeopleDataMap.get(dirigenteId);
+                        const moradorData = allPeopleDataMap.get(moradorId);
+
+                        // Se temos os dados de gênero de ambos e eles são DIFERENTES, o par é inválido.
+                        if (dirigenteData && moradorData && dirigenteData.genero !== moradorData.genero) {
+                            continue; // Salta para o próximo par
+                        }
+                        // ==========================================================
+                        // =================== FIM DA VERIFICAÇÃO ===================
+                        // ==========================================================
+
                         possiblePairs.push({ dirigente: dirigenteId, morador: moradorId });
                     }
                 }
@@ -2449,26 +2526,32 @@ document.addEventListener('click', function(event) {
 
                 if (validPairs.length > 0) {
                     const rankedPairs = await Promise.all(validPairs.map(async (pair) => {
-                        const score1 = (await rankPeopleByDesignationCount([pair.dirigente], designationName, ano, true)).score;
-                        const score2 = (await rankPeopleByDesignationCount([pair.morador], designationName, ano, true)).score;
+                        const score1Array = await rankPeopleByDesignationCount([pair.dirigente], designationName, ano, true);
+                        const score2Array = await rankPeopleByDesignationCount([pair.morador], designationName, ano, true);
+                        const score1 = score1Array.length > 0 ? score1Array[0].totalDesignations : Infinity;
+                        const score2 = score2Array.length > 0 ? score2Array[0].totalDesignations : Infinity;
                         return { pair, totalScore: score1 + score2 };
                     }));
                     rankedPairs.sort((a, b) => a.totalScore - b.totalScore);
+                    
                     const bestPair = rankedPairs[0].pair;
                     dirigenteSelect.value = bestPair.dirigente;
                     moradorSelect.value = bestPair.morador;
+                    
                     assignedPeopleThisWeek.add(bestPair.dirigente);
                     assignedPeopleThisWeek.add(bestPair.morador);
+                    
+                    // Dispara a sincronização manual para a UI
+                    handleGenderSync(dirigenteSelect); 
                 } else {
                     console.warn(`autoFillDesignations - Nenhuma combinação de par válida encontrada para ${designationName}.`);
                 }
             }
         }
     }
+    // No final, faz uma validação geral para destacar quaisquer problemas
     setTimeout(validateAllSelections, 500);
 };
-
-
 
 
 
@@ -3242,8 +3325,8 @@ function buildHistoryTable(records, titleText) {
         let rolesHtml = '<ul style="padding-left: 15px; margin: 0;">';
         if (record.papeis && typeof record.papeis === 'object') {
             for (const [role, personId] of Object.entries(record.papeis)) {
-                // `allPessoasMap` é o Map que você já carrega para outros fins
-                const personName = allPessoasMap.get(personId) || 'Participante Desconhecido';
+                // `allPeopleDataMap` é o Map que você já carrega para outros fins
+                const personName = allPeopleDataMap.get(personId) || 'Participante Desconhecido';
                 const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
                 rolesHtml += `<li><strong>${formattedRole}:</strong> ${personName}</li>`;
             }
@@ -3349,9 +3432,9 @@ function buildHistoryTable(records, titleText) {
 
 
     async function getEligiblePeopleForRole(designacao, role) {
-    let query = db.collection('pessoas')
-        .where('fazDesignacoesReuniao', '==', true)
-        .where('designacoesReuniao', 'array-contains', designacao.nome);
+        let query = pessoasRef
+            .where('fazDesignacoesReuniao', '==', true)
+            .where('designacoesReuniao', 'array-contains', designacao.nome);
 
     // Aplica a regra de personalidade com base no papel
     if (role === 'dirigente') {
@@ -3503,13 +3586,13 @@ function buildHistoryTable(records, titleText) {
                 <div class="filter-options" style="margin-top: 15px;">
                     <label for="genero-preferencia">Preferência de Género</label>
                     <select id="genero-preferencia">
-                        <option value="masculino feminino">Masculino Feminino</option>
+                        <!-- TEXTO CORRIGIDO E FINAL -->
+                        <option value="masculino feminino">Masculino/Feminino</option> 
                         <option value="masculino">Masculino</option>
                         <option value="feminino">Feminino</option>
                     </select>
                 </div>
             `;
-
 
             // Set the initial value from Firebase data (only if popup was newly created)
             const numParticipantesSelect = filterPopup.querySelector('#num-participantes');
