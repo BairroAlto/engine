@@ -770,6 +770,32 @@
     margin-left: 10px;
 }
 
+/* =================================================================== */
+/* = CSS CORRETIVO PARA O POPUP "LABORATÓRIO DE COMBINAÇÕES" = */
+/* =================================================================== */
+
+/* 1. Transforma o corpo do popup do laboratório num container flexível */
+.lab-popup .popup-body {
+    display: flex;
+    flex-direction: column;
+    /* Evita que o próprio corpo tenha uma barra de rolagem */
+    overflow: hidden; 
+    /* Garante que o corpo se estique para preencher o espaço vertical */
+    flex-grow: 1; 
+}
+
+/* 2. Faz com que APENAS a área das duas colunas (o .lab-container) cresça e role */
+.lab-popup .lab-container {
+    flex-grow: 1; /* Diz para esta área ocupar todo o espaço vertical que sobrar */
+    overflow-y: auto; /* Adiciona a barra de rolagem vertical APENAS SE necessário */
+    padding-right: 15px; /* Adiciona espaço para a barra de rolagem não sobrepor o conteúdo */
+}
+
+/* 3. Garante que a área de ações (o botão) nunca encolha e permaneça visível */
+.lab-popup .popup-actions {
+    flex-shrink: 0;
+}
+
     </style>
 </head>
 <body>
