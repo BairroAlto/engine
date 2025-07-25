@@ -961,56 +961,80 @@
 <!-- =================================================================== -->
     <!-- Statistics Popup Overlay -->
     <div id="estatisticasPopup" class="popup-overlay">
-        <div class="popup-content" style="max-width: 90%; width: 1200px;">
-            <div class="popup-header">
-                <h2 class="popup-title">Estatísticas de Participação</h2>
-                <button class="popup-close-button" id="closeEstatisticasPopup">×</button>
+    <div class="popup-content" style="max-width: 90%; width: 1200px;">
+        <div class="popup-header">
+            <h2 class="popup-title">Estatísticas de Participação</h2>
+            <button class="popup-close-button" id="closeEstatisticasPopup">×</button>
+        </div>
+        <div class="popup-body">
+
+            <!-- 1. Abas de Navegação -->
+            <div class="tabs">
+                <button class="tab-button active" data-tab="geral">Geral</button>
+                <button class="tab-button" data-tab="maisMenos">Mais/Menos</button>
+                <button class="tab-button" data-tab="menosDetalhado">Menos (detalhado)</button>
+                <button class="tab-button" data-tab="nunca">Nunca</button>
+                <button class="tab-button" data-tab="dirigentes">Dirigentes</button>
             </div>
-            <div class="popup-body">
-                
-                <!-- NOVO: Contêiner dos Filtros -->
-                <div id="estatisticasFiltros" class="estatisticas-filtros-container">
-                    <div class="form-group">
-                        <label for="filtroAno">Ano:</label>
-                        <select id="filtroAno" name="filtroAno"></select>
+
+            <!-- 2. Conteúdo das Abas -->
+            <div class="tab-content-container">
+
+                <!-- Aba 1: Geral (Conteúdo original) -->
+                <div id="tab-content-geral" class="tab-content active">
+                    <div id="estatisticasFiltros" class="estatisticas-filtros-container">
+                        <div class="form-group">
+                            <label for="filtroAno">Ano:</label>
+                            <select id="filtroAno" name="filtroAno"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filtroMes">Mês:</label>
+                            <select id="filtroMes" name="filtroMes">
+                                <option value="">Todos os Meses</option>
+                                <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filtroGenero">Género:</label>
+                            <select id="filtroGenero" name="filtroGenero">
+                                <option value="">Todos os Géneros</option>
+                                <option value="Masculino">Masculino</option>
+                                <option value="Feminino">Feminino</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="filtroMes">Mês:</label>
-                        <select id="filtroMes" name="filtroMes">
-                            <option value="">Todos os Meses</option>
-                            <option value="1">Janeiro</option>
-                            <option value="2">Fevereiro</option>
-                            <option value="3">Março</option>
-                            <option value="4">Abril</option>
-                            <option value="5">Maio</option>
-                            <option value="6">Junho</option>
-                            <option value="7">Julho</option>
-                            <option value="8">Agosto</option>
-                            <option value="9">Setembro</option>
-                            <option value="10">Outubro</option>
-                            <option value="11">Novembro</option>
-                            <option value="12">Dezembro</option>
-                        </select>
+                    <div id="estatisticasLoading" style="text-align: center; padding: 40px; font-size: 18px;">
+                        <i class="fas fa-spinner fa-spin"></i> A carregar estatísticas...
                     </div>
-                    <div class="form-group">
-                        <label for="filtroGenero">Género:</label>
-                        <select id="filtroGenero" name="filtroGenero">
-                            <option value="">Todos os Géneros</option>
-                            <option value="Masculino">Masculino</option>
-                            <option value="Feminino">Feminino</option>
-                        </select>
+                    <div id="estatisticasTableContainer">
+                        <!-- A tabela de estatísticas original será gerada aqui -->
                     </div>
                 </div>
 
-                <div id="estatisticasLoading" style="text-align: center; padding: 40px; font-size: 18px;">
-                    <i class="fas fa-spinner fa-spin"></i> A carregar estatísticas...
+                <!-- Aba 2: Mais/Menos -->
+                <div id="tab-content-maisMenos" class="tab-content">
+                    <!-- O conteúdo desta aba será gerado via JS -->
                 </div>
-                <div id="estatisticasTableContainer" style="overflow-x: auto; max-height: 65vh;">
-                    <!-- A tabela de estatísticas será gerada aqui pelo JavaScript -->
+
+                <!-- Aba 3: Menos (detalhado) -->
+                <div id="tab-content-menosDetalhado" class="tab-content">
+                    <!-- O conteúdo desta aba será gerado via JS -->
                 </div>
+
+                <!-- Aba 4: Nunca -->
+                <div id="tab-content-nunca" class="tab-content">
+                    <!-- O conteúdo desta aba será gerado via JS -->
+                </div>
+
+                <!-- Aba 5: Dirigentes -->
+                <div id="tab-content-dirigentes" class="tab-content">
+                    <!-- O conteúdo desta aba será gerado via JS -->
+                </div>
+
             </div>
         </div>
     </div>
+</div>
 
 
     <div class="sidebar">
@@ -1075,9 +1099,7 @@
                 line-height: 1.5em;
             }
                     /* Styles for Statistics Table */
-        #estatisticasTableContainer {
-            display: none; /* Começa escondido */
-        }
+
 
         .estatisticas-table {
             width: 100%;
@@ -1096,8 +1118,6 @@
         .estatisticas-table thead th {
             background-color: #34495e;
             color: white;
-            position: sticky;
-            top: 0;
             z-index: 10;
         }
         
@@ -1137,6 +1157,133 @@
             border-radius: 4px;
             font-size: 14px;
         }
+
+
+/* 1. Trava o scroll da página de fundo */
+body.popup-open {
+    overflow: hidden;
+}
+
+/* 2. Define a estrutura do popup: um cabeçalho fixo e um corpo que cresce */
+#estatisticasPopup .popup-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+/* 3. Garante que o cabeçalho do popup não encolha */
+#estatisticasPopup .popup-header {
+    flex-shrink: 0;
+}
+
+/* 4. A MÁGICA: O corpo do popup é a área de scroll */
+#estatisticasPopup .popup-body {
+    flex-grow: 1;       /* Ocupa todo o espaço vertical restante */
+    overflow-y: auto;   /* Adiciona a barra de rolagem AQUI */
+    padding: 15px;      /* Adiciona algum espaçamento interno para o conteúdo */
+}
+
+/* 5. Garante que o container da tabela NÃO tenha scroll ou altura limitada */
+#estatisticasTableContainer {
+    max-height: none;
+    overflow: visible;
+}
+
+/* 6. IMPORTANTE: Garante que o cabeçalho da tabela NÃO seja 'sticky' para evitar conflitos */
+.estatisticas-table thead th {
+   position: static; /* Ou simplesmente remova qualquer regra 'position: sticky' */
+}
+
+
+.tabs {
+    display: flex;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 20px;
+}
+
+/* Botão de cada aba */
+.tab-button {
+    padding: 12px 20px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-size: 16px;
+    color: #555;
+    position: relative;
+    top: 2px; /* Alinha com a borda inferior */
+    border-bottom: 2px solid transparent;
+}
+
+.tab-button:hover {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+/* Estilo da aba ativa */
+.tab-button.active {
+    border-bottom: 2px solid #3498db;
+    font-weight: bold;
+    color: #3498db;
+}
+
+/* Container do conteúdo das abas */
+.tab-content-container {
+    padding-top: 10px;
+}
+
+/* Esconde as abas inativas */
+.tab-content {
+    display: none;
+}
+
+/* Mostra a aba ativa */
+.tab-content.active {
+    display: block;
+}
+
+/* Estilos para as colunas da aba "Mais/Menos" */
+.mais-menos-container {
+    display: flex;
+    gap: 20px;
+    justify-content: space-around;
+}
+
+.rank-column {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+}
+.rank-column h4 {
+    text-align: center;
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+.rank-column ol {
+    padding-left: 20px;
+    margin: 0;
+}
+.rank-column ol li {
+    padding: 8px 5px;
+    font-size: 15px;
+}
+.rank-column ol li:nth-child(odd) {
+    background-color: #f9f9f9;
+}
+
+/* Cores específicas para cada coluna */
+.col-mais { background-color: rgba(46, 204, 113, 0.08); border-left: 4px solid #2ecc71; }
+.col-menos { background-color: rgba(231, 76, 60, 0.08); border-left: 4px solid #e74c3c; }
+.col-antiga { background-color: rgba(243, 156, 18, 0.08); border-left: 4px solid #f39c12; }
+
+/* Classe para destacar valores baixos na aba "Dirigentes" */
+.low-participation {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+
 
         </style>
 
@@ -1558,197 +1705,571 @@ document.addEventListener('click', (event) => {
 });
 
             
-            // --- INÍCIO: LÓGICA DO POPUP DE ESTATÍSTICAS (VERSÃO COM FILTROS) ---
+           // --- INÍCIO: NOVA LÓGICA DO POPUP DE ESTATÍSTICAS COM ABAS ---
 
-            const estatisticasButton = document.getElementById('estatisticasButton');
-            const estatisticasPopup = document.getElementById('estatisticasPopup');
-            const closeEstatisticasPopup = document.getElementById('closeEstatisticasPopup');
-            const loadingDiv = document.getElementById('estatisticasLoading');
-            const tableContainer = document.getElementById('estatisticasTableContainer');
+const estatisticasButton = document.getElementById('estatisticasButton');
+const estatisticasPopup = document.getElementById('estatisticasPopup');
+const closeEstatisticasPopup = document.getElementById('closeEstatisticasPopup');
 
-            // Dropdowns de filtro
-            const filtroAno = document.getElementById('filtroAno');
-            const filtroMes = document.getElementById('filtroMes');
-            const filtroGenero = document.getElementById('filtroGenero');
+let allYearsCache = []; // Cache para os anos, para não buscar no DB toda hora
 
-            let areYearsPopulated = false; // Flag para popular os anos apenas uma vez
-
-            // Evento para abrir o popup
-            estatisticasButton.addEventListener('click', async () => {
-                estatisticasPopup.style.display = 'flex';
-                loadingDiv.style.display = 'block';
-                tableContainer.style.display = 'none';
-                tableContainer.innerHTML = '';
-
-                // Popula o dropdown de anos se ainda não foi feito
-                if (!areYearsPopulated) {
-                    await populateYearFilter();
+// Função auxiliar para popular dropdowns de ano
+const populateYearFilter = async (selectElement) => {
+    if (allYearsCache.length === 0) {
+        try {
+            const historicoSnapshot = await db.collection('historico').get();
+            const years = new Set();
+            historicoSnapshot.forEach(doc => {
+                if (doc.data().ano) {
+                    years.add(doc.data().ano);
                 }
-
-                // Gera a tabela com os filtros padrão (tudo)
-                await generateStatisticsTable();
             });
+            allYearsCache = Array.from(years).sort((a, b) => b - a);
+        } catch (error) {
+            console.error("Erro ao popular filtro de anos:", error);
+            return;
+        }
+    }
 
-            // Evento para fechar o popup
-            closeEstatisticasPopup.addEventListener('click', () => {
-                estatisticasPopup.style.display = 'none';
-            });
+    const currentYear = new Date().getFullYear();
+    selectElement.innerHTML = '';
+    allYearsCache.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        if (parseInt(year) === currentYear) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+};
+
+
+// --- Lógica Principal de Abertura do Popup e Gestão de Abas ---
+estatisticasButton.addEventListener('click', async () => {
+    estatisticasPopup.style.display = 'flex';
+    document.body.classList.add('popup-open');
+
+    // Ativa a primeira aba por defeito e carrega seu conteúdo
+    if (!document.querySelector('.tab-button.active')) {
+        document.querySelector('.tab-button[data-tab="geral"]').classList.add('active');
+        document.querySelector('#tab-content-geral').classList.add('active');
+    }
+
+    const activeTab = document.querySelector('.tab-button.active').dataset.tab;
+    loadTabData(activeTab); // Carrega os dados da aba ativa
+
+    // Configura o listener para trocar de aba
+    setupTabListeners();
+});
+
+const setupTabListeners = () => {
+    const tabs = document.querySelectorAll('.tab-button');
+    tabs.forEach(tab => {
+        // Remove event listener antigo para evitar duplicação
+        tab.replaceWith(tab.cloneNode(true));
+    });
+
+    // Adiciona o novo listener
+    document.querySelectorAll('.tab-button').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            const tabName = e.target.dataset.tab;
             
-            // Eventos para os filtros mudarem
-            [filtroAno, filtroMes, filtroGenero].forEach(filtro => {
-                filtro.addEventListener('change', () => {
-                    loadingDiv.style.display = 'block';
-                    tableContainer.style.display = 'none';
-                    generateStatisticsTable(); // Regera a tabela com os novos valores dos filtros
+            document.querySelectorAll('.tab-button').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            e.target.classList.add('active');
+            document.getElementById(`tab-content-${tabName}`).classList.add('active');
+
+            loadTabData(tabName);
+        });
+    });
+};
+
+const loadTabData = (tabName) => {
+    const contentArea = document.getElementById(`tab-content-${tabName}`);
+    // Se a aba já foi carregada, não faz nada
+    if (contentArea.dataset.loaded === 'true' && tabName !== 'geral') {
+        return;
+    }
+
+   if (tabName !== 'geral') {
+        contentArea.innerHTML = `<div style="text-align: center; padding: 40px; font-size: 18px;"><i class="fas fa-spinner fa-spin"></i> A carregar dados...</div>`;
+    }
+
+    switch (tabName) {
+        case 'geral':
+            loadGeralTab();
+            break;
+        case 'maisMenos':
+            loadMaisMenosTab();
+            break;
+        case 'menosDetalhado':
+            loadMenosDetalhadoTab();
+            break;
+        case 'nunca':
+            loadNuncaTab();
+            break;
+        case 'dirigentes':
+            loadDirigentesTab();
+            break;
+    }
+    contentArea.dataset.loaded = 'true';
+};
+
+closeEstatisticasPopup.addEventListener('click', () => {
+    estatisticasPopup.style.display = 'none';
+    document.body.classList.remove('popup-open');
+});
+
+
+// --- Funções de Carregamento para cada Aba ---
+
+// Aba 1: GERAL (Funcionalidade antiga)
+const loadGeralTab = async () => {
+    const contentArea = document.getElementById('tab-content-geral');
+    // A estrutura HTML já existe, só precisamos popular o filtro de ano e chamar a função original
+    const filtroAnoGeral = document.getElementById('filtroAno');
+    if (filtroAnoGeral.options.length <= 1) { // Popula apenas se estiver vazio
+        await populateYearFilter(filtroAnoGeral);
+        // Adiciona a opção "Todos os Anos"
+        const allYearsOption = document.createElement('option');
+        allYearsOption.value = "";
+        allYearsOption.textContent = "Todos os Anos";
+        filtroAnoGeral.prepend(allYearsOption);
+        filtroAnoGeral.value = "";
+    }
+    
+    // Adiciona os listeners se ainda não existirem
+    if(!contentArea.dataset.listenersAdded) {
+        ['filtroAno', 'filtroMes', 'filtroGenero'].forEach(id => {
+            document.getElementById(id).addEventListener('change', generateStatisticsTable);
+        });
+        contentArea.dataset.listenersAdded = 'true';
+    }
+
+    generateStatisticsTable(); // Chama a função original para renderizar a tabela
+};
+
+// Aba 2: MAIS/MENOS (CORRIGIDA)
+const loadMaisMenosTab = async () => {
+    const contentArea = document.getElementById('tab-content-maisMenos');
+    contentArea.innerHTML = `
+        <div class="estatisticas-filtros-container">
+            <div class="form-group">
+                <label for="maisMenosFiltroAno">Ano:</label>
+                <select id="maisMenosFiltroAno"></select>
+            </div>
+        </div>
+        <div id="maisMenosContent">A carregar...</div>
+    `;
+
+    const yearSelect = document.getElementById('maisMenosFiltroAno');
+    await populateYearFilter(yearSelect);
+
+    const renderMaisMenos = async () => {
+        const ano = yearSelect.value;
+        const contentDiv = document.getElementById('maisMenosContent');
+        contentDiv.innerHTML = `<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> A processar dados para ${ano}...</div>`;
+        
+        const historicoSnapshot = await db.collection('historico')
+            .where('ano', '==', parseInt(ano))
+            .where('quando', '==', 'Semana')
+            .get();
+
+        const participationCounts = new Map();
+        const lastParticipation = new Map();
+
+        historicoSnapshot.forEach(doc => {
+            const data = doc.data();
+            data.designacoes?.forEach(desig => {
+                const participants = Object.values(desig.participantes || {});
+                participants.forEach(pId => {
+                    // Contagem de participações
+                    const currentCount = participationCounts.get(pId) || 0;
+                    participationCounts.set(pId, currentCount + 1);
+
+                    // Última participação
+                    const lastDate = lastParticipation.get(pId) || '1970-01-01';
+                    if (data.dia && new Date(data.dia) > new Date(lastDate)) {
+                        lastParticipation.set(pId, data.dia);
+                    }
                 });
             });
+        });
 
-            // Função para popular o dropdown de anos dinamicamente
-            const populateYearFilter = async () => {
-                try {
-                    const historicoSnapshot = await db.collection('historico').get();
-                    const years = new Set();
-                    historicoSnapshot.forEach(doc => {
-                        if (doc.data().ano) {
-                            years.add(doc.data().ano);
-                        }
-                    });
+        const sortedByCount = [...participationCounts.entries()].sort((a, b) => b[1] - a[1]);
+        const sortedByDate = [...lastParticipation.entries()].sort((a, b) => new Date(a[1]) - new Date(b[1]));
 
-                    const sortedYears = Array.from(years).sort((a, b) => b - a);
-                    
-                    filtroAno.innerHTML = '<option value="">Todos os Anos</option>'; // Limpa e adiciona a opção padrão
-                    sortedYears.forEach(year => {
-                        const option = document.createElement('option');
-                        option.value = year;
-                        option.textContent = year;
-                        filtroAno.appendChild(option);
-                    });
-                    
-                    areYearsPopulated = true;
-                } catch (error) {
-                    console.error("Erro ao popular filtro de anos:", error);
-                }
-            };
+        const maisDesignacoes = sortedByCount.slice(0, 7);
+        const menosDesignacoes = sortedByCount.slice(-7).reverse();
+        const maisTempoSem = sortedByDate.slice(0, 7);
+        
+        // --- INÍCIO DA CORREÇÃO ---
+        // Acedemos a .nome para obter o nome da pessoa do objeto guardado no map.
+        const getPersonName = (id) => (allPeopleDataMap.get(id) || {}).nome || 'Desconhecido';
+        // --- FIM DA CORREÇÃO ---
+
+        contentDiv.innerHTML = `
+            <div class="mais-menos-container">
+                <div class="rank-column col-mais">
+                    <h4><i class="fas fa-arrow-up"></i> Mais Designações</h4>
+                    <ol>${maisDesignacoes.map(([id, count]) => `<li>${getPersonName(id)} <strong>(${count})</strong></li>`).join('')}</ol>
+                </div>
+                <div class="rank-column col-menos">
+                    <h4><i class="fas fa-arrow-down"></i> Menos Designações</h4>
+                    <ol>${menosDesignacoes.map(([id, count]) => `<li>${getPersonName(id)} <strong>(${count})</strong></li>`).join('')}</ol>
+                </div>
+                <div class="rank-column col-antiga">
+                    <h4><i class="far fa-clock"></i> Há Mais Tempo Sem Fazer</h4>
+                    <ol>${maisTempoSem.map(([id, date]) => `<li>${getPersonName(id)} <small>(${new Date(date).toLocaleDateString()})</small></li>`).join('')}</ol>
+                </div>
+            </div>
+        `;
+    };
+
+    yearSelect.addEventListener('change', renderMaisMenos);
+    renderMaisMenos();
+};
+
+// Aba 3: MENOS (DETALHADO)
+const loadMenosDetalhadoTab = async () => {
+    const contentArea = document.getElementById('tab-content-menosDetalhado');
+    contentArea.innerHTML = `
+        <div class="estatisticas-filtros-container">
+            <div class="form-group">
+                <label for="detalhadoFiltroAno">Ano:</label>
+                <select id="detalhadoFiltroAno"></select>
+            </div>
+        </div>
+        <div id="detalhadoContent" style="overflow-x: auto;">A carregar...</div>
+    `;
+
+    const yearSelect = document.getElementById('detalhadoFiltroAno');
+    await populateYearFilter(yearSelect);
+
+    const renderDetalhado = async () => {
+        const ano = yearSelect.value;
+        const contentDiv = document.getElementById('detalhadoContent');
+        contentDiv.innerHTML = `<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> A processar dados para ${ano}...</div>`;
+
+        try {
+            // 1. Obter todos os dados necessários em paralelo
+            const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
+                db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get(),
+                db.collection('designacoes').where('quando', '==', 'Semana').where('status', '==', true).get(),
+                db.collection('historico').where('ano', '==', parseInt(ano)).where('quando', '==', 'Semana').get()
+            ]);
             
-            /**
-             * Calcula o intervalo de datas para a consulta baseado na regra de "semanas de segunda-feira".
-             * @param {number} year - O ano selecionado.
-             * @param {number} month - O mês selecionado (1-12).
-             * @returns {{startDate: string, endDate: string}} - As datas de início e fim no formato YYYY-MM-DD.
-             */
-            const getMondayBasedDateRange = (year, month) => {
-                // Encontrar a primeira segunda-feira do mês selecionado
-                let startDate = new Date(year, month - 1, 1);
-                while (startDate.getDay() !== 1) { // 1 = Segunda-feira
-                    startDate.setDate(startDate.getDate() + 1);
-                }
+            // 2. Preparar as listas de designações (para o cabeçalho) e pessoas
+            const designations = [];
+            designacoesSnapshot.forEach(doc => designations.push({id: doc.id, nome: doc.data().nome}));
+            designations.sort((a,b) => a.nome.localeCompare(b.nome));
 
-                // Encontrar a primeira segunda-feira do mês seguinte
-                let endDate = new Date(year, month, 1); // JS trata o mês 12 corretamente (vai para o ano seguinte)
-                while (endDate.getDay() !== 1) {
-                    endDate.setDate(endDate.getDate() + 1);
-                }
+            // 3. Criar uma estrutura para guardar as contagens, INICIALIZANDO TODOS A ZERO
+            const counts = new Map(); // Estrutura: personId -> Map(designationId -> count)
+            const totalCounts = new Map(); // Estrutura: personId -> totalCount
 
-                const formatDate = (date) => date.toISOString().split('T')[0];
+            pessoasSnapshot.forEach(personDoc => {
+                const personId = personDoc.id;
+                const innerMap = new Map();
+                designations.forEach(d => innerMap.set(d.id, 0)); // Cada designação começa com 0
+                counts.set(personId, innerMap);
+                totalCounts.set(personId, 0); // O total também começa com 0
+            });
 
-                return {
-                    startDate: formatDate(startDate),
-                    endDate: formatDate(endDate)
-                };
-            };
-
-
-            // Função principal refatorada para usar os filtros
-            const generateStatisticsTable = async () => {
-                const anoSelecionado = filtroAno.value ? parseInt(filtroAno.value) : null;
-                const mesSelecionado = filtroMes.value ? parseInt(filtroMes.value) : null;
-                const generoSelecionado = filtroGenero.value;
-
-                try {
-                    // 1. Construir a consulta ao histórico com base nos filtros de data
-                    let historicoQuery = db.collection('historico');
-                    if (anoSelecionado && mesSelecionado) {
-                        const { startDate, endDate } = getMondayBasedDateRange(anoSelecionado, mesSelecionado);
-                        historicoQuery = historicoQuery.where('dia', '>=', startDate).where('dia', '<', endDate);
-                    } else if (anoSelecionado) {
-                        historicoQuery = historicoQuery.where('ano', '==', anoSelecionado);
-                    }
-                    
-                    // 2. Buscar os dados necessários em paralelo
-                    const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
-                        db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get(),
-                        db.collection('designacoes').where('quando', '==', 'Semana').get(),
-                        historicoQuery.get() // Usa a query construída
-                    ]);
-                    
-                    // 3. Processar designações e pessoas
-                    const designationsMap = new Map();
-                    const designationsInOrder = [];
-                    designacoesSnapshot.forEach(doc => {
-                        designationsMap.set(doc.id, doc.data().nome);
-                        designationsInOrder.push({ id: doc.id, name: doc.data().nome });
-                    });
-                    designationsInOrder.sort((a, b) => a.name.localeCompare(b.name));
-
-                    // Mapear pessoas, aplicando o filtro de gênero
-                    const peopleMap = new Map();
-                    pessoasSnapshot.forEach(doc => {
-                        const pessoa = doc.data();
-                        // Se um gênero foi selecionado, só adiciona pessoas daquele gênero
-                        if (!generoSelecionado || pessoa.genero === generoSelecionado) {
-                            const personCounts = new Map();
-                            designationsInOrder.forEach(desig => personCounts.set(desig.id, 0));
-                            peopleMap.set(doc.id, { name: pessoa.nomePessoa, counts: personCounts });
+            // 4. Preencher as contagens com base no histórico
+            historicoSnapshot.forEach(doc => {
+                doc.data().designacoes?.forEach(desig => {
+                    const participants = Object.values(desig.participantes || {});
+                    participants.forEach(pId => {
+                        if (counts.has(pId)) { // Verifica se a pessoa está na nossa lista de elegíveis
+                            const personCounts = counts.get(pId);
+                            if (personCounts.has(desig.designacaoId)) {
+                                const currentCount = personCounts.get(desig.designacaoId);
+                                personCounts.set(desig.designacaoId, currentCount + 1);
+                            }
                         }
                     });
-
-                    // 4. Iterar sobre o histórico (já filtrado) para preencher as contagens
-                    historicoSnapshot.forEach(doc => {
-                        const historico = doc.data();
-                        if (historico.designacoes && Array.isArray(historico.designacoes)) {
-                            historico.designacoes.forEach(histDesig => {
-                                if (histDesig.participantes && Array.isArray(histDesig.participantes)) {
-                                    histDesig.participantes.forEach(participanteId => {
-                                        if (peopleMap.has(participanteId) && peopleMap.get(participanteId).counts.has(histDesig.designacaoId)) {
-                                            const personData = peopleMap.get(participanteId);
-                                            const currentCount = personData.counts.get(histDesig.designacaoId);
-                                            personData.counts.set(histDesig.designacaoId, currentCount + 1);
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    });
-
-                    // 5. Construir a tabela HTML com os dados processados
-                    let tableHTML = '<table class="estatisticas-table"><thead><tr><th>Participante</th>';
-                    designationsInOrder.forEach(desig => { tableHTML += `<th>${desig.name}</th>`; });
-                    tableHTML += '</tr></thead><tbody>';
-
-                    const sortedPeople = [...peopleMap.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name));
-
-                    for (const [personId, personData] of sortedPeople) {
-                        tableHTML += `<tr><td>${personData.name}</td>`;
-                        designationsInOrder.forEach(desig => {
-                            tableHTML += `<td>${personData.counts.get(desig.id)}</td>`;
-                        });
-                        tableHTML += '</tr>';
-                    }
-                    tableHTML += '</tbody></table>';
-
-                    // 6. Exibir a tabela
-                    loadingDiv.style.display = 'none';
-                    tableContainer.innerHTML = tableHTML;
-                    tableContainer.style.display = 'block';
-
-                } catch (error) {
-                    console.error("Erro ao gerar estatísticas:", error);
-                    loadingDiv.innerHTML = "Ocorreu um erro ao carregar as estatísticas.";
-                    tableContainer.style.display = 'none';
-                }
-            };
+                });
+            });
             
-            // --- FIM: LÓGICA DO POPUP DE ESTATÍSTICAS (VERSÃO COM FILTROS) ---
+            // 5. Calcular a contagem total para cada pessoa para poder ordenar
+            for (const [pId, innerMap] of counts.entries()) {
+                let total = 0;
+                for (const count of innerMap.values()) {
+                    total += count;
+                }
+                totalCounts.set(pId, total);
+            }
+
+            // 6. Ordenar as pessoas pela contagem total (do menor para o maior) e pegar os 10 primeiros
+            const rankedPeopleIds = [...totalCounts.entries()]
+                .sort((a, b) => a[1] - b[1]) // Ordena pelo total de participações (menor primeiro)
+                .slice(0, 10) // Pega os 10 com menos participações
+                .map(entry => entry[0]); // Pega apenas os IDs
+
+            // 7. Construir a tabela HTML
+            let tableHTML = `<table class="estatisticas-table"><thead><tr><th>Participante</th>`;
+            designations.forEach(d => tableHTML += `<th>${d.nome}</th>`);
+            tableHTML += `</tr></thead><tbody>`;
+
+            rankedPeopleIds.forEach(pId => {
+                 const personName = (allPeopleDataMap.get(pId) || {}).nome || 'Desconhecido';
+                 tableHTML += `<tr><td>${personName}</td>`;
+                 const personCounts = counts.get(pId);
+                 designations.forEach(d => {
+                    tableHTML += `<td>${personCounts.get(d.id) || 0}</td>`;
+                 });
+                 tableHTML += `</tr>`;
+            });
+
+            tableHTML += `</tbody></table>`;
+            contentDiv.innerHTML = tableHTML;
+
+        } catch (error) {
+            console.error("Erro ao carregar aba 'Menos (detalhado)':", error);
+            contentDiv.innerHTML = `<div style="color: red; text-align: center; padding: 20px;">Ocorreu um erro ao processar os dados. Tente novamente.</div>`;
+        }
+    };
+
+    yearSelect.addEventListener('change', renderDetalhado);
+    renderDetalhado();
+};
+
+// Aba 4: NUNCA
+const loadNuncaTab = async () => {
+    const contentArea = document.getElementById('tab-content-nunca');
+    const nacionalidadesSnapshot = await db.collection('nacionalidades').get();
+    let idiomasOptions = '';
+    nacionalidadesSnapshot.forEach(doc => {
+        idiomasOptions += `<option value="${doc.data().nome}">${doc.data().nome}</option>`;
+    });
+
+    contentArea.innerHTML = `
+        <div class="estatisticas-filtros-container">
+            <div class="form-group"><label for="nuncaFiltroAno">Ano:</label><select id="nuncaFiltroAno"></select></div>
+            <div class="form-group"><label for="nuncaFiltroMes">Mês:</label><select id="nuncaFiltroMes">
+                <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select></div>
+            <div class="form-group"><label for="nuncaFiltroGenero">Género:</label><select id="nuncaFiltroGenero">
+                <option value="">Todos</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option>
+            </select></div>
+            <div class="form-group"><label for="nuncaFiltroIdioma">Idioma:</label><select id="nuncaFiltroIdioma">
+                <option value="">Todos</option>${idiomasOptions}
+            </select></div>
+        </div>
+        <div id="nuncaContent" style="padding-top: 15px;">A carregar...</div>
+    `;
+
+    const yearSelect = document.getElementById('nuncaFiltroAno');
+    await populateYearFilter(yearSelect);
+    document.getElementById('nuncaFiltroMes').value = new Date().getMonth() + 1;
+
+    const renderNunca = async () => {
+        const ano = parseInt(document.getElementById('nuncaFiltroAno').value);
+        const mes = parseInt(document.getElementById('nuncaFiltroMes').value);
+        const genero = document.getElementById('nuncaFiltroGenero').value;
+        const idioma = document.getElementById('nuncaFiltroIdioma').value;
+        const contentDiv = document.getElementById('nuncaContent');
+        contentDiv.innerHTML = `<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> A processar dados...</div>`;
+
+        let pessoasQuery = db.collection('pessoas').where('fazDesignacoesReuniao', '==', true);
+        if (genero) pessoasQuery = pessoasQuery.where('genero', '==', genero);
+        if (idioma) pessoasQuery = pessoasQuery.where('idioma', '==', idioma);
+        
+        const [pessoasSnapshot, historicoSnapshot] = await Promise.all([
+            pessoasQuery.get(),
+            db.collection('historico').where('ano', '==', ano).where('mes', '==', mes).where('quando', '==', 'Semana').get()
+        ]);
+
+        const allEligiblePeople = new Map();
+        pessoasSnapshot.forEach(doc => allEligiblePeople.set(doc.id, doc.data().nomePessoa));
+
+        const participantsThisMonth = new Set();
+        historicoSnapshot.forEach(doc => {
+            doc.data().designacoes?.forEach(d => {
+                Object.values(d.participantes || {}).forEach(pId => participantsThisMonth.add(pId));
+            });
+        });
+
+        const nonParticipants = [];
+        for(const [id, name] of allEligiblePeople.entries()){
+            if(!participantsThisMonth.has(id)){
+                nonParticipants.push(name);
+            }
+        }
+        
+        nonParticipants.sort();
+        contentDiv.innerHTML = `<h4>Pessoas que não participaram (Filtros Ativos)</h4>
+        <p>${nonParticipants.length} pessoa(s) encontrada(s).</p>
+        <ul style="columns: 3; -webkit-columns: 3; -moz-columns: 3;">${nonParticipants.map(name => `<li>${name}</li>`).join('')}</ul>`;
+    };
+
+    ['nuncaFiltroAno', 'nuncaFiltroMes', 'nuncaFiltroGenero', 'nuncaFiltroIdioma'].forEach(id => {
+        document.getElementById(id).addEventListener('change', renderNunca);
+    });
+    renderNunca();
+};
+
+// Aba 5: DIRIGENTES
+const loadDirigentesTab = async () => {
+    const contentArea = document.getElementById('tab-content-dirigentes');
+    const designacoesSnapshot = await db.collection('designacoes').where('quando', '==', 'Semana').get();
+    let desigOptions = '<option value="">Todas as Designações</option>';
+    designacoesSnapshot.forEach(doc => desigOptions += `<option value="${doc.id}">${doc.data().nome}</option>`);
+
+    contentArea.innerHTML = `
+        <div class="estatisticas-filtros-container">
+            <div class="form-group"><label for="dirigentesFiltroAno">Ano:</label><select id="dirigentesFiltroAno"></select></div>
+            <div class="form-group"><label for="dirigentesFiltroDesignacao">Designação:</label><select id="dirigentesFiltroDesignacao">${desigOptions}</select></div>
+        </div>
+        <div id="dirigentesContent" style="overflow-x: auto;">A carregar...</div>
+    `;
+
+    const yearSelect = document.getElementById('dirigentesFiltroAno');
+    await populateYearFilter(yearSelect);
+
+    const renderDirigentes = async () => {
+        const ano = parseInt(yearSelect.value);
+        const designacaoId = document.getElementById('dirigentesFiltroDesignacao').value;
+        const contentDiv = document.getElementById('dirigentesContent');
+        contentDiv.innerHTML = `<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> A processar dados...</div>`;
+
+        let historicoQuery = db.collection('historico').where('ano', '==', ano).where('quando', '==', 'Semana');
+        const [pessoasSnapshot, historicoSnapshot] = await Promise.all([
+            db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).orderBy('nomePessoa').get(),
+            historicoQuery.get()
+        ]);
+        
+        const peopleList = [];
+        pessoasSnapshot.forEach(doc => peopleList.push({ id: doc.id, name: doc.data().nomePessoa }));
+
+        const roleCounts = new Map(); // personId -> { dirigente: count, morador: count, ajudante: count }
+        
+        historicoSnapshot.forEach(doc => {
+            doc.data().designacoes?.forEach(d => {
+                if (designacaoId && d.designacaoId !== designacaoId) return; // Filtra por designação se selecionada
+                
+                for (const [role, pId] of Object.entries(d.participantes || {})) {
+                    if (!roleCounts.has(pId)) roleCounts.set(pId, { dirigente: 0, morador: 0, ajudante: 0 });
+                    const personCounts = roleCounts.get(pId);
+                    if (personCounts[role] !== undefined) {
+                        personCounts[role]++;
+                    }
+                }
+            });
+        });
+
+        let tableHTML = `<table class="estatisticas-table">
+            <thead><tr><th>Participante</th><th>Dirigente</th><th>Morador</th><th>Ajudante</th></tr></thead><tbody>`;
+        
+        peopleList.forEach(person => {
+            const counts = roleCounts.get(person.id) || { dirigente: 0, morador: 0, ajudante: 0 };
+            const dirigenteCount = counts.dirigente || 0;
+            const moradorCount = counts.morador || 0;
+            const ajudanteCount = counts.ajudante || 0;
+
+            const dirigenteClass = dirigenteCount === 0 ? 'class="low-participation"' : '';
+
+            tableHTML += `<tr>
+                <td>${person.name}</td>
+                <td ${dirigenteClass}>${dirigenteCount}</td>
+                <td>${moradorCount}</td>
+                <td>${ajudanteCount}</td>
+            </tr>`;
+        });
+
+        tableHTML += `</tbody></table>`;
+        contentDiv.innerHTML = tableHTML;
+    };
+    
+    ['dirigentesFiltroAno', 'dirigentesFiltroDesignacao'].forEach(id => {
+        document.getElementById(id).addEventListener('change', renderDirigentes);
+    });
+    renderDirigentes();
+};
+
+// --- Função original da Aba "Geral" (necessária para a primeira aba) ---
+const generateStatisticsTable = async () => {
+    // ... (o código original desta função, que já está no seu ficheiro, deve permanecer aqui)
+    // Para fins de completude, vou incluí-lo, mas não precisa de o copiar se já o tem.
+    
+    const loadingDiv = document.getElementById('estatisticasLoading');
+    const tableContainer = document.getElementById('estatisticasTableContainer');
+    loadingDiv.style.display = 'block';
+    tableContainer.style.display = 'none';
+
+    const anoSelecionado = document.getElementById('filtroAno').value ? parseInt(document.getElementById('filtroAno').value) : null;
+    const mesSelecionado = document.getElementById('filtroMes').value ? parseInt(document.getElementById('filtroMes').value) : null;
+    const generoSelecionado = document.getElementById('filtroGenero').value;
+
+    try {
+        let historicoQuery = db.collection('historico');
+        if (anoSelecionado) historicoQuery = historicoQuery.where('ano', '==', anoSelecionado);
+        if (mesSelecionado) historicoQuery = historicoQuery.where('mes', '==', mesSelecionado);
+        
+        const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
+            db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get(),
+            db.collection('designacoes').where('quando', '==', 'Semana').get(),
+            historicoQuery.get()
+        ]);
+        
+        const designationsInOrder = [];
+        designacoesSnapshot.forEach(doc => designationsInOrder.push({ id: doc.id, name: doc.data().nome }));
+        designationsInOrder.sort((a, b) => a.name.localeCompare(b.name));
+
+        const peopleMap = new Map();
+        pessoasSnapshot.forEach(doc => {
+            const pessoa = doc.data();
+            if (!generoSelecionado || pessoa.genero === generoSelecionado) {
+                const personCounts = new Map();
+                designationsInOrder.forEach(desig => personCounts.set(desig.id, 0));
+                peopleMap.set(doc.id, { name: pessoa.nomePessoa, counts: personCounts });
+            }
+        });
+
+        historicoSnapshot.forEach(doc => {
+            const historico = doc.data();
+            historico.designacoes?.forEach(histDesig => {
+                const participants = Object.values(histDesig.participantes || {});
+                participants.forEach(participanteId => {
+                    if (peopleMap.has(participanteId) && peopleMap.get(participanteId).counts.has(histDesig.designacaoId)) {
+                        const personData = peopleMap.get(participanteId);
+                        const currentCount = personData.counts.get(histDesig.designacaoId);
+                        personData.counts.set(histDesig.designacaoId, currentCount + 1);
+                    }
+                });
+            });
+        });
+
+        let tableHTML = '<table class="estatisticas-table"><thead><tr><th>Participante</th>';
+        designationsInOrder.forEach(desig => { tableHTML += `<th>${desig.name}</th>`; });
+        tableHTML += '</tr></thead><tbody>';
+
+        const sortedPeople = [...peopleMap.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name));
+
+        for (const [personId, personData] of sortedPeople) {
+            tableHTML += `<tr><td>${personData.name}</td>`;
+            designationsInOrder.forEach(desig => {
+                tableHTML += `<td>${personData.counts.get(desig.id)}</td>`;
+            });
+            tableHTML += '</tr>';
+        }
+        tableHTML += '</tbody></table>';
+
+        loadingDiv.style.display = 'none';
+        tableContainer.innerHTML = tableHTML;
+        tableContainer.style.display = 'block';
+
+    } catch (error) {
+        console.error("Erro ao gerar estatísticas:", error);
+        loadingDiv.innerHTML = "Ocorreu um erro ao carregar as estatísticas.";
+        tableContainer.style.display = 'none';
+    }
+};
+
+// --- FIM: NOVA LÓGICA DO POPUP DE ESTATÍSTICAS COM ABAS ---
 
 
 // ======================================================================== //
@@ -1866,7 +2387,7 @@ pesquisaInput.addEventListener('input', () => {
     sugestoesDiv.style.display = filteredPeople.length > 0 ? 'block' : 'none';
 });
 
-// --- Função principal para carregar o histórico de um participante ---
+// Função principal para carregar o histórico de um participante (CORRIGIDA)
 const loadParticipantProfile = async (personId) => {
     perfilLoading.style.display = 'block';
     perfilTableContainer.style.display = 'none';
@@ -1875,22 +2396,21 @@ const loadParticipantProfile = async (personId) => {
     currentPersonParticipationRecords = []; // Limpa registros anteriores
 
     try {
-        const historicoSnapshot = await db.collection('historico').get();
+        // Obtenção dos dados do histórico (sem alterações aqui)
+        const historicoSnapshot = await db.collection('historico').orderBy("dia", "desc").get();
         let records = [];
         let years = new Set();
         let designacoesDaPessoa = new Set();
 
         historicoSnapshot.forEach(doc => {
             const historico = doc.data();
-            years.add(historico.ano); // Coleta todos os anos para o filtro
-
+            
             if (historico.designacoes && Array.isArray(historico.designacoes)) {
                 historico.designacoes.forEach(designacaoHist => {
                     const participantes = designacaoHist.participantes;
                     let meuPapel = '';
                     let todosOsIDs = [];
 
-                    // Lógica para encontrar o papel da pessoa e os IDs dos parceiros
                     if (participantes && typeof participantes === 'object') {
                         todosOsIDs = Object.values(participantes);
                         for (const [papel, id] of Object.entries(participantes)) {
@@ -1901,69 +2421,66 @@ const loadParticipantProfile = async (personId) => {
                         }
                     }
 
-                    // Se a pessoa foi encontrada nesta designação, processa o registro
                     if (meuPapel) {
-    // 1. Defina a variável designacaoNome PRIMEIRO.
-    const designacaoNome = allDesignationsMap.get(designacaoHist.designacaoId) || 'Designação Desconhecida';
+                        years.add(historico.ano); // Coleta todos os anos para o filtro
 
-    // 2. Adicione-a ao Set para popular o filtro mais tarde.
-    designacoesDaPessoa.add(designacaoNome);
+                        const designacaoNome = allDesignationsMap.get(designacaoHist.designacaoId) || 'Designação Desconhecida';
+                        designacoesDaPessoa.add(designacaoNome);
 
-    // 3. Calcule os nomes dos companheiros.
-    const companheirosIDs = todosOsIDs.filter(id => id !== personId);
-    const companheirosNomes = companheirosIDs.map(id => allPeopleDataMap.get(id) || 'N/A').join(', ');
-    
-    // 4. Crie e adicione o registo completo ao array.
-    records.push({
-        ano: historico.ano,
-        dia: historico.dia,
-        designacaoNome: designacaoNome, // Agora usa a variável que já existe
-        companheiros: companheirosNomes,
-        meuPapel: meuPapel.charAt(0).toUpperCase() + meuPapel.slice(1)
-    });
-}
+                        // --- INÍCIO DA CORREÇÃO ---
+                        const companheirosIDs = todosOsIDs.filter(id => id !== personId);
+                        // A linha abaixo foi corrigida para aceder à propriedade .nome
+                        const companheirosNomes = companheirosIDs
+                            .map(id => (allPeopleDataMap.get(id) || {}).nome || 'N/A')
+                            .join(', ');
+                        // --- FIM DA CORREÇÃO ---
+
+                        records.push({
+                            ano: historico.ano,
+                            dia: historico.dia,
+                            designacaoNome: designacaoNome,
+                            companheiros: companheirosNomes,
+                            meuPapel: meuPapel.charAt(0).toUpperCase() + meuPapel.slice(1)
+                        });
+                    }
                 });
             }
         });
 
-        // Ordena os registros pela data, do mais antigo para o mais recente
-        records.sort((a, b) => new Date(a.dia) - new Date(b.dia));
-        currentPersonParticipationRecords = records;
+        currentPersonParticipationRecords = records; // Não é preciso ordenar aqui, já vem do Firestore
 
-        // Popula o filtro de anos
-        perfilFiltroAno.innerHTML = '<option value="">Todos</option>'; // NOME CORRIGIDO
-Array.from(years).sort((a, b) => b - a).forEach(year => {
+        // Popula os filtros (sem alterações aqui)
+        perfilFiltroAno.innerHTML = '<option value="">Todos</option>';
+        Array.from(years).sort((a, b) => b - a).forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            perfilFiltroAno.appendChild(option);
+        });
 
+        perfilFiltroDesignacao.innerHTML = '<option value="">Todas</option>';
+        Array.from(designacoesDaPessoa).sort().forEach(nome => {
+            const option = document.createElement('option');
+            option.value = nome;
+            option.textContent = nome;
+            perfilFiltroDesignacao.appendChild(option);
+        });
 
-    const option = document.createElement('option');
-    option.value = year;
-    option.textContent = year;
-    perfilFiltroAno.appendChild(option); // NOME CORRIGIDO
-});
-
-
-perfilFiltroDesignacao.innerHTML = '<option value="">Todas</option>';
-const sortedDesignations = Array.from(designacoesDaPessoa).sort();
-sortedDesignations.forEach(nome => {
-    const option = document.createElement('option');
-    option.value = nome;
-    option.textContent = nome;
-    perfilFiltroDesignacao.appendChild(option);
-});
-
-
-
-        // Exibe os filtros e a tabela
+        // Exibe os filtros e a tabela (sem alterações aqui)
         perfilLoading.style.display = 'none';
         perfilFiltros.style.display = 'flex';
         perfilTableContainer.style.display = 'block';
-        renderProfileTable(); // Renderiza a tabela com os dados processados
+        renderProfileTable();
 
     } catch (error) {
         console.error("Erro ao carregar perfil do participante:", error);
         perfilLoading.innerHTML = 'Ocorreu um erro ao carregar o histórico.';
     }
 };
+
+
+
+
 
 // --- Função para renderizar/filtrar a tabela ---
 const renderProfileTable = () => {
@@ -2235,42 +2752,44 @@ document.addEventListener('click', function(event) {
                 return querySnapshot.size;
             };
 
-            const getDiasSemana = (ano, mes, semanaNumero) => {
-                const primeiroDiaMes = new Date(ano, mes - 1, 1);
-                let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
-                if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7;
+          const getDiasSemana = (ano, mes, semanaNumero) => { // FUNÇÃO 1 CORRIGIDA
+    const primeiroDiaMes = new Date(ano, mes - 1, 1);
+    let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
+    if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7;
 
-                let diasToAddForFirstMonday = 0;
-                if (diaSemanaPrimeiroDia !== 1) {
-                    diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
-                }
+    let diasToAddForFirstMonday = 0;
+    if (diaSemanaPrimeiroDia !== 1) {
+        diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
+    }
 
-                const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
-                const inicioSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7);
-                const fimSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7 + 6);
+    const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
+    const inicioSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7);
+    const fimSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7 + 6);
 
-                const formatarData = (date) => {
-                    return date.getDate();
-                };
+    const formatarData = (date) => {
+        return date.getDate();
+    };
 
-                const formatarMes = (date) => {
-                    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago, Set, Out, Nov, Dez"];
-                    return monthNames[date.getMonth()];
-                };
+    const formatarMes = (date) => {
+        // O array de meses mal formatado foi corrigido aqui.
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        return monthNames[date.getMonth()];
+    };
 
-                const inicio_dia = formatarData(inicioSemanaDate);
-                const fim_dia = formatarData(fimSemanaDate);
-                const inicio_mes = formatarMes(inicioSemanaDate);
-                const fim_mes = formatarMes(fimSemanaDate);
+    const inicio_dia = formatarData(inicioSemanaDate);
+    const fim_dia = formatarData(fimSemanaDate);
+    const inicio_mes = formatarMes(inicioSemanaDate);
+    const fim_mes = formatarMes(fimSemanaDate);
 
-                let diasSemanaString;
-                if (inicioSemanaDate.getMonth() !== fimSemanaDate.getMonth()) {
-                    diasSemanaString = `${inicio_dia} ${inicio_mes} - ${fim_dia} ${fim_mes}`;
-                } else {
-                    diasSemanaString = `${inicio_dia} - ${fim_dia} ${inicio_mes}`;
-                }
-                return diasSemanaString;
-            };
+    let diasSemanaString;
+    if (inicioSemanaDate.getMonth() !== fimSemanaDate.getMonth()) {
+        diasSemanaString = `${inicio_dia} ${inicio_mes} - ${fim_dia} ${fim_mes}`;
+    } else {
+        diasSemanaString = `${inicio_dia} - ${fim_dia} ${inicio_mes}`;
+    }
+    return diasSemanaString;
+};
+
 
 
             const getTotalSemanasNoMes = async (ano, mes) => {
@@ -2288,19 +2807,52 @@ document.addEventListener('click', function(event) {
             };
 
 
-            const updateWeekDisplay = async () => {
-                const mesSelecionado = document.getElementById('mes').value;
-                const anoFirebase = await getAnoPainelFirebase();
-                const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado) + 1;
-                const totalSemanas = await getTotalSemanasNoMes(anoFirebase, mesSelecionado);
-                const diasSemana = getDiasSemana(anoFirebase, mesSelecionado, semanaNumero);
+          const updateWeekDisplay = async () => {
+    // Get references to DOM elements once for efficiency
+    const weekDisplay = document.getElementById('weekDisplay');
+    const nextButton = document.getElementById('btnSeguinte');
 
-                // Update the hidden input field
-                document.getElementById('semanaNumero').value = semanaNumero;
+    // Get date and week information
+    const mesSelecionado = document.getElementById('mes').value;
+    const anoFirebase = await getAnoPainelFirebase();
+    const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado) + 1;
+    const totalSemanas = await getTotalSemanasNoMes(anoFirebase, mesSelecionado);
 
-                const weekDisplayText = `${semanaNumero}ª semana de ${totalSemanas} semanas <br>(${diasSemana})`;
-                document.getElementById('weekDisplay').innerHTML = weekDisplayText;
-            };
+    // -- NOVA LÓGICA DE VALIDAÇÃO --
+    // Verifica se o número da próxima semana excede o total de semanas do mês.
+    // A condição `totalSemanas > 0` é uma segurança para meses sem histórico.
+    if (totalSemanas > 0 && semanaNumero > totalSemanas) {
+        // Se exceder, exibe a mensagem de aviso
+        weekDisplay.innerHTML = "Mude o Mês, já não há mais semanas neste mês";
+        weekDisplay.style.color = '#e74c3c'; // Um vermelho forte para alerta
+        weekDisplay.style.fontWeight = 'bold';
+
+        // Desativa o botão "Seguinte" para impedir que o utilizador avance
+        nextButton.disabled = true;
+        nextButton.style.backgroundColor = '#bdc3c7'; // Cor cinza para indicar desativado
+        nextButton.style.cursor = 'not-allowed';
+
+    } else {
+        // Se a semana for válida, executa a lógica original
+        const diasSemana = getDiasSemana(anoFirebase, mesSelecionado, semanaNumero);
+
+        // Atualiza o input escondido
+        document.getElementById('semanaNumero').value = semanaNumero;
+
+        // Exibe as informações da semana
+        const weekDisplayText = `${semanaNumero}ª semana de ${totalSemanas} semanas <br>(${diasSemana})`;
+        weekDisplay.innerHTML = weekDisplayText;
+        
+        // Restaura o estilo normal do texto
+        weekDisplay.style.color = '#2c3e50';
+        weekDisplay.style.fontWeight = 'normal';
+
+        // Garante que o botão "Seguinte" está ativo e com o estilo correto
+        nextButton.disabled = false;
+        nextButton.style.backgroundColor = '#2ecc71'; // Cor original verde
+        nextButton.style.cursor = 'pointer';
+    }
+};
 
 
             // Call updateWeekDisplay initially and when month changes
@@ -2850,120 +3402,108 @@ const getParticipantsThisMonth = async (ano, mes) => {
             });
 
             // "Criar Fluxo Semanal" button event (já existente - manter)
-            document.getElementById('createFluxoSemanal').addEventListener('click', async function() {
-                const confirmationPopup = document.getElementById('confirmationPopup');
-const titleElement = confirmationPopup.querySelector('.popup-title');
-const thinkingIcon = titleElement.querySelector('.thinking');
-const successIcon = titleElement.querySelector('.success');
+       document.getElementById('createFluxoSemanal').addEventListener('click', async function() {
+    const confirmationPopup = document.getElementById('confirmationPopup');
+    const titleElement = confirmationPopup.querySelector('.popup-title');
+    const thinkingIcon = titleElement.querySelector('.thinking');
+    const successIcon = titleElement.querySelector('.success');
 
-                // Show thinking icon
-                thinkingIcon.style.display = 'inline-block';
-                successIcon.style.display = 'none';
+    // Show thinking icon
+    thinkingIcon.style.display = 'inline-block';
+    successIcon.style.display = 'none';
 
-                try {
-                    // Get current year and month (já existente - manter)
-                    const ano = await getAnoPainelFirebase();
-                    const mes = parseInt(document.getElementById('mes').value); // **LINHA CORRIGIDA - PARÊNTESE ADICIONADO**
-                    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    try {
+        // ... (TODA a lógica de recolha de dados permanece igual: ano, mes, tipo, etc.)
+        const ano = await getAnoPainelFirebase();
+        const mes = parseInt(document.getElementById('mes').value);
+        const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+        const tipoReuniao = document.getElementById('tipo').value;
+        const idiomasSelecionados = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
+            .map(checkbox => checkbox.value);
+        const salaSelecionada = document.getElementById('sala').value;
+        const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+        const horariosData = await getHorariosFromFirebase(ano);
+        const diaSemanaReuniaoString = horariosData['dia-semana'];
+        const horaSemana = horariosData['hora-semana'];
+        const meetingDayOfMonth = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString);
 
-                    // Get form values for Tipo, Idioma and Sala (já existente - manter)
-                    const tipoReuniao = document.getElementById('tipo').value;
-                    const idiomasSelecionados = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
-                        .map(checkbox => checkbox.value);
-                    const salaSelecionada = document.getElementById('sala').value;
+        // Prepare historico data
+        const historicoData = {
+            ano: ano,
+            mes: mes,
+            semanaNumero: semanaNumero,
+            designacoes: [],
+            tipo: tipoReuniao,
+            idioma: idiomasSelecionados,
+            sala: salaSelecionada,
+            dia: meetingDayOfMonth,
+            hora: horaSemana,
+            quando: "Semana",
+            oque: "reuniao",
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
 
-                    // --- Get diasSemanaString in correct format from updateWeekDisplay (já existente - manter) ---
-                    const diasSemana = getDiasSemana(ano, mes, semanaNumero); // Re-calculate diasSemana to ensure correct format
+        // ... (TODA a lógica para preencher `historicoData.designacoes` permanece igual)
+        const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
+        for (const designationContainer of activeDesignationContainers) {
+            const designacaoId = designationContainer.dataset.designacaoId;
+            const instances = designationContainer.querySelectorAll('.designacao-instance-container');
+            for (let instanceIndex = 0; instanceIndex < instances.length; instanceIndex++) {
+                const instanceContainer = instances[instanceIndex];
+                const participantSelects = instanceContainer.querySelectorAll('.form-select');
+                const participantesPorFuncao = {};
+                const numParticipantes = participantSelects.length;
 
-
-                    // --- Fetch horarios from Firebase (já existente - manter) ---
-                    const horariosData = await getHorariosFromFirebase(ano);
-                    const diaSemanaReuniaoString = horariosData['dia-semana']; // Get dia-semana from Firebase
-                    const horaSemana = horariosData['hora-semana']; // Get hora-semana from Firebase
-
-
-                    // Calculate meeting day of month (já existente - manter)
-                    const meetingDayOfMonth = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString);
-
-
-                    // Prepare historico data (já existente - manter)
-                    const historicoData = {
-                        ano: ano,
-                        mes: mes,
-                        semanaNumero: semanaNumero,
-                        designacoes: [],
-                        tipo: tipoReuniao,
-                        idioma: idiomasSelecionados,
-                        sala: salaSelecionada,
-                        dia: meetingDayOfMonth,
-                        hora: horaSemana,
-                        quando: "Semana", // ADICIONADO CAMPO "quando" com valor "Semana"
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp() // ADICIONADO CAMPO TIMESTAMP
-                    };
-
-
-                    // Collect all designations (já existente - manter)
-                    const activeDesignationContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container');
-
-                    for (const designationContainer of activeDesignationContainers) {
-                        const designacaoId = designationContainer.dataset.designacaoId;
-                        const instances = designationContainer.querySelectorAll('.designacao-instance-container');
-
-                        for (let instanceIndex = 0; instanceIndex < instances.length; instanceIndex++) {
-                            const instanceContainer = instances[instanceIndex];
-                            const participantSelects = instanceContainer.querySelectorAll('.form-select');
-
-                       
-                            
-                            const participantesPorFuncao = {};
-const numParticipantes = participantSelects.length;
-
-if (numParticipantes === 1 && participantSelects[0].value) {
-    // Caso com apenas 1 participante
-    participantesPorFuncao.participante = participantSelects[0].value;
-} else if (numParticipantes === 2) {
-    // Caso com 2 participantes: Dirigente e Morador
-    if (participantSelects[0].value) participantesPorFuncao.dirigente = participantSelects[0].value;
-    if (participantSelects[1].value) participantesPorFuncao.morador = participantSelects[1].value;
-} else if (numParticipantes >= 3) {
-    // Caso com 3 ou mais participantes: Dirigente, Morador e Ajudante
-    if (participantSelects[0].value) participantesPorFuncao.dirigente = participantSelects[0].value;
-    if (participantSelects[1].value) participantesPorFuncao.morador = participantSelects[1].value;
-    if (participantSelects[2].value) participantesPorFuncao.ajudante = participantSelects[2].value;
-}
-
-// Adiciona ao histórico apenas se pelo menos um participante foi selecionado
-if (Object.keys(participantesPorFuncao).length > 0) {
-    historicoData.designacoes.push({
-        designacaoId: designacaoId,
-        instanceIndex: instanceIndex,
-        participantes: participantesPorFuncao // Agora é um objeto
-    });
-}
-
-
-                        }
-                    }
-
-                    const docRef = await db.collection("historico").add(historicoData);
-
-                    // Show success icon (já existente - manter)
-                    thinkingIcon.style.display = 'none';
-                    successIcon.style.display = 'inline-block';
-
-                    // Wait 2 segundos then refresh (já existente - manter)
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-
-                } catch (error) {
-                    console.error("Erro ao adicionar documento: ", error);
-                    // Hide both icons in case of error (já existente - manter)
-                    thinkingIcon.style.display = 'none';
-                    successIcon.style.display = 'none';
-                    alert('Erro ao criar fluxo semanal: ' + error.message);
+                if (numParticipantes === 1 && participantSelects[0].value) {
+                    participantesPorFuncao.participante = participantSelects[0].value;
+                } else if (numParticipantes === 2) {
+                    if (participantSelects[0].value) participantesPorFuncao.dirigente = participantSelects[0].value;
+                    if (participantSelects[1].value) participantesPorFuncao.morador = participantSelects[1].value;
+                } else if (numParticipantes >= 3) {
+                    if (participantSelects[0].value) participantesPorFuncao.dirigente = participantSelects[0].value;
+                    if (participantSelects[1].value) participantesPorFuncao.morador = participantSelects[1].value;
+                    if (participantSelects[2].value) participantesPorFuncao.ajudante = participantSelects[2].value;
                 }
-            });
+
+                if (Object.keys(participantesPorFuncao).length > 0) {
+                    historicoData.designacoes.push({
+                        designacaoId: designacaoId,
+                        instanceIndex: instanceIndex,
+                        participantes: participantesPorFuncao
+                    });
+                }
+            }
+        }
+
+        // --- INÍCIO DAS MUDANÇAS ---
+
+        // 1. Salva o documento principal na coleção 'historico'
+        const docRef = await db.collection("historico").add(historicoData);
+
+        // 2. CHAMA A NOVA FUNÇÃO para salvar os registos individuais
+        await saveParticipationHistoryForIndividuals(historicoData);
+
+        // --- FIM DAS MUDANÇAS ---
+
+
+        // Show success icon
+        thinkingIcon.style.display = 'none';
+        successIcon.style.display = 'inline-block';
+
+        // Wait 2 segundos then refresh
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
+
+    } catch (error) {
+        console.error("Erro ao adicionar documento: ", error);
+        // Hide both icons in case of error
+        thinkingIcon.style.display = 'none';
+        successIcon.style.display = 'none';
+        alert('Erro ao criar fluxo semanal: ' + error.message);
+    }
+});
+
 
 
             // --- Helper function to get day of week number (Sunday: 0, Monday: 1, ..., Saturday: 6) (já existente - manter) ---
@@ -2977,80 +3517,69 @@ if (Object.keys(participantesPorFuncao).length > 0) {
             }
 
 
-            // --- Helper function to get meeting day of month (NOW RETURNS YYYY-MM-DD DATE) (já existente - manter) ---
-            function getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao) { // REMOVE diaSemanaReuniaoString parameter
+          // --- Helper function to get meeting day of month (CORRIGIDA) ---
+function getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao) { // FUNÇÃO 2 CORRIGIDA
+    if (!diasSemanaString || !diaSemanaReuniao) {
+        return null;
+    }
+
+    const parts = diasSemanaString.split(" - ");
+    if (parts.length !== 2) {
+        return null;
+    }
+    const startDay = parseInt(parts[0]);
+    const endPart = parts[1].split(" ");
+    if (endPart.length !== 2) {
+        return null;
+    }
+    const endDay = parseInt(endPart[0]);
+    let startMonthStr = parts[0].split(" ")[1] || "";
+    const endMonthStr = endPart[1];
+
+    // O mesmo erro de digitação no array de meses foi corrigido aqui também.
+    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+    let startMonthIndex = monthNames.indexOf(startMonthStr);
+    const endMonthIndex = monthNames.indexOf(endMonthStr);
+
+    if (startMonthIndex === -1) {
+        startMonthIndex = endMonthIndex;
+    }
+    if (startMonthIndex === -1 || endMonthIndex === -1) {
+        return null;
+    }
+
+    const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
+    if (dayOfWeekMeetingNumber === null) {
+        return null;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const startOfWeekDate = new Date(currentYear, startMonthIndex, startDay);
+    const endOfWeekDate = new Date(currentYear, endMonthIndex, endDay);
+
+    let designationDateYYYYMMDD = null;
+    let middleDayOfMonth = null;
+    let currentDay = new Date(startOfWeekDate);
+
+    for (let i = 0; currentDay <= endOfWeekDate; i++) {
+        if (currentDay.getDay() === dayOfWeekMeetingNumber) {
+            middleDayOfMonth = currentDay.getDate();
+            const month = String(currentDay.getMonth() + 1).padStart(2, '0');
+            const day = String(middleDayOfMonth).padStart(2, '0');
+            designationDateYYYYMMDD = `${currentYear}-${month}-${day}`;
+            break;
+        }
+        currentDay.setDate(currentDay.getDate() + 1);
+    }
+
+    return designationDateYYYYMMDD;
+}
 
 
-                if (!diasSemanaString || !diaSemanaReuniao) {
-                    return null;
-                }
-
-                const parts = diasSemanaString.split(" - ");
-                if (parts.length !== 2) {
-                    return null;
-                }
-                const startDay = parseInt(parts[0]);
-                const endPart = parts[1].split(" ");
-                if (endPart.length !== 2) {
-                    return null;
-                }
-                const endDay = parseInt(endPart[0]);
-                let startMonthStr = parts[0].split(" ")[1] || ""; // Extract start month string ("Mar")
-                const endMonthStr = endPart[1]; // End month string ("Abr")
-
-                const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set, Out, Nov, Dez"];
-                let startMonthIndex = monthNames.indexOf(startMonthStr); // Month index for start month
-                const endMonthIndex = monthNames.indexOf(endMonthStr);     // Month index for end month
-
-                // **CORRECTION: Use endMonthIndex as fallback for startMonthIndex if startMonthStr is empty** (já existente - manter)
-                if (startMonthIndex === -1) {
-                    startMonthIndex = endMonthIndex; // Use end month if start month is missing
-                }
-                if (startMonthIndex === -1) { // Double check if even endMonthIndex is invalid (já existente - manter)
-                    return null;
-                }
-                if (endMonthIndex === -1) {
-                    return null;
-                }
 
 
-                const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
-                if (dayOfWeekMeetingNumber === null) {
-                    return null;
-                }
 
-                const currentYear = new Date().getFullYear(); // Get current year once (já existente - manter)
-                const startOfWeekDate = new Date(currentYear, startMonthIndex, startDay);
-                const endOfWeekDate = new Date(currentYear, endMonthIndex, endDay);
-
-
-                let designationDateYYYYMMDD = null; // Variable to store formatted date (já existente - manter)
-                let middleDayOfMonth = null;
-                let currentDay = new Date(startOfWeekDate);
-                let loopCounter = 0;
-
-                for (let i = 0; currentDay <= endOfWeekDate; i++) {
-                    loopCounter++;
-
-
-                    if (currentDay.getDay() === dayOfWeekMeetingNumber) {
-                        middleDayOfMonth = currentDay.getDate();
-
-
-                        // **FORMAT DATE AS YYYY-MM-DD - START** (já existente - manter)
-                        const month = String(currentDay.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
-                        const day = String(middleDayOfMonth).padStart(2, '0');
-                        designationDateYYYYMMDD = `${currentYear}-${month}-${day}`;
-                        // **FORMAT DATE AS YYYY-MM-DD - END** (já existente - manter)
-
-
-                        break;
-                    }
-                    currentDay.setDate(currentDay.getDate() + 1);
-                }
-
-                return designationDateYYYYMMDD; // Return the formatted date string or null (já existente - manter)
-            }
 
 
 
@@ -3423,6 +3952,60 @@ const getParticipantsNextWeek = async (ano, mes, semanaNumero) => {
         return new Set(); // Retorna um Set vazio em caso de erro
     }
 };
+
+
+
+const saveParticipationHistoryForIndividuals = async (historicoData) => {
+    try {
+        // Usamos um Map para agrupar todas as designações por participante numa única passagem.
+        // A chave será o ID da pessoa, e o valor será o objeto de histórico personalizado para ela.
+        const participantsMap = new Map();
+
+        // Itera sobre cada designação da semana
+        for (const designacao of historicoData.designacoes) {
+            // Itera sobre cada participante dentro da designação (dirigente, morador, etc.)
+            for (const personId of Object.values(designacao.participantes)) {
+
+                // Se o participante ainda não está no nosso mapa, inicializa os seus dados.
+                if (!participantsMap.has(personId)) {
+                    // Cria uma cópia do histórico principal, mas com um array de designações vazio.
+                    const personHistoryData = {
+                        ...historicoData, // Copia todos os campos: ano, mes, dia, tipo, etc.
+                        designacoes: []   // Começa com uma lista de designações vazia
+                    };
+                    participantsMap.set(personId, personHistoryData);
+                }
+
+                // Adiciona a designação atual à lista de designações daquela pessoa para esta semana.
+                participantsMap.get(personId).designacoes.push(designacao);
+            }
+        }
+
+        // Agora, `participantsMap` contém um registo para cada pessoa com apenas as suas próprias designações.
+        // Vamos criar uma promessa de gravação para cada um.
+        const savePromises = [];
+
+        for (const [personId, personHistoryData] of participantsMap.entries()) {
+            // Constrói a referência para a subcoleção correta.
+            // Ex: db.collection('pessoas').doc('ID_DA_MARIA').collection('2024')
+            const personHistoryCollectionRef = db.collection('pessoas')
+                                                 .doc(personId)
+                                                 .collection(String(historicoData.ano)); // O nome da coleção é o ano.
+
+            // Adiciona a promessa de gravação ao nosso array.
+            savePromises.push(personHistoryCollectionRef.add(personHistoryData));
+        }
+
+        // Executa todas as gravações em paralelo para maior eficiência.
+        await Promise.all(savePromises);
+        console.log("Histórico de participação individual salvo com sucesso para todos os participantes.");
+
+    } catch (error) {
+        console.error("Erro ao salvar o histórico de participação individual:", error);
+        // Opcional: Adicionar tratamento de erro, embora o erro principal seja capturado na função chamadora.
+    }
+};
+
 
 
 
@@ -4062,4 +4645,3 @@ designationDisplayContainer.appendChild(labIcon);
     </script>
 </body>
 </html>
-
