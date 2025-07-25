@@ -21,6 +21,7 @@
             background-color: #f5f6fa;
         }
 
+        /* --- Estilos da Sidebar (Padronizado) --- */
         .sidebar {
             width: 250px;
             background-color: #2c3e50;
@@ -29,17 +30,15 @@
             height: 100vh;
             position: fixed;
         }
-
-        .content {
-            flex: 1;
-            padding: 20px;
-            margin-left: 250px;
-        }
-
+        
         .logo {
             text-align: center;
             padding: 20px 0;
             border-bottom: 1px solid #34495e;
+        }
+
+        .logo h2 {
+            margin: 0;
         }
 
         .nav-list {
@@ -49,6 +48,13 @@
 
         .nav-item {
             padding: 10px 20px;
+        }
+        
+        /* Adiciona um destaque para o item ativo */
+        .nav-item a.active {
+            background-color: #34495e;
+            border-left: 3px solid #3498db;
+            padding-left: 17px;
         }
 
         .nav-item a {
@@ -61,13 +67,26 @@
         .nav-item i {
             margin-right: 10px;
             width: 20px;
-            text-align: center; /* Added to center icons */
+            text-align: center;
         }
 
         .nav-item:hover {
             background-color: #34495e;
         }
+        
+        .content {
+            flex: 1;
+            padding: 20px;
+            margin-left: 250px;
+        }
+        
+        h1 { 
+            color: #2c3e50; 
+            margin-bottom: 20px;
+            font-size: 28px; 
+        }
 
+        /* --- Estilos do Conteúdo (Seus estilos originais) --- */
         .table-container {
             background-color: white;
             border-radius: 8px;
@@ -79,13 +98,12 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            border: 1px solid #ddd;
         }
 
         th, td {
             padding: 12px 15px;
             text-align: left;
-            border: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
         }
 
         th {
@@ -181,8 +199,8 @@
         }
 
         .popup-top-right {
-            text-align: right; /* Keep for potential future use */
-            display: none; /* Hide popup-top-right as content moved */
+            text-align: right;
+            display: none;
         }
 
         .popup-close {
@@ -232,7 +250,7 @@
         }
 
         .popup-edit i {
-            margin-right: 0; /* Remove margin from icon */
+            margin-right: 0;
         }
 
         .popup-content {
@@ -286,7 +304,6 @@
             flex-wrap: wrap;
         }
 
-        /* Style for the new top info group */
         .top-info-group {
             margin-top: 5px;
         }
@@ -314,7 +331,6 @@
             color: #0284c7;
         }
 
-        /* Remove underline from person names in table */
         .person-name {
             text-decoration: none;
             color: inherit;
@@ -324,7 +340,6 @@
             text-decoration: none;
             color: #2c3e50;
         }
-
     </style>
 </head>
 <body>
@@ -333,49 +348,16 @@
             <h2>Sistema de Escala</h2>
         </div>
         <nav>
+            <!-- Menu de Navegação Padronizado -->
             <ul class="nav-list">
-                <li class="nav-item">
-                    <a href="index.html#reuniao-semana">
-                        <i class="fas fa-users"></i>
-                        <span>Reunião Semana</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="index.html#fim-de-semana">
-                        <i class="fas fa-calendar-week"></i>
-                        <span>Fim de Semana</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="index.html#pregacao">
-                        <i class="fas fa-bullhorn"></i>
-                        <span>Pregação</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="index.html#estatisticas">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Estatísticas</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="nomes.html" class="active">
-                        <i class="fas fa-address-book"></i>
-                        <span>Nomes</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="index.html#painel">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span>Painel</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="index.html#criar">
-                        <i class="fas fa-plus"></i>
-                        <span>Criar</span>
-                    </a>
-                </li>
+                <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
+                <li class="nav-item"><a href="semana.html"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
+                <li class="nav-item"><a href="fimdesemana.html"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
+                <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
+                <li class="nav-item"><a href="estatisticas.html"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
+                <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
+                <li class="nav-item"><a href="iniciar.html"><i class="fas fa-play"></i><span>Iniciar</span></a></li>
+                <li class="nav-item"><a href="criar.html"><i class="fas fa-plus"></i><span>Criar</span></a></li>
             </ul>
         </nav>
     </div>
@@ -385,16 +367,12 @@
         <button id="toggleView" class="toggle-btn">Designações</button>
         <div class="table-container">
             <table id="pessoasTable">
-                <thead>
-                    <tr id="tableHeader">
-                        <th>Nome</th>
-                        <th class="info-column">Gênero</th>
-                        <th class="info-column">Idioma</th>
-                        <th class="info-column">Grupo</th>
-                        <th class="info-column">Email</th>
-                    </tr>
+                <thead id="tableHeader">
+                    <!-- O cabeçalho é gerado dinamicamente pelo JS -->
                 </thead>
-                <tbody id="tableBody"></tbody>
+                <tbody id="tableBody">
+                    <!-- O corpo da tabela é preenchido pelo JS -->
+                </tbody>
             </table>
         </div>
     </main>
@@ -402,17 +380,14 @@
     <div class="popup-overlay">
         <div class="popup-card">
             <div class="popup-header">
-                <button class="popup-edit"> <!-- Edit button on the left, icon only -->
+                <button class="popup-edit">
                     <i class="fas fa-edit"></i>
                 </button>
                 <h2 class="popup-title"></h2>
-                <div class="popup-top-right">
-                    <!--  popup-top-right is hidden now -->
-                </div>
                 <button class="popup-close">×</button>
             </div>
             <div class="popup-content">
-                <div class="top-info-group">  <!-- New container for Gênero, Privilégios and Idioma -->
+                <div class="top-info-group">
                     <div class="info-group">
                         <span class="info-label">Gênero:</span>
                         <span class="info-value" id="genero"></span>
@@ -426,7 +401,7 @@
                         <span class="info-value" id="idioma"></span>
                     </div>
                 </div>
-                <div class="info-group">  <!-- Email now below -->
+                <div class="info-group">
                     <span class="info-label">Email:</span>
                     <span class="info-value" id="email"></span>
                 </div>
@@ -444,12 +419,12 @@
                     <div class="info-group">
                         <span class="info-label">Faz Designações Reunião:</span>
                         <span class="info-value" id="fazDesignacoesReuniao"></span>
-                        <ul id="designacoesReuniaoLista" class="designation-list"></ul> <!-- Lista Designações Reunião -->
+                        <ul id="designacoesReuniaoLista" class="designation-list"></ul>
                     </div>
                     <div class="info-group">
                         <span class="info-label">Faz Designações Pregação:</span>
                         <span class="info-value" id="fazDesignacoesPregacao"></span>
-                        <ul id="designacoesPregacaoLista" class="designation-list"></ul> <!-- Lista Designações Pregação -->
+                        <ul id="designacoesPregacaoLista" class="designation-list"></ul>
                     </div>
                 </div>
             </div>
@@ -500,63 +475,45 @@
                 if (doc.exists) {
                     const data = doc.data();
                     
-                    // Reset any existing animations
-                    popupOverlay.style.display = 'none';
-                    popupOverlay.classList.remove('active');
-                    
-                    // Set popup title (name)
                     document.querySelector('.popup-title').textContent = data.nomePessoa;
                     
-                    // Show overlay first
                     popupOverlay.style.display = 'flex';
-                    
-                    // Trigger animation after a small delay
                     setTimeout(() => {
                         popupOverlay.classList.add('active');
                     }, 10);
 
-                    // Set top info group information
                     document.getElementById('genero').textContent = data.genero || 'Não especificado';
                     document.getElementById('privilegios').textContent = data.privilegios || 'Não especificado';
                     document.getElementById('idioma').textContent = data.idioma || 'Não especificado';
-
-
-                    // Set main content information
                     document.getElementById('email').textContent = data.email || 'Não especificado';
                     document.getElementById('casadoCom').textContent = data.casadoCom || 'Não especificado';
                     document.getElementById('acompanhaCarrinhos').textContent = data.acompanhaCarrinhos ? 'Sim' : 'Não';
                     document.getElementById('fazDesignacoesReuniao').textContent = data.fazDesignacoesReuniao ? 'Sim' : 'Não';
                     document.getElementById('fazDesignacoesPregacao').textContent = data.fazDesignacoesPregacao ? 'Sim' : 'Não';
 
-                    // Get and display designations
-                    const designacoesReuniao = data.designacoesReuniao || []; // Assuming it's an array in Firebase
-                    const designacoesPregacao = data.designacoesPregacao || []; // Assuming it's an array in Firebase
+                    const designacoesReuniao = data.designacoesReuniao || [];
+                    const designacoesPregacao = data.designacoesPregacao || [];
 
                     const reuniaoList = document.getElementById('designacoesReuniaoLista');
                     const pregacaoList = document.getElementById('designacoesPregacaoLista');
 
-                    reuniaoList.innerHTML = ''; // Clear previous list
+                    reuniaoList.innerHTML = '';
                     designacoesReuniao.forEach(designacao => {
                         const li = document.createElement('li');
                         li.textContent = designacao;
                         reuniaoList.appendChild(li);
                     });
 
-                    pregacaoList.innerHTML = ''; // Clear previous list
+                    pregacaoList.innerHTML = '';
                     designacoesPregacao.forEach(designacao => {
                         const li = document.createElement('li');
                         li.textContent = designacao;
                         pregacaoList.appendChild(li);
                     });
 
-
-                    // Setup edit button
                     popupEdit.onclick = () => {
                         window.location.href = `criar-pessoa.html?id=${personId}`;
                     };
-
-                    // Show popup
-                    popupOverlay.style.display = 'flex';
                 }
             } catch (error) {
                 console.error('Error getting person details:', error);
@@ -566,59 +523,26 @@
         let pessoas = [];
         let currentSort = { field: null, direction: 'asc' };
         let isDesignationView = false;
-
-        // Function to populate table with data
         let allDesignacoes = [];
 
         async function loadPessoas() {
-            const tableBody = document.getElementById('tableBody');
-            const tableHeader = document.getElementById('tableHeader');
-
-            // Load all designacoes first
             try {
                 const designacoesSnapshot = await db.collection('designacoes').get();
                 allDesignacoes = [];
                 designacoesSnapshot.forEach(doc => {
                     allDesignacoes.push(doc.data().nome);
                 });
-            } catch (error) {
-                console.error('Error loading designacoes:', error);
-            }
 
-            // Add toggle view functionality
-            const toggleBtn = document.getElementById('toggleView');
-            toggleBtn.addEventListener('click', () => {
-                isDesignationView = !isDesignationView;
-                toggleBtn.textContent = isDesignationView ? 'Informações' : 'Designações';
-                renderTable(pessoas, currentSort, isDesignationView);
-            });
-
-            try {
                 const snapshot = await db.collection('pessoas').get();
                 pessoas = [];
                 snapshot.forEach(doc => {
                     pessoas.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Add click event listeners to table headers for sorting
-                tableHeader.querySelectorAll('th').forEach(th => {
-                    th.style.cursor = 'pointer';
-                    th.addEventListener('click', () => {
-                        const field = th.textContent.toLowerCase();
-                        if (currentSort.field === field) {
-                            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-                        } else {
-                            currentSort.field = field;
-                            currentSort.direction = 'asc';
-                        }
-                        renderTable(pessoas, currentSort, isDesignationView);
-                    });
-                });
-
                 renderTable(pessoas, currentSort, isDesignationView);
             } catch (error) {
-                console.error('Error loading pessoas:', error);
-                tableBody.innerHTML = '<tr><td colspan="5">Erro ao carregar dados</td></tr>';
+                console.error('Error loading data:', error);
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="5">Erro ao carregar dados</td></tr>';
             }
         }
 
@@ -627,37 +551,35 @@
             const tableHeader = document.getElementById('tableHeader');
             tableBody.innerHTML = '';
 
-            // Update table headers based on view
             if (isDesignationView) {
                 let headerHtml = '<tr><th>Nome</th>';
                 allDesignacoes.forEach(designacao => {
-                    headerHtml += `<th>${designacao}</th>`;
+                    headerHtml += `<th data-sort-key="${designacao}">${designacao}</th>`;
                 });
                 headerHtml += '</tr>';
                 tableHeader.innerHTML = headerHtml;
             } else {
                 tableHeader.innerHTML = `
                     <tr>
-                        <th>Nome</th>
-                        <th class="info-column">Gênero</th>
-                        <th class="info-column">Idioma</th>
-                        <th class="info-column">Grupo</th>
-                        <th class="info-column">Email</th>
+                        <th data-sort-key="nomePessoa">Nome</th>
+                        <th data-sort-key="genero">Gênero</th>
+                        <th data-sort-key="idioma">Idioma</th>
+                        <th data-sort-key="grupo">Grupo</th>
+                        <th data-sort-key="email">Email</th>
                     </tr>
                 `;
             }
 
-            // Sort pessoas if sort field is specified
             if (sort.field) {
                 pessoas.sort((a, b) => {
-                    let aVal = a[getFieldName(sort.field)] || '';
-                    let bVal = b[getFieldName(sort.field)] || '';
+                    let aVal = a[sort.field] || '';
+                    let bVal = b[sort.field] || '';
                     if (typeof aVal === 'string') aVal = aVal.toLowerCase();
                     if (typeof bVal === 'string') bVal = bVal.toLowerCase();
                     if (sort.direction === 'asc') {
-                        return aVal > bVal ? 1 : -1;
+                        return aVal > bVal ? 1 : (aVal < bVal ? -1 : 0);
                     } else {
-                        return aVal < bVal ? 1 : -1;
+                        return aVal < bVal ? 1 : (aVal > bVal ? -1 : 0);
                     }
                 });
             }
@@ -666,15 +588,11 @@
                 const row = document.createElement('tr');
                 if (isDesignationView) {
                     let rowHtml = `<td><a href="#" class="person-name" data-id="${pessoa.id}">${pessoa.nomePessoa || 'N/A'}</a></td>`;
-                    
                     allDesignacoes.forEach(designacao => {
-                        const hasDesignacao = 
-                            (pessoa.designacoesReuniao && pessoa.designacoesReuniao.includes(designacao)) ||
-                            (pessoa.designacoesPregacao && pessoa.designacoesPregacao.includes(designacao));
-                        
+                        const hasDesignacao = (pessoa.designacoesReuniao && pessoa.designacoesReuniao.includes(designacao)) ||
+                                              (pessoa.designacoesPregacao && pessoa.designacoesPregacao.includes(designacao));
                         rowHtml += `<td>${hasDesignacao ? '<i class="fas fa-check check-mark"></i>' : '<i class="fas fa-times x-mark"></i>'}</td>`;
                     });
-                    
                     row.innerHTML = rowHtml;
                 } else {
                     row.innerHTML = `
@@ -689,26 +607,36 @@
             });
         }
 
-        function getFieldName(headerText) {
-            const fieldMap = {
-                'nome': 'nomePessoa',
-                'gênero': 'genero',
-                'idioma': 'idioma',
-                'grupo': 'grupo',
-                'email': 'email'
-            };
-            return fieldMap[headerText] || headerText;
-        }
+        document.getElementById('toggleView').addEventListener('click', () => {
+            isDesignationView = !isDesignationView;
+            document.getElementById('toggleView').textContent = isDesignationView ? 'Informações' : 'Designações';
+            renderTable(pessoas, currentSort, isDesignationView);
+        });
 
-        // Load data when page loads
-        document.addEventListener('DOMContentLoaded', loadPessoas);
-        // Add click event to person names in the table
-        document.addEventListener('click', (e) => {
+        document.getElementById('tableHeader').addEventListener('click', (e) => {
+            if (e.target.tagName === 'TH') {
+                const field = e.target.dataset.sortKey;
+                if (!field) return; 
+
+                if (currentSort.field === field) {
+                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort.field = field;
+                    currentSort.direction = 'asc';
+                }
+                renderTable(pessoas, currentSort, isDesignationView);
+            }
+        });
+
+        document.getElementById('tableBody').addEventListener('click', (e) => {
             if (e.target.classList.contains('person-name')) {
+                e.preventDefault();
                 const personId = e.target.dataset.id;
                 showPersonDetails(personId);
             }
         });
+
+        document.addEventListener('DOMContentLoaded', loadPessoas);
     </script>
 </body>
 </html>
