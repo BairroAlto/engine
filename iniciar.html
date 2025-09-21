@@ -5,55 +5,169 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Escala - Iniciar</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Removido o link para style.css, pois os estilos já estão nesta página -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
-        /* Todos os seus estilos CSS foram mantidos aqui... */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; }
-        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding: 20px 0; height: 100vh; position: fixed; }
-        .logo { text-align: center; padding: 20px 0; border-bottom: 1px solid #34495e; }
-        .logo h2 { margin: 0; }
-        .nav-list { list-style: none; padding: 20px 0; }
-        .nav-item { padding: 10px 20px; }
-        .nav-item a { color: white; text-decoration: none; display: flex; align-items: center; }
-        .nav-item i { margin-right: 10px; width: 20px; text-align: center; }
-        .nav-item:hover { background-color: #34495e; }
-        .content { margin-left: 250px; padding: 30px; flex-grow: 1; }
-        h1 { color: #2c3e50; margin-bottom: 30px; font-size: 28px; }
-        .card-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-        .btn-flow { background-color: #2c3e50; color: white; padding: 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; text-decoration: none; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; gap: 10px; transition: background-color 0.3s; }
-        .btn-flow:hover { background-color: #34495e; }
-        .btn-flow i { font-size: 24px; margin-bottom: 5px; }
+        /* Estilos Gerais */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f6fa;
+        }
+
+        /* Estilos da Sidebar */
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding-top: 20px; /* Ajuste para dar espaço ao logo */
+            height: 100vh;
+            position: fixed; /* Mantém a barra lateral fixa na tela */
+            left: 0;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .logo h2 {
+            margin: 0;
+        }
+
+        .nav-list {
+            list-style: none;
+            padding: 0; /* Removido padding para alinhamento */
+        }
+
+        .nav-item a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 15px 20px; /* Aumentado padding para melhor toque */
+            transition: background-color 0.3s;
+        }
+
+        .nav-item a i {
+            margin-right: 15px; /* Aumentado espaço */
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* Efeito hover no link <a>, não no <li> */
+        .nav-item a:hover {
+            background-color: #34495e;
+        }
+        
+        /* Classe para item ativo (opcional, mas recomendado) */
+        .nav-item.active a {
+            background-color: #1abc9c; /* Cor de destaque */
+        }
+
+        /* Estilos do Conteúdo Principal */
+        .content {
+            margin-left: 250px; /* Espaço para a sidebar */
+            padding: 30px;
+            flex-grow: 1; /* Faz o conteúdo ocupar o resto do espaço */
+            width: 100%;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .btn-flow {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            gap: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-flow:hover {
+            background-color: #34495e;
+        }
+
+        .btn-flow i {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        /* Media Query para Responsividade */
         @media (max-width: 768px) {
-            .sidebar { width: 70px; }
-            .sidebar .logo span, .sidebar nav ul li a span { display: none; }
-            .content { margin-left: 70px; }
+            .sidebar {
+                width: 70px;
+            }
+            .sidebar .logo h2, .sidebar .nav-item a span {
+                display: none; /* Esconde o texto, mantendo os ícones */
+            }
+            .content {
+                margin-left: 70px;
+            }
         }
     </style>
 </head>
 <body>
+
+    <!-- Sidebar Integrada -->
     <div class="sidebar">
         <div class="logo">
             <h2>Sistema de Escala</h2>
         </div>
         <nav>
             <ul class="nav-list">
-                <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
-                <li class="nav-item"><a href="semana.html"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
-                <li class="nav-item"><a href="fimdesemana.html"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
-                <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
-                <li class="nav-item"><a href="estatisticas.html"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
-                <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
-                <li class="nav-item"><a href="iniciar.html"><i class="fas fa-play"></i><span>Iniciar</span></a></li>
-                <li class="nav-item"><a href="criar.html"><i class="fas fa-plus"></i><span>Criar</span></a></li>
+                <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt" aria-hidden="true"></i><span>Painel</span></a></li>
+                <li class="nav-item"><a href="semana.html"><i class="fas fa-users" aria-hidden="true"></i><span>Reunião Semana</span></a></li>
+                <li class="nav-item"><a href="fimdesemana.html"><i class="fas fa-calendar-week" aria-hidden="true"></i><span>Fim de Semana</span></a></li>
+                <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn" aria-hidden="true"></i><span>Pregação</span></a></li>
+                <li class="nav-item"><a href="estatisticas.html"><i class="fas fa-chart-bar" aria-hidden="true"></i><span>Estatísticas</span></a></li>
+                <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book" aria-hidden="true"></i><span>Nomes</span></a></li>
+                <!-- Marcando a página atual como ativa -->
+                <li class="nav-item active"><a href="iniciar.html"><i class="fas fa-play" aria-hidden="true"></i><span>Iniciar</span></a></li>
+                <li class="nav-item"><a href="criar.html"><i class="fas fa-plus" aria-hidden="true"></i><span>Criar</span></a></li>
             </ul>
         </nav>
     </div>
 
+    <!-- Conteúdo Principal -->
     <main class="content">
         <h1>Iniciar</h1>
         <div class="card-container">
+            <a href="iniciar-fluxoescola.html" class="btn-flow">
+                <i class="fas fa-play"></i>
+                <span>Iniciar Fluxo Escola</span>
+            </a>
             <a href="iniciar-fluxosemanal.html" class="btn-flow">
                 <i class="fas fa-play"></i>
                 <span>Iniciar Fluxo Semanal</span>
@@ -77,6 +191,9 @@
         </div>
     </main>
 
+    <!-- Opcional, se você tiver scripts globais -->
+    <script src="main.js"></script> 
+    
     <script>
         // Configuração do Firebase
         const firebaseConfig = {
@@ -93,7 +210,8 @@
         const db = firebase.firestore();
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("Página 'Iniciar' carregada.");
+            // Este console.log pode ser mantido ou removido
+            console.log("Página 'Iniciar' carregada com sidebar integrada.");
         });
     </script>
 </body>
