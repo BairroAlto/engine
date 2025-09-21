@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Ordem das Designações</title>
+    
+    <!-- 1. Links para Font Awesome e para o nosso CSS Global -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- 2. Estilos que são ESPECÍFICOS APENAS para esta página -->
+    <style>
+        .order-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 5px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .order-item-name {
+            flex-grow: 1;
+            font-size: 16px;
+        }
+        .order-input {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .save-button-container {
+            text-align: right;
+            margin-top: 20px;
+            padding: 10px;
+        }
+        #save-order-btn {
+            background-color: #2c3e50;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #save-order-btn:hover { background-color: #34495e; }
+        #save-feedback { margin-top: 15px; font-weight: bold; }
+        .category-header {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid;
+            padding-bottom: 5px;
+            font-size: 1.1em;
+        }
+        .category-semana { color: #3498db; border-bottom-color: #a9cce3; }
+        .category-fim-de-semana { color: #9b59b6; border-bottom-color: #d7bde2; }
+        .category-pregacao { color: #e67e22; border-bottom-color: #f0b27a; }
+        .category-tecnicas { color: #8d6e63; border-bottom-color: #c0ab8e; }
+        .subcategory-header {
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            padding-left: 5px;
+            text-transform: capitalize;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <!-- 3. O container onde o menu será injetado -->
+    <div id="sidebar-placeholder"></div>
+
+    <!-- 4. O conteúdo principal da página -->
+    <main class="content">
+        <h1>Gerenciar Ordem das Designações</h1>
+        <div class="order-container" id="order-list-container">
+            <p>Carregando designações...</p>
+        </div>
+        <div class="save-button-container">
+            <button id="save-order-btn">Salvar Ordem</button>
+            <p id="save-feedback"></p>
+        </div>
+    </main>
+
+    <!-- 5. ORDEM DE SCRIPTS UNIFICADA -->
+
+    <!-- Primeiro: As bibliotecas do Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Segundo: Nossa configuração centralizada, que cria a variável 'db' -->
+    <script src="firebase-config.js"></script>
+
+    <!-- Terceiro: O script com a lógica específica desta página -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // A chamada 'fetch('menu.html')' foi REMOVIDA daqui
+
+            const orderListContainer = document.getElementById('order-list-container');
+            const saveButton = document.getElementById('save-order-btn');
+            let allDesignations = [];
+
+            const categoryStructure = {
+                "Semana": ["escola", "resto da semana"],
+                "Fim de Semana": ["fim de semana"],
+                "Técnicas": ["tecnicas"],
+                "Pregação": ["pregacao", "dirigencia saida"]
+            };
+            const orderedCategories = ["Semana", "Fim de Semana", "Técnicas", "Pregação"];
+            const categoryToClass = {
+                'Semana': 'category-semana',
+                'Fim de Semana': 'category-fim-de-semana',
+                'Pregação': 'category-pregacao',
+                'Técnicas': 'category-tecnicas'
+            };
+            
+            const formatSubcategoryName = (text) => text.charAt(0).toUpperCase() + text.slice(1).replace(/_/g, ' ');
+            
+            try {
+                // A variável 'db' já existe graças ao 'firebase-config.js'
+                const designacoesSnapshot = await db.collection('designacoes').get();
+                allDesignations = designacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderOrderList(allDesignations);
+            } catch (error) {
+                console.error("Erro ao carregar designações: ", error);
+                orderListContainer.innerHTML = "<p>Erro ao carregar designações.</p>";
+            }
+
+            function renderOrderList(designations) {
+                let html = '';
+                orderedCategories.forEach(categoryName => {
+                    const partes = categoryStructure[categoryName];
+                    const categoryHasItems = designations.some(d => partes.includes(d.parte));
+                    if (categoryHasItems) {
+                        const className = categoryToClass[categoryName] || '';
+                        html += `<h3 class="category-header ${className}">${categoryName}</h3>`;
+                        partes.forEach(parte => {
+                            const designationsInParte = designations.filter(d => d.parte === parte).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+                            if (designationsInParte.length > 0) {
+                                designationsInParte.forEach((d, index) => { d.ordem = index + 1; });
+                                html += `<h4 class="subcategory-header ${className}">${formatSubcategoryName(parte)}</h4>`;
+                                designationsInParte.forEach(d => {
+                                    html += `<div class="order-item"><span class="order-item-name">${d.nome}</span><input type="number" class="order-input" value="${d.ordem}" data-designation-id="${d.id}" data-parte="${d.parte}"></div>`;
+                                });
+                            }
+                        });
+                    }
+                });
+                orderListContainer.innerHTML = html;
+            }
+
+            orderListContainer.addEventListener('change', (event) => {
+                if (event.target.classList.contains('order-input')) {
+                    handleOrderChange(event.target);
+                }
+            });
+
+            function handleOrderChange(changedInput) {
+                const changedId = changedInput.dataset.designationId;
+                const groupParte = changedInput.dataset.parte;
+                let newOrder = parseInt(changedInput.value, 10);
+                const oldOrder = allDesignations.find(d => d.id === changedId).ordem;
+                if (isNaN(newOrder)) { changedInput.value = oldOrder; return; }
+                const groupItems = allDesignations.filter(d => d.parte === groupParte);
+                const numItems = groupItems.length;
+                newOrder = Math.max(1, Math.min(newOrder, numItems));
+                const changedItem = groupItems.find(d => d.id === changedId);
+                let otherItems = groupItems.filter(d => d.id !== changedId).sort((a,b) => a.ordem - b.ordem);
+                otherItems.splice(newOrder - 1, 0, changedItem);
+                otherItems.forEach((item, index) => {
+                    const newSequentialOrder = index + 1;
+                    item.ordem = newSequentialOrder;
+                    const inputElement = orderListContainer.querySelector(`.order-input[data-designation-id="${item.id}"]`);
+                    if (inputElement) inputElement.value = newSequentialOrder;
+                });
+            }
+            
+            saveButton.addEventListener('click', async () => {
+                const feedbackEl = document.getElementById('save-feedback');
+                saveButton.disabled = true;
+                saveButton.textContent = 'Salvando...';
+                feedbackEl.textContent = '';
+                const batch = db.batch();
+                allDesignations.forEach(d => {
+                    const docRef = db.collection('designacoes').doc(d.id);
+                    batch.update(docRef, { ordem: d.ordem || 0 });
+                });
+                try {
+                    await batch.commit();
+                    feedbackEl.textContent = "Ordem salva com sucesso!";
+                    feedbackEl.style.color = "#2ecc71";
+                    setTimeout(() => { location.reload(); }, 1000);
+                } catch (error) {
+                    console.error("Erro ao salvar a ordem: ", error);
+                    feedbackEl.textContent = "Erro ao salvar. Tente novamente.";
+                    feedbackEl.style.color = "#e74c3c";
+                    saveButton.disabled = false;
+                    saveButton.textContent = 'Salvar Ordem';
+                }
+            });
+        });
+    </script>
+    
+    <!-- Quarto: O script que carrega o menu -->
+    <script src="main.js"></script>
+
+</body>
+</html>
