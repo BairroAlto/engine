@@ -125,21 +125,7 @@
 
 
 <body>
-    <div class="sidebar">
-        <div class="logo"><h2>Sistema de Escala</h2></div>
-        <nav>
-            <ul class="nav-list">
-                <li class="nav-item"><a href="index.html#painel"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
-                <li class="nav-item"><a href="index.html#reuniao-semana"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
-                <li class="nav-item"><a href="index.html#fim-de-semana"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
-                <li class="nav-item"><a href="index.html#pregacao"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
-                <li class="nav-item"><a href="index.html#estatisticas"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
-                <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
-                <li class="nav-item"><a href="index.html#iniciar"><i class="fas fa-play"></i><span>Iniciar</span></a></li>
-                <li class="nav-item"><a href="index.html#criar"><i class="fas fa-plus"></i><span>Criar</span></a></li>
-            </ul>
-        </nav>
-    </div>
+   <div id="sidebar-placeholder"></div>
 
     <main class="content">
         <h1>Atribuição para Carrinhos</h1>
@@ -201,6 +187,7 @@
             
             let locations = [], allEligiblePeople = [], fullHistory = [], activePersonInput = null;
             let lockedDates = new Set(), loadedDocIds = new Set();
+            let loadedScheduleContext = { year: null, month: null };
     
             // --- FUNÇÃO DE DATA ATUALIZADA ---
             function getSchedulingDates(year, month, targetDayOfWeek) {
@@ -539,51 +526,75 @@
                 }
             }
             
-            async function handleLoadOldSchedule() {
-                const year = parseInt(loadScheduleModal.querySelector('#load-year-select').value, 10);
-                const monthSelectEl = loadScheduleModal.querySelector('#load-month-select');
-                const month = monthSelectEl.options[monthSelectEl.selectedIndex].text;
-                loader.style.display = 'block';
-                scheduleContainer.innerHTML = '';
-                closeLoadScheduleModal();
-                try {
-                    const snapshot = await db.collection('historicoPregacao').where('ano', '==', year).where('mes', '==', month).get();
-                    if (snapshot.empty) {
-                        scheduleContainer.innerHTML = `<p>Nenhuma escala encontrada para ${month} de ${year}.</p>`;
-                        return;
-                    }
-                    loadedDocIds.clear();
-                    const scheduleMap = new Map();
-                    snapshot.forEach(doc => {
-                        loadedDocIds.add(doc.id);
-                        const data = doc.data();
-                        const { data: dateString, grupo, local, ...peopleData } = data;
-                        if (!scheduleMap.has(dateString)) scheduleMap.set(dateString, { displayDate: dateString, groups: [] });
-                        const daySchedule = scheduleMap.get(dateString);
-                        let groupData = daySchedule.groups[grupo - 1];
-                        if (!groupData) {
-                            daySchedule.groups[grupo - 1] = { people: [], location: local, docId: doc.id };
-                            groupData = daySchedule.groups[grupo - 1];
-                        }
-                        groupData.docId = doc.id;
-                        groupData.location = local;
-                        for (let i = 1; i <= 3; i++) {
-                            if (peopleData[`Pessoa${i}`]) groupData.people.push({ id: peopleData[`Pessoa${i}`].id, nomePessoa: peopleData[`Pessoa${i}`].nome });
-                        }
-                    });
-                    const finalSchedule = Array.from(scheduleMap.values());
-                    finalSchedule.forEach(day => day.groups = day.groups.filter(g => g));
-finalSchedule.sort((a, b) => parsePtBrDate(a.displayDate) - parsePtBrDate(b.displayDate));
-                    renderSchedule(finalSchedule);
-                    saveBtn.style.display = 'none';
-                    updateBtn.style.display = 'inline-flex';
-                } catch (error) {
-                    console.error("Erro ao carregar escala antiga:", error);
-                    scheduleContainer.innerHTML = `<p style="color:red;">Ocorreu um erro.</p>`;
-                } finally {
-                    loader.style.display = 'none';
-                }
+         async function handleLoadOldSchedule() {
+    const year = parseInt(loadScheduleModal.querySelector('#load-year-select').value, 10);
+    const monthSelectEl = loadScheduleModal.querySelector('#load-month-select');
+    const month = monthSelectEl.options[monthSelectEl.selectedIndex].text;
+
+     loadedScheduleContext.year = year;    // <-- ADICIONE ESTA LINHA
+    loadedScheduleContext.month = month;  // <-- ADICIONE ESTA LINHA
+
+    loader.style.display = 'block';
+    scheduleContainer.innerHTML = '';
+    closeLoadScheduleModal();
+    try {
+        const snapshot = await db.collection('historicoPregacao').where('ano', '==', year).where('mes', '==', month).get();
+        if (snapshot.empty) {
+            scheduleContainer.innerHTML = `<p>Nenhuma escala encontrada para ${month} de ${year}.</p>`;
+            return;
+        }
+        loadedDocIds.clear();
+
+        // Estrutura de dados temporária para agrupar os documentos por data
+        const docsByDate = new Map();
+
+        snapshot.forEach(doc => {
+            loadedDocIds.add(doc.id);
+            const data = doc.data();
+            const dateString = data.data;
+
+            if (!docsByDate.has(dateString)) {
+                docsByDate.set(dateString, []);
             }
+            // Adiciona o documento inteiro à lista daquela data
+            docsByDate.get(dateString).push({ docId: doc.id, ...data });
+        });
+
+        // Converte o Map para o formato que a função renderSchedule espera
+        const finalSchedule = Array.from(docsByDate.entries()).map(([dateString, docs]) => {
+            return {
+                displayDate: dateString,
+                // Mapeia cada documento para um objeto de grupo separado
+                groups: docs.map(docData => {
+                    const people = [];
+                    for (let i = 1; i <= 3; i++) {
+                        if (docData[`Pessoa${i}`]) {
+                            people.push({ 
+                                id: docData[`Pessoa${i}`].id, 
+                                nomePessoa: docData[`Pessoa${i}`].nome 
+                            });
+                        }
+                    }
+                    return {
+                        people: people,
+                        location: docData.local,
+                        docId: docData.docId
+                    };
+                })
+            };
+        });
+
+        finalSchedule.sort((a, b) => parsePtBrDate(a.displayDate) - parsePtBrDate(b.displayDate));
+        renderSchedule(finalSchedule);
+        saveBtn.style.display = 'none';
+        updateBtn.style.display = 'inline-flex';
+    } catch (error) {
+        console.error("Erro ao carregar escala antiga:", error);
+        scheduleContainer.innerHTML = `<p style="color:red;">Ocorreu um erro.</p>`;
+    } finally {
+        loader.style.display = 'none';
+    }
+}
     
            function handleGenerateClick() {
                 loader.style.display = 'block';
@@ -766,74 +777,126 @@ finalSchedule.sort((a, b) => parsePtBrDate(a.displayDate) - parsePtBrDate(b.disp
                 });
             }
     
-            async function handleSaveClick() { 
-                loader.style.display = 'block';
-                loader.querySelector('p').textContent = 'A salvar...';
-                const batch = db.batch();
-                const anoParaSalvar = parseInt(yearSelect.value, 10);
-                const mesParaSalvar = monthSelect.options[monthSelect.selectedIndex].text;
-                document.querySelectorAll('.group-card').forEach(card => {
-                    const dateString = card.closest('.date-section').querySelector('.date-header').textContent;
-                    const locationInput = card.querySelector('.location-input');
-                    const personInputs = card.querySelectorAll('.person-input');
-                    const assignment = { data: dateString, local: locationInput.value || '', timestamp: firebase.firestore.FieldValue.serverTimestamp(), ano: anoParaSalvar, mes: mesParaSalvar, diadasemana: dateString.split(',')[0], grupo: parseInt(card.dataset.groupIndex) + 1, };
-                    let personCount = 0;
-                    personInputs.forEach((input, index) => {
-                        if (input.value) {
-                            assignment[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
-                            personCount++;
-                        }
-                    });
-                    if (personCount > 0) batch.set(db.collection('historicoPregacao').doc(), assignment);
-                });
-                try {
-                    await batch.commit();
-                    alert('Escala salva com sucesso!');
-                    scheduleContainer.innerHTML = '<p>A escala foi salva. Pode gerar uma nova ou carregar uma antiga.</p>';
-                    saveBtn.style.display = 'none';
-                    lockedDates.clear();
-                    await fetchInitialData();
-                } catch (error) {
-                    console.error("Erro ao salvar escala:", error);
-                    alert('Falha ao salvar a escala.');
-                } finally {
-                    loader.style.display = 'none';
+      async function handleSaveClick() { 
+    loader.style.display = 'block';
+    loader.querySelector('p').textContent = 'A salvar...';
+    const batch = db.batch();
+
+    // REGRA CORRIGIDA: Usa o mês e ano selecionados nos menus como a "etiqueta" para todos os grupos.
+    const anoParaSalvar = parseInt(yearSelect.value, 10);
+    const mesParaSalvar = monthSelect.options[monthSelect.selectedIndex].text;
+
+    document.querySelectorAll('.group-card').forEach(card => {
+        const personInputs = card.querySelectorAll('.person-input');
+        let personCount = 0;
+        personInputs.forEach(input => { if (input.value) personCount++; });
+
+        if (personCount > 0) {
+            const dateString = card.closest('.date-section').querySelector('.date-header').textContent;
+            const locationInput = card.querySelector('.location-input');
+            
+            const assignment = {
+                data: dateString,
+                local: locationInput.value || '',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                ano: anoParaSalvar,         // <-- USA A ETIQUETA GLOBAL
+                mes: mesParaSalvar,         // <-- USA A ETIQUETA GLOBAL
+                diadasemana: dateString.split(',')[0],
+                grupo: parseInt(card.dataset.groupIndex) + 1,
+            };
+            
+            personInputs.forEach((input, index) => {
+                if (input.value) {
+                    assignment[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
                 }
-            }
+            });
+            
+            batch.set(db.collection('historicoPregacao').doc(), assignment);
+        }
+    });
+
+    try {
+        await batch.commit();
+        alert('Escala salva com sucesso!');
+        scheduleContainer.innerHTML = '<p>A escala foi salva. Pode gerar uma nova ou carregar uma antiga.</p>';
+        saveBtn.style.display = 'none';
+        lockedDates.clear();
+        await fetchInitialData();
+    } catch (error) {
+        console.error("Erro ao salvar escala:", error);
+        alert('Falha ao salvar a escala.');
+    } finally {
+        loader.style.display = 'none';
+    }
+}
     
-            async function handleUpdateClick() {
-                loader.style.display = 'block';
-                loader.querySelector('p').textContent = 'A guardar alterações...';
-                const batch = db.batch();
-                const visibleDocIds = new Set();
-                document.querySelectorAll('.group-card').forEach(card => {
-                    const docId = card.dataset.docId;
-                    if (!docId) return;
-                    visibleDocIds.add(docId);
-                    const locationInput = card.querySelector('.location-input');
-                    const personInputs = card.querySelectorAll('.person-input');
-                    const updateData = { local: locationInput.value || '', Pessoa1: firebase.firestore.FieldValue.delete(), Pessoa2: firebase.firestore.FieldValue.delete(), Pessoa3: firebase.firestore.FieldValue.delete() };
-                    personInputs.forEach((input, index) => {
-                        if (input.value) updateData[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
-                    });
-                    batch.update(db.collection('historicoPregacao').doc(docId), updateData);
+  async function handleUpdateClick() {
+    loader.style.display = 'block';
+    loader.querySelector('p').textContent = 'A guardar alterações...';
+    const batch = db.batch();
+    const visibleDocIds = new Set();
+
+    document.querySelectorAll('.group-card').forEach(card => {
+        const docId = card.dataset.docId;
+        const personInputs = card.querySelectorAll('.person-input');
+        let personCount = 0;
+        personInputs.forEach(input => { if (input.value) personCount++; });
+
+        if (docId) {
+            // Lógica existente para ATUALIZAR um grupo (não muda)
+            visibleDocIds.add(docId);
+            if (personCount > 0) {
+                 const locationInput = card.querySelector('.location-input');
+                 const updateData = { local: locationInput.value || '', Pessoa1: firebase.firestore.FieldValue.delete(), Pessoa2: firebase.firestore.FieldValue.delete(), Pessoa3: firebase.firestore.FieldValue.delete() };
+                 personInputs.forEach((input, index) => {
+                    if (input.value) updateData[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
                 });
-                loadedDocIds.forEach(docId => {
-                    if (!visibleDocIds.has(docId)) batch.delete(db.collection('historicoPregacao').doc(docId));
-                });
-                try {
-                    await batch.commit();
-                    alert('Edições guardadas com sucesso!');
-                    scheduleContainer.innerHTML = '<p>As suas alterações foram guardadas.</p>';
-                    updateBtn.style.display = 'none';
-                    loadedDocIds.clear();
-                } catch (error) {
-                    console.error("Erro ao guardar edições:", error);
-                    alert('Falha ao guardar as edições.');
-                } finally {
-                    loader.style.display = 'none';
-                }
+                batch.update(db.collection('historicoPregacao').doc(docId), updateData);
             }
+        } else if (personCount > 0) {
+            // Lógica CORRIGIDA para CRIAR um novo grupo durante a edição
+            const dateString = card.closest('.date-section').querySelector('.date-header').textContent;
+            const locationInput = card.querySelector('.location-input');
+            
+            const assignment = {
+                data: dateString,
+                local: locationInput.value || '',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                // Usa o mês/ano que foi "lembrado" quando a escala foi carregada
+                ano: loadedScheduleContext.year,
+                mes: loadedScheduleContext.month,
+                diadasemana: dateString.split(',')[0],
+                grupo: parseInt(card.dataset.groupIndex) + 1,
+            };
+            personInputs.forEach((input, index) => {
+                if (input.value) {
+                    assignment[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
+                }
+            });
+            batch.set(db.collection('historicoPregacao').doc(), assignment);
+        }
+    });
+
+    loadedDocIds.forEach(docId => {
+        if (!visibleDocIds.has(docId)) {
+            batch.delete(db.collection('historicoPregacao').doc(docId));
+        }
+    });
+
+    try {
+        await batch.commit();
+        alert('Edições guardadas com sucesso!');
+        scheduleContainer.innerHTML = '<p>As suas alterações foram guardadas.</p>';
+        updateBtn.style.display = 'none';
+        loadedDocIds.clear();
+        await fetchInitialData();
+    } catch (error) {
+        console.error("Erro ao guardar edições:", error);
+        alert('Falha ao guardar as edições.');
+    } finally {
+        loader.style.display = 'none';
+    }
+}
             
             function populateMonthSelect(selectElement, setSelected = true) {
                 const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -1065,5 +1128,8 @@ function parsePtBrDate(dateString) {
             initialize();
         });
     </script>
+
+<script src="main.js"></script>
+
 </body>
 </html>
