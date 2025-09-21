@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Relações entre Designações</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; }
+        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding: 20px 0; height: 100vh; position: fixed; }
+        .logo { text-align: center; padding: 20px 0; border-bottom: 1px solid #34495e; }
+        .nav-list { list-style: none; padding: 20px 0; }
+        .nav-item { padding: 10px 20px; }
+        .nav-item a { color: white; text-decoration: none; display: flex; align-items: center; }
+        .content { margin-left: 250px; padding: 30px; flex-grow: 1; width: calc(100% - 250px); }
+
+        h1, h2 { color: #2c3e50; }
+        h1 { margin-bottom: 20px; }
+        
+        /* --- Page Specific Styles --- */
+        .permissions-layout {
+            display: flex;
+            gap: 30px;
+        }
+        .panel {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            max-height: 80vh;
+        }
+        .panel-list { flex: 1; }
+        .panel-editor { flex: 2; }
+
+        .designation-list { list-style: none; padding-left: 0; }
+        .designation-list-item {
+            padding: 10px 8px;
+            border-bottom: 1px solid #ecf0f1;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-radius: 4px;
+        }
+        .designation-list-item:hover { background-color: #f0f2f5; }
+        .designation-list-item.active {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .permission-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 5px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .permission-item label { flex-grow: 1; }
+        .permission-item select {
+            padding: 5px 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-weight: bold;
+            color: white;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .perm-sim { background-color: #2ecc71; }
+        .perm-moderado { background-color: #3498db; }
+        .perm-nao { background-color: #e74c3c; }
+
+        #editor-placeholder {
+            color: #7f8c8d;
+            text-align: center;
+            padding: 50px 20px;
+        }
+
+        .save-button-container {
+            text-align: right;
+            margin-top: 20px;
+        }
+        #save-permissions-btn {
+            background-color: #2c3e50;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #save-permissions-btn:hover { background-color: #34495e; }
+        #save-feedback { margin-top: 15px; font-weight: bold; }
+
+        .category-header {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid;
+            padding-bottom: 5px;
+            font-size: 1.1em;
+        }
+        .category-semana { color: #3498db; border-bottom-color: #a9cce3; }
+        .category-fim-de-semana { color: #9b59b6; border-bottom-color: #d7bde2; }
+        .category-pregacao { color: #e67e22; border-bottom-color: #f0b27a; }
+        .category-tecnicas { color: #8d6e63; border-bottom-color: #c0ab8e; }
+
+        /* --- NEW SUBCATEGORY STYLE --- */
+   subcategory-header {
+    font-size: 0.9em;
+    font-weight: bold;
+    /* Color will be inherited from the category class */
+    margin-top: 15px;
+    margin-bottom: 5px;
+    padding-left: 5px;
+    text-transform: capitalize;
+    opacity: 0.9; /* Makes it slightly less prominent than the main title */
+}
+    </style>
+</head>
+<body>
+    <div id="sidebar-placeholder"></div>
+
+    <main class="content">
+        <h1>Gerenciar Relações entre Designações</h1>
+
+        <div class="permissions-layout">
+            <div class="panel panel-list">
+                <h2>Todas as Designações</h2>
+                <div id="designation-list-container"><p>Carregando...</p></div>
+            </div>
+            <div class="panel panel-editor">
+                 <div id="editor-content">
+                    <div id="editor-placeholder">
+                        <i class="fas fa-arrow-left" style="font-size: 24px; margin-bottom: 10px;"></i>
+                        <p>Selecione uma designação à esquerda para definir suas regras.</p>
+                    </div>
+                 </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A", // Substitua pela sua chave de API real
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.firebasestorage.app",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            fetch('menu.html')
+                .then(response => response.ok ? response.text() : Promise.reject('Menu not found'))
+                .then(html => document.getElementById("sidebar-placeholder").innerHTML = html)
+                .catch(error => console.error("Não foi possível injetar o menu:", error));
+
+            const designationListContainer = document.getElementById('designation-list-container');
+            const editorContent = document.getElementById('editor-content');
+
+            let allDesignations = [];
+            
+            const categoryStructure = {
+                "Semana": ["escola", "resto da semana"],
+                "Fim de Semana": ["fim de semana"],
+                "Técnicas": ["tecnicas"],
+                "Pregação": ["pregacao", "dirigencia saida"]
+            };
+            const orderedCategories = ["Semana", "Fim de Semana", "Técnicas", "Pregação"];
+            const categoryToClass = {
+                'Semana': 'category-semana',
+                'Fim de Semana': 'category-fim-de-semana',
+                'Pregação': 'category-pregacao',
+                'Técnicas': 'category-tecnicas'
+            };
+
+            const formatSubcategoryName = (text) => text.charAt(0).toUpperCase() + text.slice(1).replace(/_/g, ' ');
+
+            const updateSelectColor = (selectElement) => {
+                selectElement.classList.remove('perm-sim', 'perm-moderado', 'perm-nao');
+                switch (selectElement.value) {
+                    case 'Sim': selectElement.classList.add('perm-sim'); break;
+                    case 'Moderado': selectElement.classList.add('perm-moderado'); break;
+                    case 'Não': selectElement.classList.add('perm-nao'); break;
+                }
+            };
+            
+            try {
+                const designacoesSnapshot = await db.collection('designacoes').get();
+                allDesignations = designacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderDesignationList(allDesignations);
+            } catch (error) {
+                console.error("Erro ao carregar designações: ", error);
+                designationListContainer.innerHTML = "<p>Erro ao carregar designações.</p>";
+            }
+
+            function renderDesignationList(designations) {
+                let html = '';
+                orderedCategories.forEach(categoryName => {
+                    const partes = categoryStructure[categoryName];
+                    const categoryHasItems = designations.some(d => partes.includes(d.parte));
+
+                    if (categoryHasItems) {
+                        const className = categoryToClass[categoryName] || '';
+                        html += `<h3 class="category-header ${className}">${categoryName}</h3>`;
+                        
+                        partes.forEach(parte => {
+                            const designationsInParte = designations
+                                .filter(d => d.parte === parte)
+                                .sort((a, b) => a.nome.localeCompare(b.nome));
+
+                            if (designationsInParte.length > 0) {
+                                html += `<h5 class="subcategory-header ${className}">${formatSubcategoryName(parte)}</h5>`;
+                                html += '<ul class="designation-list">';
+                                designationsInParte.forEach(d => {
+                                    html += `<li class="designation-list-item" data-designation-id="${d.id}">${d.nome}</li>`;
+                                });
+                                html += '</ul>';
+                            }
+                        });
+                    }
+                });
+                designationListContainer.innerHTML = html;
+                designationListContainer.querySelectorAll('.designation-list-item').forEach(item => {
+                    item.addEventListener('click', handleDesignationClick);
+                });
+            }
+            
+            function handleDesignationClick(e) {
+                const clickedItem = e.currentTarget;
+                const selectedId = clickedItem.dataset.designationId;
+                document.querySelectorAll('.designation-list-item.active').forEach(item => item.classList.remove('active'));
+                clickedItem.classList.add('active');
+                const selectedDesignation = allDesignations.find(d => d.id === selectedId);
+                renderConflictEditor(selectedDesignation);
+            }
+
+            function renderConflictEditor(selectedDesignation) {
+                const existingBloqueios = selectedDesignation.bloqueio || {};
+                let html = `<h2>Regras para: ${selectedDesignation.nome}</h2>`;
+                const otherDesignations = allDesignations.filter(d => d.id !== selectedDesignation.id);
+
+                orderedCategories.forEach(categoryName => {
+                    const partes = categoryStructure[categoryName];
+                    const categoryHasItems = otherDesignations.some(d => partes.includes(d.parte));
+
+                    if (categoryHasItems) {
+                        const className = categoryToClass[categoryName] || '';
+                        html += `<h3 class="category-header ${className}">${categoryName}</h3>`;
+
+                        partes.forEach(parte => {
+                            const designationsInParte = otherDesignations
+                                .filter(d => d.parte === parte)
+                                .sort((a, b) => a.nome.localeCompare(b.nome));
+
+                            if (designationsInParte.length > 0) {
+                                html += `<h5 class="subcategory-header ${className}">${formatSubcategoryName(parte)}</h5>`;
+                                designationsInParte.forEach(otherD => {
+                                    const currentPermission = existingBloqueios[otherD.id] || 'Não';
+                                    html += `
+                                        <div class="permission-item">
+                                            <label for="perm-${otherD.id}">${otherD.nome}</label>
+                                            <select id="perm-${otherD.id}" data-target-designation-id="${otherD.id}" class="permission-select">
+                                                <option value="Sim" ${currentPermission === 'Sim' ? 'selected' : ''}>Sim</option>
+                                                <option value="Moderado" ${currentPermission === 'Moderado' ? 'selected' : ''}>Moderado</option>
+                                                <option value="Não" ${currentPermission === 'Não' ? 'selected' : ''}>Não</option>
+                                            </select>
+                                        </div>`;
+                                });
+                            }
+                        });
+                    }
+                });
+
+                html += `
+                    <div class="save-button-container">
+                        <button id="save-permissions-btn" data-source-designation-id="${selectedDesignation.id}">Salvar Alterações</button>
+                        <p id="save-feedback"></p>
+                    </div>`;
+                editorContent.innerHTML = html;
+
+                editorContent.querySelectorAll('.permission-select').forEach(select => {
+                    updateSelectColor(select);
+                    select.addEventListener('change', () => updateSelectColor(select));
+                });
+                document.getElementById('save-permissions-btn').addEventListener('click', handleSaveChanges);
+            }
+
+            async function handleSaveChanges(e) {
+                const btn = e.target;
+                const sourceDesignationId = btn.dataset.sourceDesignationId;
+                const feedbackEl = document.getElementById('save-feedback');
+                
+                if (!sourceDesignationId) return;
+                btn.disabled = true;
+                btn.textContent = 'Salvando...';
+                feedbackEl.textContent = '';
+
+                const newBloqueios = {};
+                editorContent.querySelectorAll('.permission-select').forEach(select => {
+                    newBloqueios[select.dataset.targetDesignationId] = select.value;
+                });
+
+                const batch = db.batch();
+                const sourceRef = db.collection('designacoes').doc(sourceDesignationId);
+                batch.update(sourceRef, { bloqueio: newBloqueios });
+
+                for (const targetId in newBloqueios) {
+                    const permissionValue = newBloqueios[targetId];
+                    const targetRef = db.collection('designacoes').doc(targetId);
+                    batch.update(targetRef, { [`bloqueio.${sourceDesignationId}`]: permissionValue });
+                }
+
+                try {
+                    await batch.commit();
+
+                    const sourceIndex = allDesignations.findIndex(d => d.id === sourceDesignationId);
+                    if (sourceIndex > -1) allDesignations[sourceIndex].bloqueio = newBloqueios;
+                    
+                    for (const targetId in newBloqueios) {
+                         const permissionValue = newBloqueios[targetId];
+                         const targetIndex = allDesignations.findIndex(d => d.id === targetId);
+                         if(targetIndex > -1) {
+                            if(!allDesignations[targetIndex].bloqueio) {
+                                allDesignations[targetIndex].bloqueio = {};
+                            }
+                            allDesignations[targetIndex].bloqueio[sourceDesignationId] = permissionValue;
+                         }
+                    }
+
+                    feedbackEl.textContent = "Regras salvas com sucesso!";
+                    feedbackEl.style.color = "#2ecc71";
+                } catch (error) {
+                    console.error("Erro ao salvar regras: ", error);
+                    feedbackEl.textContent = "Erro ao salvar. Tente novamente.";
+                    feedbackEl.style.color = "#e74c3c";
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar Alterações';
+                    setTimeout(() => { feedbackEl.textContent = ''; }, 4000);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
