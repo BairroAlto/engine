@@ -4637,25 +4637,7 @@ designationDisplayContainer.appendChild(labIcon);
         });
     </script>
 
-<script>
-        document.addEventListener("DOMContentLoaded", function() {
-            fetch('menu.html')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error("Erro ao carregar o menu.");
-                    }
-                    return response.text();
-                })
-                .then(html => {
-                    document.getElementById("sidebar-placeholder").innerHTML = html;
-                })
-                .catch(error => {
-                    console.error("Não foi possível injetar o menu:", error);
-                    // Opcional: Mostrar uma mensagem de erro no lugar do menu
-                    document.getElementById("sidebar-placeholder").innerHTML = "<p>Menu indisponível.</p>";
-                });
-        });
-    </script>
+<script src="main.js"></script>
 
 
 </body>
