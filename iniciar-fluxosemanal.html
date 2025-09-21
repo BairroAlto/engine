@@ -69,10 +69,54 @@
         .filter-popup { display: none; position: absolute; bottom: 40px; left: 0; background: white; border: 1px solid #ddd; border-radius: 4px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; min-width: 200px; }
         .filter-popup.active { display: block; }
 
-        /* Adicione estas classes junto aos outros estilos .order-button */
         .order-button.ordered-level-5 { background-color: #e74c3c; }
-        .order-button.ordered-level-6 { background-color: #c0392b; } /* Tom de vermelho mais escuro */
-        .order-button.ordered-level-7 { background-color: #a93226; } /* Tom de vermelho ainda mais escuro */
+        .order-button.ordered-level-6 { background-color: #c0392b; }
+        .order-button.ordered-level-7 { background-color: #a93226; }
+
+        /* ========================================================== */
+        /* === ESTILOS PARA OS POPUPS DE ANÁLISE (COPIADOS) ========= */
+        /* ========================================================== */
+        .estatisticas-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        .estatisticas-table th, .estatisticas-table td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; }
+        .estatisticas-table thead th { background-color: #34495e; color: white; }
+        .search-suggestions { display: none; position: absolute; border: 1px solid #ddd; border-top: none; background-color: white; width: 100%; max-height: 200px; overflow-y: auto; z-index: 2000; }
+        .suggestion-item { padding: 10px; cursor: pointer; } .suggestion-item:hover { background-color: #f1f1f1; }
+        .analysis-popup .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 15px; }
+        .analysis-popup .tab-button { padding: 10px 15px; cursor: pointer; border: none; background-color: transparent; font-size: 16px; border-bottom: 3px solid transparent; }
+        .analysis-popup .tab-button.active { border-bottom: 3px solid #3498db; font-weight: bold; }
+        .analysis-popup .tab-content { display: none; }
+        .analysis-popup .tab-content.active { display: block; }
+        .lab-popup .lab-container { display: flex; gap: 30px; }
+        .lab-popup .lab-current-selection { flex: 1; }
+        .lab-popup .lab-suggestions { flex: 1; border-left: 1px solid #eee; padding-left: 30px; }
+        .lab-popup .suggestion-item { padding: 8px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; }
+        .lab-popup .suggestion-item:hover { background-color: #f1f1f1; }
+        .lab-popup .suggestion-justification { font-size: 0.8em; color: #777; margin-left: 10px; }
+.turbo-button-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding-right: 10px;
+}
+.turbo-button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    transition: color 0.3s ease, transform 0.3s ease;
+    margin-left: 15px;
+}
+.turbo-button:hover {
+    transform: scale(1.2);
+}
+
+.section-divider {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
 
     </style>
 </head>
@@ -122,11 +166,21 @@
                     <h4>Designações</h4>
                     <div id="designacoesList"></div>
 
-                    <div id="turboButtonContainer"></div>
-
-                    <div id="leituraBibliaSection" class="designacoes-section">
-                        <div id="leituraBibliaDesignationContainer"></div>
+                    <div id="turboButtonContainer" class="turbo-button-container">
+                        <button id="turboButton" class="turbo-button" type="button" title="Preencher Participantes Automaticamente" style="color: #2ecc71;">
+                            <i class="fas fa-rocket"></i>
+                        </button>
+                        <button id="estatisticasButton" class="turbo-button" type="button" title="Estatísticas" style="color: #3498db;">
+                            <i class="fas fa-chart-bar"></i>
+                        </button>
+                        <button id="pesquisarButton" class="turbo-button" type="button" title="Pesquisar (Futuro)" style="color: #f39c12;">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <button id="perfilButton" class="turbo-button" type="button" title="Perfil do Participante" style="color: #9b59b6;">
+                            <i class="fas fa-user"></i>
+                        </button>
                     </div>
+                    <hr class="section-divider">
 
                     <div id="activeDesignationsContainer"></div>
                 </div>
@@ -149,10 +203,83 @@
                 </div>
             </div>
         </div>
+
+        <!-- =================================================================== -->
+        <!-- ============= INÍCIO: POPUPS ADICIONADOS ========================== -->
+        <!-- =================================================================== -->
+        
+        <!-- POPUP DE PERFIL DO PARTICIPANTE -->
+        <div id="perfilPopup" class="popup-overlay">
+            <div class="popup-content" style="max-width: 90%; width: 1200px;">
+                <div class="popup-header"><h2 class="popup-title">Perfil do Participante</h2><button class="popup-close-button" id="closePerfilPopup">×</button></div>
+                <div class="popup-body">
+                    <div class="form-group" style="position: relative;">
+                        <label for="pesquisaPessoa">Pesquisar Participante:</label>
+                        <input type="text" id="pesquisaPessoa" class="form-control" placeholder="Comece a digitar um nome..." autocomplete="off">
+                        <div id="pesquisaSugestoes" class="search-suggestions"></div>
+                    </div>
+                    <div id="perfilTableContainer" style="overflow-x: auto; max-height: 55vh; display: none;">
+                        <table class="estatisticas-table">
+                            <thead><tr><th>Data</th><th>Designação</th><th>Companheiro(s)</th><th>Meu Papel</th></tr></thead>
+                            <tbody id="perfilTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- POPUP DE ANÁLISE DE PAR/TRIO -->
+        <div id="pairAnalysisPopup" class="popup-overlay">
+            <div class="popup-content analysis-popup" style="max-width: 90%; width: 1200px;">
+                <div class="popup-header"><h2 class="popup-title" id="pairAnalysisTitle">Análise de Designação</h2><button class="popup-close-button" id="closePairAnalysisPopup">×</button></div>
+                <div class="popup-body">
+                    <div id="pairAnalysisTabsContainer" class="tabs"></div>
+                    <div id="pairAnalysisContentContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- POPUP LABORATÓRIO DE COMBINAÇÕES -->
+        <div id="labPopup" class="popup-overlay">
+            <div class="popup-content lab-popup" style="max-width: 90%; width: 1000px;">
+                <div class="popup-header"><h2 class="popup-title">Laboratório de Combinações</h2><button class="popup-close-button" id="closeLabPopup">×</button></div>
+                <div class="popup-body">
+                    <div class="lab-container">
+                        <div class="lab-current-selection" id="labSelectionContainer"></div>
+                        <div class="lab-suggestions" id="labSuggestionsContainer"></div>
+                    </div>
+                    <div class="popup-actions" style="margin-top: 20px;"><button class="btn-submit" id="applyLabChanges">Aplicar Modificação</button></div>
+                </div>
+            </div>
+        </div>
+        <!-- =================================================================== -->
+        <!-- ============= FIM: POPUPS ADICIONADOS ============================= -->
+        <!-- =================================================================== -->
+
     </main>
 
-       <script>
+  
+<script>
     document.addEventListener('DOMContentLoaded', function() {
+         // Botão de Perfil (Funcional)
+        document.getElementById('perfilButton').addEventListener('click', () => {
+            document.getElementById('perfilPopup').style.display = 'flex';
+        });
+
+        // Botão de Foguetão (Placeholder)
+        document.getElementById('turboButton').addEventListener('click', () => {
+            alert('A função de preenchimento automático (Foguetão) será implementada futuramente para esta secção.');
+        });
+        
+        // Botão de Estatísticas (Placeholder)
+        document.getElementById('estatisticasButton').addEventListener('click', () => {
+            alert('A função de Estatísticas será implementada futuramente para esta secção.');
+        });
+        
+        // Botão de Pesquisa (Placeholder)
+        document.getElementById('pesquisarButton').addEventListener('click', () => {
+            alert('A função de Pesquisa será implementada futuramente.');
+        });
 
         // ===================================================================
         // ================== CONFIGURAÇÃO E VARIÁVEIS GLOBAIS =================
@@ -174,6 +301,8 @@
         document.getElementById('mes').value = new Date().getMonth() + 1;
 
         let allDesignations = new Map();
+        let allPeopleDataMap = new Map();
+        let allPeople = [];
         let temporaryPreferences = {};
     
         // ===================================================================
@@ -223,7 +352,7 @@
             return { 'dia-semana': 'segunda-feira', 'hora-semana': '19:30' };
         };
         
-        const loadPeopleOptionsIntoSelects = async (designacao, container, genderPreference = 'ambos') => {
+       const loadPeopleOptionsIntoSelects = async (designacao, container, genderPreference = 'ambos') => {
             try {
                 let query = db.collection('pessoas')
                     .where('fazDesignacoesReuniao', '==', true)
@@ -245,10 +374,28 @@
             }
         };
 
+        const initializeSystemData = async () => {
+            try {
+                const [pessoasSnapshot] = await Promise.all([
+                    db.collection('pessoas').orderBy('nomePessoa').get(),
+                ]);
+                allPeople = [];
+                allPeopleDataMap.clear();
+                pessoasSnapshot.forEach(doc => {
+                    const pessoaData = doc.data();
+                    allPeople.push({ id: doc.id, nome: pessoaData.nomePessoa });
+                    allPeopleDataMap.set(doc.id, { nome: pessoaData.nomePessoa, genero: pessoaData.genero });
+                });
+                console.log("Dados do sistema (Pessoas) inicializados.");
+            } catch (error) {
+                console.error("Erro ao inicializar dados do sistema:", error);
+            }
+        };
+
+
         // ===================================================================
         // ==================== LÓGICA PRINCIPAL DA PÁGINA ===================
         // ===================================================================
-
         const updateWeekDisplay = async () => {
             const weekDisplay = document.getElementById('weekDisplay');
             const btn = document.getElementById('btnSeguinte');
@@ -277,7 +424,7 @@
             });
         };
 
-       const loadDesignacoes = async () => {
+        const loadDesignacoes = async () => {
             const snapshot = await db.collection('designacoes')
                 .where('tipo', '==', 'reuniao')
                 .where('quando', '==', 'Semana')
@@ -285,86 +432,84 @@
                 .orderBy("ordem")
                 .get();
             
-         const list = document.getElementById('designacoesList');
-    if (!list) return null; // Retorna nulo se a lista não existir
-    
-    list.innerHTML = '';
-    
-    if (snapshot.empty) {
-        list.innerHTML = '<p style="color: #777; text-align: center;">Nenhuma designação encontrada.</p>';
-        return null; // Retorna nulo se não houver designações
-    }
+            const list = document.getElementById('designacoesList');
+            list.innerHTML = '';
+            
+            if (snapshot.empty) {
+                list.innerHTML = '<p>Nenhuma designação encontrada.</p>';
+                return;
+            }
 
-    let firstCardElement = null; // Variável para guardar a referência do primeiro card
+            const designacoesParaAtivar = [];
+            snapshot.forEach(doc => {
+                const designacao = { id: doc.id, ...doc.data() };
+                allDesignations.set(doc.id, designacao);
+                designacoesParaAtivar.push(designacao);
 
-    const designacoesParaAtivar = [];
-    snapshot.forEach(doc => {
-        // ... (código para criar o item na lista superior) ...
-        const designacao = { id: doc.id, ...doc.data() };
-        allDesignations.set(doc.id, designacao);
-        designacoesParaAtivar.push(designacao);
+                const div = document.createElement('div');
+                div.className = 'designacao-item';
+                div.dataset.designacaoId = designacao.id;
+                div.dataset.firestoreOrder = designacao.ordem;
+                
+                div.innerHTML = `<label><button type="button" class="order-button" data-order="0" data-quantity="1"></button><span>${designacao.nome}</span></label>`;
+                list.appendChild(div);
+            });
 
-        const div = document.createElement('div');
-        div.className = 'designacao-item';
-        div.dataset.designacaoId = designacao.id;
-        div.dataset.firestoreOrder = designacao.ordem; // Manter a correção da ordem
-        
-        div.innerHTML = `
-            <label>
-                <button type="button" class="order-button" data-order="0" data-quantity="1"></button>
-                <span>${designacao.nome}</span>
-            </label>`;
-        list.appendChild(div);
-    });
-
-    for (const [index, designacao] of designacoesParaAtivar.entries()) {
-        const order = index + 1;
-        const quantity = 1;
-        
-        const button = list.querySelector(`.designacao-item[data-designacao-id="${designacao.id}"] .order-button`);
-        button.dataset.order = order;
-        button.dataset.quantity = quantity;
-        button.textContent = quantity;
-        updateOrderButtonClasses(button, order);
-        
-        await updateActiveDesignationDisplay(designacao, order, quantity);
-
-        // LINHA CRÍTICA: Se for o primeiro card (índice 0), guarda a sua referência.
-        if (index === 0) {
-            firstCardElement = document.getElementById(`active-designation-${designacao.id}`);
-        }
-    }
-
-    console.log("%c[loadDesignacoes] Carregamento inicial concluído. A chamar reIndexOrderNumbers() para garantir a ordem correta dos cards...", "background-color: yellow;");
-    reIndexOrderNumbers();
-
-    // NO FINAL DA FUNÇÃO, RETORNA O ELEMENTO DO PRIMEIRO CARD
-    return firstCardElement;
-};
-
-
-
-
-
-
-
-
-
-
-
+            for (const [index, designacao] of designacoesParaAtivar.entries()) {
+                const order = index + 1;
+                const quantity = 1;
+                
+                const button = list.querySelector(`.designacao-item[data-designacao-id="${designacao.id}"] .order-button`);
+                button.dataset.order = order;
+                button.dataset.quantity = quantity;
+                button.textContent = quantity;
+                updateOrderButtonClasses(button, order);
+                await updateActiveDesignationDisplay(designacao, order, quantity);
+            }
+            reIndexOrderNumbers();
+        };
 
         const removeActiveDesignationDisplay = (designacaoId) => {
             const displayToRemove = document.getElementById(`active-designation-${designacaoId}`);
-            if (displayToRemove) {
-                displayToRemove.remove();
-            }
+            if (displayToRemove) displayToRemove.remove();
         };
 
         const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
-            const containerToUse = document.getElementById('activeDesignationsContainer');
+            console.log(`[DEBUG] Iniciando updateActiveDesignationDisplay para: ${designacao.nome}, Ordem: ${order}, Quantidade: ${quantity}`);
 
-            removeActiveDesignationDisplay(designacao.id);
-            if (quantity <= 0) return;
+            const containerToUse = document.getElementById('activeDesignationsContainer');
+            
+            const savedSelections = {};
+            let placeholder = null; // Variavel para guardar a posição do card
+            const existingCard = document.getElementById(`active-designation-${designacao.id}`);
+            
+            if (existingCard) {
+                console.log(`[DEBUG] Card existente encontrado para ${designacao.nome}. Salvando seleções e posição...`);
+                // Salva seleções
+                existingCard.querySelectorAll('.active-designation-container').forEach((instance, instanceIndex) => {
+                    savedSelections[instanceIndex] = [];
+                    instance.querySelectorAll('.form-select').forEach((select, selectIndex) => {
+                        if (select.value) {
+                            savedSelections[instanceIndex][selectIndex] = select.value;
+                            console.log(` -> Salvo: Instância ${instanceIndex}, Campo ${selectIndex}, Valor: ${select.value}`);
+                        }
+                    });
+                });
+                
+                // Cria e insere o placeholder para manter a ordem
+                placeholder = document.createElement('div');
+                placeholder.id = `placeholder-${designacao.id}`;
+                existingCard.parentNode.insertBefore(placeholder, existingCard);
+            }
+
+            removeActiveDesignationDisplay(designacao.id); // Remove o card antigo
+            
+            if (quantity <= 0) {
+                 console.log(`[DEBUG] Quantidade é ${quantity}. Removendo card e encerrando a função.`);
+                 // Se havia um placeholder, remove-o também
+                 if(placeholder) placeholder.remove();
+                 return;
+            }
 
             const mainDisplayContainer = document.createElement('div');
             mainDisplayContainer.id = `active-designation-${designacao.id}`;
@@ -373,29 +518,91 @@
                 const instanceContainer = document.createElement('div');
                 instanceContainer.className = 'active-designation-container';
                 instanceContainer.style.marginTop = '20px';
-                instanceContainer.style.padding = '15px';
+                instanceContainer.style.padding = '15px 15px 45px 15px';
                 instanceContainer.style.borderRadius = '8px';
                 instanceContainer.style.position = 'relative';
                 instanceContainer.dataset.designacaoId = designacao.id;
+                
                 const colors = ['rgba(46, 204, 113, 0.1)', 'rgba(52, 152, 219, 0.1)', 'rgba(243, 156, 18, 0.1)', 'rgba(155, 89, 182, 0.1)', 'rgba(231, 76, 60, 0.1)', 'rgba(192, 57, 43, 0.1)', 'rgba(142, 68, 173, 0.1)'];
                 instanceContainer.style.backgroundColor = colors[(order - 1) % colors.length] || '#f8f9fa';
+                
                 const title = document.createElement('h5');
                 title.textContent = `${designacao.nome}` + (quantity > 1 ? ` (${i})` : '');
                 instanceContainer.appendChild(title);
+                
                 const numParticipantes = temporaryPreferences[`participantes-${designacao.id}-${i}`] || designacao.numeroParticipantes || 1;
-                const roles = numParticipantes === 1 ? ["Participante"] : (numParticipantes === 2 ? ["Dirigente", "Morador"] : ["Dirigente", "Morador", "Ajudante"]);
+                console.log(`[DEBUG] Instância ${i-1} de ${designacao.nome}: Número de participantes determinado é: ${numParticipantes}`);
+
+const roles = numParticipantes == 1 ? ["Participante"] : (numParticipantes == 2 ? ["Dirigente", "Ajudante 1"] : ["Dirigente", "Ajudante 1", "Ajudante 2"]);                console.log(`[DEBUG] Roles para ${numParticipantes} participantes:`, roles);
+                
                 roles.forEach((role, index) => {
                     instanceContainer.innerHTML += `<label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">${role}</label><select id="participant-${designacao.id}-${i}-${index}" class="form-select"><option value="">Selecione...</option></select>`;
                 });
+                
+                // --- Ícones (código completo) ---
+                const filterIcon = document.createElement('i');
+                filterIcon.className = 'fas fa-filter filter-icon';
+                filterIcon.title = 'Filtrar';
+                const filterPopup = document.createElement('div');
+                filterPopup.className = 'filter-popup';
+                filterPopup.innerHTML = `<h4>Filtros</h4><div><label>Nº de Participantes</label><select class="num-participantes-select"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div><div style="margin-top: 15px;"><label>Preferência de Género</label><select class="genero-preferencia-select"><option value="ambos">Masculino/Feminino</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option></select></div>`;
+                instanceContainer.appendChild(filterPopup);
+                instanceContainer.appendChild(filterIcon);
+                const numParticipantesSelect = filterPopup.querySelector('.num-participantes-select');
+                const generoPreferenciaSelect = filterPopup.querySelector('.genero-preferencia-select');
+                numParticipantesSelect.value = temporaryPreferences[`participantes-${designacao.id}-${i}`] || designacao.numeroParticipantes || 1;
+                generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos';
+                filterIcon.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.filter-popup.active').forEach(p => { if (p !== filterPopup) p.classList.remove('active'); }); filterPopup.classList.toggle('active'); });
+                numParticipantesSelect.addEventListener('change', (e) => { console.log(`[EVENT] Nº de Participantes alterado para: ${e.target.value} para ${designacao.nome}`); temporaryPreferences[`participantes-${designacao.id}-${i}`] = e.target.value; updateActiveDesignationDisplay(designacao, order, quantity); filterPopup.classList.remove('active'); });
+                generoPreferenciaSelect.addEventListener('change', (e) => { loadPeopleOptionsIntoSelects(designacao, instanceContainer, e.target.value); filterPopup.classList.remove('active'); });
+                const lockIcon = document.createElement('i');
+                lockIcon.className = 'fas fa-lock-open lock-icon';
+                lockIcon.title = 'Bloquear/Desbloquear';
+                lockIcon.addEventListener('click', (e) => { const isLocked = instanceContainer.dataset.locked === 'true'; instanceContainer.dataset.locked = !isLocked; e.target.classList.toggle('fa-lock-open', isLocked); e.target.classList.toggle('fa-lock', !isLocked); e.target.classList.toggle('locked', !isLocked); });
+                instanceContainer.appendChild(lockIcon);
+                const lupaIcon = document.createElement('i');
+                lupaIcon.className = 'fas fa-search-plus lupa-icon';
+                lupaIcon.title = 'Analisar Histórico';
+                lupaIcon.addEventListener('click', () => { const selected = Array.from(instanceContainer.querySelectorAll('.form-select')).map(s => ({ id: s.value, name: s.options[s.selectedIndex].text })).filter(p => p.id); if (selected.length === 1) { loadParticipantProfile(selected[0].id); document.getElementById('perfilPopup').style.display = 'flex'; } else if (selected.length > 1) { openPairAnalysisPopup(selected); } else { alert("Selecione pelo menos um participante."); } });
+                instanceContainer.appendChild(lupaIcon);
+                const labIcon = document.createElement('i');
+                labIcon.className = 'fas fa-flask lab-icon';
+                labIcon.title = 'Laboratório de Combinações';
+                labIcon.addEventListener('click', () => { alert("Laboratório de Combinações (Funcionalidade Futura)"); });
+                instanceContainer.appendChild(labIcon);
+
                 mainDisplayContainer.appendChild(instanceContainer);
             }
             
-            containerToUse.appendChild(mainDisplayContainer);
-            await loadPeopleOptionsIntoSelects(designacao, mainDisplayContainer);
-        };
+            // Inserção do card na posição correta
+            if (placeholder) {
+                console.log(`[DEBUG] Substituindo placeholder para manter a ordem de ${designacao.nome}.`);
+                placeholder.parentNode.replaceChild(mainDisplayContainer, placeholder);
+            } else {
+                console.log(`[DEBUG] Adicionando novo card para ${designacao.nome} no final.`);
+                containerToUse.appendChild(mainDisplayContainer);
+            }
 
+            await loadPeopleOptionsIntoSelects(designacao, mainDisplayContainer);
+
+            // Bloco para restaurar as seleções salvas
+            console.log(`[DEBUG] Restaurando seleções para ${designacao.nome}...`);
+            mainDisplayContainer.querySelectorAll('.active-designation-container').forEach((instance, instanceIndex) => {
+                if (savedSelections[instanceIndex]) {
+                    instance.querySelectorAll('.form-select').forEach((select, selectIndex) => {
+                        const savedValue = savedSelections[instanceIndex][selectIndex];
+                        if (savedValue) {
+                            select.value = savedValue;
+                            console.log(` -> Restaurado: Instância ${instanceIndex}, Campo ${selectIndex}, Valor: ${savedValue}`);
+                        }
+                    });
+                }
+            });
+            console.log(`[DEBUG] Fim de updateActiveDesignationDisplay para: ${designacao.nome}.`);
+        };
+        
         const updateOrderButtonClasses = (button, order) => {
-            button.className = 'order-button'; // Reset
+            button.className = 'order-button';
             if (order > 0) {
                 button.classList.add('ordered');
                 if (order >= 2) button.classList.add('ordered-level-2');
@@ -408,86 +615,56 @@
         };
 
         const getNextOrderNumber = () => {
-            const orderedButtons = document.querySelectorAll('#designacoesList .order-button.ordered');
-            return orderedButtons.length + 1;
+            return document.querySelectorAll('#designacoesList .order-button.ordered').length + 1;
         };
         
-   const reIndexOrderNumbers = () => {
-    // 1. Obter uma lista de TODOS os itens que estão atualmente ativos.
-    const activeItems = [];
-    document.querySelectorAll('#designacoesList .designacao-item').forEach(item => {
-        const button = item.querySelector('.order-button');
-        const order = parseInt(button.dataset.order) || 0;
-        if (order > 0) {
-            activeItems.push({
-                itemElement: item,
-                firestoreOrder: parseInt(item.dataset.firestoreOrder) // Obtém a ordem REAL do Firebase
+        const reIndexOrderNumbers = () => {
+            const activeItems = [];
+            document.querySelectorAll('#designacoesList .designacao-item').forEach(item => {
+                const button = item.querySelector('.order-button');
+                const displayOrder = parseInt(button.dataset.order) || 0;
+                
+                if (displayOrder > 0) {
+                    activeItems.push({
+                        itemElement: item,
+                        firestoreOrder: parseInt(item.dataset.firestoreOrder) || 999 
+                    });
+                }
             });
-        }
-    });
 
-    // 2. O PASSO CRUCIAL: Ordenar essa lista com base na ordem do Firebase.
-    activeItems.sort((a, b) => a.firestoreOrder - b.firestoreOrder);
-    
-    // 3. Reordenar fisicamente os cards na página para corresponder à ordem correta.
-    const container = document.getElementById('activeDesignationsContainer');
-    const fragment = document.createDocumentFragment();
-    activeItems.forEach(sortedItem => {
-        const designacaoId = sortedItem.itemElement.dataset.designacaoId;
-        const card = container.querySelector(`#active-designation-${designacaoId}`);
-        if (card) {
-            fragment.appendChild(card); // Adiciona ao fragmento na nova ordem correta.
-        }
-    });
-
-    // Limpa o contentor e reinsere os cards já ordenados de uma só vez (eficiente).
-    container.innerHTML = '';
-    container.appendChild(fragment);
-
-    // 4. Renumerar os botões e atualizar as cores com base na nova sequência (1, 2, 3...).
-    activeItems.forEach((sortedItem, index) => {
-        const newDisplayOrder = index + 1; // A nova ordem para exibição (1, 2, 3...)
-        const button = sortedItem.itemElement.querySelector('.order-button');
-        
-        // Atualiza o 'data-order', que agora serve apenas para controlo de estado e cor.
-        button.dataset.order = newDisplayOrder; 
-        
-        // Atualiza a cor do botão e do card.
-        updateOrderButtonClasses(button, newDisplayOrder);
-
-        const designacaoId = sortedItem.itemElement.dataset.designacaoId;
-        const card = container.querySelector(`#active-designation-${designacaoId}`);
-        if (card) {
-            const colors = ['rgba(46, 204, 113, 0.1)', 'rgba(52, 152, 219, 0.1)', 'rgba(243, 156, 18, 0.1)', 'rgba(155, 89, 182, 0.1)', 'rgba(231, 76, 60, 0.1)', 'rgba(192, 57, 43, 0.1)', 'rgba(142, 68, 173, 0.1)'];
-            card.querySelectorAll('.active-designation-container').forEach(instance => {
-                instance.style.backgroundColor = colors[newDisplayOrder - 1] || '#f8f9fa';
+            activeItems.sort((a, b) => a.firestoreOrder - b.firestoreOrder);
+            
+            const container = document.getElementById('activeDesignationsContainer');
+            const fragment = document.createDocumentFragment();
+            activeItems.forEach(sortedItem => {
+                const designacaoId = sortedItem.itemElement.dataset.designacaoId;
+                const card = container.querySelector(`#active-designation-${designacaoId}`);
+                if (card) {
+                    fragment.appendChild(card);
+                }
             });
-        }
-    });
-};
 
+            container.innerHTML = '';
+            container.appendChild(fragment);
 
+            activeItems.forEach((sortedItem, index) => {
+                const newDisplayOrder = index + 1;
+                const button = sortedItem.itemElement.querySelector('.order-button');
+                
+                button.dataset.order = newDisplayOrder; 
+                
+                updateOrderButtonClasses(button, newDisplayOrder);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                const designacaoId = sortedItem.itemElement.dataset.designacaoId;
+                const card = container.querySelector(`#active-designation-${designacaoId}`);
+                if (card) {
+                    const colors = ['rgba(46, 204, 113, 0.1)', 'rgba(52, 152, 219, 0.1)', 'rgba(243, 156, 18, 0.1)', 'rgba(155, 89, 182, 0.1)', 'rgba(231, 76, 60, 0.1)', 'rgba(192, 57, 43, 0.1)', 'rgba(142, 68, 173, 0.1)'];
+                    card.querySelectorAll('.active-designation-container').forEach(instance => {
+                        instance.style.backgroundColor = colors[newDisplayOrder - 1] || '#f8f9fa';
+                    });
+                }
+            });
+        };
 
         const createQuantitySubmenu = (designacaoId, orderButton) => {
             const submenu = document.createElement('div');
@@ -520,34 +697,128 @@
             }
             return submenu;
         };
+        
+        // ===================================================================
+        // =========== LÓGICA PARA OS POPUPS DE ANÁLISE =======================
+        // ===================================================================
+        const formatDateForDisplay = (dateString) => {
+            if (!dateString) return 'N/A';
+            const [ano, mes, dia] = dateString.split('-');
+            return `${dia}/${mes}/${ano}`;
+        };
+
+        const buildHistoryTable = (records, titleText, isPairAnalysis = false) => {
+            const container = document.createElement('div');
+            container.innerHTML = `<h3>${titleText}</h3>`;
+            if (!records || records.length === 0) {
+                container.innerHTML += '<p>Nenhum histórico encontrado.</p>';
+                return container;
+            }
+            const table = document.createElement('table');
+            table.className = 'estatisticas-table';
+            table.innerHTML = `<thead><tr><th>Data</th><th>Designação</th><th>${isPairAnalysis ? 'Papéis' : 'Companheiros'}</th></tr></thead>`;
+            const tbody = document.createElement('tbody');
+            records.forEach(rec => {
+                const tr = document.createElement('tr');
+                let rolesHtml = 'N/A';
+                if (rec.papeis) {
+                    rolesHtml = Object.entries(rec.papeis)
+                        .map(([role, personId]) => `<li><strong>${role}:</strong> ${(allPeopleDataMap.get(personId) || {}).nome || 'N/A'}</li>`)
+                        .join('');
+                    rolesHtml = `<ul style="padding-left: 15px; margin: 0;">${rolesHtml}</ul>`;
+                }
+                tr.innerHTML = `<td>${formatDateForDisplay(rec.dia)}</td><td>${rec.designacaoNome}</td><td>${isPairAnalysis ? rolesHtml : (rec.companheiros || 'Nenhum')}</td>`;
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            container.appendChild(table);
+            return container;
+        };
+
+        const fetchIndividualHistory = async (personId) => {
+            const snapshot = await db.collection('historico').orderBy("dia", "desc").get();
+            let records = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                data.designacoes?.forEach(d => {
+                    const allIds = Object.values(d.participantes || {});
+                    if (allIds.includes(personId)) {
+                        records.push({
+                            dia: data.dia,
+                            designacaoNome: allDesignations.get(d.designacaoId)?.nome || 'Desconhecida',
+                            companheiros: allIds.filter(id => id !== personId).map(id => (allPeopleDataMap.get(id) || {}).nome || '?').join(', ')
+                        });
+                    }
+                });
+            });
+            return records;
+        };
+
+        const loadParticipantProfile = async (personId) => {
+            const container = document.getElementById('perfilTableContainer');
+            container.style.display = 'block';
+            container.innerHTML = 'A carregar...';
+            const history = await fetchIndividualHistory(personId);
+            container.innerHTML = '';
+            container.appendChild(buildHistoryTable(history, `Histórico de ${(allPeopleDataMap.get(personId) || {}).nome}`));
+        };
+        
+        const fetchPairHistory = async (participantIds) => {
+            const snapshot = await db.collection('historico').orderBy("dia", "desc").get();
+            let records = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                data.designacoes?.forEach(d => {
+                    const allIds = Object.values(d.participantes || {});
+                    if (participantIds.every(id => allIds.includes(id))) {
+                        records.push({
+                            dia: data.dia,
+                            designacaoNome: allDesignations.get(d.designacaoId)?.nome || 'Desconhecida',
+                            papeis: d.participantes
+                        });
+                    }
+                });
+            });
+            return records;
+        };
+
+        const openPairAnalysisPopup = async (participants) => {
+            const popup = document.getElementById('pairAnalysisPopup');
+            const title = document.getElementById('pairAnalysisTitle');
+            const tabsContainer = document.getElementById('pairAnalysisTabsContainer');
+            const contentContainer = document.getElementById('pairAnalysisContentContainer');
+            
+            title.textContent = `Análise de: ${participants.map(p => p.name).join(' & ')}`;
+            popup.style.display = 'flex';
+            tabsContainer.innerHTML = '';
+            contentContainer.innerHTML = '';
+
+            const pairHistory = await fetchPairHistory(participants.map(p => p.id));
+            
+            tabsContainer.innerHTML = `<button class="tab-button active" data-target="#content-history">Histórico do Par</button>`;
+            contentContainer.innerHTML = `<div id="content-history" class="tab-content active"></div>`;
+            document.getElementById('content-history').appendChild(buildHistoryTable(pairHistory, "Colaborações Anteriores", true));
+        };
+
+        document.getElementById('closePerfilPopup').addEventListener('click', () => document.getElementById('perfilPopup').style.display = 'none');
+        document.getElementById('closePairAnalysisPopup').addEventListener('click', () => document.getElementById('pairAnalysisPopup').style.display = 'none');
+        document.getElementById('closeLabPopup').addEventListener('click', () => document.getElementById('labPopup').style.display = 'none');
 
         // ===================================================================
         // ====================== EVENT LISTENERS ============================
         // ===================================================================
         
- document.getElementById('btnSeguinte').addEventListener('click', function() {
-    // PASSO 1: Preparar a UI imediatamente
-    document.getElementById('designacoesSection').classList.add('active');
-    document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
-
-    // PASSO 2: Criar e injetar o espaçador temporário para dar altura à página
-    // Isto é o que permite que o scroll para o centro funcione instantaneamente.
-    const spacer = document.createElement('div');
-    spacer.id = 'temp-scroll-spacer'; // Damos um ID para ser fácil de remover depois
-    spacer.style.height = '100vh'; // 100vh = 100% da altura do ecrã
-    document.querySelector('.card').insertAdjacentElement('afterend', spacer);
-
-    // PASSO 3: Executar o scroll. Agora funciona porque o espaçador existe.
-    // O alvo é a lista, que é o painel que você quer centrar.
-    document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-    // PASSO 4: Iniciar o carregamento dos dados e garantir a remoção do espaçador no final.
-    // Usamos .finally() para garantir que o espaçador é removido quer o carregamento
-    // seja bem-sucedido ou falhe.
-    loadDesignacoes().finally(() => {
-        document.getElementById('temp-scroll-spacer')?.remove();
-    });
-});
+        document.getElementById('btnSeguinte').addEventListener('click', async function() {
+            document.getElementById('designacoesSection').classList.add('active');
+            document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
+            const spacer = document.createElement('div');
+            spacer.id = 'temp-scroll-spacer';
+            spacer.style.height = '100vh';
+            document.querySelector('.card').insertAdjacentElement('afterend', spacer);
+            document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            await loadDesignacoes();
+            document.getElementById('temp-scroll-spacer')?.remove();
+        });
 
         document.getElementById('designacoesList').addEventListener('click', async function(event) {
             const orderButton = event.target.closest('.order-button');
@@ -588,10 +859,13 @@
         // ===================================================================
         updateWeekDisplay();
         loadNacionalidades();
+        initializeSystemData();
         
-        // Carregar menu lateral
-        fetch('menu.html').then(response => response.text()).then(html => document.getElementById("sidebar-placeholder").innerHTML = html);
+        fetch('slidebar.html').then(response => response.text()).then(html => document.getElementById("sidebar-placeholder").innerHTML = html);
     });
-    </script>
+</script>
+
+<script src="main.js"></script>
+
 </body>
 </html>
