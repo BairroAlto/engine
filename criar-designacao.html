@@ -1,466 +1,91 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <!-- ... (head da sua página de criação, sem alterações) ... -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criar Designação - Sistema de Escala</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script>
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
-            authDomain: "escalas-6e0f9.firebaseapp.com",
-            projectId: "escalas-6e0f9",
-            storageBucket: "escalas-6e0f9.firebasestorage.app",
-            messagingSenderId: "19118998563",
-            appId: "1:19118998563:web:5412be658ae34bd45add96"
-        };
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            min-height: 100vh;
-            background-color: #f5f6fa;
-        }
-
-        .sidebar {
-            width: 250px;
-            background-color: #2c3e50;
-            color: white;
-            padding: 20px 0;
-            height: 100vh;
-            position: fixed;
-        }
-
-        .logo {
-            padding: 0 20px;
-            margin-bottom: 30px;
-            font-size: 24px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .sidebar nav ul {
-            list-style: none;
-        }
-
-        .sidebar nav ul li a {
-            display: flex;
-            align-items: center;
-            padding: 15px 20px;
-            color: #ecf0f1;
-            text-decoration: none;
-            gap: 10px;
-            transition: background-color 0.3s;
-        }
-
-        .sidebar nav ul li a:hover,
-        .sidebar nav ul li a.active {
-            background-color: #34495e;
-        }
-
-        .sidebar nav ul li a i {
-            width: 20px;
-            text-align: center;
-        }
-
-        .content {
-            margin-left: 250px;
-            padding: 30px;
-            flex-grow: 1;
-        }
-
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 30px;
-            font-size: 28px;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            max-width: 600px;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .card .edit-icon {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            color: #2c3e50;
-            cursor: pointer;
-            transition: color 0.3s;
-        }
-
-        .card .edit-icon:hover {
-            color: #34495e;
-        }
-
-        .card h2 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            font-size: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #2c3e50;
-        }
-
-        .form-group input[type="text"],
-        .form-group input[type="number"],
-        .form-group select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .switch-group {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #e74c3c; /* Red for 'Não' */
-            transition: .4s;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-        }
-
-        input:checked + .slider {
-            background-color: #2ecc71; /* Green for 'Sim' */
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
-
-        .slider.round {
-            border-radius: 34px;
-        }
-
-        .slider.round:before {
-            border-radius: 50%;
-        }
-
-        .btn-criar {
-            background-color: #2c3e50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-
-        .btn-criar:hover {
-            background-color: #34495e;
-        }
-
-        .checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            padding: 6px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .checkbox-item input[type="checkbox"] {
-            margin-right: 8px;
-        }
-
-        .checkbox-item:has(input[value="Ancião"]) {
-            background-color: #bbdefb;
-        }
-
-        .checkbox-item:has(input[value="Servo Ministerial"]) {
-            background-color: #c8e6c9;
-        }
-
-        .checkbox-item:has(input[value="Pioneiro Regular"]) {
-            background-color: #fff9c4;
-        }
-
-        .checkbox-item:has(input[value="Pioneiro Auxiliar"]) {
-            background-color: #ffecb3;
-        }
-
-        .checkbox-item:has(input[value="Publicador"]) {
-            background-color: #ffcdd2;
-        }
-
-        .checkbox-item:has(input[value="Publicador não Batizado"]) {
-            background-color: #f8bbd0;
-        }
-
-        .btn-voltar {
-            display: inline-block;
-            margin-bottom: 20px;
-            background-color: #7f8c8d;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            text-decoration: none;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-
-        .btn-voltar:hover {
-            background-color: #95a5a6;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 70px;
-            }
-
-            .sidebar .logo span,
-            .sidebar nav ul li a span {
-                display: none;
-            }
-
-            .content {
-                margin-left: 70px;
-            }
-        }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #2c3e50; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .switch-group { display: flex; align-items: center; justify-content: space-between; }
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e74c3c; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
+        input:checked + .slider { background-color: #2ecc71; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        .slider.round { border-radius: 34px; }
+        .slider.round:before { border-radius: 50%; }
+        .btn-criar { background-color: #2c3e50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
+        .checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+        .checkbox-item { display: flex; align-items: center; padding: 6px; border-radius: 4px; font-size: 14px; }
+        .checkbox-item input[type="checkbox"] { margin-right: 8px; }
+        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; }
+        .checkbox-item:has(input[value="Ancião"]) { background-color: #bbdefb; }
+        .checkbox-item:has(input[value="Servo Ministerial"]) { background-color: #c8e6c9; }
+        .checkbox-item:has(input[value="Pioneiro Regular"]) { background-color: #fff9c4; }
+        .checkbox-item:has(input[value="Pioneiro Auxiliar"]) { background-color: #ffecb3; }
+        .checkbox-item:has(input[value="Publicador"]) { background-color: #ffcdd2; }
+        .checkbox-item:has(input[value="Publicador não Batizado"]) { background-color: #f8bbd0; }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="logo">
-            <i class="fas fa-calendar-alt"></i>
-            <span>Escala</span>
-        </div>
-        <nav>
-            <ul>
-                <li>
-                    <a href="index.html#reuniao-semana">
-                        <i class="fas fa-users"></i>
-                        <span>Reunião Semana</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="index.html#fim-de-semana">
-                        <i class="fas fa-calendar-week"></i>
-                        <span>Fim de Semana</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="index.html#pregacao">
-                        <i class="fas fa-bullhorn"></i>
-                        <span>Pregação</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="index.html#estatisticas">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Estatísticas</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="index.html#nomes">
-                        <i class="fas fa-address-book"></i>
-                        <span>Nomes</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="index.html#painel">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span>Painel</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="index.html#criar" class="active">
-                        <i class="fas fa-plus"></i>
-                        <span>Criar</span>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-    </div>
-
+    <div id="sidebar-placeholder"></div>
     <main class="content">
         <a href="index.html#criar" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
         <h1>Criar Designação</h1>
         <div class="card">
             <form id="criar-designacao-form">
-                <div class="form-group">
-                    <label for="nome-designacao">Nome da Designação</label>
-                    <input type="text" id="nome-designacao" name="nome-designacao" required>
-                </div>
-                <div class="form-group">
-                    <label for="numero-participantes">Número de Participantes</label>
-                    <input type="number" id="numero-participantes" name="numero-participantes" min="1" required>
-                </div>
-                <div class="form-group">
-                    <label for="feito-por">Feito por</label>
-                    <select id="feito-por" name="feito-por" required class="form-select">
-                        <option value="Masculino">Apenas Homens</option>
-                        <option value="Feminino">Apenas Mulheres</option>
-                        <option value="Masculino Feminino">Homens e Mulheres</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="preferencia">Preferência</label>
-                    <select id="preferencia" name="preferencia" required class="form-select">
-                        <option value="Masculino">Homens</option>
-                        <option value="Feminino">Mulheres</option>
-                        <option value="Masculino Feminino">Homens e Mulheres</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="quando">Quando?</label>
-                    <select id="quando" name="quando" required class="form-select">
-                        <option value="Semana">Semana</option>
-                        <option value="Fim de Semana">Fim de Semana</option>
-                        <option value="Semana e Fim de Semana">Semana e Fim de Semana</option>
-                        <option value="Técnica">Técnica</option>
-                        <option value="Pregação">Pregação</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="tipo">Tipo</label>
-                    <select id="tipo" name="tipo" required class="form-select">
-                        <option value="reuniao">Reunião</option>
-                        <option value="pregacao">Pregação</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Quem faz? (Opcional)</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="quem_faz" value="Ancião"> Ancião
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="quem_faz" value="Servo Ministerial"> Servo Ministerial
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="quem_faz" value="Pioneiro Regular"> Pioneiro Regular
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar"> Pioneiro Auxiliar
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="quem_faz" value="Publicador"> Publicador
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="quem_faz" value="Publicador não Batizado"> Publicador não Batizado
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-group switch-group">
-                    <label for="status">Desligado/Ligado</label>
-                    <label class="switch">
-                        <input type="checkbox" id="status" name="status">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
+                <!-- Campos do formulário (sem alterações no HTML) -->
+                 <div class="form-group"><label for="nome-designacao">Nome da Designação</label><input type="text" id="nome-designacao" required></div>
+                <div class="form-group"><label for="numero-participantes">Número de Participantes</label><input type="number" id="numero-participantes" min="1" required></div>
+                <div class="form-group"><label for="feito-por">Feito por</label><select id="feito-por" required><option value="Masculino">Apenas Homens</option><option value="Feminino">Apenas Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
+                <div class="form-group"><label for="preferencia">Preferência</label><select id="preferencia" required><option value="Masculino">Homens</option><option value="Feminino">Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
+                <div class="form-group"><label for="quando">Quando?</label><select id="quando" required><option value="Semana">Semana</option><option value="Fim de Semana">Fim de Semana</option><option value="Semana e Fim de Semana">Semana e Fim de Semana</option></select></div>
+                <div class="form-group"><label for="tipo">Tipo</label><select id="tipo" required><option value="reuniao">Reunião</option><option value="pregacao">Pregação</option></select></div>
+                <div class="form-group"><label for="parte">Parte</label><select id="parte" required><option value="escola">Escola</option><option value="resto da semana">Resto da Semana</option><option value="fim de semana">Fim de Semana</option><option value="tecnicas">Técnicas</option><option value="pregacao">Pregação</option><option value="dirigencia saida">Dirigência Saída</option></select></div>
+                <div class="form-group"><label for="anexo">Anexo</label><select id="anexo" required><option value="">Carregando...</option></select></div>
+                <div class="form-group"><label>Quem faz? (Opcional)</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião"> Ancião</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial"> Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular"> Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar"> Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador"> Publicador</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado"> Publicador não Batizado</label></div></div>
+                <div class="form-group switch-group"><label for="status">Desligado/Ligado</label><label class="switch"><input type="checkbox" id="status" checked><span class="slider round"></span></label></div>
                 <button type="submit" class="btn-criar">Criar Designação</button>
             </form>
         </div>
     </main>
 
+    <script src="firebase-config.js"></script>
+    <script src="main.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
-            const designacaoForm = document.getElementById('criar-designacao-form');
-            const submitButton = designacaoForm.querySelector('.btn-criar');
-            const urlParams = new URLSearchParams(window.location.search);
-            const designacaoId = urlParams.get('id');
-            let isEditing = false;
+            if (typeof db === 'undefined') { alert("Erro de configuração do banco de dados."); return; }
 
-            if (designacaoId) {
-                isEditing = true;
-                submitButton.textContent = 'Editar Designação';
-                document.querySelector('h1').textContent = 'Editar Designação';
-                
+            // --- FUNÇÃO PARA CARREGAR ANEXOS (MODIFICADA) ---
+            async function carregarAnexos() {
+                const anexoSelect = document.getElementById('anexo');
+                anexoSelect.innerHTML = '<option value="">Selecione um anexo</option>';
                 try {
-                    const doc = await db.collection('designacoes').doc(designacaoId).get();
-                    if (doc.exists) {
-                        const data = doc.data();
-                        document.getElementById('nome-designacao').value = data.nome || '';
-                        document.getElementById('numero-participantes').value = data.numeroParticipantes || '';
-                        document.getElementById('feito-por').value = data.feitoPor || 'homens';
-                        document.getElementById('preferencia').value = data.preferencia || 'homens';
-                        document.getElementById('tipo').value = data.tipo || 'reuniao';
-                        document.getElementById('status').checked = data.status || false;
-                        
-                        // Set quem faz checkboxes
-                        if (data.quemFaz && Array.isArray(data.quemFaz)) {
-                            data.quemFaz.forEach(privilegio => {
-                                const checkbox = document.querySelector(`input[name="quem_faz"][value="${privilegio}"]`);
-                                if (checkbox) checkbox.checked = true;
-                            });
-                        }
-                    }
-                } catch (error) {
-                    console.error('Erro ao carregar designação:', error);
-                    alert('Erro ao carregar designação. Por favor, tente novamente.');
-                }
+                    const snapshot = await db.collection('cabecalhos').get();
+                    snapshot.forEach(doc => {
+                        const anexo = doc.data();
+                        const option = document.createElement('option');
+                        option.value = doc.id; // ALTERAÇÃO: Usa o ID do documento
+                        option.textContent = anexo.nome; // Usa o nome para o texto
+                        anexoSelect.appendChild(option);
+                    });
+                } catch (error) { console.error("Erro ao carregar anexos: ", error); }
             }
 
-            designacaoForm.addEventListener('submit', async function(e) {
+            await carregarAnexos();
+
+            // --- LÓGICA DE SUBMISSÃO ---
+            const form = document.getElementById('criar-designacao-form');
+            form.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
                 const designacao = {
@@ -470,24 +95,20 @@
                     preferencia: document.getElementById('preferencia').value,
                     quando: document.getElementById('quando').value,
                     tipo: document.getElementById('tipo').value,
+                    parte: document.getElementById('parte').value,
+                    anexo: document.getElementById('anexo').value, // Automaticamente pega o ID
                     status: document.getElementById('status').checked,
                     quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
-                    dataCriacao: isEditing ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+                    dataCriacao: new Date()
                 };
 
                 try {
-                    if (isEditing) {
-                        await db.collection('designacoes').doc(designacaoId).update(designacao);
-                        alert('Designação atualizada com sucesso!');
-                    } else {
-                        await db.collection('designacoes').add(designacao);
-                        alert('Designação criada com sucesso!');
-                        designacaoForm.reset();
-                    }
-                    window.location.href = 'index.html#painel';
+                    const newDocRef = await db.collection('designacoes').add(designacao);
+                    alert('Designação criada! Você será redirecionado para definir a ordem.');
+                    window.location.href = `gerenciar-ordem.html?id=${newDocRef.id}`;
                 } catch (error) {
-                    console.error('Erro ao ' + (isEditing ? 'atualizar' : 'criar') + ' designação:', error);
-                    alert('Erro ao ' + (isEditing ? 'atualizar' : 'criar') + ' designação. Por favor, tente novamente.');
+                    console.error('Erro ao criar designação:', error);
+                    alert('Erro ao salvar a designação.');
                 }
             });
         });
