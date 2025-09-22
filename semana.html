@@ -8,37 +8,83 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
-        /* Todos os seus estilos CSS foram mantidos aqui... */
+        /* Estilos Gerais */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; }
-        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding: 20px 0; height: 100vh; position: fixed; }
-        .logo { text-align: center; padding: 20px 0; border-bottom: 1px solid #34495e; }
+        body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; color: #333; }
+
+        /* Estilos da Sidebar */
+        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding-top: 20px; height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; }
+        .logo { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #34495e; }
         .logo h2 { margin: 0; }
-        .nav-list { list-style: none; padding: 20px 0; }
-        .nav-item { padding: 10px 20px; }
-        .nav-item a { color: white; text-decoration: none; display: flex; align-items: center; }
-        .nav-item i { margin-right: 10px; width: 20px; text-align: center; }
-        .nav-item:hover { background-color: #34495e; }
-        .content { margin-left: 250px; padding: 30px; flex-grow: 1; }
+        .nav-list { list-style: none; padding: 0; }
+        .nav-item a { color: white; text-decoration: none; display: flex; align-items: center; padding: 15px 20px; transition: background-color 0.3s; }
+        .nav-item a i { margin-right: 15px; width: 20px; text-align: center; }
+        .nav-item a:hover { background-color: #34495e; }
+        .nav-item.active a { background-color: #1abc9c; }
+
+        /* Estilos do Conteúdo Principal */
+        .content { margin-left: 250px; padding: 30px; flex-grow: 1; width: calc(100% - 250px); }
         h1 { color: #2c3e50; margin-bottom: 30px; font-size: 28px; }
         .card { background-color: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .card h2 { color: #2c3e50; margin-bottom: 15px; font-size: 20px; }
+        .card h2 { color: #2c3e50; margin-bottom: 15px; font-size: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+
+        /* Estilos para Filtros e Escala */
+        #filters-container { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; }
+        .filter-group { display: flex; flex-direction: column; }
+        .filter-group label { font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #555; }
+        .filter-group select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; background-color: #fff; }
+
+        #schedule-display { min-height: 100px; position: relative; }
+        .loading-spinner { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 30px; color: #3498db; }
+        #schedule-display.loading .loading-spinner { display: block; }
+        #schedule-display.loading #schedule-content { opacity: 0.3; }
+
+        .schedule-week { border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 20px; overflow: hidden; }
+        .schedule-header { background-color: #34495e; color: white; padding: 12px 15px; font-size: 18px; }
+        .schedule-body { padding: 15px; }
+        
+        .schedule-header-group {
+            display: flex;
+            align-items: center;
+            background-color: #ecf0f1;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            transition: background-color 0.3s;
+        }
+        .schedule-body > .schedule-header-group:first-child { margin-top: 0; }
+        
+        .header-icon { font-size: 18px; margin-right: 10px; }
+        .schedule-header-group h4 { margin: 0; font-size: 16px; }
+
+        .designation-list { list-style: none; padding-left: 15px; }
+        /* ===== ALTERAÇÃO NO CSS AQUI ===== */
+        /* A cor foi removida para ser controlada pelo JS. A cor padrão será aplicada se necessário. */
+        .designation-item { margin-bottom: 10px; padding-left: 10px; border-left: 3px solid; border-left-color: #bdc3c7; }
+        
+        .designation-item > strong { color: #2c3e50; }
+        .participant-list { list-style: none; padding-left: 20px; margin-top: 5px; }
+        .participant-list li { color: #555; }
+        .participant-list em { color: #7f8c8d; font-style: normal; font-size: 0.9em; }
+
         @media (max-width: 768px) {
             .sidebar { width: 70px; }
-            .sidebar .logo span, .sidebar nav ul li a span { display: none; }
-            .content { margin-left: 70px; }
+            .sidebar .logo h2, .sidebar .nav-item a span { display: none; }
+            .content { margin-left: 70px; width: calc(100% - 70px); }
+            #filters-container { flex-direction: column; }
         }
     </style>
 </head>
 <body>
+
+    <!-- ===== MENU LATERAL RESTAURADO ===== -->
     <div class="sidebar">
-        <div class="logo">
-            <h2>Sistema de Escala</h2>
-        </div>
+        <div class="logo"><h2>Sistema de Escala</h2></div>
         <nav>
             <ul class="nav-list">
                 <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
-                <li class="nav-item"><a href="semana.html"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
+                <li class="nav-item active"><a href="semana.html"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
                 <li class="nav-item"><a href="fimdesemana.html"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
                 <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
                 <li class="nav-item"><a href="estatisticas.html"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
@@ -49,37 +95,240 @@
         </nav>
     </div>
 
+    <!-- Conteúdo Principal -->
     <main class="content">
         <h1>Reunião da Semana</h1>
         <div class="card">
-            <h2>Próxima Escala</h2>
-            <p>Aqui será exibida a escala da próxima reunião da semana.</p>
-            <!-- Você pode adicionar tabelas, listas ou outros elementos dinâmicos aqui -->
-        </div>
-        <div class="card">
-            <h2>Histórico</h2>
-            <p>Aqui será exibido o histórico das escalas passadas.</p>
+            <h2>Escala da Reunião</h2>
+            <div id="filters-container">
+                <div class="filter-group"><label for="filter-ano">Ano</label><select id="filter-ano"></select></div>
+                <div class="filter-group"><label for="filter-mes">Mês</label><select id="filter-mes"></select></div>
+                <div class="filter-group"><label for="filter-semana">Semana</label><select id="filter-semana"></select></div>
+                <div class="filter-group"><label for="filter-parte">Parte</label><select id="filter-parte">
+                        <option value="todas">Todas as Partes</option>
+                        <option value="escola">Escola</option>
+                        <option value="resto da semana">Vida e Ministério</option>
+                    </select></div>
+            </div>
+            <div id="schedule-display">
+                <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i></div>
+                <div id="schedule-content"><p>Selecione os filtros para ver a escala.</p></div>
+            </div>
         </div>
     </main>
 
     <script>
-        // Configuração do Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A", // Substitua pela sua chave de API real
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
             authDomain: "escalas-6e0f9.firebaseapp.com",
             projectId: "escalas-6e0f9",
             storageBucket: "escalas-6e0f9.firebasestorage.app",
             messagingSenderId: "19118998563",
             appId: "1:19118998563:web:5412be658ae34bd45add96"
         };
-
-        // Inicializa o Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // Funções para carregar dados específicos desta página podem ser adicionadas aqui
-            console.log("Página da Reunião da Semana carregada.");
+        function getContrastColor(hexColor) {
+            if (!hexColor) return '#333';
+            const r = parseInt(hexColor.substr(1, 2), 16);
+            const g = parseInt(hexColor.substr(3, 2), 16);
+            const b = parseInt(hexColor.substr(5, 2), 16);
+            const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+            return (yiq >= 128) ? '#000000' : '#FFFFFF';
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            const yearFilter = document.getElementById('filter-ano');
+            const monthFilter = document.getElementById('filter-mes');
+            const weekFilter = document.getElementById('filter-semana');
+            const partFilter = document.getElementById('filter-parte');
+            const scheduleDisplay = document.getElementById('schedule-display');
+            const scheduleContent = document.getElementById('schedule-content');
+
+            let allScheduleData = [];
+            const personMap = new Map();
+            const designationMap = new Map();
+            const headerMap = new Map();
+            const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+            async function loadInitialData() {
+                scheduleDisplay.classList.add('loading');
+                try {
+                    const [historicoSnap, pessoasSnap, designacoesSnap, cabecalhosSnap] = await Promise.all([
+                        db.collection('historico').where('quando', 'in', ['Semana', 'Fim de Semana']).where('tipo', '==', 'reuniao').orderBy('timestamp', 'desc').get(),
+                        db.collection('pessoas').get(),
+                        db.collection('designacoes').get(),
+                        db.collection('cabecalhos').get()
+                    ]);
+                    pessoasSnap.forEach(doc => personMap.set(doc.id, doc.data().nomePessoa));
+                    designacoesSnap.forEach(doc => designationMap.set(doc.id, doc.data()));
+                    cabecalhosSnap.forEach(doc => headerMap.set(doc.id, doc.data()));
+                    allScheduleData = historicoSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    populateYearFilter();
+                    updateMonthFilter();
+                    updateWeekFilter();
+                    renderSchedule();
+                } catch (error) {
+                    console.error("Erro ao carregar dados iniciais:", error);
+                    scheduleContent.innerHTML = `<p style="color: red;">Ocorreu um erro ao carregar os dados. Tente novamente mais tarde.</p>`;
+                } finally { scheduleDisplay.classList.remove('loading'); }
+            }
+
+            // ... (as funções de filtro permanecem as mesmas)
+            function populateYearFilter() {
+                const years = [...new Set(allScheduleData.map(item => item.ano))].sort((a, b) => b - a);
+                yearFilter.innerHTML = ''; years.forEach(year => { const option = document.createElement('option'); option.value = year; option.textContent = year; yearFilter.appendChild(option); });
+                yearFilter.value = new Date().getFullYear();
+            }
+            function updateMonthFilter() {
+                const selectedYear = parseInt(yearFilter.value);
+                const monthsInYear = [...new Set(allScheduleData.filter(item => item.ano === selectedYear).map(item => item.mes))].sort((a, b) => a - b);
+                monthFilter.innerHTML = '<option value="todos">Todos os Meses</option>';
+                monthsInYear.forEach(monthNum => { const option = document.createElement('option'); option.value = monthNum; option.textContent = monthNames[monthNum - 1]; monthFilter.appendChild(option); });
+                const currentMonth = new Date().getMonth() + 1;
+                if (monthsInYear.includes(currentMonth)) { monthFilter.value = currentMonth; } else { monthFilter.value = 'todos';}
+            }
+             function updateWeekFilter() {
+                const selectedYear = parseInt(yearFilter.value);
+                const selectedMonth = monthFilter.value === 'todos' ? null : parseInt(monthFilter.value);
+                let filteredWeeks = allScheduleData.filter(item => item.ano === selectedYear);
+                if (selectedMonth) { filteredWeeks = filteredWeeks.filter(item => item.mes === selectedMonth); }
+                const weeksByMonth = filteredWeeks.reduce((acc, item) => { if (!acc[item.mes]) acc[item.mes] = new Set(); acc[item.mes].add(item.semanaindex); return acc; }, {});
+                
+                weekFilter.innerHTML = '<option value="todas">Todas as Semanas</option>';
+
+                Object.keys(weeksByMonth).sort((a, b) => a - b).forEach(monthNum => {
+                    const optgroup = document.createElement('optgroup'); optgroup.label = monthNames[monthNum - 1];
+                    const weekIndexes = [...new Set(filteredWeeks.filter(w => w.mes == monthNum).map(w => w.semanaindex))];
+                    weekIndexes.forEach(weekIndex => { const option = document.createElement('option'); option.value = weekIndex; option.textContent = weekIndex; optgroup.appendChild(option); });
+                    weekFilter.appendChild(optgroup);
+                });
+
+                const hoje = new Date();
+                if (selectedYear === hoje.getFullYear() && selectedMonth === (hoje.getMonth() + 1)) {
+                    let melhorOpcao = null;
+                    let menorDiferenca = Infinity;
+                    const diaAtual = hoje.getDate();
+
+                    for (const option of weekFilter.options) {
+                        if (option.value === 'todas') continue; 
+                        const diaInicio = parseInt(option.textContent, 10);
+                        if (!isNaN(diaInicio)) {
+                            const diferenca = diaAtual - diaInicio;
+                            if (diferenca >= 0 && diferenca < menorDiferenca) {
+                                menorDiferenca = diferenca;
+                                melhorOpcao = option.value;
+                            }
+                        }
+                    }
+                    if (melhorOpcao) {
+                        weekFilter.value = melhorOpcao;
+                    }
+                }
+            }
+            
+            function renderSchedule() {
+                scheduleDisplay.classList.add('loading');
+                scheduleContent.innerHTML = '';
+                const selectedYear = parseInt(yearFilter.value);
+                const selectedMonth = monthFilter.value === 'todos' ? null : parseInt(monthFilter.value);
+                const selectedWeek = weekFilter.value;
+                const selectedPart = partFilter.value;
+                let timeFilteredData = allScheduleData.filter(item => 
+                    item.ano === selectedYear &&
+                    (!selectedMonth || item.mes === selectedMonth) &&
+                    (selectedWeek === 'todas' || item.semanaindex === selectedWeek)
+                );
+                const normalizeKey = (key) => key.replace(/\s+/g, '').replace(/-/g, '');
+                const groupedByWeek = timeFilteredData.reduce((acc, item) => {
+                    const key = normalizeKey(item.semanaindex); 
+                    if (!acc[key]) {
+                        acc[key] = { originalIndex: item.semanaindex, items: [] };
+                    }
+                    acc[key].items.push(item);
+                    return acc;
+                }, {});
+                if (Object.keys(groupedByWeek).length === 0) {
+                    scheduleContent.innerHTML = '<p>Nenhuma escala encontrada para os filtros selecionados.</p>';
+                    scheduleDisplay.classList.remove('loading');
+                    return;
+                }
+                for (const normalizedKey in groupedByWeek) {
+                    const group = groupedByWeek[normalizedKey];
+                    const weekIndex = group.originalIndex; 
+                    const weekData = group.items;         
+                    const weekElement = document.createElement('div');
+                    weekElement.className = 'schedule-week';
+                    let headerHTML = `<div class="schedule-header">${weekIndex}</div>`;
+                    let bodyHTML = '<div class="schedule-body">';
+                    const allDesignationsForWeek = weekData.flatMap(partData => partData.designacoes || []);
+                    allDesignationsForWeek.sort((a, b) => {
+                        const desigA = designationMap.get(a.designacaoId);
+                        const desigB = designationMap.get(b.designacaoId);
+                        const orderA = desigA ? parseInt(desigA.ordem, 10) || 999 : 999;
+                        const orderB = desigB ? parseInt(desigB.ordem, 10) || 999 : 999;
+                        return orderA - orderB;
+                    });
+
+                    let lastHeaderId = null;
+                    // ===== NOVA VARIÁVEL AQUI =====
+                    let lastHeaderColor = '#bdc3c7'; // Cor padrão para a borda
+
+                    if (allDesignationsForWeek.length > 0) {
+                        allDesignationsForWeek.forEach(desig => {
+                            const fullDesigData = designationMap.get(desig.designacaoId);
+                            if (!fullDesigData) return;
+                            if (selectedPart !== 'todas' && fullDesigData.parte !== selectedPart) return;
+                            const desigName = fullDesigData.nome;
+                            const currentHeaderId = fullDesigData.anexo;
+                            if (currentHeaderId && currentHeaderId !== lastHeaderId) {
+                                const headerData = headerMap.get(currentHeaderId);
+                                if (headerData) {
+                                    const bgColor = headerData.cor || '#ecf0f1';
+                                    const textColor = getContrastColor(bgColor);
+                                    
+                                    // ===== ATUALIZA A COR GUARDADA =====
+                                    lastHeaderColor = bgColor; 
+                                    
+                                    const headerStyle = `style="background-color: ${bgColor}; color: ${textColor};"`;
+                                    bodyHTML += `<div class="schedule-header-group" ${headerStyle}>`;
+                                    bodyHTML += `<span class="header-icon">${headerData.icon || ''}</span>`;
+                                    bodyHTML += `<h4>${headerData.nome}</h4></div>`;
+                                }
+                                lastHeaderId = currentHeaderId;
+                            }
+
+                            // ===== APLICA A COR GUARDADA À BORDA =====
+                            const itemStyle = `style="border-left-color: ${lastHeaderColor};"`;
+                            bodyHTML += `<ul class="designation-list"><li class="designation-item" ${itemStyle}>`;
+                            
+                            bodyHTML += `<strong>${desigName}</strong>`;
+                            if (desig.participantes && Object.keys(desig.participantes).length > 0) {
+                                bodyHTML += '<ul class="participant-list">';
+                                for (const [role, personId] of Object.entries(desig.participantes)) {
+                                    const personName = personMap.get(personId) || 'N/A';
+                                    const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
+                                    bodyHTML += `<li><em>${formattedRole}:</em> ${personName}</li>`;
+                                }
+                                bodyHTML += '</ul>';
+                            }
+                            bodyHTML += '</li></ul>';
+                        });
+                    }
+                    bodyHTML += '</div>';
+                    weekElement.innerHTML = headerHTML + bodyHTML;
+                    scheduleContent.appendChild(weekElement);
+                }
+                scheduleDisplay.classList.remove('loading');
+            }
+
+            // Event Listeners
+            yearFilter.addEventListener('change', () => { updateMonthFilter(); updateWeekFilter(); renderSchedule(); });
+            monthFilter.addEventListener('change', () => { updateWeekFilter(); renderSchedule(); });
+            weekFilter.addEventListener('change', renderSchedule);
+            partFilter.addEventListener('change', renderSchedule);
+            loadInitialData();
         });
     </script>
 </body>
