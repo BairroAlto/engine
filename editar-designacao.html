@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Designação - Sistema de Escala</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        /* Estilos da página (sem alterações) */
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 20px auto 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #2c3e50; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .switch-group { display: flex; align-items: center; justify-content: space-between; }
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e74c3c; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
+        input:checked + .slider { background-color: #2ecc71; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        .slider.round { border-radius: 34px; }
+        .slider.round:before { border-radius: 50%; }
+        .btn-salvar { background-color: #2980b9; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
+        .btn-salvar:hover { background-color: #3498db; }
+        .checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+        .checkbox-item { display: flex; align-items: center; padding: 6px; border-radius: 4px; font-size: 14px; }
+        .checkbox-item input[type="checkbox"] { margin-right: 8px; }
+        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; transition: background-color 0.3s; }
+        .selector-container { max-width: 600px; margin: 0 auto; }
+        .checkbox-item:has(input[value="Ancião"]) { background-color: #bbdefb; }
+        .checkbox-item:has(input[value="Servo Ministerial"]) { background-color: #c8e6c9; }
+        .checkbox-item:has(input[value="Pioneiro Regular"]) { background-color: #fff9c4; }
+        .checkbox-item:has(input[value="Pioneiro Auxiliar"]) { background-color: #ffecb3; }
+        .checkbox-item:has(input[value="Publicador"]) { background-color: #ffcdd2; }
+        .checkbox-item:has(input[value="Publicador não Batizado"]) { background-color: #f8bbd0; }
+    </style>
+</head>
+<body>
+    
+   <div id="sidebar-placeholder"></div>
+
+    <main class="content">
+        <a href="index.html#criar" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <h1>Editar Designação</h1>
+        <div class="selector-container">
+            <div class="form-group">
+                <label for="designacao-select">Escolha uma Designação para Editar</label>
+                <select id="designacao-select" class="form-select"><option value="">Carregando...</option></select>
+            </div>
+        </div>
+        <div class="card" id="edit-form-card" style="display: none;">
+            <form id="editar-designacao-form">
+                <!-- Campos do formulário (sem alterações no HTML) -->
+                <div class="form-group"><label for="nome-designacao">Nome da Designação</label><input type="text" id="nome-designacao" required></div>
+                <div class="form-group"><label for="numero-participantes">Número de Participantes</label><input type="number" id="numero-participantes" min="1" required></div>
+                <div class="form-group"><label for="feito-por">Feito por</label><select id="feito-por" required><option value="Masculino">Apenas Homens</option><option value="Feminino">Apenas Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
+                <div class="form-group"><label for="preferencia">Preferência</label><select id="preferencia" required><option value="Masculino">Homens</option><option value="Feminino">Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
+                <div class="form-group"><label for="quando">Quando?</label><select id="quando" required><option value="Semana">Semana</option><option value="Fim de Semana">Fim de Semana</option><option value="Semana e Fim de Semana">Semana e Fim de Semana</option></select></div>
+                <div class="form-group"><label for="tipo">Tipo</label><select id="tipo" required><option value="reuniao">Reunião</option><option value="pregacao">Pregação</option></select></div>
+                <div class="form-group"><label for="parte">Parte</label><select id="parte" required><option value="escola">Escola</option><option value="resto da semana">Resto da Semana</option><option value="fim de semana">Fim de Semana</option><option value="tecnicas">Técnicas</option><option value="pregacao">Pregação</option><option value="dirigencia saida">Dirigência Saída</option></select></div>
+                <div class="form-group"><label for="anexo">Anexo</label><select id="anexo" required><option value="">Carregando Anexos...</option></select></div>
+                <div class="form-group"><label>Quem faz? (Opcional)</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião"> Ancião</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial"> Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular"> Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar"> Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador"> Publicador</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado"> Publicador não Batizado</label></div></div>
+                <div class="form-group switch-group"><label for="status">Desligado/Ligado</label><label class="switch"><input type="checkbox" id="status"><span class="slider round"></span></label></div>
+                <button type="submit" class="btn-salvar">Salvar Alterações</button>
+            </form>
+        </div>
+    </main>
+
+    <script src="firebase-config.js"></script>
+    <script src="main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (typeof db === 'undefined') { alert("Erro de configuração do banco de dados."); return; }
+
+            const designacaoSelect = document.getElementById('designacao-select');
+            const editFormCard = document.getElementById('edit-form-card');
+            const editForm = document.getElementById('editar-designacao-form');
+
+            // --- 1. FUNÇÃO PARA CARREGAR ANEXOS (MODIFICADA) ---
+            async function carregarAnexos() {
+                const anexoSelect = document.getElementById('anexo');
+                anexoSelect.innerHTML = '<option value="">Selecione um anexo</option>';
+                try {
+                    const snapshot = await db.collection('cabecalhos').get();
+                    snapshot.forEach(doc => {
+                        const anexo = doc.data();
+                        const option = document.createElement('option');
+                        option.value = doc.id; // ALTERAÇÃO: Usa o ID do documento como valor
+                        option.textContent = anexo.nome; // Mantém o nome como texto visível
+                        anexoSelect.appendChild(option);
+                    });
+                } catch (error) { console.error("Erro ao carregar anexos: ", error); }
+            }
+
+            // --- 2. FUNÇÃO PARA POPULAR O DROPDOWN DE DESIGNAÇÕES (sem alterações) ---
+            async function popularDesignacoes() {
+                designacaoSelect.innerHTML = '<option value="" disabled selected>Selecione uma designação</option>';
+                try {
+                    const snapshot = await db.collection('designacoes').orderBy('nome').get();
+                    snapshot.forEach(doc => {
+                        const option = document.createElement('option');
+                        option.value = doc.id;
+                        option.textContent = doc.data().nome;
+                        designacaoSelect.appendChild(option);
+                    });
+                } catch (error) { console.error("Erro ao carregar designações: ", error); }
+            }
+
+            // --- 3. FUNÇÃO PARA CARREGAR DADOS NO FORMULÁRIO (sem alterações na lógica) ---
+            async function carregarDadosFormulario(id) {
+                try {
+                    const doc = await db.collection('designacoes').doc(id).get();
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('nome-designacao').value = data.nome || '';
+                        document.getElementById('numero-participantes').value = data.numeroParticipantes || '';
+                        document.getElementById('feito-por').value = data.feitoPor || 'Masculino';
+                        document.getElementById('preferencia').value = data.preferencia || 'Masculino';
+                        document.getElementById('quando').value = data.quando || 'Semana';
+                        document.getElementById('tipo').value = data.tipo || 'reuniao';
+                        document.getElementById('parte').value = data.parte || 'escola';
+                        document.getElementById('anexo').value = data.anexo || ''; // Agora o 'data.anexo' é um ID, que vai corresponder ao value da option
+                        document.getElementById('status').checked = data.status;
+
+                        document.querySelectorAll('input[name="quem_faz"]').forEach(cb => cb.checked = false);
+                        if (data.quemFaz && Array.isArray(data.quemFaz)) {
+                            data.quemFaz.forEach(privilegio => {
+                                const checkbox = document.querySelector(`input[name="quem_faz"][value="${privilegio}"]`);
+                                if (checkbox) checkbox.checked = true;
+                            });
+                        }
+                        editFormCard.style.display = 'block';
+                    }
+                } catch (error) { console.error("Erro ao buscar dados da designação:", error); }
+            }
+            
+            await carregarAnexos();
+            await popularDesignacoes();
+
+            designacaoSelect.addEventListener('change', function() {
+                if (this.value) carregarDadosFormulario(this.value);
+                else editFormCard.style.display = 'none';
+            });
+
+            // --- EVENTO DE SUBMISSÃO (sem alterações na lógica) ---
+            editForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const currentId = designacaoSelect.value;
+                if (!currentId) { alert("Selecione uma designação."); return; }
+
+                const designacaoAtualizada = {
+                    nome: document.getElementById('nome-designacao').value,
+                    numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
+                    feitoPor: document.getElementById('feito-por').value,
+                    preferencia: document.getElementById('preferencia').value,
+                    quando: document.getElementById('quando').value,
+                    tipo: document.getElementById('tipo').value,
+                    parte: document.getElementById('parte').value,
+                    anexo: document.getElementById('anexo').value, // Automaticamente pega o ID do anexo selecionado
+                    status: document.getElementById('status').checked,
+                    quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
+                    dataModificacao: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                try {
+                    await db.collection('designacoes').doc(currentId).update(designacaoAtualizada);
+                    alert('Designação atualizada com sucesso!');
+                    // Atualiza o nome no dropdown se ele foi alterado
+                    if (designacaoSelect.options[designacaoSelect.selectedIndex].text !== designacaoAtualizada.nome) {
+                        await popularDesignacoes();
+                        designacaoSelect.value = currentId;
+                    }
+                } catch (error) { console.error("Erro ao atualizar:", error); alert("Erro ao salvar."); }
+            });
+        });
+    </script>
+</body>
+</html>
