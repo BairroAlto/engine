@@ -268,21 +268,21 @@
 
         // Botão de Foguetão (Placeholder)
        document.getElementById('turboButton').addEventListener('click', async (event) => {
-    const button = event.currentTarget;
-    button.disabled = true;
-    button.querySelector('i').classList.add('fa-spin'); // Adiciona um feedback visual
+            const button = event.currentTarget;
+            button.disabled = true;
+            button.querySelector('i').classList.add('fa-spin'); // Adiciona um feedback visual
 
-    try {
-        await preencherAutomaticamente();
-        alert("Preenchimento automático concluído!");
-    } catch (error) {
-        console.error("Ocorreu um erro crítico no preenchimento automático:", error);
-        alert("Ocorreu um erro durante o preenchimento automático. Verifique a consola para mais detalhes.");
-    } finally {
-        button.disabled = false;
-        button.querySelector('i').classList.remove('fa-spin'); // Remove o feedback
-    }
-});
+            try {
+                await preencherAutomaticamente();
+                alert("Preenchimento automático concluído!");
+            } catch (error) {
+                console.error("Ocorreu um erro crítico no preenchimento automático:", error);
+                alert("Ocorreu um erro durante o preenchimento automático. Verifique a consola para mais detalhes.");
+            } finally {
+                button.disabled = false;
+                button.querySelector('i').classList.remove('fa-spin'); // Remove o feedback
+            }
+        });
         
         // Botão de Estatísticas (Placeholder)
         document.getElementById('estatisticasButton').addEventListener('click', () => {
@@ -319,8 +319,151 @@
         let temporaryPreferences = {};
     
         // ===================================================================
-        // =========== FUNÇÕES AUXILIARES DE DATA E FIREBASE ===============
+        // =========== CÓDIGO PARA O FLUXO DE CONFIRMAÇÃO ============
         // ===================================================================
+
+        const fluxoSemanalForm = document.getElementById('fluxoSemanalForm');
+        const confirmationPopup = document.getElementById('confirmationPopup');
+        const closePopupButton = document.getElementById('closePopup');
+        const createFluxoButton = document.getElementById('createFluxoSemanal');
+
+        // ETAPA 1: Intercetar o clique no botão "Iniciar Fluxo"
+        fluxoSemanalForm.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Impede o envio real do formulário
+            
+            await generatePopupSummary(); // Gera o conteúdo do resumo
+            
+            confirmationPopup.style.display = 'flex'; // Mostra o popup
+        });
+
+        // ETAPA 2: Lógica para o botão final "Confirmar e Criar" dentro do popup
+        createFluxoButton.addEventListener('click', async function() {
+            this.disabled = true;
+            this.textContent = "A Guardar...";
+
+            try {
+                const ano = await getAnoPainelFirebase();
+                const mes = parseInt(document.getElementById('mes').value);
+                const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+                const tipoEvento = document.getElementById('tipo').value; // Alterado para clareza
+                const idiomas = getSelectedNacionalidades();
+                const sala = document.getElementById('sala').value;
+                const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+                
+                // Construir o objeto de dados principal
+                const historicoData = {
+                    ano: ano,
+                    mes: mes,
+                    semanaNumero: semanaNumero,
+                    semanaindex: `(${diasSemana} ${ano})`,
+                    designacoes: [],
+                    // =======================================================
+                    // =========== INÍCIO DA ALTERAÇÃO SOLICITADA ============
+                    // =======================================================
+                    evento: tipoEvento,   // O valor do dropdown (normal, assembleia, etc.) vai para o campo "evento"
+                    tipo: "reuniao",      // O campo "tipo" agora tem o valor fixo "reuniao"
+                    // =======================================================
+                    // ============= FIM DA ALTERAÇÃO SOLICITADA ==============
+                    // =======================================================
+                    idioma: idiomas,
+                    sala: sala,
+                    quando: "Semana",
+                    parte: "resto da semana", // Identificador da parte da reunião
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                // Preencher o array de designações
+                document.querySelectorAll('#activeDesignationsContainer .active-designation-container').forEach(container => {
+                    const designacaoId = container.dataset.designacaoId;
+                    const participantes = {};
+                    const participantSelects = container.querySelectorAll('.form-select');
+                    
+                    // Lógica melhorada para atribuir papéis
+                    if (participantSelects.length === 1) {
+                        // Caso para um único participante
+                        if (participantSelects[0].value) {
+                            participantes['participante'] = participantSelects[0].value;
+                        }
+                    } else {
+                        // Caso para múltiplos participantes
+                        if (participantSelects[0] && participantSelects[0].value) {
+                            participantes['dirigente'] = participantSelects[0].value;
+                        }
+                        if (participantSelects[1] && participantSelects[1].value) {
+                            participantes['ajudante1'] = participantSelects[1].value;
+                        }
+                        if (participantSelects[2] && participantSelects[2].value) {
+                            participantes['ajudante2'] = participantSelects[2].value;
+                        }
+                    }
+
+                    // Adiciona a designação apenas se houver participantes selecionados
+                    if (Object.keys(participantes).length > 0) {
+                        historicoData.designacoes.push({
+                            designacaoId: designacaoId,
+                            participantes: participantes
+                        });
+                    }
+                });
+                
+                // Guardar na base de dados
+                await db.collection("historico").add(historicoData);
+
+                alert("Fluxo semanal criado com sucesso!");
+                window.location.reload();
+
+            } catch (error) {
+                console.error("Erro ao criar fluxo semanal: ", error);
+                alert("Ocorreu um erro ao guardar. Por favor, tente novamente.");
+                this.disabled = false;
+                this.textContent = "Confirmar e Criar";
+            }
+        });
+
+        // Função para gerar o resumo no popup
+        async function generatePopupSummary() {
+            const summaryList = document.getElementById('popupSummaryList');
+            summaryList.innerHTML = ''; // Limpa o conteúdo anterior
+
+            const designacaoContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container');
+
+            if (designacaoContainers.length === 0) {
+                summaryList.innerHTML = '<li>Nenhuma designação selecionada.</li>';
+                return;
+            }
+
+            for (const container of designacaoContainers) {
+                const designacaoId = container.dataset.designacaoId;
+                const designacao = allDesignations.get(designacaoId);
+                const designacaoNome = designacao ? designacao.nome : 'Designação Desconhecida';
+                
+                const participantSelects = container.querySelectorAll('.form-select');
+                const participantNames = [];
+
+                for (const select of participantSelects) {
+                    if (select.value) {
+                        const personData = allPeopleDataMap.get(select.value);
+                        participantNames.push(personData ? personData.nome : 'Pessoa desconhecida');
+                    }
+                }
+                
+                if (participantNames.length > 0) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${designacaoNome}:</strong> ${participantNames.join(', ')}`;
+                    summaryList.appendChild(li);
+                }
+            }
+        }
+        
+        // Lógica para fechar o popup
+        closePopupButton.addEventListener('click', () => {
+            confirmationPopup.style.display = 'none';
+        });
+        
+        // ===================================================================
+        // =========== O RESTO DO SEU CÓDIGO ORIGINAL CONTINUA AQUI ============
+        // ===================================================================
+
         const getAnoPainelFirebase = async () => {
             const doc = await db.collection('painel').doc('ano').get();
             return doc.exists ? doc.data().ano : new Date().getFullYear();
@@ -345,19 +488,35 @@
             return count;
         };
 
-        const getDiasSemana = (ano, mes, semana) => {
-            let firstDay = new Date(ano, mes - 1, 1);
-            let dayOfWeek = firstDay.getDay();
-            let offset = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
-            let firstMonday = new Date(firstDay);
-            firstMonday.setDate(firstDay.getDate() - offset);
-            let start = new Date(firstMonday);
-            start.setDate(firstMonday.getDate() + (semana - 1) * 7);
-            let end = new Date(start);
-            end.setDate(start.getDate() + 6);
-            const months = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-            return `${start.getDate()} ${months[start.getMonth()]} - ${end.getDate()} ${months[end.getMonth()]}`;
-        };
+      const getDiasSemana = (ano, mes, semanaNumero) => {
+    const primeiroDiaMes = new Date(ano, mes - 1, 1);
+    let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
+    if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7;
+
+    let diasToAddForFirstMonday = 0;
+    if (diaSemanaPrimeiroDia !== 1) {
+        diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
+    }
+
+    const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
+    const inicioSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7);
+    const fimSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7 + 6);
+
+    const formatarMes = (date) => {
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        return monthNames[date.getMonth()];
+    };
+
+    const inicio_dia = inicioSemanaDate.getDate();
+    const fim_dia = fimSemanaDate.getDate();
+    const inicio_mes = formatarMes(inicioSemanaDate);
+    const fim_mes = formatarMes(fimSemanaDate);
+
+    // LÓGICA CORRIGIDA: A string é sempre construída no formato completo.
+    const diasSemanaString = `${inicio_dia} ${inicio_mes} - ${fim_dia} ${fim_mes}`;
+    
+    return diasSemanaString;
+};
 
         const getHorariosFromFirebase = async (ano) => {
             const querySnapshot = await db.collection('horarios').where('ano', '==', ano).limit(1).get();
@@ -370,43 +529,38 @@
             return Array.from(checkedBoxes).map(cb => cb.value);
         };
         
-        // CORRIGIDO
-     const loadPeopleOptionsIntoSelects = async (designacao, container, genderPreference = 'ambos', idiomas = []) => {
-    try {
-        let query = db.collection('pessoas')
-            .where('fazDesignacoesReuniao', '==', true);
+        const loadPeopleOptionsIntoSelects = async (designacao, container, genderPreference = 'ambos', idiomas = []) => {
+            try {
+                let query = db.collection('pessoas')
+                    .where('fazDesignacoesReuniao', '==', true);
 
-        // --- MUDANÇA AQUI ---
-        // Se o campo 'idioma' é uma String, usamos o operador 'in'.
-        // Ele verifica se o valor do campo está DENTRO da lista de idiomas selecionados.
-        if (idiomas.length > 0) {
-            query = query.where('idioma', 'in', idiomas);
-        }
+                if (idiomas.length > 0) {
+                    query = query.where('idioma', 'in', idiomas);
+                }
 
-        if (genderPreference === 'masculino') query = query.where('genero', '==', 'Masculino');
-        if (genderPreference === 'feminino') query = query.where('genero', '==', 'Feminino');
-        
-        const snapshot = await query.get();
+                if (genderPreference === 'masculino') query = query.where('genero', '==', 'Masculino');
+                if (genderPreference === 'feminino') query = query.where('genero', '==', 'Feminino');
+                
+                const snapshot = await query.get();
 
-        const filteredDocs = snapshot.docs.filter(doc => {
-            const personData = doc.data();
-            return personData.designacoesReuniao && personData.designacoesReuniao.includes(designacao.nome);
-        });
-        
-        const peopleOptions = filteredDocs.map(doc => `<option value="${doc.id}">${doc.data().nomePessoa}</option>`).join('');
+                const filteredDocs = snapshot.docs.filter(doc => {
+                    const personData = doc.data();
+                    return personData.designacoesReuniao && personData.designacoesReuniao.includes(designacao.nome);
+                });
+                
+                const peopleOptions = filteredDocs.map(doc => `<option value="${doc.id}">${doc.data().nomePessoa}</option>`).join('');
 
-        container.querySelectorAll('.form-select').forEach(select => {
-            const currentValue = select.value;
-            select.innerHTML = '<option value="">Selecione...</option>' + peopleOptions;
-            if (currentValue) {
-               select.value = currentValue;
+                container.querySelectorAll('.form-select').forEach(select => {
+                    const currentValue = select.value;
+                    select.innerHTML = '<option value="">Selecione...</option>' + peopleOptions;
+                    if (currentValue) {
+                       select.value = currentValue;
+                    }
+                });
+            } catch (error) {
+                console.error(`Erro ao carregar pessoas para a designação '${designacao.nome}':`, error);
             }
-        });
-    } catch (error) {
-        console.error(`Erro ao carregar pessoas para a designação '${designacao.nome}':`, error);
-    }
-};
-
+        };
 
         const initializeSystemData = async () => {
             try {
@@ -426,265 +580,195 @@
             }
         };
 
+        async function preencherAutomaticamente() {
+            console.log("🚀 Iniciando o preenchimento automático...");
+            const ano = await getAnoPainelFirebase();
+            const mes = parseInt(document.getElementById('mes').value);
+            const semana = parseInt(document.getElementById('semanaNumero').value);
+            const dateRanges = getWeekDateRanges(ano, mes, semana);
 
+            const vagas = [];
+            document.querySelectorAll('.active-designation-container').forEach(card => {
+                if (card.dataset.locked === 'true') return;
+                card.querySelectorAll('select.form-select').forEach((select, index) => {
+                    vagas.push({
+                        elementId: select.id,
+                        designacaoId: card.dataset.designacaoId,
+                        instanceIndex: parseInt(select.id.split('-')[2]) - 1,
+                        roleIndex: index,
+                        filters: {
+                            genero: card.querySelector('.genero-preferencia-select')?.value || 'ambos',
+                            idiomas: getSelectedNacionalidades()
+                        }
+                    });
+                });
+            });
 
-async function preencherAutomaticamente() {
-    console.log("🚀 Iniciando o preenchimento automático...");
+            if (vagas.length === 0) {
+                console.log("Nenhuma vaga desbloqueada para preencher.");
+                return;
+            }
 
-    // ===================================
-    // FASE 1: RECOLHA E PREPARAÇÃO DE DADOS
-    // ===================================
-    console.log("Fase 1: A recolher e preparar os dados...");
+            const { peopleMap, designationsMap, historicoData } = await getDataFromFirebase();
+            let candidatosPorVaga = await Promise.all(vagas.map(vaga =>
+                gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRanges)
+            ));
+            
+            candidatosPorVaga.sort((a, b) => a.candidatos.length - b.candidatos.length);
 
-    // 1.1. Obter contexto da semana e designações ativas na UI
-    const ano = await getAnoPainelFirebase();
-    const mes = parseInt(document.getElementById('mes').value);
-    const semana = parseInt(document.getElementById('semanaNumero').value);
-    const dateRanges = getWeekDateRanges(ano, mes, semana);
+            let atribuicoesFinais = {};
+            let pessoasAtribuidas = new Set();
 
-    const vagas = [];
-    document.querySelectorAll('.active-designation-container').forEach(card => {
-        if (card.dataset.locked === 'true') return; // Ignorar cards bloqueados
-        card.querySelectorAll('select.form-select').forEach((select, index) => {
-            vagas.push({
-                elementId: select.id,
-                designacaoId: card.dataset.designacaoId,
-                instanceIndex: parseInt(select.id.split('-')[2]) - 1,
-                roleIndex: index,
-                filters: {
-                    genero: card.querySelector('.genero-preferencia-select')?.value || 'ambos',
-                    idiomas: getSelectedNacionalidades()
+            candidatosPorVaga.forEach(item => {
+                for (const candidato of item.candidatos) {
+                    if (isCandidatoValido(candidato, item.vaga, atribuicoesFinais, pessoasAtribuidas, designationsMap, 'Não')) {
+                        atribuicoesFinais[item.vaga.elementId] = candidato.id;
+                        pessoasAtribuidas.add(candidato.id);
+                        break;
+                    }
                 }
             });
-        });
-    });
-
-    if (vagas.length === 0) {
-        console.log("Nenhuma vaga desbloqueada para preencher.");
-        return;
-    }
-
-    // 1.2. Carregar todos os dados necessários do Firebase em paralelo
-    const { peopleMap, designationsMap, historicoData } = await getDataFromFirebase();
-
-    // ===================================
-    // FASE 2: ALGORITMO DE ATRIBUIÇÃO
-    // ===================================
-    console.log("Fase 2: A executar o algoritmo de atribuição...");
-
-    // 2.1. Gerar um pool de candidatos para cada vaga
-    let candidatosPorVaga = await Promise.all(vagas.map(vaga =>
-        gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRanges)
-    ));
-    
-    // 2.2. Ordenar vagas pela dificuldade (menor número de candidatos primeiro)
-    candidatosPorVaga.sort((a, b) => a.candidatos.length - b.candidatos.length);
-
-    // 2.3. Processo de atribuição principal (Regras Rígidas)
-    console.log("-> A executar passe de atribuição principal (regras rígidas)...");
-    let atribuicoesFinais = {};
-    let pessoasAtribuidas = new Set();
-
-    candidatosPorVaga.forEach(item => {
-        for (const candidato of item.candidatos) {
-            if (isCandidatoValido(candidato, item.vaga, atribuicoesFinais, pessoasAtribuidas, designationsMap, 'Não')) {
-                atribuicoesFinais[item.vaga.elementId] = candidato.id;
-                pessoasAtribuidas.add(candidato.id);
-                break; // Atribuído, passar para a próxima vaga
+            
+            const vagasVazias = candidatosPorVaga.filter(item => !atribuicoesFinais[item.vaga.elementId]);
+            if (vagasVazias.length > 0) {
+                vagasVazias.forEach(item => {
+                    for (const candidato of item.candidatos) {
+                        if (isCandidatoValido(candidato, item.vaga, atribuicoesFinais, pessoasAtribuidas, designationsMap, 'Moderado')) {
+                             atribuicoesFinais[item.vaga.elementId] = candidato.id;
+                             pessoasAtribuidas.add(candidato.id);
+                             break;
+                        }
+                    }
+                });
             }
-        }
-    });
-    
-    // 2.4. Fallback 1: Tentar preencher vagas vazias relaxando para bloqueio "Moderado"
-    const vagasVazias = candidatosPorVaga.filter(item => !atribuicoesFinais[item.vaga.elementId]);
-    if (vagasVazias.length > 0) {
-        console.log(`-> Tentando preencher ${vagasVazias.length} vagas vazias (relaxando para bloqueio 'Moderado')...`);
-        vagasVazias.forEach(item => {
-            for (const candidato of item.candidatos) {
-                if (isCandidatoValido(candidato, item.vaga, atribuicoesFinais, pessoasAtribuidas, designationsMap, 'Moderado')) {
-                     atribuicoesFinais[item.vaga.elementId] = candidato.id;
-                     pessoasAtribuidas.add(candidato.id);
-                     break;
+
+            const vagasAindaVazias = candidatosPorVaga.filter(item => !atribuicoesFinais[item.vaga.elementId]);
+             if (vagasAindaVazias.length > 0) {
+                vagasAindaVazias.forEach(item => {
+                    const melhorCandidato = item.candidatos.find(c => !pessoasAtribuidas.has(c.id));
+                     if (melhorCandidato) {
+                        atribuicoesFinais[item.vaga.elementId] = melhorCandidato.id;
+                        pessoasAtribuidas.add(melhorCandidato.id);
+                     }
+                });
+            }
+
+            for (const [elementId, pessoaId] of Object.entries(atribuicoesFinais)) {
+                const selectElement = document.getElementById(elementId);
+                if (selectElement) {
+                    selectElement.value = pessoaId;
                 }
             }
-        });
-    }
-
-    // 2.5. Fallback 2: Último recurso para vagas ainda vazias (ignorar bloqueios)
-    const vagasAindaVazias = candidatosPorVaga.filter(item => !atribuicoesFinais[item.vaga.elementId]);
-     if (vagasAindaVazias.length > 0) {
-        console.log(`-> ${vagasAindaVazias.length} vagas ainda vazias. A aplicar último recurso (ignorar bloqueios)...`);
-        vagasAindaVazias.forEach(item => {
-            const melhorCandidato = item.candidatos.find(c => !pessoasAtribuidas.has(c.id));
-             if (melhorCandidato) {
-                atribuicoesFinais[item.vaga.elementId] = melhorCandidato.id;
-                pessoasAtribuidas.add(melhorCandidato.id);
-             }
-        });
-    }
-
-    // ===================================
-    // FASE 3: ATUALIZAÇÃO DA UI
-    // ===================================
-    console.log("Fase 3: A atualizar a interface do utilizador...");
-    for (const [elementId, pessoaId] of Object.entries(atribuicoesFinais)) {
-        const selectElement = document.getElementById(elementId);
-        if (selectElement) {
-            selectElement.value = pessoaId;
+            console.log("✅ Preenchimento automático concluído.");
         }
-    }
-    
-    console.log("✅ Preenchimento automático concluído.");
-}
 
+        async function getDataFromFirebase() {
+            const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
+                db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get(),
+                db.collection('designacoes').get(),
+                db.collection('historico').get()
+            ]);
 
-async function getDataFromFirebase() {
-    const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
-        db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get(),
-        db.collection('designacoes').get(),
-        db.collection('historico').get() // Idealmente, filtrar por data para otimizar
-    ]);
+            const peopleMap = new Map();
+            pessoasSnapshot.forEach(doc => peopleMap.set(doc.id, { id: doc.id, ...doc.data() }));
+            const designationsMap = new Map();
+            designacoesSnapshot.forEach(doc => designationsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+            const historicoData = [];
+            historicoSnapshot.forEach(doc => historicoData.push({ id: doc.id, ...doc.data() }));
 
-    const peopleMap = new Map();
-    pessoasSnapshot.forEach(doc => peopleMap.set(doc.id, { id: doc.id, ...doc.data() }));
+            return { peopleMap, designationsMap, historicoData };
+        }
 
-    const designationsMap = new Map();
-    designacoesSnapshot.forEach(doc => designationsMap.set(doc.id, { id: doc.id, ...doc.data() }));
-
-    const historicoData = [];
-    historicoSnapshot.forEach(doc => historicoData.push({ id: doc.id, ...doc.data() }));
-
-    return { peopleMap, designationsMap, historicoData };
-}
-
-/**
- * Gera um pool de candidatos filtrados e pontuados para uma única vaga.
- */
-async function gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRanges) {
-    let candidatos = Array.from(peopleMap.values());
-
-    // 1. Filtrar por critérios da UI (género, idioma) e pela lista da própria designação
-    const designacao = allDesignations.get(vaga.designacaoId);
-    candidatos = candidatos.filter(p => {
-        const atendeGenero = vaga.filters.genero === 'ambos' || p.genero?.toLowerCase() === vaga.filters.genero;
-        const atendeIdioma = vaga.filters.idiomas.includes(p.idioma);
-        const podeFazerDesignacao = p.designacoesReuniao?.includes(designacao.nome);
-        return atendeGenero && atendeIdioma && podeFazerDesignacao;
-    });
-
-    // 2. Filtrar por histórico (não ter feito a mesma designação na semana anterior/seguinte)
-    const historicoRelevante = historicoData.filter(h =>
-        (h.dia >= dateRanges.previous.start && h.dia <= dateRanges.previous.end) ||
-        (h.dia >= dateRanges.next.start && h.dia <= dateRanges.next.end)
-    );
-    const pessoasBloqueadasPorHistorico = new Set();
-    historicoRelevante.forEach(h => {
-        h.designacoes?.forEach(d => {
-            if (d.designacaoId === vaga.designacaoId) {
-                Object.values(d.participantes).forEach(pessoaId => pessoasBloqueadasPorHistorico.add(pessoaId));
-            }
-        });
-    });
-    candidatos = candidatos.filter(p => !pessoasBloqueadasPorHistorico.has(p.id));
-
-    // 3. Calcular frequência e ordenar
-    const candidatosComFrequencia = candidatos.map(candidato => {
-        let frequencia = 0;
-        historicoData.forEach(h => {
-            h.designacoes?.forEach(d => {
-                if (d.designacaoId === vaga.designacaoId && Object.values(d.participantes).includes(candidato.id)) {
-                    frequencia++;
-                }
+        async function gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRanges) {
+            let candidatos = Array.from(peopleMap.values());
+            const designacao = allDesignations.get(vaga.designacaoId);
+            candidatos = candidatos.filter(p => {
+                const atendeGenero = vaga.filters.genero === 'ambos' || p.genero?.toLowerCase() === vaga.filters.genero;
+                const atendeIdioma = vaga.filters.idiomas.includes(p.idioma);
+                const podeFazerDesignacao = p.designacoesReuniao?.includes(designacao.nome);
+                return atendeGenero && atendeIdioma && podeFazerDesignacao;
             });
-        });
-        return { ...candidato, frequencia };
-    });
 
-    candidatosComFrequencia.sort((a, b) => a.frequencia - b.frequencia);
+            const historicoRelevante = historicoData.filter(h =>
+                (h.dia >= dateRanges.previous.start && h.dia <= dateRanges.previous.end) ||
+                (h.dia >= dateRanges.next.start && h.dia <= dateRanges.next.end)
+            );
+            const pessoasBloqueadasPorHistorico = new Set();
+            historicoRelevante.forEach(h => {
+                h.designacoes?.forEach(d => {
+                    if (d.designacaoId === vaga.designacaoId) {
+                        Object.values(d.participantes).forEach(pessoaId => pessoasBloqueadasPorHistorico.add(pessoaId));
+                    }
+                });
+            });
+            candidatos = candidatos.filter(p => !pessoasBloqueadasPorHistorico.has(p.id));
 
-    return { vaga, candidatos: candidatosComFrequencia };
-}
-
-/**
- * Verifica se um candidato é válido para uma vaga, considerando as atribuições já feitas.
- */
-function isCandidatoValido(candidato, vaga, atribuicoesAtuais, pessoasAtribuidas, designationsMap, nivelBloqueio) {
-    const designacaoAtual = designationsMap.get(vaga.designacaoId);
-    if (!designacaoAtual) return false;
-
-    // REGRA: A pessoa já foi atribuída nesta ronda?
-    if (pessoasAtribuidas.has(candidato.id)) {
-        // EXCEÇÃO: Permitido se houver uma regra de "repeticao"
-        const vagaOcupadaId = Object.keys(atribuicoesAtuais).find(key => atribuicoesAtuais[key] === candidato.id);
-        const designacaoOcupada = designationsMap.get(vagaOcupadaId.split('-')[1]);
+            const candidatosComFrequencia = candidatos.map(candidato => {
+                let frequencia = 0;
+                historicoData.forEach(h => {
+                    h.designacoes?.forEach(d => {
+                        if (d.designacaoId === vaga.designacaoId && Object.values(d.participantes).includes(candidato.id)) {
+                            frequencia++;
+                        }
+                    });
+                });
+                return { ...candidato, frequencia };
+            });
+            candidatosComFrequencia.sort((a, b) => a.frequencia - b.frequencia);
+            return { vaga, candidatos: candidatosComFrequencia };
+        }
         
-        const repeticaoPermite = designacaoAtual.repeticao?.includes(designacaoOcupada?.id) || designacaoOcupada?.repeticao?.includes(designacaoAtual.id);
-        return repeticaoPermite;
-    }
-
-    // REGRA: Verificar bloqueios contra todas as outras designações já atribuídas
-    for (const [vagaAtribuidaId, pessoaId] of Object.entries(atribuicoesAtuais)) {
-        const designacaoAtribuidaId = document.getElementById(vagaAtribuidaId).closest('.active-designation-container').dataset.designacaoId;
-        const designacaoAtribuida = designationsMap.get(designacaoAtribuidaId);
-        if (!designacaoAtribuida) continue;
-
-        // Bloqueio A -> B
-        const bloqueioAtual = designacaoAtual.bloqueio?.[designacaoAtribuida.id];
-        if (bloqueioAtual === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioAtual === 'Moderado')) {
-            return false;
+        function isCandidatoValido(candidato, vaga, atribuicoesAtuais, pessoasAtribuidas, designationsMap, nivelBloqueio) {
+            const designacaoAtual = designationsMap.get(vaga.designacaoId);
+            if (!designacaoAtual) return false;
+            if (pessoasAtribuidas.has(candidato.id)) {
+                const vagaOcupadaId = Object.keys(atribuicoesAtuais).find(key => atribuicoesAtuais[key] === candidato.id);
+                const designacaoOcupada = designationsMap.get(vagaOcupadaId.split('-')[1]);
+                const repeticaoPermite = designacaoAtual.repeticao?.includes(designacaoOcupada?.id) || designacaoOcupada?.repeticao?.includes(designacaoAtual.id);
+                return repeticaoPermite;
+            }
+            for (const [vagaAtribuidaId, pessoaId] of Object.entries(atribuicoesAtuais)) {
+                const designacaoAtribuidaId = document.getElementById(vagaAtribuidaId).closest('.active-designation-container').dataset.designacaoId;
+                const designacaoAtribuida = designationsMap.get(designacaoAtribuidaId);
+                if (!designacaoAtribuida) continue;
+                const bloqueioAtual = designacaoAtual.bloqueio?.[designacaoAtribuida.id];
+                if (bloqueioAtual === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioAtual === 'Moderado')) {
+                    return false;
+                }
+                const bloqueioOutro = designacaoAtribuida.bloqueio?.[designacaoAtual.id];
+                if (bloqueioOutro === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioOutro === 'Moderado')) {
+                    return false;
+                }
+            }
+            return true;
         }
 
-        // Bloqueio B -> A
-        const bloqueioOutro = designacaoAtribuida.bloqueio?.[designacaoAtual.id];
-        if (bloqueioOutro === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioOutro === 'Moderado')) {
-            return false;
+        function getWeekDateRanges(ano, mes, semana) {
+            let firstDayOfMonth = new Date(ano, mes - 1, 1);
+            let dayOfWeek = firstDayOfMonth.getDay();
+            let offset = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+            let firstMondayOfMonth = new Date(firstDayOfMonth);
+            firstMondayOfMonth.setDate(firstDayOfMonth.getDate() - offset);
+            const startOfWeek = new Date(firstMondayOfMonth);
+            startOfWeek.setDate(firstMondayOfMonth.getDate() + (semana - 1) * 7);
+            const getRange = (startDate) => {
+                const end = new Date(startDate);
+                end.setDate(startDate.getDate() + 6);
+                return {
+                    start: startDate.toISOString().split('T')[0],
+                    end: end.toISOString().split('T')[0]
+                };
+            };
+            const current = getRange(startOfWeek);
+            const previousStart = new Date(startOfWeek);
+            previousStart.setDate(startOfWeek.getDate() - 7);
+            const previous = getRange(previousStart);
+            const nextStart = new Date(startOfWeek);
+            nextStart.setDate(startOfWeek.getDate() + 7);
+            const next = getRange(nextStart);
+            return { current, previous, next };
         }
-    }
 
-    return true; // Se passou por todas as verificações, é válido
-}
-
-
-function getWeekDateRanges(ano, mes, semana) {
-    // Encontra a primeira segunda-feira do mês
-    let firstDayOfMonth = new Date(ano, mes - 1, 1);
-    let dayOfWeek = firstDayOfMonth.getDay(); // 0=Sun, 1=Mon, ...
-    let offset = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
-    
-    let firstMondayOfMonth = new Date(firstDayOfMonth);
-    firstMondayOfMonth.setDate(firstDayOfMonth.getDate() - offset);
-
-    // Calcula o início da semana alvo
-    const startOfWeek = new Date(firstMondayOfMonth);
-    startOfWeek.setDate(firstMondayOfMonth.getDate() + (semana - 1) * 7);
-
-    const getRange = (startDate) => {
-        const end = new Date(startDate);
-        end.setDate(startDate.getDate() + 6);
-        return {
-            start: startDate.toISOString().split('T')[0],
-            end: end.toISOString().split('T')[0]
-        };
-    };
-
-    const current = getRange(startOfWeek);
-
-    const previousStart = new Date(startOfWeek);
-    previousStart.setDate(startOfWeek.getDate() - 7);
-    const previous = getRange(previousStart);
-
-    const nextStart = new Date(startOfWeek);
-    nextStart.setDate(startOfWeek.getDate() + 7);
-    const next = getRange(nextStart);
-
-    return { current, previous, next };
-}
-
-
-
-        // ===================================================================
-        // ==================== LÓGICA PRINCIPAL DA PÁGINA ===================
-        // ===================================================================
         const updateWeekDisplay = async () => {
             const weekDisplay = document.getElementById('weekDisplay');
             const btn = document.getElementById('btnSeguinte');
@@ -763,28 +847,21 @@ function getWeekDateRanges(ano, mes, semana) {
             if (displayToRemove) displayToRemove.remove();
         };
 
-        // CORRIGIDO
         const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
-            console.log(`[DEBUG] Iniciando updateActiveDesignationDisplay para: ${designacao.nome}, Ordem: ${order}, Quantidade: ${quantity}`);
-
             const containerToUse = document.getElementById('activeDesignationsContainer');
-            
             const savedSelections = {};
             let placeholder = null; 
             const existingCard = document.getElementById(`active-designation-${designacao.id}`);
             
             if (existingCard) {
-                console.log(`[DEBUG] Card existente encontrado para ${designacao.nome}. Salvando seleções e posição...`);
                 existingCard.querySelectorAll('.active-designation-container').forEach((instance, instanceIndex) => {
                     savedSelections[instanceIndex] = [];
                     instance.querySelectorAll('.form-select').forEach((select, selectIndex) => {
                         if (select.value) {
                             savedSelections[instanceIndex][selectIndex] = select.value;
-                            console.log(` -> Salvo: Instância ${instanceIndex}, Campo ${selectIndex}, Valor: ${select.value}`);
                         }
                     });
                 });
-                
                 placeholder = document.createElement('div');
                 placeholder.id = `placeholder-${designacao.id}`;
                 existingCard.parentNode.insertBefore(placeholder, existingCard);
@@ -793,7 +870,6 @@ function getWeekDateRanges(ano, mes, semana) {
             removeActiveDesignationDisplay(designacao.id); 
             
             if (quantity <= 0) {
-                 console.log(`[DEBUG] Quantidade é ${quantity}. Removendo card e encerrando a função.`);
                  if(placeholder) placeholder.remove();
                  return;
             }
@@ -837,9 +913,8 @@ function getWeekDateRanges(ano, mes, semana) {
                 numParticipantesSelect.value = temporaryPreferences[`participantes-${designacao.id}-${i}`] || designacao.numeroParticipantes || 1;
                 generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos';
                 filterIcon.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.filter-popup.active').forEach(p => { if (p !== filterPopup) p.classList.remove('active'); }); filterPopup.classList.toggle('active'); });
-                numParticipantesSelect.addEventListener('change', (e) => { console.log(`[EVENT] Nº de Participantes alterado para: ${e.target.value} para ${designacao.nome}`); temporaryPreferences[`participantes-${designacao.id}-${i}`] = e.target.value; updateActiveDesignationDisplay(designacao, order, quantity); filterPopup.classList.remove('active'); });
+                numParticipantesSelect.addEventListener('change', (e) => { temporaryPreferences[`participantes-${designacao.id}-${i}`] = e.target.value; updateActiveDesignationDisplay(designacao, order, quantity); filterPopup.classList.remove('active'); });
                 
-                // --- PONTO DE CORREÇÃO 1 ---
                 generoPreferenciaSelect.addEventListener('change', (e) => { 
                     const selectedIdiomas = getSelectedNacionalidades();
                     loadPeopleOptionsIntoSelects(designacao, instanceContainer, e.target.value, selectedIdiomas); 
@@ -871,23 +946,19 @@ function getWeekDateRanges(ano, mes, semana) {
                 containerToUse.appendChild(mainDisplayContainer);
             }
 
-            // --- PONTO DE CORREÇÃO 2 ---
             const selectedIdiomas = getSelectedNacionalidades();
             await loadPeopleOptionsIntoSelects(designacao, mainDisplayContainer, designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos', selectedIdiomas);
 
-            console.log(`[DEBUG] Restaurando seleções para ${designacao.nome}...`);
             mainDisplayContainer.querySelectorAll('.active-designation-container').forEach((instance, instanceIndex) => {
                 if (savedSelections[instanceIndex]) {
                     instance.querySelectorAll('.form-select').forEach((select, selectIndex) => {
                         const savedValue = savedSelections[instanceIndex][selectIndex];
                         if (savedValue) {
                             select.value = savedValue;
-                            console.log(` -> Restaurado: Instância ${instanceIndex}, Campo ${selectIndex}, Valor: ${savedValue}`);
                         }
                     });
                 }
             });
-            console.log(`[DEBUG] Fim de updateActiveDesignationDisplay para: ${designacao.nome}.`);
         };
         
         const updateOrderButtonClasses = (button, order) => {
@@ -987,9 +1058,6 @@ function getWeekDateRanges(ano, mes, semana) {
             return submenu;
         };
         
-        // ===================================================================
-        // =========== LÓGICA PARA OS POPUPS DE ANÁLISE =======================
-        // ===================================================================
         const formatDateForDisplay = (dateString) => {
             if (!dateString) return 'N/A';
             const [ano, mes, dia] = dateString.split('-');
@@ -1092,10 +1160,6 @@ function getWeekDateRanges(ano, mes, semana) {
         document.getElementById('closePerfilPopup').addEventListener('click', () => document.getElementById('perfilPopup').style.display = 'none');
         document.getElementById('closePairAnalysisPopup').addEventListener('click', () => document.getElementById('pairAnalysisPopup').style.display = 'none');
         document.getElementById('closeLabPopup').addEventListener('click', () => document.getElementById('labPopup').style.display = 'none');
-
-        // ===================================================================
-        // ====================== EVENT LISTENERS ============================
-        // ===================================================================
         
         document.getElementById('btnSeguinte').addEventListener('click', async function() {
             document.getElementById('designacoesSection').classList.add('active');
@@ -1159,9 +1223,6 @@ function getWeekDateRanges(ano, mes, semana) {
             });
         });
 
-        // ===================================================================
-        // ====================== INICIALIZAÇÃO DA PÁGINA ====================
-        // ===================================================================
         updateWeekDisplay();
         loadNacionalidades();
         initializeSystemData();
