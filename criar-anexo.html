@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Anexo - Sistema de Escala</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- 1. Load Firebase Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+        .card h2 { color: #2c3e50; margin-bottom: 20px; font-size: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #2c3e50; }
+        .form-group input[type="text"] {
+            width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;
+        }
+
+        /* --- NOVO: Estilos para o grupo de input de cor --- */
+        .color-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Espaço entre o seletor e o texto */
+        }
+        .color-input-group input[type="color"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 40px;
+            height: 40px;
+            background-color: transparent;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 0;
+            flex-shrink: 0; /* Impede que o seletor encolha */
+        }
+        .color-input-group input[type="color"]::-webkit-color-swatch {
+            border-radius: 3px;
+            border: none;
+        }
+        .color-input-group input[type="text"] {
+            flex-grow: 1; /* Faz o campo de texto ocupar o espaço restante */
+        }
+        /* --- FIM DOS NOVOS ESTILOS --- */
+        
+        .btn-criar { background-color: #2c3e50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
+        .btn-criar:hover { background-color: #34495e; }
+        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; transition: background-color 0.3s; }
+        .btn-voltar:hover { background-color: #95a5a6; }
+    </style>
+</head>
+<body>
+   <div id="sidebar-placeholder"></div>
+
+    <main class="content">
+        <a href="index.html#criar" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <h1>Criar Anexo</h1>
+        <div class="card">
+            <form id="criar-anexo-form">
+                <div class="form-group">
+                    <label for="nome-anexo">Nome do Anexo</label>
+                    <input type="text" id="nome-anexo" name="nome-anexo" required>
+                </div>
+                <div class="form-group">
+                    <label for="icon-anexo">Ícone (ex: fa-solid fa-file-alt)</label>
+                    <input type="text" id="icon-anexo" name="icon-anexo" required>
+                </div>
+                
+                <!-- NOVO CAMPO DE COR MODIFICADO -->
+                <div class="form-group">
+                    <label for="cor-anexo">Cor</label>
+                    <div class="color-input-group">
+                        <input type="color" id="cor-anexo-picker" value="#2c3e50">
+                        <input type="text" id="cor-anexo" name="cor-anexo" value="#2c3e50" 
+                               pattern="#[a-fA-F0-9]{6}" title="Use o formato hexadecimal, ex: #2c3e50" required>
+                    </div>
+                </div>
+                <!-- FIM DO NOVO CAMPO -->
+
+                <button type="submit" class="btn-criar">Criar Anexo</button>
+            </form>
+        </div>
+    </main>
+
+    <!-- 2. Initialize Firebase and then run the application logic -->
+   <script>
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.firebasestorage.app",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+
+        // --- Initialize Firebase and Firestore ---
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- Application Logic ---
+        document.addEventListener('DOMContentLoaded', function() {
+            const anexoForm = document.getElementById('criar-anexo-form');
+            
+            // --- NOVO: LÓGICA DE SINCRONIZAÇÃO DOS INPUTS DE COR ---
+            const colorPicker = document.getElementById('cor-anexo-picker');
+            const colorHexInput = document.getElementById('cor-anexo');
+
+            // Quando o seletor de cor muda, atualiza o campo de texto
+            colorPicker.addEventListener('input', () => {
+                colorHexInput.value = colorPicker.value;
+            });
+
+            // Quando o texto muda, atualiza o seletor de cor (se for um código válido)
+            colorHexInput.addEventListener('input', () => {
+                // Regex para validar um código hex de 6 dígitos
+                if (/^#[0-9a-fA-F]{6}$/.test(colorHexInput.value)) {
+                    colorPicker.value = colorHexInput.value;
+                }
+            });
+            // --- FIM DA NOVA LÓGICA ---
+
+            anexoForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const nomeAnexo = document.getElementById('nome-anexo').value.trim();
+                const iconAnexo = document.getElementById('icon-anexo').value.trim();
+                const corAnexo = document.getElementById('cor-anexo').value.trim(); // O valor já vem do campo de texto
+
+                // Validação final da cor antes de enviar
+                if (!/^#[0-9a-fA-F]{6}$/.test(corAnexo)) {
+                    alert('Por favor, insira um código de cor hexadecimal válido (ex: #aabbcc).');
+                    return;
+                }
+
+                try {
+                    const cabecalhosRef = db.collection('cabecalhos');
+                    
+                    const querySnapshot = await cabecalhosRef.where('nome', '==', nomeAnexo).get();
+
+                    if (!querySnapshot.empty) {
+                        alert('Erro: Já existe um anexo com este nome. Por favor, escolha outro.');
+                        return;
+                    }
+
+                    const novoAnexo = {
+                        nome: nomeAnexo,
+                        icon: iconAnexo,
+                        cor: corAnexo, // Salva o valor do campo de texto
+                        dataCriacao: new Date()
+                    };
+
+                    await cabecalhosRef.add(novoAnexo);
+                    alert('Anexo criado com sucesso!');
+                    anexoForm.reset();
+                    // NOVO: Reseta manualmente os campos de cor para o padrão após o submit
+                    colorPicker.value = '#2c3e50';
+                    colorHexInput.value = '#2c3e50';
+
+                } catch (error) {
+                    console.error('Erro ao criar anexo:', error);
+                    alert('Erro ao comunicar com o banco de dados. Por favor, tente novamente.');
+                }
+            });
+        });
+    </script>
+
+ <script src="main.js"></script>
+
+</body>
+</html>
