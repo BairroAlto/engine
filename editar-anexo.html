@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Anexo - Sistema de Escala</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- 1. Load Firebase Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #2c3e50; }
+        /* Adicionado 'select' para manter o estilo consistente */
+        .form-group input[type="text"], .form-group select {
+            width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; background-color: #fff;
+        }
+
+        .color-input-group { display: flex; align-items: center; gap: 10px; }
+        .color-input-group input[type="color"] { -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 40px; height: 40px; background-color: transparent; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 0; flex-shrink: 0; }
+        .color-input-group input[type="color"]::-webkit-color-swatch { border-radius: 3px; border: none; }
+        .color-input-group input[type="text"] { flex-grow: 1; }
+        
+        /* Estilo para desabilitar o formulário visualmente */
+        #form-fields:disabled { opacity: 0.5; pointer-events: none; }
+
+        .btn-salvar { background-color: #2980b9; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
+        .btn-salvar:hover { background-color: #3498db; }
+        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; transition: background-color 0.3s; }
+        .btn-voltar:hover { background-color: #95a5a6; }
+    </style>
+</head>
+<body>
+   <div id="sidebar-placeholder"></div>
+
+    <main class="content">
+        <a href="index.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <h1>Editar Anexo</h1>
+        <div class="card">
+            <!-- NOVO: Dropdown para selecionar o anexo -->
+            <div class="form-group">
+                <label for="selecionar-anexo">Selecione o Anexo para Editar</label>
+                <select id="selecionar-anexo" required>
+                    <option value="" disabled selected>Carregando anexos...</option>
+                </select>
+            </div>
+            
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+
+            <form id="editar-anexo-form">
+                <!-- Fieldset para facilitar habilitar/desabilitar o form -->
+                <fieldset id="form-fields" disabled>
+                    <div class="form-group">
+                        <label for="nome-anexo">Nome do Anexo</label>
+                        <input type="text" id="nome-anexo" name="nome-anexo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="icon-anexo">Ícone (ex: fa-solid fa-file-alt)</label>
+                        <input type="text" id="icon-anexo" name="icon-anexo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cor-anexo">Cor</label>
+                        <div class="color-input-group">
+                            <input type="color" id="cor-anexo-picker" value="#2c3e50">
+                            <input type="text" id="cor-anexo" name="cor-anexo" pattern="#[a-fA-F0-9]{6}" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-salvar">Salvar Alterações</button>
+                </fieldset>
+            </form>
+        </div>
+    </main>
+
+   <script>
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.firebasestorage.app",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+
+        // --- Initialize Firebase and Firestore ---
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- Application Logic ---
+        document.addEventListener('DOMContentLoaded', function() {
+            const selectAnexo = document.getElementById('selecionar-anexo');
+            const anexoForm = document.getElementById('editar-anexo-form');
+            const formFields = document.getElementById('form-fields');
+            const colorPicker = document.getElementById('cor-anexo-picker');
+            const colorHexInput = document.getElementById('cor-anexo');
+
+            // --- Função para carregar anexos no dropdown ---
+            async function carregarAnexos() {
+                try {
+                    const querySnapshot = await db.collection('cabecalhos').orderBy('nome').get();
+                    selectAnexo.innerHTML = '<option value="" disabled selected>Selecione um anexo</option>'; // Reset
+                    
+                    if (querySnapshot.empty) {
+                        selectAnexo.innerHTML = '<option value="" disabled>Nenhum anexo encontrado</option>';
+                        return;
+                    }
+                    
+                    querySnapshot.forEach(doc => {
+                        const anexo = doc.data();
+                        const option = document.createElement('option');
+                        option.value = doc.id; // Salva o ID do documento
+                        option.textContent = anexo.nome;
+                        selectAnexo.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error("Erro ao carregar anexos: ", error);
+                    selectAnexo.innerHTML = '<option value="" disabled>Erro ao carregar</option>';
+                }
+            }
+
+            // --- Função para resetar e desabilitar o formulário ---
+            function resetarFormulario() {
+                anexoForm.reset();
+                colorPicker.value = '#2c3e50';
+                colorHexInput.value = '#2c3e50';
+                formFields.disabled = true;
+                delete anexoForm.dataset.anexoId; // Remove o ID armazenado
+            }
+
+            // --- Evento: Ao selecionar um anexo no dropdown ---
+            selectAnexo.addEventListener('change', async function(e) {
+                const anexoId = e.target.value;
+                if (!anexoId) {
+                    resetarFormulario();
+                    return;
+                }
+
+                try {
+                    const docRef = db.collection('cabecalhos').doc(anexoId);
+                    const doc = await docRef.get();
+
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('nome-anexo').value = data.nome;
+                        document.getElementById('icon-anexo').value = data.icon;
+                        colorHexInput.value = data.cor;
+                        colorPicker.value = data.cor;
+                        
+                        anexoForm.dataset.anexoId = anexoId; // Armazena o ID no formulário
+                        formFields.disabled = false; // Habilita o formulário para edição
+                    } else {
+                        console.log("Documento não encontrado!");
+                        resetarFormulario();
+                    }
+                } catch (error) {
+                    console.error("Erro ao buscar dados do anexo: ", error);
+                    alert("Não foi possível carregar os dados deste anexo.");
+                    resetarFormulario();
+                }
+            });
+
+            // --- Evento: Sincronização dos inputs de cor ---
+            colorPicker.addEventListener('input', () => { colorHexInput.value = colorPicker.value; });
+            colorHexInput.addEventListener('input', () => { if (/^#[0-9a-fA-F]{6}$/.test(colorHexInput.value)) { colorPicker.value = colorHexInput.value; }});
+
+            // --- Evento: Submissão do formulário para ATUALIZAR ---
+            anexoForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const anexoId = anexoForm.dataset.anexoId;
+
+                if (!anexoId) {
+                    alert('Por favor, selecione um anexo da lista primeiro.');
+                    return;
+                }
+
+                const nomeAnexo = document.getElementById('nome-anexo').value.trim();
+                const iconAnexo = document.getElementById('icon-anexo').value.trim();
+                const corAnexo = colorHexInput.value.trim();
+                
+                if (!nomeAnexo || !iconAnexo || !corAnexo) {
+                    alert('Todos os campos são obrigatórios.');
+                    return;
+                }
+
+                try {
+                    const anexoRef = db.collection('cabecalhos').doc(anexoId);
+                    await anexoRef.update({
+                        nome: nomeAnexo,
+                        icon: iconAnexo,
+                        cor: corAnexo,
+                        dataAtualizacao: new Date() // Adiciona um campo de data de atualização
+                    });
+                    
+                    alert('Anexo atualizado com sucesso!');
+                    resetarFormulario();
+                    await carregarAnexos(); // Recarrega a lista para refletir o nome atualizado
+                    
+                } catch (error) {
+                    console.error('Erro ao atualizar anexo:', error);
+                    alert('Erro ao comunicar com o banco de dados. Por favor, tente novamente.');
+                }
+            });
+
+            // Carrega os anexos ao iniciar a página
+            carregarAnexos();
+        });
+    </script>
+    
+ <script src="main.js"></script>
+
+</body>
+</html>
