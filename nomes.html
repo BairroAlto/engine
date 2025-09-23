@@ -3,640 +3,2357 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nomes - Sistema de Escala</title>
+    <title>Gerenciar Pessoas - Sistema de Escala</title>
+    <!-- Font Awesome para Ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK v8 (Essencial) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            min-height: 100vh;
-            background-color: #f5f6fa;
-        }
-
-        /* --- Estilos da Sidebar (Padronizado) --- */
-        .sidebar {
-            width: 250px;
-            background-color: #2c3e50;
-            color: white;
-            padding: 20px 0;
-            height: 100vh;
-            position: fixed;
-        }
-        
-        .logo {
-            text-align: center;
-            padding: 20px 0;
-            border-bottom: 1px solid #34495e;
-        }
-
-        .logo h2 {
-            margin: 0;
-        }
-
-        .nav-list {
-            list-style: none;
-            padding: 20px 0;
-        }
-
-        .nav-item {
-            padding: 10px 20px;
-        }
-        
-        /* Adiciona um destaque para o item ativo */
-        .nav-item a.active {
-            background-color: #34495e;
-            border-left: 3px solid #3498db;
-            padding-left: 17px;
-        }
-
-        .nav-item a {
-            color: white;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-        }
-
-        .nav-item i {
-            margin-right: 10px;
-            width: 20px;
-            text-align: center;
-        }
-
-        .nav-item:hover {
-            background-color: #34495e;
-        }
-        
-        .content {
-            flex: 1;
-            padding: 20px;
-            margin-left: 250px;
-        }
-        
-        h1 { 
-            color: #2c3e50; 
-            margin-bottom: 20px;
-            font-size: 28px; 
-        }
-
-        /* --- Estilos do Conteúdo (Seus estilos originais) --- */
-        .table-container {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-
-        th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-        }
-
-        tr:hover {
-            background-color: #f5f5f5;
-        }
-
-        .toggle-btn {
-            padding: 10px 20px;
-            background-color: #2c3e50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-
-        .toggle-btn:hover {
-            background-color: #34495e;
-        }
-
-        .check-mark {
-            color: #27ae60;
-        }
-
-        .x-mark {
-            color: #e74c3c;
-        }
-
-        /* Popup Card Styles */
-        .popup-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(3px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .popup-overlay.active {
-            opacity: 1;
-        }
-
-        .popup-card {
-            background-color: white;
-            padding: 35px;
-            border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.1);
-            width: 92%;
-            max-width: 650px;
-            position: relative;
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            transform: translateY(30px) scale(0.95);
-            opacity: 0;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .popup-overlay.active .popup-card {
-            transform: translateY(0) scale(1);
-            opacity: 1;
-        }
-
-        .popup-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f2f5;
-        }
-
-        .popup-title {
-            font-size: 30px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 0;
-            margin-right: auto;
-            letter-spacing: -0.7px;
-        }
-
-        .popup-top-right {
-            text-align: right;
-            display: none;
-        }
-
-        .popup-close {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #9e9e9e;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: all 0.2s ease;
-        }
-
-        .popup-close:hover {
-            background-color: #f5f5f5;
-            color: #424242;
-            transform: rotate(90deg);
-        }
-
-        .popup-edit {
-            background-color: #f0f7ff;
-            color: #2196f3;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 16px;
-            margin-left: 0;
-            transition: all 0.2s ease;
-        }
-
-        .popup-edit:hover {
-            background-color: #2196f3;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
-        }
-
-        .popup-edit i {
-            margin-right: 0;
-        }
-
-        .popup-content {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
-            padding: 5px 0;
-        }
-
-        .info-group {
-            margin-bottom: 6px;
-            padding: 10px;
-            background-color: #f8fafc;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-        }
-
-        .info-group:hover {
-            background-color: #f0f7ff;
-            transform: translateX(5px);
-            border-color: #bfdbfe;
-            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.1);
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: #475569;
-            margin-bottom: 8px;
-            display: block;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-        }
-
-        .info-value {
-            color: #1e293b;
-            font-size: 16px;
-            font-weight: 500;
-            line-height: 1.5;
-            letter-spacing: 0.2px;
-        }
-
-        .designations-group,
-        .married-car-group,
-        .top-info-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        .top-info-group {
-            margin-top: 5px;
-        }
-
-        .designation-list {
-            list-style: none;
-            padding-left: 0;
-            margin-top: 8px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 8px;
-        }
-
-        .designation-list li {
-            margin-bottom: 6px;
-            color: #475569;
-            font-size: 14px;
-            padding: 6px 12px;
-            background-color: white;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-        }
-
-        .designation-list li:hover {
-            background-color: #e8f5fe;
-            color: #0284c7;
-        }
-
-        .person-name {
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .person-name:hover {
-            text-decoration: none;
-            color: #2c3e50;
-        }
-    </style>
-</head>
-<body>
-    <div class="sidebar">
-        <div class="logo">
-            <h2>Sistema de Escala</h2>
-        </div>
-        <nav>
-            <!-- Menu de Navegação Padronizado -->
-            <ul class="nav-list">
-                <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
-                <li class="nav-item"><a href="semana.html"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
-                <li class="nav-item"><a href="fimdesemana.html"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
-                <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
-                <li class="nav-item"><a href="estatisticas.html"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
-                <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
-                <li class="nav-item"><a href="iniciar.html"><i class="fas fa-play"></i><span>Iniciar</span></a></li>
-                <li class="nav-item"><a href="criar.html"><i class="fas fa-plus"></i><span>Criar</span></a></li>
-            </ul>
-        </nav>
-    </div>
-
-    <main class="content">
-        <h1>Lista de Nomes</h1>
-        <button id="toggleView" class="toggle-btn">Designações</button>
-        <div class="table-container">
-            <table id="pessoasTable">
-                <thead id="tableHeader">
-                    <!-- O cabeçalho é gerado dinamicamente pelo JS -->
-                </thead>
-                <tbody id="tableBody">
-                    <!-- O corpo da tabela é preenchido pelo JS -->
-                </tbody>
-            </table>
-        </div>
-    </main>
-
-    <div class="popup-overlay">
-        <div class="popup-card">
-            <div class="popup-header">
-                <button class="popup-edit">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <h2 class="popup-title"></h2>
-                <button class="popup-close">×</button>
-            </div>
-            <div class="popup-content">
-                <div class="top-info-group">
-                    <div class="info-group">
-                        <span class="info-label">Gênero:</span>
-                        <span class="info-value" id="genero"></span>
-                    </div>
-                    <div class="info-group">
-                        <span class="info-label">Privilégios:</span>
-                        <span class="info-value" id="privilegios"></span>
-                    </div>
-                    <div class="info-group">
-                        <span class="info-label">Idioma:</span>
-                        <span class="info-value" id="idioma"></span>
-                    </div>
-                </div>
-                <div class="info-group">
-                    <span class="info-label">Email:</span>
-                    <span class="info-value" id="email"></span>
-                </div>
-                <div class="married-car-group">
-                    <div class="info-group">
-                        <span class="info-label">Casado(a) com:</span>
-                        <span class="info-value" id="casadoCom"></span>
-                    </div>
-                    <div class="info-group">
-                        <span class="info-label">Acompanha Carrinhos:</span>
-                        <span class="info-value" id="acompanhaCarrinhos"></span>
-                    </div>
-                </div>
-                <div class="designations-group">
-                    <div class="info-group">
-                        <span class="info-label">Faz Designações Reunião:</span>
-                        <span class="info-value" id="fazDesignacoesReuniao"></span>
-                        <ul id="designacoesReuniaoLista" class="designation-list"></ul>
-                    </div>
-                    <div class="info-group">
-                        <span class="info-label">Faz Designações Pregação:</span>
-                        <span class="info-value" id="fazDesignacoesPregacao"></span>
-                        <ul id="designacoesPregacaoLista" class="designation-list"></ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
+     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Script de Inicialização do Firebase (Essencial - coloque ANTES do script da página) -->
     <script>
-        // Firebase configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A", // SUA CHAVE REAL
             authDomain: "escalas-6e0f9.firebaseapp.com",
             projectId: "escalas-6e0f9",
             storageBucket: "escalas-6e0f9.firebasestorage.app",
             messagingSenderId: "19118998563",
             appId: "1:19118998563:web:5412be658ae34bd45add96"
         };
-
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+    </script>
+    <style>
+        /* --- Reset Básico & Estilos Gerais --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { font-size: 16px; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    background-color: #f8f9fa; /* Cinza muito claro */
+    color: #343a40; /* Cinza escuro para texto */
+    min-height: 100vh;
+    line-height: 1.6;
+}
+.container {
+    margin-left: 250px;
+    width: calc(100% - 250px);
+    display: flex;
+    /* Espaçamento: 10px no topo, 10px na direita, 10px no fundo, 0 na esquerda */
+    padding: 10px 10px 10px 0;
+    gap: 10px; /* Isso controla o espaço ENTRE as colunas */
+}
 
-        // Get popup elements
-        const popupOverlay = document.querySelector('.popup-overlay');
-        const popupClose = document.querySelector('.popup-close');
-        const popupEdit = document.querySelector('.popup-edit');
+.column + .column {
+    margin-left: 10px;
+}
 
-        // Function to close popup with animation
-        function closePopupWithAnimation() {
-            popupOverlay.classList.remove('active');
-            setTimeout(() => {
-                popupOverlay.style.display = 'none';
-            }, 300); // Match this with CSS transition duration
+/* Remove os cantos arredondados da primeira coluna para encaixar na sidebar */
+.column:first-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        button { cursor: pointer; font-family: inherit; }
+        input, select, button, textarea { font-size: inherit; }
+
+        /* --- Estilos das Colunas --- */
+        .column {
+            background-color: #ffffff; /* Fundo branco */
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Sombra suave */
+            overflow: hidden; /* Para conter bordas arredondadas */
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #dee2e6; /* Borda sutil */
+        }
+        .list-column { flex: 0 0 320px; /* Largura fixa para lista */ }
+  .detail-column { flex: 1.8; min-width: 450px; }
+.history-column { flex: 1.7; min-width: 400px; }
+
+        .column h2 {
+            background-color: #343a40; /* Cabeçalho cinza escuro */
+            color: white;
+            padding: 16px 20px;
+            font-size: 1.15rem;
+            margin-bottom: 0;
+            font-weight: 600;
+            display: flex; /* Para alinhar ícone */
+            align-items: center;
+            gap: 10px; /* Espaço ícone-texto */
+        }
+        .column .content {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
         }
 
-        // Close popup when clicking close button or outside the popup
-        popupClose.addEventListener('click', closePopupWithAnimation);
+        /* --- Coluna 1: Lista de Pessoas --- */
+        #pessoas-list {
+            list-style: none;
+            max-height: calc(100vh - 120px); /* Altura ajustada */
+            overflow-y: auto;
+            border-top: 1px solid #dee2e6; /* Linha acima da lista */
+        }
+        #pessoas-list li {
+            padding: 14px 20px;
+            border-bottom: 1px solid #e9ecef; /* Borda mais clara entre itens */
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+            font-size: 0.95rem;
+            color: #495057;
+        }
+        #pessoas-list li:hover {
+            background-color: #e9f5fd; /* Azul claro no hover */
+            color: #0056b3;
+        }
+        #pessoas-list li.selected {
+            background-color: #007bff; /* Azul primário */
+            color: white;
+            font-weight: 600;
+        }
+        .loading-indicator { /* Estilo comum para loading */
+            text-align: center;
+            padding: 30px;
+            color: #6c757d; /* Cinza médio */
+            font-size: 0.9rem;
+        }
+        .loading-indicator i { margin-right: 8px; }
 
-        popupOverlay.addEventListener('click', (e) => {
-            if (e.target === popupOverlay) {
-                closePopupWithAnimation();
-            }
-        });
+        /* --- Coluna 2: Detalhes --- */
+        #detail-name {
+            text-align: center;
+            padding: 12px;
+            background-color: #e9ecef; /* Fundo cinza claro */
+            margin: -20px -20px 20px -20px; /* Ajuste para encostar nas bordas */
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #343a40;
+            border-bottom: 1px solid #dee2e6;
+        }
+        /* Abas */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #dee2e6; /* Borda mais grossa */
+            margin-bottom: 25px;
+            flex-wrap: wrap; /* Permite que as abas quebrem a linha em telas menores */
+        }
+        .tab-button {
+            padding: 12px 18px;
+            border: none;
+            background-color: transparent; /* Fundo transparente */
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            color: #6c757d; /* Cinza para inativo */
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.2s, border-color 0.2s;
+            margin-bottom: -2px; /* Alinha com a borda */
+        }
+        .tab-button:hover {
+             color: #0056b3; /* Azul escuro no hover */
+             border-bottom-color: #adb5bd; /* Cinza claro no hover */
+        }
+        .tab-button.active {
+            color: #007bff; /* Azul primário */
+            border-bottom-color: #007bff;
+            font-weight: 600;
+        }
+        /* Conteúdo das Abas */
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        // Function to display person details in popup
-        async function showPersonDetails(personId) {
-            try {
-                const doc = await db.collection('pessoas').doc(personId).get();
-                if (doc.exists) {
-                    const data = doc.data();
+        /* Modo Display (Detalhes) */
+        .tab-content .display-mode h4,
+        .tab-content .edit-mode h4 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #495057; /* Cinza um pouco mais escuro */
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .tab-content .display-mode .data-item {
+            margin-bottom: 14px;
+            line-height: 1.5;
+            font-size: 0.9rem;
+            display: flex; /* Alinhar label e valor */
+            flex-wrap: wrap; /* Quebrar linha se necessário */
+        }
+        .tab-content .display-mode .data-item strong {
+            flex: 0 0 180px; /* Largura fixa para label */
+            color: #495057;
+            font-weight: 600; /* Label mais forte */
+            padding-right: 10px;
+        }
+        .tab-content .display-mode .data-item span,
+        .tab-content .display-mode .data-item .array-data { /* Estilo para valor */
+            font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+            background-color: #f1f3f5; /* Fundo bem claro */
+            padding: 3px 8px;
+            border-radius: 4px;
+            color: #212529;
+            word-break: break-word; /* Quebrar palavras longas */
+            flex: 1; /* Ocupar espaço restante */
+        }
+        /* Estilo para spans dentro de .array-data (Badges) */
+        .tab-content .display-mode .data-item .array-data span {
+            display: inline-block;
+            background-color: #6c757d; /* Cinza badge */
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-right: 5px;
+            margin-bottom: 3px;
+            font-size: 0.8em;
+            font-family: inherit; /* Usar fonte normal para badges */
+        }
+        .tab-content .display-mode .data-item pre {
+            flex-basis: 100%; /* Ocupar linha inteira abaixo do label */
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+            display: block;
+            background-color: #f1f3f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 8px;
+            font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+            font-size: 0.85em;
+            border: 1px solid #e9ecef;
+            color: #495057;
+        }
+        .tab-content .display-mode .data-item pre code {
+             color: #343a40;
+        }
+
+        /* Modo Edição (Detalhes - Usando .form-group) */
+        .form-group {
+            margin-bottom: 18px;
+            position: relative;
+        }
+        .form-group label:not(.boolean-checkbox-label):not(.checkbox-item) { /* Label padrão */
+            display: block;
+            margin-bottom: 6px;
+            color: #495057;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Estilos para Inputs e Selects */
+        .form-group input[type="text"],
+        .form-group input[type="tel"],
+        .form-group input[type="email"],
+        .form-group input[type="number"],
+        .form-group select,
+        .form-group input[type="date"]
+         {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            background-color: #fff;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .form-group input:focus, .form-group select:focus {
+             border-color: #80bdff;
+             outline: 0;
+             box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+         .form-group input:disabled, .form-group select:disabled {
+             background-color: #e9ecef;
+             cursor: not-allowed;
+             opacity: 0.8;
+         }
+         
+        /* Estilos para Checkboxes Booleanos */
+        .form-group .boolean-checkbox-label {
+             display: inline-flex;
+             align-items: center;
+             gap: 8px;
+             font-weight: normal;
+             background-color: #f8f9fa;
+             padding: 8px 12px;
+             border-radius: 4px;
+             border: 1px solid #dee2e6;
+             cursor: pointer;
+             transition: background-color 0.2s;
+         }
+         .form-group .boolean-checkbox-label:hover { background-color: #e9ecef; }
+         .form-group .boolean-checkbox-label input[type="checkbox"] {
+             margin: 0;
+             width: 1em;
+             height: 1em;
+         }
+
+        /* Estilos para Grupos de Checkboxes (Privilégios/Designações) */
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 15px; /* Mais padding */
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6; /* Borda mais visível */
+            border-radius: 4px;
+        }
+        .checkbox-item {
+            padding: 8px 12px; /* Padding ajustado */
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px; /* Mais espaço */
+            background-color: #ffffff; /* Fundo branco */
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: 1px solid #ced4da; /* Borda padrão */
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+            color: #495057;
+        }
+         .checkbox-item:hover { background-color: #e9ecef; }
+         .checkbox-item input[type="checkbox"] { margin: 0; width: 1em; height: 1em; }
+         .checkbox-item:has(input:checked) {
+             background-color: #e7f1ff; /* Azul bem claro */
+             border-color: #007bff;
+             color: #0056b3;
+             font-weight: 500;
+         }
+         .checkbox-group .loading-placeholder { color: #6c757d; font-style: italic; }
+
+        /* Controles de Edição (Botões) */
+        .tab-content .edit-controls {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .edit-controls button {
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: background-color 0.2s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .edit-controls button:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .edit-btn { background-color: #007bff; color: white; }
+        .edit-btn:hover { background-color: #0056b3; }
+        .save-btn { background-color: #28a745; color: white; }
+        .save-btn:hover { background-color: #1e7e34; }
+        .cancel-btn { background-color: #6c757d; color: white; } /* Cinza para cancelar */
+        .cancel-btn:hover { background-color: #5a6268; }
+        .save-btn, .cancel-btn { display: none; }
+        .save-btn:disabled { background-color: #adb5bd; cursor: wait; } /* Cinza claro desabilitado */
+        .save-btn:disabled:hover { background-color: #adb5bd; transform: none; box-shadow: none;}
+
+
+        /* --- Coluna 3: Histórico --- */
+        #history-list {
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            border-top: 1px solid #dee2e6;
+        }
+        #history-list .history-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 0.85rem;
+            color: #495057;
+            line-height: 1.5;
+        }
+        #history-list .history-item:last-child { border-bottom: none; }
+        #history-list .history-item span { display: inline-block; margin-right: 5px; }
+        #history-list .history-item .hist-date { font-weight: 600; color: #343a40;}
+        #history-list .history-item .hist-designation { color: #007bff; }
+
+        #no-history { text-align: center; padding: 30px; color: #6c757d; font-size: 0.9rem; }
+        #select-prompt { text-align: center; padding: 50px 20px; color: #6c757d; }
+        #select-prompt i { margin-right: 10px; }
+        
+        /* --- Estilos para Editor de Horários e Ausências --- */
+        .horarios-edit-container {
+            display: flex;
+            gap: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        .horarios-column { flex: 1; }
+        .horarios-column h5 { 
+            font-size: 0.95rem;
+            color: #343a40;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .day-container { margin-bottom: 15px; }
+        .day-container h6 { font-size: 0.9rem; color: #495057; margin-bottom: 8px; }
+        .horario-item { 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            padding: 5px 8px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            transition: background-color 0.2s;
+        }
+        .horario-item:hover { background-color: #f1f3f5; }
+        .horario-item input[type="checkbox"] { margin: 0; }
+        .horario-item.selected { background-color: #e7f1ff; border-color: #007bff; }
+        .horario-item.selected span { font-weight: 600; color: #0056b3; }
+        
+        .ausencia-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .ausencia-input-group input[type="date"] { width: auto; flex-grow: 1; }
+        .ausencia-input-group button {
+            padding: 8px 15px;
+            background-color: #5a6268;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+         .ausencia-input-group button:hover { background-color: #495057; }
+        
+        #selected-ausencias-list {
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            min-height: 40px;
+        }
+        .ausencia-item {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 4px 10px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+        }
+        .ausencia-item .remove-ausencia-btn {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            line-height: 1;
+            padding: 0 2px;
+        }
+
+
+        .search-box-wrapper {
+    padding: 10px 20px;
+    border-bottom: 1px solid #dee2e6; /* Linha separadora */
+}
+.search-box-wrapper input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+.search-box-wrapper input:focus {
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+/* [FIM DOS NOVOS ESTILOS] */
+
+
+#pessoas-list {
+    list-style: none;
+    max-height: calc(100vh - 175px); /* [MODIFICADO] Altura ajustada para a pesquisa */
+    overflow-y: auto;
+    /* border-top: 1px solid #dee2e6; <-- Removido pois o wrapper da pesquisa já tem borda */
+}
+#pessoas-list li {
+    padding: 14px 20px;
+    border-bottom: 1px solid #e9ecef; /* Borda mais clara entre itens */
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+    font-size: 0.95rem;
+    color: #495057;
+}
+
+.history-tabs {
+    display: flex;
+    background-color: #f1f3f5;
+    border-bottom: 1px solid #dee2e6;
+    padding: 5px 10px 0 10px;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+.history-tab-button {
+    padding: 10px 15px;
+    border: none;
+    background-color: transparent;
+    border-bottom: 3px solid transparent;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+.history-tab-button:hover {
+    color: #0056b3;
+    background-color: #e9ecef;
+}
+.history-tab-button.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+}
+
+/* [NOVO] Estilos para o conteúdo das abas */
+.history-tab-content {
+    display: none;
+}
+.history-tab-content.active {
+    display: block;
+}
+
+#history-content-container {
+    max-height: calc(100vh - 170px);
+    overflow-y: auto;
+}
+
+
+.history-tab-content .history-item { 
+    padding: 12px 20px;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.85rem;
+    color: #495057;
+    line-height: 1.5;
+}
+.history-tab-content .history-item:last-child { 
+    border-bottom: none; 
+}
+.history-tab-content .history-item span { 
+    display: inline-block; 
+    margin-right: 5px; 
+}
+.history-tab-content .history-item .hist-date { 
+    font-weight: 600; 
+    color: #343a40;
+}
+.history-tab-content .history-item .hist-designation { 
+    color: #007bff; 
+}
+
+/* NOVOS ESTILOS PARA SUB-ABAS */
+.sub-history-tabs {
+    display: flex;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 3px 8px 0 8px;
+    gap: 4px;
+}
+.sub-history-tab-button {
+    padding: 8px 12px;
+    border: none;
+    background-color: transparent;
+    border-bottom: 2px solid transparent;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+.sub-history-tab-button:hover {
+    color: #0056b3;
+    background-color: #e9ecef;
+}
+.sub-history-tab-button.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+    font-weight: 600;
+}
+.sub-history-tab-content {
+    display: none;
+}
+.sub-history-tab-content.active {
+    display: block;
+}
+.sub-history-content-container {
+     max-height: calc(100vh - 215px); /* Altura ajustada */
+     overflow-y: auto;
+}
+/* FIM DOS NOVOS ESTILOS PARA SUB-ABAS */
+
+
+#no-history { 
+    text-align: center; 
+    padding: 30px; 
+    color: #6c757d; 
+    font-size: 0.9rem; 
+}
+
+.sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding-top: 20px;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000; /* Garante que a sidebar fique por cima de outros elementos */
+        }
+        .sidebar .logo {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #34495e;
+        }
+        .sidebar .logo h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        .sidebar .nav-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .sidebar .nav-item a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            transition: background-color 0.3s;
+        }
+        .sidebar .nav-item a i {
+            margin-right: 15px;
+            width: 20px;
+            text-align: center;
+        }
+        .sidebar .nav-item a span {
+            font-size: 0.95rem;
+        }
+        .sidebar .nav-item a:hover {
+            background-color: #34495e;
+        }
+        .sidebar .nav-item.active a {
+            background-color: #1abc9c;
+        }
+
+
+        /* --- Botão para Alternar o Menu --- */
+#sidebar-toggle {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1001; /* Garante que fique acima da sidebar */
+    background-color: #2c3e50;
+    color: white;
+    border: 1px solid #34495e;
+    border-radius: 5px;
+    width: 45px;
+    height: 45px;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease-in-out;
+}
+
+#sidebar-toggle:hover {
+    background-color: #34495e;
+}
+
+/* --- Transições para Animação Suave --- */
+.sidebar, .container {
+    transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+/* --- Estilos do Estado Colapsado (quando a classe .sidebar-collapsed é aplicada ao body) --- */
+body.sidebar-collapsed .sidebar {
+    /* Move a sidebar para fora da tela à esquerda */
+    transform: translateX(-100%);
+}
+
+body.sidebar-collapsed .container {
+    /* Faz o container principal ocupar toda a largura da tela */
+    margin-left: 0;
+    width: 100%;
+    padding: 10px; /* Ajusta o padding para a tela cheia */
+}
+
+/* Restaura a borda arredondada da primeira coluna quando o menu está fechado */
+body.sidebar-collapsed .column:first-child {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+
+.sub-history-tab-content .month-header {
+    display: none;
+}
+
+
+#hist-filtros .form-group {
+    margin-bottom: 15px;
+}
+#hist-filtros .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+    color: #495057;
+    font-weight: 600;
+}
+#hist-filtros .filter-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #fff;
+    font-size: 0.9rem;
+}
+#hist-filtros .filter-select:focus {
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+
+.stat-card-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+.stat-card {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+}
+.stat-card h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: #495057;
+    font-weight: 600;
+}
+.stat-card p {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #007bff;
+}
+.stat-list-container {
+    margin-bottom: 25px;
+}
+.stat-list-container h4 {
+    font-size: 1rem;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 8px;
+}
+.stat-list {
+    list-style: none;
+    padding-left: 0;
+}
+.stat-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 5px;
+    border-bottom: 1px solid #f1f3f5;
+    font-size: 0.9rem;
+}
+.stat-list li:last-child {
+    border-bottom: none;
+}
+.stat-list li .count {
+    font-weight: 600;
+    background-color: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+}
+.toggle-list-btn {
+    background: none;
+    border: 1px solid #007bff;
+    color: #007bff;
+    padding: 5px 12px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 10px;
+    cursor: pointer;
+}
+.toggle-list-btn:hover {
+    background-color: #e7f1ff;
+}
+.chart-container {
+    margin-top: 30px;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+@media (max-width: 992px) {
+    body {
+        /* Garante que o layout não quebre com o menu lateral */
+        overflow-x: hidden;
+    }
+
+    /* 1. Transforma a Sidebar em um menu flutuante e escondido */
+    .sidebar {
+        position: fixed; /* Fixa na tela para poder deslizar sobre o conteúdo */
+        z-index: 2000;   /* Garante que fique acima de todos os outros elementos */
+        transform: translateX(-100%); /* Começa escondida fora da tela, à esquerda */
+    }
+
+    /* Mostra o menu quando a classe 'sidebar-collapsed' é REMOVIDA do body */
+    body:not(.sidebar-collapsed) .sidebar {
+        transform: translateX(0); /* Move o menu para a sua posição visível */
+    }
+    
+    /* Adiciona um fundo escuro sobre o conteúdo quando o menu está aberto para focar no menu */
+    body:not(.sidebar-collapsed)::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1999; /* Fica abaixo do menu, mas acima do conteúdo */
+    }
+
+    /* 2. Ajusta o container principal para empilhar as colunas */
+    .container {
+        margin-left: 0;  /* Remove a margem que dava espaço para a sidebar */
+        width: 100%;     /* Ocupa toda a largura da tela */
+        flex-direction: column; /* Empilha as colunas verticalmente */
+        padding: 10px;   /* Adiciona um padding uniforme ao redor */
+        gap: 15px;       /* Aumenta o espaçamento vertical entre as colunas */
+    }
+
+    /* Devolve a borda arredondada que foi removida para o encaixe com a sidebar */
+    .column:first-child {
+        border-radius: 8px;
+    }
+    
+    /* Remove as larguras fixas/mínimas das colunas para que se ajustem à tela */
+    .column, .list-column, .detail-column, .history-column {
+        flex: 1 1 auto;
+        min-width: 0;
+        flex-basis: auto;
+    }
+    
+    /* 3. Ajusta a altura das listas para evitar um scroll excessivo da página */
+    #pessoas-list,
+    #history-content-container,
+    .sub-history-content-container {
+        max-height: 40vh; /* Limita a altura a 40% da altura da tela */
+    }
+    
+    /* Garante que o botão de menu fique sempre acessível */
+    #sidebar-toggle {
+        top: 10px;
+        left: 10px;
+    }
+}
+
+/* Ajustes finos para telas de celular (até 768px) */
+@media (max-width: 768px) {
+    html {
+        font-size: 15px; /* Reduz levemente a fonte base para melhor encaixe */
+    }
+    
+    .column h2 {
+        padding: 14px 16px;
+        font-size: 1.1rem; /* Reduz o tamanho do título das colunas */
+    }
+    
+    .column .content {
+        padding: 15px; /* Reduz o padding interno das colunas */
+    }
+    
+    /* Empilha os horários na aba de edição de pregação */
+    .horarios-edit-container {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    /* Melhora a visualização dos itens de dados nos detalhes, empilhando o rótulo e o valor */
+    .tab-content .display-mode .data-item {
+        flex-direction: column; 
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .tab-content .display-mode .data-item strong {
+        flex-basis: auto; /* Remove a largura fixa do rótulo */
+    }
+    
+    /* Permite que os botões de Salvar/Cancelar quebrem a linha se não couberem */
+    .edit-controls {
+        flex-wrap: wrap; 
+        justify-content: center;
+    }
+}
+
+
+    </style>
+</head>
+<body>
+ <button id="sidebar-toggle" aria-label="Alternar menu"><i class="fas fa-bars"></i></button>
+
+    <!-- Sidebar (Menu Lateral) -->
+    <div class="sidebar">
+        <div class="logo">
+            <h2>Sistema de Escala</h2>
+        </div>
+        <nav>
+            <ul class="nav-list">
+                <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt" aria-hidden="true"></i><span>Painel</span></a></li>
+                <li class="nav-item"><a href="semana.html"><i class="fas fa-users" aria-hidden="true"></i><span>Reunião Semana</span></a></li>
+                <li class="nav-item"><a href="fimdesemana.html"><i class="fas fa-calendar-week" aria-hidden="true"></i><span>Fim de Semana</span></a></li>
+                <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn" aria-hidden="true"></i><span>Pregação</span></a></li>
+                <li class="nav-item"><a href="estatisticas.html"><i class="fas fa-chart-bar" aria-hidden="true"></i><span>Estatísticas</span></a></li>
+                <li class="nav-item active"><a href="nomes.html"><i class="fas fa-address-book" aria-hidden="true"></i><span>Nomes</span></a></li>
+                <li class="nav-item"><a href="iniciar.html"><i class="fas fa-play" aria-hidden="true"></i><span>Iniciar</span></a></li>
+                <li class="nav-item"><a href="criar.html"><i class="fas fa-plus" aria-hidden="true"></i><span>Criar</span></a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Conteúdo Principal da Página -->
+    <div class="container">
+        <!-- Coluna 1: Lista de Pessoas -->
+        <div class="column list-column">
+            <h2><i class="fas fa-users"></i> Pessoas</h2>
+            <div class="search-box-wrapper">
+                <input type="text" id="filter-pessoas-input" placeholder="Filtrar por nome...">
+            </div>
+            <div class="content" style="padding: 0;">
+                <div id="list-loading" class="loading-indicator"><i class="fas fa-spinner fa-spin"></i> Carregando lista...</div>
+                <ul id="pessoas-list"></ul>
+            </div>
+        </div>
+
+        <!-- Coluna 2: Detalhes da Pessoa Selecionada -->
+        <div class="column detail-column">
+            <h2><i class="fas fa-id-card"></i> Detalhes</h2>
+            <div class="content">
+                <div id="detail-loading" class="loading-indicator" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Carregando detalhes...</div>
+                 <div id="select-prompt">
+                    <i class="fas fa-arrow-left"></i> Selecione uma pessoa na lista à esquerda.
+                </div>
+                <div id="detail-content" style="display: none;">
+                    <h3 id="detail-name"></h3>
+                    <div class="tabs">
+                        <button class="tab-button active" data-tab="pessoal-tab">Pessoal</button>
+                        <button class="tab-button" data-tab="espiritual-tab">Espiritual</button>
+                        <button class="tab-button" data-tab="pregacao-tab">Pregação</button>
+                        <button class="tab-button" data-tab="permissoes-tab">Permissões</button>
+                        <button class="tab-button" data-tab="disponibilidade-tab">Ausências</button>
+                    </div>
+
+                    <!-- Aba Pessoal -->
+                    <div id="pessoal-tab" class="tab-content active">
+                        <div class="display-mode">
+                            <h4>Informações Pessoais</h4>
+                            <div class="data-item"><strong>Nome:</strong> <span id="detail-nomePessoa">-</span></div>
+                            <div class="data-item"><strong>Gênero:</strong> <span id="detail-genero">-</span></div>
+                            <div class="data-item"><strong>Idioma:</strong> <span id="detail-idioma">-</span></div>
+                            <div class="data-item"><strong>Personalidade:</strong> <span id="detail-personalidade">-</span></div>
+                            <div class="data-item"><strong>Nascimento:</strong> <span id="detail-dataNascimento">-</span></div>
+                            <div class="data-item"><strong>Email:</strong> <span id="detail-email">-</span></div>
+                            <div class="data-item"><strong>Telemóvel:</strong> <span id="detail-telemovel">-</span></div>
+                            <div class="data-item"><strong>Casado(a) Com:</strong> <span id="detail-casadoCom">-</span></div>
+                        </div>
+                        <div class="edit-mode" style="display: none;">
+                            <h4>Editar Informações Pessoais</h4>
+                            <div class="form-group"><label for="edit-nomePessoa">Nome Completo:</label><input type="text" id="edit-nomePessoa"></div>
+                            <div class="form-group"><label for="edit-genero">Gênero:</label><select id="edit-genero"><option value="">Selecione</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select></div>
+                            <div class="form-group"><label for="edit-idioma">Idioma:</label><input type="text" id="edit-idioma"></div>
+                            <div class="form-group"><label for="edit-personalidade">Personalidade:</label><select id="edit-personalidade"><option value="">Selecione</option><option value="- à vontade">- à vontade</option><option value="+ à vontade">+ à vontade</option></select></div>
+                            <div class="form-group"><label for="edit-dataNascimento">Data Nascimento:</label><input type="date" id="edit-dataNascimento"></div>
+                            <div class="form-group"><label for="edit-email">Email:</label><input type="email" id="edit-email"></div>
+                            <div class="form-group"><label for="edit-telemovel">Telemóvel:</label><input type="tel" id="edit-telemovel"></div>
+                            <div class="form-group"><label for="edit-casadoCom">Casado(a) Com:</label><input type="text" id="edit-casadoCom"></div>
+                        </div>
+                        <div class="edit-controls">
+                            <button class="edit-btn" data-tab-target="pessoal-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
+                            <button class="save-btn" data-tab-target="pessoal-tab"><i class="fas fa-save"></i> Gravar</button>
+                            <button class="cancel-btn" data-tab-target="pessoal-tab"><i class="fas fa-times"></i> Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- Aba Espiritual -->
+                    <div id="espiritual-tab" class="tab-content">
+                         <div class="display-mode">
+                            <h4>Informações Espirituais</h4>
+                            <div class="data-item"><strong>Grupo:</strong> <span id="detail-grupo">-</span></div>
+                            <div class="data-item"><strong>Privilégios:</strong> <div id="detail-privilegios" class="array-data">-</div></div>
+                        </div>
+                         <div class="edit-mode" style="display: none;">
+                             <h4>Editar Informações Espirituais</h4>
+                             <div class="form-group"><label for="edit-grupo">Grupo:</label><input type="number" id="edit-grupo" min="1"></div>
+                             <div class="form-group">
+                                 <label>Privilégios:</label>
+                                 <div class="checkbox-group" id="edit-privilegios-group">
+                                     <span class="loading-placeholder">Carregando opções...</span>
+                                 </div>
+                             </div>
+                        </div>
+                         <div class="edit-controls">
+                            <button class="edit-btn" data-tab-target="espiritual-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
+                            <button class="save-btn" data-tab-target="espiritual-tab"><i class="fas fa-save"></i> Gravar</button>
+                            <button class="cancel-btn" data-tab-target="espiritual-tab"><i class="fas fa-times"></i> Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- Aba de Pregação -->
+                    <div id="pregacao-tab" class="tab-content">
+                        <div class="display-mode">
+                            <h4>Disponibilidade para Pregação</h4>
+                            <div class="data-item"><strong>Horários Pregação:</strong> <pre><code id="detail-horariosPregacao">-</code></pre></div>
+                        </div>
+                        <div class="edit-mode" style="display: none;">
+                            <h4>Editar Horários de Pregação</h4>
+                            <div class="form-group">
+                                <label>Horários de Pregação:</label>
+                                <div class="horarios-edit-container">
+                                    <div class="horarios-column" id="edit-horarios-semana">
+                                        <h5>Semana</h5>
+                                        <span class="loading-placeholder">Carregando...</span>
+                                    </div>
+                                    <div class="horarios-column" id="edit-horarios-fim-de-semana">
+                                        <h5>Fim de Semana</h5>
+                                        <span class="loading-placeholder">Carregando...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="edit-controls">
+                            <button class="edit-btn" data-tab-target="pregacao-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
+                            <button class="save-btn" data-tab-target="pregacao-tab"><i class="fas fa-save"></i> Gravar</button>
+                            <button class="cancel-btn" data-tab-target="pregacao-tab"><i class="fas fa-times"></i> Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- Aba Permissões -->
+                    <div id="permissoes-tab" class="tab-content">
+                        <div class="display-mode">
+                            <h4>Permissões e Designações</h4>
+                            <div class="data-item"><strong>Faz Desig. Reunião:</strong> <span id="detail-fazDesignacoesReuniao">-</span></div>
+                            <div class="data-item"><strong>Designações Reunião:</strong> <div id="detail-designacoesReuniao" class="array-data">-</div></div>
+                            <div class="data-item"><strong>Faz Desig. Pregação:</strong> <span id="detail-fazDesignacoesPregacao">-</span></div>
+                            <div class="data-item"><strong>Designações Pregação:</strong> <div id="detail-designacoesPregacao" class="array-data">-</div></div>
+                            <div class="data-item"><strong>Acompanha Carrinhos:</strong> <span id="detail-acompanhaCarrinhos">-</span></div>
+                            <div class="data-item"><strong>Regra (Rule):</strong> <span id="detail-rule">-</span></div>
+                        </div>
+                         <div class="edit-mode" style="display: none;">
+                             <h4>Editar Permissões e Designações</h4>
+                             <div class="form-group">
+                                 <label class="boolean-checkbox-label">
+                                     <input type="checkbox" id="edit-fazDesignacoesReuniao"> Faz Designações Reunião
+                                 </label>
+                             </div>
+                             <div class="form-group">
+                                 <label>Designações que pode fazer (Reunião):</label>
+                                 <div class="checkbox-group" id="edit-designacoesReuniao-group">
+                                     <span class="loading-placeholder">Carregando opções...</span>
+                                 </div>
+                             </div>
+                             <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
+                             <div class="form-group">
+                                 <label class="boolean-checkbox-label">
+                                     <input type="checkbox" id="edit-fazDesignacoesPregacao"> Faz Designações Pregação
+                                 </label>
+                             </div>
+                             <div class="form-group">
+                                 <label>Designações que pode fazer (Pregação):</label>
+                                 <div class="checkbox-group" id="edit-designacoesPregacao-group">
+                                      <span class="loading-placeholder">Carregando opções...</span>
+                                 </div>
+                             </div>
+                             <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
+                             <div class="form-group">
+                                 <label class="boolean-checkbox-label">
+                                     <input type="checkbox" id="edit-acompanhaCarrinhos"> Acompanha Carrinhos
+                                 </label>
+                              </div>
+                             <div class="form-group"><label for="edit-rule">Regra (Rule):</label><input type="text" id="edit-rule"></div>
+                        </div>
+                         <div class="edit-controls">
+                            <button class="edit-btn" data-tab-target="permissoes-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
+                            <button class="save-btn" data-tab-target="permissoes-tab"><i class="fas fa-save"></i> Gravar</button>
+                            <button class="cancel-btn" data-tab-target="permissoes-tab"><i class="fas fa-times"></i> Cancelar</button>
+                        </div>
+                    </div>
                     
-                    document.querySelector('.popup-title').textContent = data.nomePessoa;
-                    
-                    popupOverlay.style.display = 'flex';
-                    setTimeout(() => {
-                        popupOverlay.classList.add('active');
-                    }, 10);
+                    <!-- Aba de Disponibilidade (Ausências) -->
+                    <div id="disponibilidade-tab" class="tab-content">
+                        <div class="display-mode">
+                            <h4>Disponibilidade Geral</h4>
+                             <div class="data-item"><strong>Ausências:</strong> <pre><code id="detail-ausencias">-</code></pre></div>
+                        </div>
+                        <div class="edit-mode" style="display: none;">
+                            <h4>Editar Ausências</h4>
+                            <div class="form-group">
+                                <label>Marcar Ausências:</label>
+                                <div class="ausencia-input-group">
+                                    <input type="date" id="ausencia-single-date" title="Adicionar data única">
+                                    <button type="button" id="add-single-ausencia-btn">Adicionar Data</button>
+                                </div>
+                                <div class="ausencia-input-group" style="margin-top: 10px;">
+                                    <input type="date" id="ausencia-start-date" title="Início do intervalo">
+                                    <input type="date" id="ausencia-end-date" title="Fim do intervalo">
+                                    <button type="button" id="add-range-ausencia-btn">Adicionar Intervalo</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Ausências Marcadas:</label>
+                                <div id="selected-ausencias-list">
+                                    <!-- Badges de ausência serão inseridos aqui -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="edit-controls">
+                            <button class="edit-btn" data-tab-target="disponibilidade-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
+                            <button class="save-btn" data-tab-target="disponibilidade-tab"><i class="fas fa-save"></i> Gravar</button>
+                            <button class="cancel-btn" data-tab-target="disponibilidade-tab"><i class="fas fa-times"></i> Cancelar</button>
+                        </div>
+                    </div>
 
-                    document.getElementById('genero').textContent = data.genero || 'Não especificado';
-                    document.getElementById('privilegios').textContent = data.privilegios || 'Não especificado';
-                    document.getElementById('idioma').textContent = data.idioma || 'Não especificado';
-                    document.getElementById('email').textContent = data.email || 'Não especificado';
-                    document.getElementById('casadoCom').textContent = data.casadoCom || 'Não especificado';
-                    document.getElementById('acompanhaCarrinhos').textContent = data.acompanhaCarrinhos ? 'Sim' : 'Não';
-                    document.getElementById('fazDesignacoesReuniao').textContent = data.fazDesignacoesReuniao ? 'Sim' : 'Não';
-                    document.getElementById('fazDesignacoesPregacao').textContent = data.fazDesignacoesPregacao ? 'Sim' : 'Não';
+                </div>
+            </div>
+        </div>
 
-                    const designacoesReuniao = data.designacoesReuniao || [];
-                    const designacoesPregacao = data.designacoesPregacao || [];
+        <!-- Coluna 3: Histórico -->
+        <div class="column history-column">
+            <h2><i class="fas fa-history"></i> Histórico</h2>
+            
+            <div class="history-tabs">
+                <button class="history-tab-button active" data-tab="hist-tudo">Tudo</button>
+                <button class="history-tab-button" data-tab="hist-arquivo">Arquivo</button>
+                <button class="history-tab-button" data-tab="hist-estatisticas">Estatísticas</button>
+                <button class="history-tab-button" data-tab="hist-filtros">Filtros</button>
+            </div>
+        
+            <div class="content" style="padding: 0;">
+                <div id="history-loading" class="loading-indicator" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Carregando histórico...</div>
+                
+                <div id="history-content-container">
+                    <div id="hist-tudo" class="history-tab-content active"></div>
+                    <div id="hist-arquivo" class="history-tab-content">
+                        <div class="sub-history-tabs">
+                           <button class="sub-history-tab-button active" data-tab="sub-hist-semana">Semana</button>
+                           <button class="sub-history-tab-button" data-tab="sub-hist-fds">Fim de Semana</button>
+                           <button class="sub-history-tab-button" data-tab="sub-hist-tecnicas">Técnicas</button>
+                           <button class="sub-history-tab-button" data-tab="sub-hist-pregacao">Pregação</button>
+                       </div>
+                       <div class="sub-history-content-container">
+                           <div id="sub-hist-semana" class="sub-history-tab-content active"></div>
+                           <div id="sub-hist-fds" class="sub-history-tab-content"></div>
+                           <div id="sub-hist-tecnicas" class="sub-history-tab-content"></div>
+                           <div id="sub-hist-pregacao" class="sub-history-tab-content"></div>
+                       </div>
+                    </div>
 
-                    const reuniaoList = document.getElementById('designacoesReuniaoLista');
-                    const pregacaoList = document.getElementById('designacoesPregacaoLista');
 
-                    reuniaoList.innerHTML = '';
-                    designacoesReuniao.forEach(designacao => {
-                        const li = document.createElement('li');
-                        li.textContent = designacao;
-                        reuniaoList.appendChild(li);
-                    });
+                  <div id="hist-estatisticas" class="history-tab-content">
+                        <div id="stats-content" style="padding: 20px;">
+                            <!-- Cards de Estatísticas -->
+                            <div class="stat-card-container">
+                                <div class="stat-card">
+                                    <h4>Total Desig. Reunião</h4>
+                                    <p id="total-reuniao-stat">-</p>
+                                </div>
+                                <div class="stat-card">
+                                    <h4>Total Desig. Pregação</h4>
+                                    <p id="total-pregacao-stat">-</p>
+                                </div>
+                            </div>
 
-                    pregacaoList.innerHTML = '';
-                    designacoesPregacao.forEach(designacao => {
-                        const li = document.createElement('li');
-                        li.textContent = designacao;
-                        pregacaoList.appendChild(li);
-                    });
+                            <div class="stat-list-container">
+                                <h4><i class="fas fa-medal"></i> Designações Mais Realizadas</h4>
+                                <ul id="top-designacoes-list" class="stat-list"></ul>
+                                <button id="toggle-designacoes" class="toggle-list-btn" style="display: none;">Mostrar Todos (0)</button>
+                            </div>
 
-                    popupEdit.onclick = () => {
-                        window.location.href = `criar-pessoa.html?id=${personId}`;
-                    };
-                }
-            } catch (error) {
-                console.error('Error getting person details:', error);
-            }
+                            <div class="stat-list-container">
+                                <h4><i class="fas fa-handshake"></i> Parceiros Mais Frequentes</h4>
+                                <ul id="top-parceiros-list" class="stat-list"></ul>
+                                <button id="toggle-parceiros" class="toggle-list-btn" style="display: none;">Mostrar Todos (0)</button>
+                            </div>
+                            
+                            <!-- Gráficos -->
+                            <div class="chart-container">
+                                <canvas id="designacoes-por-tipo-chart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="designacoes-por-ano-chart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="designacoes-por-mes-chart"></canvas>
+                            </div>
+                             <div class="chart-container">
+                                <canvas id="designacoes-por-semana-chart"></canvas>
+                            </div>
+                        </div>
+                        <div id="no-stats-message" class="history-item" style="display: none; text-align: center; padding: 40px;">
+                            Nenhuma estatística para mostrar com os filtros atuais.
+                        </div>
+                    </div>
+
+
+                  <div id="hist-filtros" class="history-tab-content">
+                        <div style="padding: 20px;">
+                            <div class="form-group">
+                                <label for="hist-filter-ano">Ano:</label>
+                                <select id="hist-filter-ano" class="filter-select"><option value="">Todos</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="hist-filter-mes">Mês:</label>
+                                <select id="hist-filter-mes" class="filter-select"><option value="">Todos</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="hist-filter-semana">Semana do Mês:</label>
+                                <select id="hist-filter-semana" class="filter-select"><option value="">Todas</option></select>
+                            </div>
+                             <div class="form-group">
+                                <label for="hist-filter-designacao">Designação:</label>
+                                <select id="hist-filter-designacao" class="filter-select"><option value="">Todas</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="hist-filter-tipo">Tipo:</label>
+                                <select id="hist-filter-tipo" class="filter-select">
+                                    <option value="">Todos</option>
+                                    <option value="reuniao">Reunião</option>
+                                    <option value="pregacao">Pregação</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="hist-filter-sala">Sala:</label>
+                                <select id="hist-filter-sala" class="filter-select"><option value="">Todas</option></select>
+                            </div>
+                            <button id="reset-history-filters" class="edit-btn" style="width: 100%; margin-top: 10px;">
+                                <i class="fas fa-times"></i> Limpar Filtros
+                            </button>
+                        </div>
+                    </div>
+
+                     <div id="no-history" style="display: none; padding: 30px; text-align: center; color: #6c757d;">Nenhum histórico encontrado para esta pessoa.</div>
+    </div>
+
+    <!-- Script principal da página -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // --- Seletores ---
+        const pessoasListUl = document.getElementById('pessoas-list');
+        const filterPessoasInput = document.getElementById('filter-pessoas-input');
+        const listLoadingDiv = document.getElementById('list-loading');
+        const detailLoadingDiv = document.getElementById('detail-loading');
+        const detailContentDiv = document.getElementById('detail-content');
+        const selectPromptDiv = document.getElementById('select-prompt');
+        const detailNameH3 = document.getElementById('detail-name');
+        const historyLoadingDiv = document.getElementById('history-loading');
+        const noHistoryDiv = document.getElementById('no-history');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const editButtons = document.querySelectorAll('.edit-btn');
+        const saveButtons = document.querySelectorAll('.save-btn');
+        const cancelButtons = document.querySelectorAll('.cancel-btn');
+        const addSingleAusenciaBtn = document.getElementById('add-single-ausencia-btn');
+        const addRangeAusenciaBtn = document.getElementById('add-range-ausencia-btn');
+        const selectedAusenciasListDiv = document.getElementById('selected-ausencias-list');
+        const historyTabsContainer = document.querySelector('.history-tabs');
+        const historyTabContents = document.querySelectorAll('.history-tab-content');
+        const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+        const bodyEl = document.body;
+
+        // --- Variáveis de Estado ---
+        let selectedPersonId = null;
+         let chartInstances = {};
+        let unfilteredHistoryItems = [];
+        let allPessoasNames = {};
+        let selectedPersonData = null;
+        let allDesignacoes = { reuniao: [], pregacao: [] };
+        let allHorarios = null;
+        let allPrivilegios = [
+            "Ancião", "Servo Ministerial",
+            "Pioneiro Regular", "Pioneiro Auxiliar",
+            "Publicador", "Publicador não Batizado"
+        ];
+        let designationNames = {};
+        let allDesignationDetails = {}; // Armazena detalhes como {id: {nome, tipo, quando}}
+        let dataLoaded = { designacoes: false, horarios: false, designationDetails: false };
+        let selectedAusencias = [];
+
+
+        if (bodyEl) {
+            bodyEl.classList.add('sidebar-collapsed');
         }
 
-        let pessoas = [];
-        let currentSort = { field: null, direction: 'asc' };
-        let isDesignationView = false;
-        let allDesignacoes = [];
-
-        async function loadPessoas() {
-            try {
-                const designacoesSnapshot = await db.collection('designacoes').get();
-                allDesignacoes = [];
-                designacoesSnapshot.forEach(doc => {
-                    allDesignacoes.push(doc.data().nome);
-                });
-
-                const snapshot = await db.collection('pessoas').get();
-                pessoas = [];
-                snapshot.forEach(doc => {
-                    pessoas.push({ id: doc.id, ...doc.data() });
-                });
-
-                renderTable(pessoas, currentSort, isDesignationView);
-            } catch (error) {
-                console.error('Error loading data:', error);
-                document.getElementById('tableBody').innerHTML = '<tr><td colspan="5">Erro ao carregar dados</td></tr>';
-            }
-        }
-
-        function renderTable(pessoas, sort, isDesignationView) {
-            const tableBody = document.getElementById('tableBody');
-            const tableHeader = document.getElementById('tableHeader');
-            tableBody.innerHTML = '';
-
-            if (isDesignationView) {
-                let headerHtml = '<tr><th>Nome</th>';
-                allDesignacoes.forEach(designacao => {
-                    headerHtml += `<th data-sort-key="${designacao}">${designacao}</th>`;
-                });
-                headerHtml += '</tr>';
-                tableHeader.innerHTML = headerHtml;
-            } else {
-                tableHeader.innerHTML = `
-                    <tr>
-                        <th data-sort-key="nomePessoa">Nome</th>
-                        <th data-sort-key="genero">Gênero</th>
-                        <th data-sort-key="idioma">Idioma</th>
-                        <th data-sort-key="grupo">Grupo</th>
-                        <th data-sort-key="email">Email</th>
-                    </tr>
-                `;
-            }
-
-            if (sort.field) {
-                pessoas.sort((a, b) => {
-                    let aVal = a[sort.field] || '';
-                    let bVal = b[sort.field] || '';
-                    if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-                    if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-                    if (sort.direction === 'asc') {
-                        return aVal > bVal ? 1 : (aVal < bVal ? -1 : 0);
-                    } else {
-                        return aVal < bVal ? 1 : (aVal > bVal ? -1 : 0);
-                    }
-                });
-            }
-
-            pessoas.forEach(pessoa => {
-                const row = document.createElement('tr');
-                if (isDesignationView) {
-                    let rowHtml = `<td><a href="#" class="person-name" data-id="${pessoa.id}">${pessoa.nomePessoa || 'N/A'}</a></td>`;
-                    allDesignacoes.forEach(designacao => {
-                        const hasDesignacao = (pessoa.designacoesReuniao && pessoa.designacoesReuniao.includes(designacao)) ||
-                                              (pessoa.designacoesPregacao && pessoa.designacoesPregacao.includes(designacao));
-                        rowHtml += `<td>${hasDesignacao ? '<i class="fas fa-check check-mark"></i>' : '<i class="fas fa-times x-mark"></i>'}</td>`;
-                    });
-                    row.innerHTML = rowHtml;
-                } else {
-                    row.innerHTML = `
-                        <td><a href="#" class="person-name" data-id="${pessoa.id}">${pessoa.nomePessoa || 'N/A'}</a></td>
-                        <td>${pessoa.genero || 'N/A'}</td>
-                        <td>${pessoa.idioma || 'N/A'}</td>
-                        <td>${pessoa.grupo || 'N/A'}</td>
-                        <td>${pessoa.email || 'N/A'}</td>
-                    `;
+        // Adiciona o evento de clique ao botão para mostrar/esconder o menu
+        if (sidebarToggleBtn) {
+            sidebarToggleBtn.addEventListener('click', () => {
+                if (bodyEl) {
+                    bodyEl.classList.toggle('sidebar-collapsed');
                 }
-                tableBody.appendChild(row);
             });
         }
 
-        document.getElementById('toggleView').addEventListener('click', () => {
-            isDesignationView = !isDesignationView;
-            document.getElementById('toggleView').textContent = isDesignationView ? 'Informações' : 'Designações';
-            renderTable(pessoas, currentSort, isDesignationView);
-        });
 
-        document.getElementById('tableHeader').addEventListener('click', (e) => {
-            if (e.target.tagName === 'TH') {
-                const field = e.target.dataset.sortKey;
-                if (!field) return; 
+        // --- Funções Auxiliares ---
+        function showLoading(type, show = true) {
+            const element = { list: listLoadingDiv, detail: detailLoadingDiv, history: historyLoadingDiv }[type];
+            if (element) element.style.display = show ? 'block' : 'none';
+            if (type === 'detail' && show) {
+                detailContentDiv.style.display = 'none';
+                selectPromptDiv.style.display = 'none';
+            }
+            if (type === 'history' && show) {
+                document.getElementById('history-content-container').style.display = 'none';
+                noHistoryDiv.style.display = 'none';
+            } else if (type === 'history' && !show) {
+                document.getElementById('history-content-container').style.display = 'block';
+            }
+        }
 
-                if (currentSort.field === field) {
-                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        function formatArrayForDisplay(arr, targetElementId) {
+            const targetElement = document.getElementById(targetElementId);
+            if (!targetElement) return;
+            targetElement.innerHTML = '';
+            if (Array.isArray(arr) && arr.length > 0) {
+                arr.forEach(item => {
+                    const span = document.createElement('span');
+                    span.textContent = item;
+                    targetElement.appendChild(span);
+                });
+            } else {
+                targetElement.textContent = 'Nenhum';
+            }
+        }
+
+        function formatBoolean(bool) { return typeof bool === 'boolean' ? (bool ? 'Sim' : 'Não') : '-'; }
+        
+        function formatAusencias(ausencias) {
+            if (!Array.isArray(ausencias) || ausencias.length === 0) return 'Nenhuma ausência registrada.';
+            return ausencias.map(dateStr => {
+                const parts = String(dateStr).split('-');
+                return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
+            }).sort().join('\n');
+        }
+
+        function formatHorarios(horarios) {
+            if (!horarios || (Object.keys(horarios.semana || {}).length === 0 && Object.keys(horarios.fimDeSemana || {}).length === 0)) {
+                return 'Nenhum horário de pregação definido.';
+            }
+            let output = '';
+            const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
+            const weekendOrder = ["sabado", "domingo"];
+
+            if (horarios.semana && Object.keys(horarios.semana).length > 0) {
+                output += 'Semana:\n';
+                weekOrder.forEach(day => {
+                    if (horarios.semana[day] && horarios.semana[day].length > 0) {
+                        output += `  ${day.charAt(0).toUpperCase() + day.slice(1)}: ${horarios.semana[day].sort().join(', ')}\n`;
+                    }
+                });
+            }
+            if (horarios.fimDeSemana && Object.keys(horarios.fimDeSemana).length > 0) {
+                output += '\nFim de Semana:\n';
+                weekendOrder.forEach(day => {
+                    if (horarios.fimDeSemana[day] && horarios.fimDeSemana[day].length > 0) {
+                        output += `  ${day.charAt(0).toUpperCase() + day.slice(1)}: ${horarios.fimDeSemana[day].sort().join(', ')}\n`;
+                    }
+                });
+            }
+            return output.trim();
+        }
+
+        function createEditCheckbox(value, name, isChecked) {
+            const label = document.createElement('label'); label.classList.add('checkbox-item');
+            const input = document.createElement('input'); input.type = 'checkbox'; input.name = name; input.value = value; input.checked = isChecked;
+            const span = document.createElement('span'); span.textContent = value;
+            label.appendChild(input); label.appendChild(span);
+            return label;
+        }
+
+        function createTimeSlotCheckbox(time, dayName, isChecked) {
+            const label = document.createElement('label');
+            label.classList.add('horario-item');
+            if (isChecked) label.classList.add('selected');
+
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.value = time;
+            input.dataset.day = dayName;
+            input.checked = isChecked;
+            input.classList.add('horario-checkbox');
+
+            const span = document.createElement('span');
+            span.textContent = time;
+
+            label.appendChild(input);
+            label.appendChild(span);
+
+            input.addEventListener('change', () => label.classList.toggle('selected', input.checked));
+
+            return label;
+        }
+
+        function updateAusenciasDisplay() {
+            selectedAusenciasListDiv.innerHTML = '';
+            selectedAusencias.sort().forEach(date => {
+                const item = document.createElement('div');
+                item.className = 'ausencia-item';
+
+                const text = document.createElement('span');
+                text.textContent = date.split('-').reverse().join('/'); // Formata para DD/MM/YYYY
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-ausencia-btn';
+                removeBtn.innerHTML = '×';
+                removeBtn.title = 'Remover data';
+                removeBtn.type = 'button';
+                removeBtn.onclick = () => {
+                    selectedAusencias = selectedAusencias.filter(d => d !== date);
+                    updateAusenciasDisplay();
+                };
+
+                item.appendChild(text);
+                item.appendChild(removeBtn);
+                selectedAusenciasListDiv.appendChild(item);
+            });
+        }
+
+        function filterPessoasList() {
+            const filterText = filterPessoasInput.value.toLowerCase().trim();
+            const listItems = pessoasListUl.getElementsByTagName('li');
+
+            for (let i = 0; i < listItems.length; i++) {
+                const li = listItems[i];
+                if (li.textContent === 'Nenhuma pessoa encontrada.') continue;
+
+                const itemText = li.textContent.toLowerCase();
+                if (itemText.includes(filterText)) {
+                    li.style.display = '';
                 } else {
-                    currentSort.field = field;
-                    currentSort.direction = 'asc';
+                    li.style.display = 'none';
                 }
-                renderTable(pessoas, currentSort, isDesignationView);
+            }
+        }
+
+        // --- Carregamento Inicial ---
+       function loadAllDesignacoes() {
+            return db.collection('designacoes').get().then(snapshot => {
+                allDesignacoes.reuniao = [];
+                allDesignacoes.pregacao = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Manter a compatibilidade com a estrutura antiga
+                    designationNames[doc.id] = data.nome || 'Desconhecida'; 
+                    
+                    // Nova estrutura que armazena todos os detalhes necessários
+                    allDesignationDetails[doc.id] = {
+                        nome: data.nome || 'Desconhecida',
+                        tipo: data.tipo || 'desconhecido',
+                        quando: data.quando || 'desconhecido',
+                        emoji: data.emoji || '🔹' // Adiciona o emoji com um padrão
+                    };
+
+                    if (data.tipo === 'reuniao') {
+                        allDesignacoes.reuniao.push(data.nome);
+                    } else if (data.tipo === 'pregacao') {
+                        allDesignacoes.pregacao.push(data.nome);
+                    }
+                });
+                allDesignacoes.reuniao.sort();
+                allDesignacoes.pregacao.sort();
+                dataLoaded.designacoes = true;
+                dataLoaded.designationDetails = true;
+            });
+        }
+
+        function loadAllPessoasNames() {
+            return db.collection('pessoas').get().then(snapshot => {
+                snapshot.forEach(doc => {
+                    allPessoasNames[doc.id] = doc.data().nomePessoa || 'Nome Desconhecido';
+                });
+            });
+        }
+
+        function loadAllHorarios() {
+            return db.collection("horarios").orderBy("ano", "desc").limit(1).get()
+                .then(snapshot => {
+                    if (!snapshot.empty) {
+                        const data = snapshot.docs[0].data();
+                        allHorarios = {
+                            semana: data['dias-semana-horarios'] || {},
+                            fimDeSemana: data['dias-fimdesemana-horarios'] || {}
+                        };
+                    } else {
+                        allHorarios = { semana: {}, fimDeSemana: {} };
+                    }
+                    dataLoaded.horarios = true;
+                });
+        }
+
+        function loadPessoasList() {
+            showLoading('list', true);
+            pessoasListUl.innerHTML = '';
+            selectPromptDiv.style.display = 'block';
+            detailContentDiv.style.display = 'none';
+            detailLoadingDiv.style.display = 'none';
+            historyLoadingDiv.style.display = 'none';
+            db.collection('pessoas').orderBy('nomePessoa').get()
+                .then(snapshot => {
+                    showLoading('list', false);
+                    if (snapshot.empty) {
+                        pessoasListUl.innerHTML = '<li style="cursor: default; color: #6c757d;">Nenhuma pessoa encontrada.</li>';
+                        return;
+                    }
+                    snapshot.forEach(doc => {
+                        const li = document.createElement('li'); li.textContent = doc.data().nomePessoa; li.dataset.id = doc.id;
+                        li.addEventListener('click', () => {
+                            const currentSelected = pessoasListUl.querySelector('.selected');
+                            if (currentSelected) currentSelected.classList.remove('selected');
+                            li.classList.add('selected');
+                            selectedPersonId = doc.id;
+                            cancelEditMode();
+                            loadPersonDetails(selectedPersonId);
+                            loadPersonHistory(selectedPersonId);
+                        });
+                        pessoasListUl.appendChild(li);
+                    });
+                })
+                .catch(error => {
+                    showLoading('list', false);
+                    console.error("Erro ao carregar lista de pessoas:", error);
+                    pessoasListUl.innerHTML = '<li style="cursor: default; color: #dc3545;">Erro ao carregar pessoas. Verifique permissões.</li>';
+                });
+        }
+
+        // --- Carregamento Detalhes/Histórico ---
+        function loadPersonDetails(personId) {
+            showLoading('detail', true);
+            db.collection('pessoas').doc(personId).get()
+                .then(doc => {
+                    showLoading('detail', false);
+                    if (doc.exists) {
+                        selectedPersonData = doc.data();
+                        detailContentDiv.style.display = 'block'; selectPromptDiv.style.display = 'none';
+                        detailNameH3.textContent = selectedPersonData.nomePessoa || 'Nome não encontrado';
+                        populatePessoalTab(selectedPersonData);
+                        populateEspiritualTab(selectedPersonData);
+                        populatePregacaoTab(selectedPersonData);
+                        populatePermissoesTab(selectedPersonData);
+                        populateDisponibilidadeTab(selectedPersonData);
+                        switchTab('pessoal-tab');
+                    } else { console.error("Pessoa não encontrada"); }
+                })
+                .catch(error => { console.error("Erro ao carregar detalhes:", error); });
+        }
+
+        function populatePessoalTab(data) {
+            document.getElementById('detail-nomePessoa').textContent = data.nomePessoa || '-';
+            document.getElementById('detail-genero').textContent = data.genero || '-';
+            document.getElementById('detail-idioma').textContent = data.idioma || '-';
+            document.getElementById('detail-personalidade').textContent = data.personalidade || '-';
+            let dataNasc = '-';
+            if (data.dataNascimento) { if (data.dataNascimento.toDate) { const d = data.dataNascimento.toDate(); dataNasc = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; } else if (typeof data.dataNascimento === 'string') { const p = data.dataNascimento.split('-'); if (p.length === 3) dataNasc = `${p[2]}/${p[1]}/${p[0]}`; else dataNasc = data.dataNascimento; } else { dataNasc = data.dataNascimento || '-'; } }
+            document.getElementById('detail-dataNascimento').textContent = dataNasc;
+            document.getElementById('detail-email').textContent = data.email || '-';
+            document.getElementById('detail-telemovel').textContent = data.telemovel || '-';
+            document.getElementById('detail-casadoCom').textContent = data.casadoCom || '-';
+        }
+        function populateEspiritualTab(data) {
+            document.getElementById('detail-grupo').textContent = data.grupo || '-';
+            formatArrayForDisplay(data.privilegios, 'detail-privilegios');
+        }
+        function populatePregacaoTab(data) {
+            document.getElementById('detail-horariosPregacao').textContent = formatHorarios(data.horariosPregacao);
+        }
+        function populateDisponibilidadeTab(data) {
+            document.getElementById('detail-ausencias').textContent = formatAusencias(data.ausencias);
+        }
+        function populatePermissoesTab(data) {
+            document.getElementById('detail-fazDesignacoesReuniao').textContent = formatBoolean(data.fazDesignacoesReuniao);
+            formatArrayForDisplay(data.designacoesReuniao, 'detail-designacoesReuniao');
+            document.getElementById('detail-fazDesignacoesPregacao').textContent = formatBoolean(data.fazDesignacoesPregacao);
+            formatArrayForDisplay(data.designacoesPregacao, 'detail-designacoesPregacao');
+            document.getElementById('detail-acompanhaCarrinhos').textContent = formatBoolean(data.acompanhaCarrinhos);
+            document.getElementById('detail-rule').textContent = data.rule || '-';
+        }
+
+ function createHistoryItemElement(item) {
+            const div = document.createElement('div');
+            div.classList.add('history-item');
+
+            const dateStr = item.date.toLocaleDateString('pt-BR', {
+                day: '2-digit', month: '2-digit', year: 'numeric'
+            });
+
+            let participantsString = '';
+            // NOVA REGRA: Só adiciona a string de nomes se houver mais de um participante
+            if (item.participants && item.participants.length > 1) {
+                const names = item.participants.map(id => allPessoasNames[id] || '...?').join(' - ');
+                participantsString = `: <span class="hist-participants">${names}</span>`;
+            }
+
+            div.innerHTML = `<span class="hist-date">${dateStr}</span> | <span class="hist-designation">${item.emoji} ${item.name}${participantsString}</span>`;
+            
+            return div;
+        }
+
+
+        function parseFirestoreDate(firestoreDateField) {
+            if (firestoreDateField && typeof firestoreDateField.toDate === 'function') {
+                return firestoreDateField.toDate();
+            }
+            if (typeof firestoreDateField === 'string' && firestoreDateField) {
+                const parsedDate = new Date(firestoreDateField);
+                if (!isNaN(parsedDate.getTime())) {
+                    return parsedDate;
+                }
+            }
+            return new Date(0);
+        }
+
+
+
+ function loadPersonHistory(personId) {
+            showLoading('history', true);
+            unfilteredHistoryItems = []; // Limpa o estado global
+            
+            // Limpa as abas visualmente para o novo carregamento
+            document.getElementById('hist-tudo').innerHTML = '';
+            document.querySelectorAll('.sub-history-tab-content').forEach(tab => tab.innerHTML = '');
+            // Limpa os filtros antigos para evitar confusão
+            document.querySelectorAll('.filter-select').forEach(select => select.innerHTML = '<option value="">Todos</option>');
+
+            if (!dataLoaded.designationDetails || !allPessoasNames) {
+                console.error("Dependências (designações ou nomes) não carregadas.");
+                showLoading('history', false); 
+                return;
+            }
+
+            const historicoPromise = db.collection('historico').orderBy('dia', 'desc').get();
+            const historicoPregacaoPromise = db.collection('historicoPregacao').orderBy('dia', 'desc').get();
+
+            // O BLOCO .then() É CRUCIAL. TODO O PROCESSAMENTO DEVE ESTAR AQUI DENTRO.
+            Promise.all([historicoPromise, historicoPregacaoPromise]).then(([historicoSnapshot, historicoPregacaoSnapshot]) => {
+                
+                let allItems = [];
+                const processSnapshot = (snapshot, isPregacaoCollection) => {
+                    snapshot.forEach(doc => {
+                        const historicoData = doc.data();
+                        if (historicoData.designacoes && Array.isArray(historicoData.designacoes)) {
+                            historicoData.designacoes.forEach(dInstance => {
+                                let participantIds = [];
+                                if (dInstance.participantes) {
+                                    if (Array.isArray(dInstance.participantes)) participantIds = dInstance.participantes;
+                                    else if (typeof dInstance.participantes === 'object') participantIds = Object.values(dInstance.participantes);
+                                }
+
+                                if (participantIds.includes(personId)) {
+                                    const desigId = dInstance.designacaoId || null;
+                                    let details = allDesignationDetails[desigId] || {};
+                                    let tipo = isPregacaoCollection ? 'pregacao' : details.tipo || 'reuniao';
+                                    
+                                    allItems.push({
+                                        date: parseFirestoreDate(historicoData.dia),
+                                        name: details.nome || 'Desconhecida',
+                                        tipo: tipo,
+                                        quando: details.quando || null,
+                                        emoji: details.emoji || '🔹',
+                                        participants: participantIds,
+                                        parte: historicoData.parte || null,
+                                        ano: historicoData.ano || null,
+                                        mes: historicoData.mes || null,
+                                        semanaIndex: historicoData.semanaindex || null, // Lemos o 'semanaindex' minúsculo
+                                        designacaoId: desigId,
+                                        sala: historicoData.sala || null
+                                    });
+                                }
+                            });
+                        }
+                    });
+                };
+                
+                processSnapshot(historicoSnapshot, false);
+                processSnapshot(historicoPregacaoSnapshot, true);
+
+                // Armazena os dados brutos na variável global
+                unfilteredHistoryItems = allItems.sort((a, b) => b.date - a.date);
+
+                console.log('DADOS CARREGADOS E PRONTOS:', unfilteredHistoryItems.length, 'itens.');
+
+                // APENAS AGORA, com os dados prontos, chamamos as funções de renderização e filtro.
+                populateHistoryFilters(unfilteredHistoryItems); 
+                applyFiltersAndRender(); 
+
+                showLoading('history', false);
+
+            }).catch(error => {
+                showLoading('history', false);
+                console.error("Erro ao carregar e processar histórico:", error);
+                document.getElementById('hist-tudo').innerHTML = `<div class="history-item" style="color: #dc3545;">Erro ao carregar histórico.</div>`;
+            });
+        }
+        
+
+
+
+
+
+function populateHistoryFilters(items) {
+            // --- INÍCIO DA DEPURAÇÃO ---
+            console.log("--- Iniciando depuração de populateHistoryFilters ---");
+            console.log("1. Total de itens de histórico recebidos:", items.length, items);
+            // --- FIM DA DEPURAÇÃO ---
+
+            const anoSelect = document.getElementById('hist-filter-ano');
+            const mesSelect = document.getElementById('hist-filter-mes');
+            const semanaSelect = document.getElementById('hist-filter-semana');
+            const designacaoSelect = document.getElementById('hist-filter-designacao');
+            const salaSelect = document.getElementById('hist-filter-sala');
+
+            const salaNames = {
+                'salao-principal': 'Salão Principal', 'segunda-sala': 'Segunda Sala', 'terceira-sala': 'Terceira Sala'
+            };
+            const monthNames = {
+                '1': 'Janeiro', '2': 'Fevereiro', '3': 'Março', '4': 'Abril', '5': 'Maio', '6': 'Junho',
+                '7': 'Julho', '8': 'Agosto', '9': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
+            };
+
+            const populateSelect = (select, values, nameMap = {}) => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Todos</option>';
+                const uniqueValues = [...new Set(values)].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+                uniqueValues.forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = nameMap[value] || value;
+                    select.appendChild(option);
+                });
+                select.value = currentValue;
+            };
+
+            populateSelect(anoSelect, items.map(i => i.ano).filter(Boolean));
+            populateSelect(mesSelect, items.map(i => i.mes).filter(Boolean), monthNames);
+            populateSelect(salaSelect, items.map(i => i.sala).filter(Boolean), salaNames);
+
+            // --- LÓGICA CORRIGIDA E COM LOGS PARA A SEMANA ---
+            
+            // AQUI ESTÁ A CORREÇÃO PRINCIPAL: `semanaindex` deve ser minúsculo
+            const todasAsSemanas = items.map(i => i.semanaindex).filter(Boolean);
+          const uniqueSemanas = [...new Set(items.map(i => i.semanaIndex).filter(Boolean))];
+            
+            const semanaNameMap = uniqueSemanas.reduce((acc, week) => {
+                let cleaned = week.replace(/[()]/g, '');
+                const lastSpaceIndex = cleaned.lastIndexOf(' ');
+                if (lastSpaceIndex > -1) {
+                    cleaned = cleaned.substring(0, lastSpaceIndex);
+                }
+                acc[week] = cleaned.trim();
+                return acc;
+            }, {});
+            
+            populateSelect(semanaSelect, uniqueSemanas, semanaNameMap);
+
+
+            // Lógica para designações (inalterada)
+            const uniqueDesignacoes = items.reduce((acc, item) => {
+                if (item.designacaoId && !acc.has(item.designacaoId)) acc.set(item.designacaoId, item.name);
+                return acc;
+            }, new Map());
+            
+            const currentDesignacao = designacaoSelect.value;
+            designacaoSelect.innerHTML = '<option value="">Todas</option>';
+            [...uniqueDesignacoes.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = name;
+                designacaoSelect.appendChild(option);
+            });
+            designacaoSelect.value = currentDesignacao;
+        }
+
+
+
+
+
+   function applyFiltersAndRender() {
+            // Mapeamento de nomes para a UI
+            const salaNames = { 'salao-principal': 'Salão Principal', 'segunda-sala': 'Segunda Sala', 'terceira-sala': 'Terceira Sala' };
+            const monthNames = { '1': 'Janeiro', '2': 'Fevereiro', '3': 'Março', '4': 'Abril', '5': 'Maio', '6': 'Junho', '7': 'Julho', '8': 'Agosto', '9': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro' };
+
+            // Seletores dos dropdowns
+            const selects = {
+                ano: document.getElementById('hist-filter-ano'),
+                mes: document.getElementById('hist-filter-mes'),
+                semanaIndex: document.getElementById('hist-filter-semana'),
+                designacaoId: document.getElementById('hist-filter-designacao'),
+                tipo: document.getElementById('hist-filter-tipo'),
+                sala: document.getElementById('hist-filter-sala')
+            };
+
+            // Guarda os valores atualmente selecionados ANTES de repopular os dropdowns
+            const currentFilters = {
+                ano: selects.ano.value,
+                mes: selects.mes.value,
+                semanaIndex: selects.semanaIndex.value,
+                designacaoId: selects.designacaoId.value,
+                tipo: selects.tipo.value,
+                sala: selects.sala.value
+            };
+
+            // --- Lógica de Filtros em Cascata ---
+            let items = [...unfilteredHistoryItems];
+
+            // Helper para popular um select, preservando a seleção atual
+            const populateSelect = (select, data, valueKey, textMap = {}) => {
+                const uniqueValues = [...new Set(data.map(item => item[valueKey]).filter(Boolean))]
+                    .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+
+                select.innerHTML = '<option value="">Todos</option>';
+                uniqueValues.forEach(value => {
+                    let text = textMap[value] || value;
+                    // Formatação especial para semana
+                    if (valueKey === 'semanaIndex') {
+                        text = value.replace(/[()]/g, '').replace(/ \d{4}$/, '').trim();
+                    }
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = text;
+                    select.appendChild(option);
+                });
+            };
+
+            // 1. Popula os filtros e aplica-os um a um
+            populateSelect(selects.ano, items, 'ano');
+            selects.ano.value = currentFilters.ano; // Restaura a seleção
+            if (currentFilters.ano) items = items.filter(i => i.ano == currentFilters.ano);
+
+            populateSelect(selects.mes, items, 'mes', monthNames);
+            selects.mes.value = currentFilters.mes;
+            if (currentFilters.mes) items = items.filter(i => i.mes == currentFilters.mes);
+
+            populateSelect(selects.semanaIndex, items, 'semanaIndex');
+            selects.semanaIndex.value = currentFilters.semanaIndex;
+            if (currentFilters.semanaIndex) items = items.filter(i => i.semanaIndex == currentFilters.semanaIndex);
+            
+            // O tipo não depende de outros, então é populado com a lista completa
+            populateSelect(selects.tipo, unfilteredHistoryItems, 'tipo', { 'reuniao': 'Reunião', 'pregacao': 'Pregação' });
+            selects.tipo.value = currentFilters.tipo;
+            if (currentFilters.tipo) items = items.filter(i => i.tipo == currentFilters.tipo);
+
+            populateSelect(selects.sala, items, 'sala', salaNames);
+            selects.sala.value = currentFilters.sala;
+            if (currentFilters.sala) items = items.filter(i => i.sala == currentFilters.sala);
+            
+            // Designação é populada por último, com base em todos os outros filtros
+            const uniqueDesignacoes = items.reduce((acc, item) => {
+                if(item.designacaoId && !acc.has(item.designacaoId)) acc.set(item.designacaoId, item.name);
+                return acc;
+            }, new Map());
+            selects.designacaoId.innerHTML = '<option value="">Todas</option>';
+            [...uniqueDesignacoes.entries()].sort((a,b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = name;
+                selects.designacaoId.appendChild(option);
+            });
+            selects.designacaoId.value = currentFilters.designacaoId;
+            if (currentFilters.designacaoId) items = items.filter(i => i.designacaoId == currentFilters.designacaoId);
+
+
+            // 2. Renderiza as abas com a lista final filtrada
+            renderTudoTab(items);
+            renderArquivoTabs(items);
+             renderEstatisticasTab(items);
+        }
+
+       function renderTudoTab(items) {
+            const tudoTab = document.getElementById('hist-tudo');
+            tudoTab.innerHTML = '';
+            if (items.length === 0) {
+                tudoTab.innerHTML = `<div class="history-item" style="text-align: center; padding: 20px;">Nenhum registo encontrado com os filtros atuais.</div>`;
+                return;
+            }
+            
+            const groupedByMonth = items.reduce((acc, item) => {
+                const monthYear = item.date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+                if (!acc[monthYear]) acc[monthYear] = [];
+                acc[monthYear].push(item);
+                return acc;
+            }, {});
+
+            for (const monthYear in groupedByMonth) {
+                const header = document.createElement('h4');
+                header.textContent = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
+                header.style.cssText = "padding: 15px 20px 10px; background-color: #f8f9fa; border-bottom: 1px solid #e9ecef; font-size: 0.9rem; color: #343a40; margin: 0;";
+                tudoTab.appendChild(header);
+                groupedByMonth[monthYear].forEach(item => tudoTab.appendChild(createHistoryItemElement(item)));
+            }
+        }
+
+
+         function renderArquivoTabs(items) {
+             const renderHistoryList = (targetElement, list) => {
+                targetElement.innerHTML = '';
+                if (list.length === 0) {
+                    targetElement.innerHTML = `<div class="history-item" style="text-align: center; padding: 20px;">Nenhum registo nesta categoria.</div>`;
+                } else {
+                    list.forEach(item => targetElement.appendChild(createHistoryItemElement(item)));
+                }
+            };
+
+            renderHistoryList(document.getElementById('sub-hist-semana'), items.filter(i => i.quando === 'Semana' && i.tipo === 'reuniao'));
+            renderHistoryList(document.getElementById('sub-hist-fds'), items.filter(i => i.quando === 'Fim de Semana' && i.tipo === 'reuniao'));
+            renderHistoryList(document.getElementById('sub-hist-tecnicas'), items.filter(i => i.parte === 'tecnicas' && i.tipo === 'reuniao'));
+            renderHistoryList(document.getElementById('sub-hist-pregacao'), items.filter(i => i.tipo === 'pregacao'));
+        }
+
+
+        // --- Lógica das Abas (Detalhes) ---
+        function switchTab(tabId) {
+            cancelEditMode(); tabButtons.forEach(btn => btn.classList.remove('active')); tabContents.forEach(content => content.classList.remove('active'));
+            const activeButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`); const activeContent = document.getElementById(tabId);
+            if (activeButton) activeButton.classList.add('active'); if (activeContent) activeContent.classList.add('active');
+        }
+        tabButtons.forEach(button => { button.addEventListener('click', () => switchTab(button.dataset.tab)); });
+
+        // --- Lógica das Abas (Histórico) ---
+        if (historyTabsContainer) {
+            historyTabsContainer.addEventListener('click', (e) => {
+                if (e.target.matches('.history-tab-button')) {
+                    const targetTabId = e.target.dataset.tab;
+
+                    historyTabsContainer.querySelector('.active').classList.remove('active');
+                    e.target.classList.add('active');
+
+                    historyTabContents.forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === targetTabId) {
+                            content.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }
+        
+        // --- Lógica das SUB-Abas (Histórico > Arquivo) ---
+        const arquivoTabContent = document.getElementById('hist-arquivo');
+        if (arquivoTabContent) {
+            arquivoTabContent.addEventListener('click', (e) => {
+                if (e.target.matches('.sub-history-tab-button')) {
+                    const subTabsContainer = e.target.closest('.sub-history-tabs');
+                    const subContentContainer = arquivoTabContent.querySelector('.sub-history-content-container');
+                    const targetTabId = e.target.dataset.tab;
+
+                    subTabsContainer.querySelector('.active').classList.remove('active');
+                    e.target.classList.add('active');
+
+                    subContentContainer.querySelectorAll('.sub-history-tab-content').forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === targetTabId) {
+                            content.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }
+
+
+        // --- Lógica de Edição ---
+        editButtons.forEach(button => { button.addEventListener('click', (e) => enterEditMode(e.target.closest('button').dataset.tabTarget)); });
+        cancelButtons.forEach(button => { button.addEventListener('click', () => cancelEditMode()); });
+        saveButtons.forEach(button => { button.addEventListener('click', (e) => saveTabData(e.target.closest('button').dataset.tabTarget, e.target.closest('button'))); });
+
+        function enterEditMode(tabId) {
+            if (!selectedPersonData || !selectedPersonId || !dataLoaded.designacoes || !dataLoaded.horarios) {
+                alert("Aguarde o carregamento dos dados ou selecione uma pessoa."); return;
+            }
+            cancelEditMode(); const tabContent = document.getElementById(tabId); if (!tabContent) return;
+            const displayDiv = tabContent.querySelector('.display-mode'); const editDiv = tabContent.querySelector('.edit-mode');
+            const editBtn = tabContent.querySelector('.edit-btn'); const saveBtn = tabContent.querySelector('.save-btn'); const cancelBtn = tabContent.querySelector('.cancel-btn');
+            populateEditFields(tabId, selectedPersonData);
+            if (displayDiv) displayDiv.style.display = 'none'; if (editDiv) editDiv.style.display = 'block';
+            if (editBtn) editBtn.style.display = 'none'; if (saveBtn) saveBtn.style.display = 'inline-flex'; if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+        }
+
+        function cancelEditMode() {
+            tabContents.forEach(tabContent => {
+                const displayDiv = tabContent.querySelector('.display-mode'); const editDiv = tabContent.querySelector('.edit-mode');
+                const editBtn = tabContent.querySelector('.edit-btn'); const saveBtn = tabContent.querySelector('.save-btn'); const cancelBtn = tabContent.querySelector('.cancel-btn');
+                if (displayDiv) displayDiv.style.display = 'block'; if (editDiv) editDiv.style.display = 'none';
+                if (editBtn) editBtn.style.display = 'inline-flex'; if (saveBtn) saveBtn.style.display = 'none'; if (cancelBtn) cancelBtn.style.display = 'none';
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> Gravar'; }
+            });
+            selectedAusencias = [];
+            updateAusenciasDisplay();
+        }
+
+        function populateEditFields(tabId, data) {
+            if (tabId === 'pessoal-tab') {
+                document.getElementById('edit-nomePessoa').value = data.nomePessoa || ''; document.getElementById('edit-genero').value = data.genero || ''; document.getElementById('edit-idioma').value = data.idioma || ''; document.getElementById('edit-personalidade').value = data.personalidade || '';
+                let dateForInput = ''; if (data.dataNascimento) { if (data.dataNascimento.toDate) { const dO = data.dataNascimento.toDate(); dateForInput = `${dO.getFullYear()}-${String(dO.getMonth() + 1).padStart(2, '0')}-${String(dO.getDate()).padStart(2, '0')}`; } else if (typeof data.dataNascimento === 'string') { const p = data.dataNascimento.split(/[-/]/); if (p.length === 3) { if (p[0].length === 4) dateForInput = `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`; else if (p[2].length === 4) dateForInput = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` } } else { dateForInput = data.dataNascimento || ''; } }
+                document.getElementById('edit-dataNascimento').value = dateForInput; document.getElementById('edit-email').value = data.email || ''; document.getElementById('edit-telemovel').value = data.telemovel || ''; document.getElementById('edit-casadoCom').value = data.casadoCom || '';
+
+            } else if (tabId === 'espiritual-tab') {
+                document.getElementById('edit-grupo').value = data.grupo || '';
+                const privGroupDiv = document.getElementById('edit-privilegios-group'); privGroupDiv.innerHTML = ''; const currentPrivilegios = data.privilegios || [];
+                allPrivilegios.forEach(priv => { privGroupDiv.appendChild(createEditCheckbox(priv, 'edit-privilegio', currentPrivilegios.includes(priv))); });
+
+            } else if (tabId === 'pregacao-tab') {
+                const horariosSemanaDiv = document.getElementById('edit-horarios-semana');
+                const horariosFimSemanaDiv = document.getElementById('edit-horarios-fim-de-semana');
+                horariosSemanaDiv.innerHTML = '<h5>Semana</h5>';
+                horariosFimSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
+                const currentHorarios = data.horariosPregacao || { semana: {}, fimDeSemana: {} };
+                const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
+                const weekendOrder = ["sabado", "domingo"];
+
+                const populateDay = (day, times, container) => {
+                    if (times && times.length > 0) {
+                        const dayContainer = document.createElement('div'); dayContainer.className = 'day-container';
+                        const dayTitle = document.createElement('h6'); dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
+                        dayContainer.appendChild(dayTitle);
+                        times.sort().forEach(time => {
+                            const personTimes = (currentHorarios[container.id.includes('semana') ? 'semana' : 'fimDeSemana'] || {})[day] || [];
+                            const isChecked = personTimes.includes(time);
+                            dayContainer.appendChild(createTimeSlotCheckbox(time, day, isChecked));
+                        });
+                        container.appendChild(dayContainer);
+                    }
+                };
+                weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv));
+                weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimSemanaDiv));
+
+            } else if (tabId === 'disponibilidade-tab') {
+                selectedAusencias = (data.ausencias || []).map(ausencia => {
+                    if (ausencia && typeof ausencia.toDate === 'function') {
+                        const dateObj = ausencia.toDate();
+                        return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+                    }
+                    return ausencia;
+                }).filter(d => d);
+                updateAusenciasDisplay();
+
+            } else if (tabId === 'permissoes-tab') {
+                document.getElementById('edit-fazDesignacoesReuniao').checked = data.fazDesignacoesReuniao || false; document.getElementById('edit-fazDesignacoesPregacao').checked = data.fazDesignacoesPregacao || false; document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false; document.getElementById('edit-rule').value = data.rule || '';
+                const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group'); desigReuniaoGroupDiv.innerHTML = ''; const currentDesigReuniao = data.designacoesReuniao || [];
+                allDesignacoes.reuniao.forEach(desig => { desigReuniaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-reuniao', currentDesigReuniao.includes(desig))); }); if (allDesignacoes.reuniao.length === 0) desigReuniaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
+                const desigPregacaoGroupDiv = document.getElementById('edit-designacoesPregacao-group'); desigPregacaoGroupDiv.innerHTML = ''; const currentDesigPregacao = data.designacoesPregacao || [];
+                allDesignacoes.pregacao.forEach(desig => { desigPregacaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-pregacao', currentDesigPregacao.includes(desig))); }); if (allDesignacoes.pregacao.length === 0) desigPregacaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
+            }
+        }
+
+
+        // --- INÍCIO DO NOVO BLOCO DE FUNÇÕES PARA ESTATÍSTICAS ---
+
+        // Função principal que orquestra a renderização da aba
+        function renderEstatisticasTab(items) {
+            const statsContent = document.getElementById('stats-content');
+            const noStatsMessage = document.getElementById('no-stats-message');
+
+            if (items.length === 0) {
+                statsContent.style.display = 'none';
+                noStatsMessage.style.display = 'block';
+                return;
+            }
+            statsContent.style.display = 'block';
+            noStatsMessage.style.display = 'none';
+
+            // 1. Calcular e renderizar os cards
+            const totalReuniao = items.filter(i => i.tipo === 'reuniao').length;
+            const totalPregacao = items.filter(i => i.tipo === 'pregacao').length;
+            document.getElementById('total-reuniao-stat').textContent = totalReuniao;
+            document.getElementById('total-pregacao-stat').textContent = totalPregacao;
+
+            // 2. Calcular e renderizar listas de "Top 5"
+            const designationCounts = items.reduce((acc, item) => {
+                acc[item.name] = (acc[item.name] || 0) + 1;
+                return acc;
+            }, {});
+            const sortedDesignacoes = Object.entries(designationCounts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+            
+            const partnerCounts = items.reduce((acc, item) => {
+                if (item.participants.length > 1) {
+                    item.participants.forEach(pId => {
+                        if (pId !== selectedPersonId) { // Apenas conta os parceiros
+                            acc[pId] = (acc[pId] || 0) + 1;
+                        }
+                    });
+                }
+                return acc;
+            }, {});
+            const sortedParceiros = Object.entries(partnerCounts).map(([id, count]) => ({ name: allPessoasNames[id] || 'Desconhecido', count })).sort((a, b) => b.count - a.count);
+
+            renderTopList('top-designacoes-list', 'toggle-designacoes', sortedDesignacoes);
+            renderTopList('top-parceiros-list', 'toggle-parceiros', sortedParceiros);
+
+            // 3. Preparar dados e renderizar os gráficos
+            const chartDataByDesignation = getChartDataFromCounts(sortedDesignacoes);
+            const chartDataByYear = getChartDataFromField(items, 'ano');
+            const chartDataByMonth = getChartDataFromField(items, 'mes', { '1': 'Jan', '2': 'Fev', '3': 'Mar', '4': 'Abr', '5': 'Mai', '6': 'Jun', '7': 'Jul', '8': 'Ago', '9': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez' });
+            const chartDataByWeek = getChartDataFromField(items, 'semanaIndex', {}, true);
+
+            createOrUpdateChart('designacoes-por-tipo-chart', 'bar', chartDataByDesignation.labels, chartDataByDesignation.data, 'Designações por Tipo');
+            createOrUpdateChart('designacoes-por-ano-chart', 'bar', chartDataByYear.labels, chartDataByYear.data, 'Designações por Ano');
+            createOrUpdateChart('designacoes-por-mes-chart', 'bar', chartDataByMonth.labels, chartDataByMonth.data, 'Designações por Mês');
+            createOrUpdateChart('designacoes-por-semana-chart', 'bar', chartDataByWeek.labels, chartDataByWeek.data, 'Designações por Semana');
+        }
+        
+        // Helper para renderizar as listas de "Top 5" com botão "Mostrar Mais"
+        function renderTopList(listId, buttonId, data) {
+            const list = document.getElementById(listId);
+            const button = document.getElementById(buttonId);
+            list.innerHTML = '';
+
+            if (data.length === 0) {
+                button.style.display = 'none';
+                list.innerHTML = '<li>Nenhum dado disponível.</li>';
+                return;
+            }
+
+            const render = (limit) => {
+                list.innerHTML = '';
+                const itemsToShow = limit ? data.slice(0, limit) : data;
+                itemsToShow.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>${item.name}</span> <span class="count">${item.count}</span>`;
+                    list.appendChild(li);
+                });
+            };
+
+            render(5); // Renderiza inicialmente o Top 5
+
+            if (data.length > 5) {
+                button.style.display = 'block';
+                button.textContent = `Mostrar Todos (${data.length})`;
+                button.onclick = () => {
+                    const isShowingAll = button.textContent.startsWith('Mostrar Menos');
+                    if (isShowingAll) {
+                        render(5);
+                        button.textContent = `Mostrar Todos (${data.length})`;
+                    } else {
+                        render(null); // Mostra todos
+                        button.textContent = 'Mostrar Menos';
+                    }
+                };
+            } else {
+                button.style.display = 'none';
+            }
+        }
+
+        // Helper para criar ou atualizar um gráfico
+        function createOrUpdateChart(canvasId, type, labels, data, title) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy(); // Destrói o gráfico anterior
+            }
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total',
+                        data: data,
+                        backgroundColor: 'rgba(0, 123, 255, 0.5)',
+                        borderColor: 'rgba(0, 123, 255, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        title: { display: true, text: title, font: { size: 16 } },
+                        legend: { display: false }
+                    },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+        
+        // Helpers para preparar os dados para os gráficos
+        function getChartDataFromCounts(sortedCounts) {
+            const labels = sortedCounts.map(item => item.name);
+            const data = sortedCounts.map(item => item.count);
+            return { labels, data };
+        }
+
+        function getChartDataFromField(items, field, nameMap = {}, cleanWeek = false) {
+            const counts = items.reduce((acc, item) => {
+                if (item[field]) {
+                    acc[item[field]] = (acc[item[field]] || 0) + 1;
+                }
+                return acc;
+            }, {});
+            
+            const sorted = Object.entries(counts).sort((a,b) => String(a[0]).localeCompare(String(b[0]), undefined, {numeric: true}));
+            
+            const labels = sorted.map(([key, _]) => {
+                if (cleanWeek) return key.replace(/[()]/g, '').replace(/ \d{4}$/, '').trim();
+                return nameMap[key] || key;
+            });
+            const data = sorted.map(([_, value]) => value);
+            
+            return { labels, data };
+        }
+
+        // --- FIM DO NOVO BLOCO DE FUNÇÕES ---
+
+
+
+
+
+        function saveTabData(tabId, saveButton) {
+            if (!selectedPersonId) return;
+            saveButton.disabled = true; saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gravando...';
+            let dataToUpdate = {};
+            try {
+                if (tabId === 'pessoal-tab') {
+                    dataToUpdate = { nomePessoa: document.getElementById('edit-nomePessoa').value.trim(), genero: document.getElementById('edit-genero').value, idioma: document.getElementById('edit-idioma').value, personalidade: document.getElementById('edit-personalidade').value, dataNascimento: document.getElementById('edit-dataNascimento').value || null, email: document.getElementById('edit-email').value.trim(), telemovel: document.getElementById('edit-telemovel').value.trim(), casadoCom: document.getElementById('edit-casadoCom').value.trim() || null };
+
+                } else if (tabId === 'espiritual-tab') {
+                    const selectedPrivilegios = Array.from(document.querySelectorAll('#edit-privilegios-group input:checked')).map(cb => cb.value);
+                    dataToUpdate = {
+                        grupo: document.getElementById('edit-grupo').value || null,
+                        privilegios: selectedPrivilegios
+                    };
+
+                } else if (tabId === 'pregacao-tab') {
+                    const horariosPregacao = { semana: {}, fimDeSemana: {} };
+                    document.querySelectorAll('#edit-horarios-semana .horario-checkbox:checked').forEach(cb => {
+                        const day = cb.dataset.day;
+                        if (!horariosPregacao.semana[day]) horariosPregacao.semana[day] = [];
+                        horariosPregacao.semana[day].push(cb.value);
+                    });
+                    document.querySelectorAll('#edit-horarios-fim-de-semana .horario-checkbox:checked').forEach(cb => {
+                        const day = cb.dataset.day;
+                        if (!horariosPregacao.fimDeSemana[day]) horariosPregacao.fimDeSemana[day] = [];
+                        horariosPregacao.fimDeSemana[day].push(cb.value);
+                    });
+                    dataToUpdate = { horariosPregacao: horariosPregacao };
+
+                } else if (tabId === 'disponibilidade-tab') {
+                    dataToUpdate = { ausencias: selectedAusencias.sort() };
+
+                } else if (tabId === 'permissoes-tab') {
+                    const selectedDesigReuniao = Array.from(document.querySelectorAll('#edit-designacoesReuniao-group input:checked')).map(cb => cb.value);
+                    const selectedDesigPregacao = Array.from(document.querySelectorAll('#edit-designacoesPregacao-group input:checked')).map(cb => cb.value);
+                    dataToUpdate = { fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked, designacoesReuniao: selectedDesigReuniao, fazDesignacoesPregacao: document.getElementById('edit-fazDesignacoesPregacao').checked, designacoesPregacao: selectedDesigPregacao, acompanhaCarrinhos: document.getElementById('edit-acompanhaCarrinhos').checked, rule: document.getElementById('edit-rule').value.trim() || null };
+                }
+            } catch (error) { console.error("Erro ao coletar dados:", error); alert("Erro ao ler dados do formulário."); saveButton.disabled = false; saveButton.innerHTML = '<i class="fas fa-save"></i> Gravar'; return; }
+
+            db.collection('pessoas').doc(selectedPersonId).update(dataToUpdate)
+                .then(() => {
+                    console.log("Dados atualizados!");
+                    selectedPersonData = { ...selectedPersonData, ...dataToUpdate };
+
+                    if (tabId === 'pessoal-tab') { populatePessoalTab(selectedPersonData); }
+                    else if (tabId === 'espiritual-tab') { populateEspiritualTab(selectedPersonData); }
+                    else if (tabId === 'pregacao-tab') { populatePregacaoTab(selectedPersonData); }
+                    else if (tabId === 'disponibilidade-tab') { populateDisponibilidadeTab(selectedPersonData); }
+                    else if (tabId === 'permissoes-tab') { populatePermissoesTab(selectedPersonData); }
+
+                    if (dataToUpdate.nomePessoa && document.querySelector(`#pessoas-list li[data-id="${selectedPersonId}"]`)) {
+                        document.querySelector(`#pessoas-list li[data-id="${selectedPersonId}"]`).textContent = dataToUpdate.nomePessoa;
+                        detailNameH3.textContent = dataToUpdate.nomePessoa;
+                    }
+                    cancelEditMode(); alert('Dados gravados com sucesso!');
+                })
+                .catch(error => { console.error("Erro ao gravar:", error); alert(error.code === 'permission-denied' ? 'Erro: Permissão negada.' : 'Erro ao gravar dados.'); cancelEditMode(); });
+        }
+
+        addSingleAusenciaBtn.addEventListener('click', () => {
+            const dateInput = document.getElementById('ausencia-single-date');
+            if (dateInput.value && !selectedAusencias.includes(dateInput.value)) {
+                selectedAusencias.push(dateInput.value);
+                updateAusenciasDisplay();
+                dateInput.value = '';
             }
         });
 
-        document.getElementById('tableBody').addEventListener('click', (e) => {
-            if (e.target.classList.contains('person-name')) {
-                e.preventDefault();
-                const personId = e.target.dataset.id;
-                showPersonDetails(personId);
+        addRangeAusenciaBtn.addEventListener('click', () => {
+            const startDateInput = document.getElementById('ausencia-start-date');
+            const endDateInput = document.getElementById('ausencia-end-date');
+            if (startDateInput.value && endDateInput.value) {
+                let start = new Date(startDateInput.value + 'T00:00:00');
+                let end = new Date(endDateInput.value + 'T00:00:00');
+                if (start > end) { alert("A data de início deve ser anterior à data de fim."); return; }
+                for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+                    const dateString = d.toISOString().slice(0, 10);
+                    if (!selectedAusencias.includes(dateString)) selectedAusencias.push(dateString);
+                }
+                updateAusenciasDisplay();
+                startDateInput.value = ''; endDateInput.value = '';
             }
         });
 
-        document.addEventListener('DOMContentLoaded', loadPessoas);
+        // --- Event Listeners e Inicialização ---
+      if (filterPessoasInput) {
+            filterPessoasInput.addEventListener('input', filterPessoasList);
+        }
+
+document.querySelectorAll('.filter-select').forEach(select => {
+            select.addEventListener('change', applyFiltersAndRender);
+        });
+
+        document.getElementById('reset-history-filters').addEventListener('click', () => {
+            document.querySelectorAll('.filter-select').forEach(select => select.value = '');
+            applyFiltersAndRender();
+        });
+
+
+        
+        console.log("Iniciando carregamento...");
+        showLoading('list', true);
+        
+        Promise.all([
+            loadAllPessoasNames(), // <-- ADICIONE ESTA LINHA
+            loadAllDesignacoes().catch(err => console.error("Falha ao carregar designações.", err)),
+            loadAllHorarios().catch(err => console.error("Falha ao carregar horários.", err))
+        ]).finally(() => {
+            console.log("Carregamento inicial de configurações concluído. Carregando pessoas...");
+            loadPessoasList();
+        });
+
+    });
     </script>
+    
 </body>
 </html>
