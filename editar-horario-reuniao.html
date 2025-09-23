@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Horário de Reunião - Sistema de Escala</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 500; }
+        .form-control { width: 100%; padding: 8px 12px; border: 1px solid #dcdde1; border-radius: 4px; font-size: 16px; }
+        .form-section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #dcdde1; }
+        .form-section h2 { color: #2c3e50; font-size: 20px; margin-bottom: 20px; }
+        .btn-salvar { background-color: #2980b9; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
+        .btn-salvar:hover { background-color: #3498db; }
+        .message { margin-top: 20px; padding: 12px; border-radius: 4px; display: none; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; transition: background-color 0.3s; }
+    </style>
+</head>
+<body>
+    <div id="sidebar-placeholder"></div>
+
+    <main class="content">
+        <a href="index.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+        <h1>Editar Horário de Reunião</h1>
+        <div class="card">
+            <form id="horarioForm">
+                <div class="form-group">
+                    <label for="ano">Ano (não pode ser alterado):</label>
+                    <input type="text" id="ano" name="ano" class="form-control" readonly>
+                </div>
+
+                <div class="form-section">
+                    <h2>Horário da Semana</h2>
+                    <div class="form-group">
+                        <label for="diaSemana">Dia da Semana:</label>
+                        <select id="diaSemana" name="diaSemana" class="form-control" required>
+                            <option value="">Selecione o dia</option>
+                            <option value="segunda">Segunda</option>
+                            <option value="terça">Terça</option>
+                            <option value="quarta">Quarta</option>
+                            <option value="quinta">Quinta</option>
+                            <option value="sexta">Sexta</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="horaSemana">Horário:</label>
+                        <input type="time" id="horaSemana" name="horaSemana" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Horário do Fim de Semana</h2>
+                    <div class="form-group">
+                        <label for="diaFimSemana">Dia do Fim de Semana:</label>
+                        <select id="diaFimSemana" name="diaFimSemana" class="form-control" required>
+                            <option value="">Selecione o dia</option>
+                            <option value="sexta">Sexta</option>
+                            <option value="sábado">Sábado</option>
+                            <option value="domingo">Domingo</option>
+                            <option value="segunda">Segunda</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="horaFimSemana">Horário:</label>
+                        <input type="time" id="horaFimSemana" name="horaFimSemana" class="form-control" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-salvar">Salvar Alterações</button>
+            </form>
+            <div id="message" class="message"></div>
+        </div>
+    </main>
+    
+    <script src="firebase-config.js"></script>
+    <script src="main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof db === 'undefined') {
+                showMessage('Erro: Configuração do Firebase não encontrada.', 'error');
+                return;
+            }
+
+            const form = document.getElementById('horarioForm');
+            const messageDiv = document.getElementById('message');
+            let docIdParaAtualizar = null; // Variável para guardar o ID do documento
+
+            // Função para carregar os dados existentes no formulário
+            async function loadExistingSchedule() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const year = urlParams.get('year');
+
+                if (!year) {
+                    showMessage('Ano não especificado. Volte ao painel e tente novamente.', 'error');
+                    form.style.display = 'none'; // Esconde o formulário se não houver ano
+                    return;
+                }
+
+                try {
+                    const querySnapshot = await db.collection('horarios')
+                        .where('ano', '==', parseInt(year))
+                        .where('tipo', '==', 'reuniao')
+                        .limit(1)
+                        .get();
+
+                    if (!querySnapshot.empty) {
+                        const doc = querySnapshot.docs[0];
+                        const data = doc.data();
+                        docIdParaAtualizar = doc.id; // Guarda o ID para a atualização
+
+                        // Preenche o formulário com os dados do Firestore
+                        document.getElementById('ano').value = data.ano;
+                        document.getElementById('diaSemana').value = data['dia-semana'] || '';
+                        document.getElementById('horaSemana').value = data['hora-semana'] || '';
+                        document.getElementById('diaFimSemana').value = data['dia-fimdesemana'] || '';
+                        document.getElementById('horaFimSemana').value = data['hora-fimdesemana'] || '';
+                    } else {
+                        showMessage(`Nenhum horário de reunião encontrado para o ano ${year}.`, 'error');
+                        form.style.display = 'none';
+                    }
+                } catch (error) {
+                    showMessage('Erro ao carregar os dados do horário: ' + error.message, 'error');
+                }
+            }
+
+            // Lógica de submissão do formulário para ATUALIZAR
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                if (!docIdParaAtualizar) {
+                    showMessage('Erro: Não foi possível encontrar o horário para atualizar.', 'error');
+                    return;
+                }
+
+                const horarioAtualizado = {
+                    ano: parseInt(document.getElementById('ano').value),
+                    'dia-semana': document.getElementById('diaSemana').value,
+                    'hora-semana': document.getElementById('horaSemana').value,
+                    'dia-fimdesemana': document.getElementById('diaFimSemana').value,
+                    'hora-fimdesemana': document.getElementById('horaFimSemana').value,
+                    tipo: 'reuniao' // Mantém o tipo
+                };
+
+                try {
+                    await db.collection('horarios').doc(docIdParaAtualizar).update(horarioAtualizado);
+                    showMessage('Horário atualizado com sucesso!', 'success');
+
+                    setTimeout(() => {
+                        window.location.href = 'index.html'; // Redireciona de volta para o painel
+                    }, 1500);
+                } catch (error) {
+                    showMessage('Erro ao salvar as alterações: ' + error.message, 'error');
+                }
+            });
+
+            function showMessage(text, type) {
+                messageDiv.textContent = text;
+                messageDiv.className = `message ${type}`;
+                messageDiv.style.display = 'block';
+            }
+
+            // Inicia o carregamento dos dados assim que a página é aberta
+            await loadExistingSchedule();
+        });
+    </script>
+</body>
+</html>
