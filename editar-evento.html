@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Evento Especial - Sistema de Escala</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 40px auto 0; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #2c3e50; font-weight: bold; }
+        .form-group select, .form-group input, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .btn-submit { background-color: #2980b9; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; }
+        .btn-submit:hover { background-color: #3498db; }
+        .btn-cancel { background-color: #7f8c8d; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 10px; }
+        .btn-cancel:hover { background-color: #95a5a6; }
+        .message { margin-top: 15px; padding: 10px; border-radius: 4px; text-align: center; display: none; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; }
+
+        /* --- NOVOS ESTILOS PARA A LISTA DE CARDS --- */
+        .list-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .event-list-item {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #eef2f5;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .event-list-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .event-list-item h3 { margin: 0 0 5px 0; color: #2c3e50; }
+        .event-list-item p { margin: 0; color: #7f8c8d; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div id="sidebar-placeholder"></div>
+
+    <main class="content">
+        <a href="index.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <h1>Editar Evento Especial</h1>
+        
+        <!-- +++ LISTA DE EVENTOS EXISTENTES +++ -->
+        <h2>Selecione um evento para editar:</h2>
+        <div id="eventListContainer" class="list-container">
+            <!-- Os cards dos eventos serão carregados aqui pelo JavaScript -->
+            <p>Carregando eventos...</p>
+        </div>
+
+        <!-- Formulário de Edição (inicialmente oculto) -->
+        <div class="card" id="editFormCard" style="display:none;">
+            <form id="editarEventoForm">
+                <div class="form-group">
+                    <label for="nome">Nome do Evento</label>
+                    <select id="nome" required>
+                        <option value="Memorial">Memorial</option>
+                        <option value="Assembleia">Assembleia</option>
+                        <option value="Congresso">Congresso</option>
+                        <option value="Visita do Servo">Visita do Servo</option>
+                        <option value="Evento Especial">Evento Especial</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="data">Data do Evento</label>
+                    <input type="date" id="data" required>
+                </div>
+                <div class="form-group">
+                    <label for="descricao">Descrição (Opcional)</label>
+                    <textarea id="descricao" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Salvar Alterações</button>
+                <button type="button" id="btnCancel" class="btn-cancel">Cancelar</button>
+            </form>
+            <div id="message" class="message"></div>
+        </div>
+    </main>
+
+    <script src="firebase-config.js"></script>
+    <script src="main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof db === 'undefined') { showMessage('Erro de configuração do Firebase.', 'error'); return; }
+
+            const eventListContainer = document.getElementById('eventListContainer');
+            const editFormCard = document.getElementById('editFormCard');
+            const form = document.getElementById('editarEventoForm');
+            const btnCancel = document.getElementById('btnCancel');
+            let currentEditingId = null;
+
+            // 1. Função para renderizar a lista de eventos
+            async function renderEventList() {
+                try {
+                    const snapshot = await db.collection('eventos').orderBy('data', 'desc').get();
+                    if (snapshot.empty) {
+                        eventListContainer.innerHTML = '<p>Nenhum evento encontrado.</p>';
+                        return;
+                    }
+                    let listHtml = '';
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        listHtml += `
+                            <div class="event-list-item" data-id="${doc.id}">
+                                <h3>${data.nome}</h3>
+                                <p>${data.data}</p>
+                            </div>
+                        `;
+                    });
+                    eventListContainer.innerHTML = listHtml;
+                } catch (error) {
+                    eventListContainer.innerHTML = '<p>Erro ao carregar eventos.</p>';
+                }
+            }
+
+            // 2. Função para popular e exibir o formulário
+            async function populateAndShowForm(eventoId) {
+                try {
+                    const doc = await db.collection('eventos').doc(eventoId).get();
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('nome').value = data.nome;
+                        document.getElementById('data').value = data.data;
+                        document.getElementById('descricao').value = data.descricao || '';
+                        
+                        currentEditingId = eventoId; // Guarda o ID do evento que está sendo editado
+                        editFormCard.style.display = 'block';
+                        editFormCard.scrollIntoView({ behavior: 'smooth' });
+                    }
+                } catch (error) {
+                    showMessage('Erro ao carregar dados do evento.', 'error');
+                }
+            }
+
+            // 3. Event listener para cliques na lista de eventos (delegação)
+            eventListContainer.addEventListener('click', (e) => {
+                const card = e.target.closest('.event-list-item');
+                if (card) {
+                    const eventoId = card.dataset.id;
+                    populateAndShowForm(eventoId);
+                }
+            });
+
+            // 4. Salvar alterações
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentEditingId) return;
+
+                const dateObj = new Date(document.getElementById('data').value + 'T00:00:00');
+                const eventoAtualizado = {
+                    nome: document.getElementById('nome').value,
+                    descricao: document.getElementById('descricao').value,
+                    data: document.getElementById('data').value,
+                    ano: dateObj.getFullYear(),
+                    mes: dateObj.getMonth() + 1,
+                    dia: dateObj.getDate()
+                };
+
+                try {
+                    await db.collection('eventos').doc(currentEditingId).update(eventoAtualizado);
+                    showMessage('Evento atualizado com sucesso!', 'success');
+                    editFormCard.style.display = 'none'; // Esconde o formulário
+                    await renderEventList(); // Atualiza a lista para refletir as mudanças
+                } catch (error) {
+                    showMessage('Erro ao atualizar evento: ' + error.message, 'error');
+                }
+            });
+
+            // 5. Botão de Cancelar
+            btnCancel.addEventListener('click', () => {
+                editFormCard.style.display = 'none';
+                currentEditingId = null;
+            });
+            
+            function showMessage(text, type) {
+                const messageDiv = document.getElementById('message');
+                messageDiv.textContent = text;
+                messageDiv.className = `message ${type}`;
+                messageDiv.style.display = 'block';
+                setTimeout(() => { messageDiv.style.display = 'none' }, 3000);
+            }
+
+            // Carga inicial da lista
+            await renderEventList();
+        });
+    </script>
+</body>
+</html>
