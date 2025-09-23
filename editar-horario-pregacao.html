@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Horário de Pregação - Sistema de Escala</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #2c3e50; }
+        .form-group input[type="text"],
+        .form-group input[type="time"],
+        .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .day-time-slot { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .btn-add-time-day { background-color: #3498db; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 14px; margin-top: 10px; }
+        .btn-remove-time-day { background-color: #e74c3c; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 14px; }
+        .section-title { color: #2c3e50; margin-top: 30px; margin-bottom: 15px; font-size: 20px; font-weight: bold; border-bottom: 2px solid #3498db; }
+        #diasSemanaHorarios, #diasFimDeSemanaHorarios { background-color: #f5f6fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .time-slots-group { background-color: #fff; margin-top: 15px; padding: 15px; border-radius: 6px; border: 1px solid #ddd; }
+        .time-slots-group label { font-weight: 600; color: #2c3e50; }
+        .btn-salvar { background-color: #2980b9; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 20px; }
+        .btn-salvar:hover { background-color: #3498db; }
+        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; }
+        .message { margin-top: 20px; padding: 12px; border-radius: 4px; display: none; text-align: center; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    
+   <div id="sidebar-placeholder"></div>
+
+    <main class="content">
+        <a href="index.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+        <h1>Editar Horário de Pregação</h1>
+
+        <div class="card">
+            <form id="horarioPregacaoForm" style="display: none;"> <!-- Começa escondido -->
+                <!-- Seção 1: Ano (Somente Leitura) -->
+                <div class="form-group">
+                    <label for="ano">Ano</label>
+                    <input type="text" id="ano" class="form-control" readonly>
+                </div>
+
+                <!-- Seção 2: Dias da semana -->
+                <h3 class="section-title">Dias da Semana</h3>
+                <div id="diasSemanaHorarios">
+                    <!-- Templates para cada dia -->
+                    <div class="time-slots-group" data-day="segunda"><label>Segunda-feira</label><button type="button" class="btn-add-time-day">Adicionar Horário</button></div>
+                    <div class="time-slots-group" data-day="terca"><label>Terça-feira</label><button type="button" class="btn-add-time-day">Adicionar Horário</button></div>
+                    <div class="time-slots-group" data-day="quarta"><label>Quarta-feira</label><button type="button" class="btn-add-time-day">Adicionar Horário</button></div>
+                    <div class="time-slots-group" data-day="quinta"><label>Quinta-feira</label><button type="button" class="btn-add-time-day">Adicionar Horário</button></div>
+                    <div class="time-slots-group" data-day="sexta"><label>Sexta-feira</label><button type="button" class="btn-add-time-day">Adicionar Horário</button></div>
+                </div>
+
+                <!-- Seção 3: Fim de semana -->
+                <h3 class="section-title">Dias de Fim de Semana</h3>
+                <div id="diasFimDeSemanaHorarios">
+                     <!-- Templates para cada dia -->
+                    <div class="time-slots-group" data-day="sabado"><label>Sábado</label><button type="button" class="btn-add-time-day">Adicionar Horário</button></div>
+                    <div class="time-slots-group" data-day="domingo"><label>Domingo</label><button type="button" class="btn-add-time-day">Adicionar Horário</button></div>
+                </div>
+
+                <button type="submit" class="btn-salvar">Salvar Alterações</button>
+            </form>
+            <div id="message" class="message"></div>
+        </div>
+    </main>
+
+    <script src="firebase-config.js"></script>
+    <script src="main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof db === 'undefined') { showMessage('Erro de configuração do Firebase.', 'error'); return; }
+
+            const form = document.getElementById('horarioPregacaoForm');
+            let docIdParaAtualizar = null;
+
+            // Função para adicionar um campo de horário a um dia específico
+            function addTimeSlot(container, timeValue = '') {
+                const timeSlot = document.createElement('div');
+                timeSlot.className = 'day-time-slot';
+                timeSlot.innerHTML = `
+                    <input type="time" value="${timeValue}">
+                    <button type="button" class="btn-remove-time-day"><i class="fas fa-times"></i></button>
+                `;
+                // Adiciona o novo slot antes do botão "Adicionar Horário"
+                container.insertBefore(timeSlot, container.querySelector('.btn-add-time-day'));
+
+                timeSlot.querySelector('.btn-remove-time-day').addEventListener('click', () => {
+                    timeSlot.remove();
+                });
+            }
+
+            // Função para carregar os dados existentes no formulário
+            async function loadExistingSchedule() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const year = urlParams.get('year');
+
+                if (!year) {
+                    showMessage('Ano não especificado. Volte e tente novamente.', 'error');
+                    return;
+                }
+
+                try {
+                    const querySnapshot = await db.collection('horarios')
+                        .where('ano', '==', parseInt(year))
+                        .where('tipo', '==', 'pregacao')
+                        .limit(1)
+                        .get();
+
+                    if (!querySnapshot.empty) {
+                        const doc = querySnapshot.docs[0];
+                        const data = doc.data();
+                        docIdParaAtualizar = doc.id;
+
+                        document.getElementById('ano').value = data.ano;
+
+                        // Popula horários da semana
+                        const semanaData = data['dias-semana-horarios'] || {};
+                        document.querySelectorAll('#diasSemanaHorarios .time-slots-group').forEach(container => {
+                            const day = container.dataset.day;
+                            if (semanaData[day] && semanaData[day].length > 0) {
+                                semanaData[day].forEach(time => addTimeSlot(container, time));
+                            } else {
+                                addTimeSlot(container); // Adiciona um campo em branco se não houver dados
+                            }
+                        });
+
+                        // Popula horários do fim de semana
+                        const fimDeSemanaData = data['dias-fimdesemana-horarios'] || {};
+                        document.querySelectorAll('#diasFimDeSemanaHorarios .time-slots-group').forEach(container => {
+                            const day = container.dataset.day;
+                            if (fimDeSemanaData[day] && fimDeSemanaData[day].length > 0) {
+                                fimDeSemanaData[day].forEach(time => addTimeSlot(container, time));
+                            } else {
+                                addTimeSlot(container); // Adiciona um campo em branco se não houver dados
+                            }
+                        });
+                        
+                        form.style.display = 'block'; // Mostra o formulário após carregar
+                    } else {
+                        showMessage(`Nenhum horário de pregação encontrado para ${year}.`, 'error');
+                    }
+                } catch (error) {
+                    showMessage('Erro ao carregar dados: ' + error.message, 'error');
+                }
+            }
+            
+            // Event listener para os botões "Adicionar Horário"
+            document.querySelectorAll('.btn-add-time-day').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    addTimeSlot(e.target.parentElement);
+                });
+            });
+
+            // Event listener para submissão do formulário
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!docIdParaAtualizar) { showMessage('Erro: ID do documento não encontrado.', 'error'); return; }
+
+                // Coleta de dados da semana
+                const diasSemanaHorarios = {};
+                document.querySelectorAll('#diasSemanaHorarios .time-slots-group').forEach(container => {
+                    const day = container.dataset.day;
+                    const horas = Array.from(container.querySelectorAll('input[type="time"]'))
+                                       .map(input => input.value)
+                                       .filter(value => value); // Filtra valores vazios
+                    if (horas.length > 0) diasSemanaHorarios[day] = horas;
+                });
+
+                // Coleta de dados do fim de semana
+                const diasFimDeSemanaHorarios = {};
+                document.querySelectorAll('#diasFimDeSemanaHorarios .time-slots-group').forEach(container => {
+                    const day = container.dataset.day;
+                    const horas = Array.from(container.querySelectorAll('input[type="time"]'))
+                                       .map(input => input.value)
+                                       .filter(value => value);
+                    if (horas.length > 0) diasFimDeSemanaHorarios[day] = horas;
+                });
+
+                const horarioAtualizado = {
+                    ano: parseInt(document.getElementById('ano').value),
+                    tipo: "pregacao",
+                    "dias-semana-horarios": diasSemanaHorarios,
+                    "dias-fimdesemana-horarios": diasFimDeSemanaHorarios
+                };
+                
+                try {
+                    await db.collection('horarios').doc(docIdParaAtualizar).update(horarioAtualizado);
+                    showMessage('Horário de pregação atualizado com sucesso!', 'success');
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                } catch (error) {
+                    showMessage('Erro ao salvar: ' + error.message, 'error');
+                }
+            });
+
+            function showMessage(text, type) {
+                const messageDiv = document.getElementById('message');
+                messageDiv.textContent = text;
+                messageDiv.className = `message ${type}`;
+                messageDiv.style.display = 'block';
+            }
+
+            // Inicia o carregamento dos dados
+            await loadExistingSchedule();
+        });
+    </script>
+</body>
+</html>
