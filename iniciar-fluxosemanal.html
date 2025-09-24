@@ -78,7 +78,7 @@
         /* ========================================================== */
         .estatisticas-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
         .estatisticas-table th, .estatisticas-table td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; }
-        .estatisticas-table thead th { background-color: #34495e; color: white; }
+.estatisticas-table thead th { cursor: pointer; user-select: none; /* Impede a seleção de texto no cabeçalho ao clicar */ }
         .search-suggestions { display: none; position: absolute; border: 1px solid #ddd; border-top: none; background-color: white; width: 100%; max-height: 200px; overflow-y: auto; z-index: 2000; }
         .suggestion-item { padding: 10px; cursor: pointer; } .suggestion-item:hover { background-color: #f1f1f1; }
         .analysis-popup .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 15px; }
@@ -117,6 +117,102 @@
     margin-top: 20px;
     margin-bottom: 10px;
 }
+
+/* ========================================================== */
+/* === ESTILOS PARA O POPUP DE ESTATÍSTICAS E TABELA ======== */
+/* ========================================================== */
+.popup-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+body.popup-open {
+    overflow: hidden;
+}
+.estatisticas-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 14px;
+}
+.estatisticas-table th, .estatisticas-table td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+}
+.estatisticas-table thead th {
+    background-color: #34495e;
+    color: white;
+    position: sticky;
+    top: -1px; /* Para fixar o cabeçalho ao rolar dentro do popup-body */
+}
+.tabs {
+    display: flex;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 20px;
+}
+.tab-button {
+    padding: 12px 20px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-size: 16px;
+    color: #555;
+    border-bottom: 2px solid transparent;
+}
+.tab-button.active {
+    border-bottom: 2px solid #3498db;
+    font-weight: bold;
+    color: #3498db;
+}
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+
+/* ========================================================== */
+/* ========= ESTILOS PARA ORDENAÇÃO DA TABELA =============== */
+/* ========================================================== */
+.estatisticas-table thead th {
+    cursor: pointer;
+    position: relative;
+    user-select: none; /* Impede a seleção de texto no cabeçalho */
+}
+
+/* Estilo para a seta de ordenação (invisível por defeito) */
+.estatisticas-table thead th::after {
+    content: '';
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin-left: 8px;
+    opacity: 0.3;
+    font-size: 0.8em;
+    line-height: 1;
+    text-align: center;
+}
+
+/* Mostra a seta para cima quando ordenado ascendentemente */
+.estatisticas-table thead th.sorted-asc::after {
+    content: '▲';
+    opacity: 1;
+}
+
+/* Mostra a seta para baixo quando ordenado descendentemente */
+.estatisticas-table thead th.sorted-desc::after {
+    content: '▼';
+    opacity: 1;
+}
+
 
     </style>
 </head>
@@ -204,10 +300,95 @@
             </div>
         </div>
 
+     <!-- =================================================================== -->
+<!-- ============= INÍCIO: POPUP DE ESTATÍSTICAS ======================= -->
+<!-- =================================================================== -->
+<div id="estatisticasPopup" class="popup-overlay">
+    <div class="popup-content" style="max-width: 90%; width: 1200px;">
+        <div class="popup-header">
+            <h2 class="popup-title">Estatísticas de Participação</h2>
+            <button class="popup-close-button" id="closeEstatisticasPopup">×</button>
+        </div>
+        <div class="popup-body" style="overflow-y: auto; max-height: 80vh;">
+            <!-- Abas de Navegação -->
+            <div class="tabs">
+                <button class="tab-button active" data-tab="geral">Geral</button>
+                <!-- Outras abas podem ser adicionadas aqui no futuro -->
+            </div>
+
+            <!-- Conteúdo da Aba Geral -->
+            <div id="tab-content-geral" class="tab-content active">
+                <div id="estatisticasFiltros" class="estatisticas-filtros-container" style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                    <div class="form-group">
+                        <label for="filtroAno">Ano:</label>
+                        <select id="filtroAno" name="filtroAno"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filtroMes">Mês:</label>
+                        <select id="filtroMes" name="filtroMes">
+                            <option value="">Todos os Meses</option>
+                            <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filtroGenero">Género:</label>
+                        <select id="filtroGenero" name="filtroGenero">
+                            <option value="">Todos os Géneros</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filtroIdioma">Idioma:</label>
+                        <select id="filtroIdioma" name="filtroIdioma">
+                            <option value="">Todos os Idiomas</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filtroParte">Parte:</label>
+                        <select id="filtroParte" name="filtroParte">
+                            <option value="">Todas as Partes</option>
+                            <option value="escola">Escola</option>
+                            <!-- ALTERAÇÃO IMPORTANTE: "resto da semana" agora está selecionado por defeito -->
+                            <option value="resto da semana" selected>Resto da Semana</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filtroDesignacaoGeral">Designação:</label>
+                        <select id="filtroDesignacaoGeral" name="filtroDesignacaoGeral">
+                            <!-- Opções geradas dinamicamente -->
+                        </select>
+                    </div>
+                </div>
+
+                <div id="estatisticasLoading" style="text-align: center; padding: 40px; font-size: 18px;">
+                    <i class="fas fa-spinner fa-spin"></i> A carregar estatísticas...
+                </div>
+                <div id="estatisticasTableContainer">
+                    <!-- A tabela de estatísticas será gerada aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- =================================================================== -->
+<!-- ============= FIM: POPUP DE ESTATÍSTICAS ========================== -->
+<!-- =================================================================== -->
+
+
+
+
+
+
+
         <!-- =================================================================== -->
         <!-- ============= INÍCIO: POPUPS ADICIONADOS ========================== -->
         <!-- =================================================================== -->
         
+
+
+
+
         <!-- POPUP DE PERFIL DO PARTICIPANTE -->
         <div id="perfilPopup" class="popup-overlay">
             <div class="popup-content" style="max-width: 90%; width: 1200px;">
@@ -256,6 +437,29 @@
         <!-- ============= FIM: POPUPS ADICIONADOS ============================= -->
         <!-- =================================================================== -->
 
+             <!-- =================================================================== -->
+<!-- =============== INÍCIO: POPUP DE CONFIRMAÇÃO DE EVENTO ESPECIAL ============= -->
+<!-- =================================================================== -->
+<div id="specialEventConfirmationPopup" class="popup-overlay">
+    <div class="popup-content" style="max-width: 500px;">
+        <div class="popup-header">
+            <h2 class="popup-title">Aviso de Evento Especial</h2>
+        </div>
+        <div class="popup-body" style="padding: 20px 0;">
+            <p id="specialEventPopupMessage" style="text-align: center; font-size: 16px; line-height: 1.6;">
+                A data do evento coincide com esta semana. Deseja gravar um evento especial sem designações e concluir?
+            </p>
+        </div>
+        <div class="popup-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn-submit" id="confirmSpecialEventSave" style="background-color: #2ecc71;">Sim, Gravar</button>
+            <button class="btn-submit" id="cancelSpecialEventSave" style="background-color: #c0392b;">Cancelar</button>
+        </div>
+    </div>
+</div>
+<!-- =================================================================== -->
+<!-- ================ FIM: POPUP DE CONFIRMAÇÃO DE EVENTO ESPECIAL =============== -->
+<!-- =================================================================== -->
+
     </main>
 
   
@@ -284,11 +488,7 @@
             }
         });
         
-        // Botão de Estatísticas (Placeholder)
-        document.getElementById('estatisticasButton').addEventListener('click', () => {
-            alert('A função de Estatísticas será implementada futuramente para esta secção.');
-        });
-        
+  
         // Botão de Pesquisa (Placeholder)
         document.getElementById('pesquisarButton').addEventListener('click', () => {
             alert('A função de Pesquisa será implementada futuramente.');
@@ -460,6 +660,376 @@
             confirmationPopup.style.display = 'none';
         });
         
+        // ===================================================================
+// ================== LÓGICA DO POPUP DE ESTATÍSTICAS ==================
+// ===================================================================
+
+const estatisticasPopup = document.getElementById('estatisticasPopup');
+const closeEstatisticasPopup = document.getElementById('closeEstatisticasPopup');
+const estatisticasButton = document.getElementById('estatisticasButton');
+
+let allYearsCache = [];
+let allLanguagesCache = [];
+
+// Função para abrir o popup e carregar os dados
+function openEstatisticasPopup() {
+    estatisticasPopup.style.display = 'flex';
+    document.body.classList.add('popup-open');
+    loadGeralTab(); // Carrega o conteúdo da aba "Geral"
+}
+
+// Função para fechar o popup
+function closeEstatisticasPopupFunction() {
+    estatisticasPopup.style.display = 'none';
+    document.body.classList.remove('popup-open');
+}
+
+// Adiciona os eventos de abrir e fechar aos respetivos botões
+estatisticasButton.addEventListener('click', openEstatisticasPopup);
+closeEstatisticasPopup.addEventListener('click', closeEstatisticasPopupFunction);
+
+
+// Função principal que controla o conteúdo da aba "Geral"
+const loadGeralTab = async () => {
+    // Popula os filtros de ano e idioma (apenas se ainda não estiverem populados)
+    if (document.getElementById('filtroAno').options.length === 0) {
+        await populateYearFilter(document.getElementById('filtroAno'));
+    }
+    if (document.getElementById('filtroIdioma').options.length <= 1) { // Menor ou igual a 1 para contar a opção "Todos"
+        await populateLanguageFilter(document.getElementById('filtroIdioma'));
+    }
+    
+    // Adiciona os event listeners aos filtros (garante que só são adicionados uma vez)
+    if (!estatisticasPopup.dataset.listenersAdded) {
+        document.getElementById('filtroParte').addEventListener('change', async () => {
+            await populateDesignationFilter();
+            generateStatisticsTable();
+        });
+        
+        ['filtroAno', 'filtroMes', 'filtroGenero', 'filtroIdioma', 'filtroDesignacaoGeral'].forEach(id => {
+            document.getElementById(id).addEventListener('change', generateStatisticsTable);
+        });
+        
+        estatisticasPopup.dataset.listenersAdded = 'true';
+    }
+    
+    // Inicia a geração da tabela
+    await populateDesignationFilter();
+    await generateStatisticsTable();
+};
+
+// Gera a tabela de estatísticas com base nos filtros
+const generateStatisticsTable = async () => {
+    const loadingDiv = document.getElementById('estatisticasLoading');
+    const tableContainer = document.getElementById('estatisticasTableContainer');
+    loadingDiv.style.display = 'block';
+    tableContainer.innerHTML = '';
+
+    // Lê os valores dos filtros
+    const ano = document.getElementById('filtroAno').value ? parseInt(document.getElementById('filtroAno').value) : null;
+    const mes = document.getElementById('filtroMes').value ? parseInt(document.getElementById('filtroMes').value) : null;
+    const genero = document.getElementById('filtroGenero').value;
+    const idioma = document.getElementById('filtroIdioma').value;
+    const parte = document.getElementById('filtroParte').value;
+    const designacao = document.getElementById('filtroDesignacaoGeral').value;
+
+    try {
+        // Constrói as queries para o Firestore
+        let historicoQuery = db.collection('historico');
+        if (ano) historicoQuery = historicoQuery.where('ano', '==', ano);
+        if (mes) historicoQuery = historicoQuery.where('mes', '==', mes);
+
+        let pessoasQuery = db.collection('pessoas').where('fazDesignacoesReuniao', '==', true);
+        if (genero) pessoasQuery = pessoasQuery.where('genero', '==', genero);
+        if (idioma) pessoasQuery = pessoasQuery.where('idioma', '==', idioma);
+
+        let designacoesQuery = db.collection('designacoes').where('quando', '==', 'Semana');
+        if (parte) designacoesQuery = designacoesQuery.where('parte', '==', parte);
+
+        const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
+            pessoasQuery.orderBy('nomePessoa').get(),
+            designacoesQuery.orderBy('ordem').get(),
+            historicoQuery.get()
+        ]);
+
+        let designationsInOrder = [];
+        designacoesSnapshot.forEach(doc => {
+            designationsInOrder.push({ id: doc.id, name: doc.data().nome });
+        });
+        if (designacao) {
+            designationsInOrder = designationsInOrder.filter(d => d.id === designacao);
+        }
+
+        const peopleMap = new Map();
+        pessoasSnapshot.forEach(doc => {
+            const counts = new Map();
+            designationsInOrder.forEach(d => counts.set(d.id, 0));
+            peopleMap.set(doc.id, { name: doc.data().nomePessoa, counts });
+        });
+
+        historicoSnapshot.forEach(doc => {
+            doc.data().designacoes?.forEach(histDesig => {
+                Object.values(histDesig.participantes || {}).forEach(pId => {
+                    if (peopleMap.has(pId) && peopleMap.get(pId).counts.has(histDesig.designacaoId)) {
+                        const personData = peopleMap.get(pId);
+                        const currentCount = personData.counts.get(histDesig.designacaoId);
+                        personData.counts.set(histDesig.designacaoId, currentCount + 1);
+                    }
+                });
+            });
+        });
+
+        // Constrói o HTML da tabela
+        let tableHTML = '<table class="estatisticas-table"><thead><tr><th>Participante</th>';
+        designationsInOrder.forEach(d => { tableHTML += `<th>${d.name}</th>`; });
+        tableHTML += '</tr></thead><tbody>';
+
+        for (const [_, personData] of peopleMap.entries()) {
+            tableHTML += `<tr><td>${personData.name}</td>`;
+            designationsInOrder.forEach(d => {
+                tableHTML += `<td style="text-align:center;">${personData.counts.get(d.id)}</td>`;
+            });
+            tableHTML += '</tr>';
+        }
+        tableHTML += '</tbody></table>';
+
+        loadingDiv.style.display = 'none';
+        tableContainer.innerHTML = tableHTML;
+makeTableSortable(tableContainer.querySelector('.estatisticas-table'));
+
+    } catch (error) {
+        console.error("Erro ao gerar estatísticas:", error);
+        loadingDiv.innerHTML = "Ocorreu um erro ao carregar os dados.";
+    }
+};
+
+// Funções auxiliares para popular os dropdowns de filtro
+const populateYearFilter = async (selectElement) => {
+    const historicoSnapshot = await db.collection('historico').get();
+    const years = new Set();
+    historicoSnapshot.forEach(doc => years.add(doc.data().ano));
+    allYearsCache = Array.from(years).sort((a, b) => b - a);
+    const currentYear = new Date().getFullYear();
+    selectElement.innerHTML = '';
+    allYearsCache.forEach(year => {
+        selectElement.innerHTML += `<option value="${year}" ${parseInt(year) === currentYear ? 'selected' : ''}>${year}</option>`;
+    });
+};
+
+function makeTableSortable(table) {
+    const header = table.querySelector('thead');
+    const tbody = table.querySelector('tbody');
+    if (!header || !tbody) return; // Garante que a tabela tem os elementos necessários
+
+    header.addEventListener('click', (e) => {
+        const th = e.target.closest('th');
+        if (!th) return; // Sai se o clique não foi num cabeçalho
+
+        const columnIndex = Array.from(th.parentNode.children).indexOf(th);
+        
+        // Determina a nova direção da ordenação (ascendente/descendente)
+        const currentDirection = th.dataset.sortDirection || 'desc';
+        const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+        
+        // Limpa a direção de todos os outros cabeçalhos para resetar a ordenação
+        header.querySelectorAll('th').forEach(h => {
+            delete h.dataset.sortDirection;
+        });
+
+        // Define a nova direção apenas no cabeçalho que foi clicado
+        th.dataset.sortDirection = newDirection;
+
+        // Pega todas as linhas da tabela e converte para um array para poder usar .sort()
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        // Ordena o array de linhas
+        rows.sort((rowA, rowB) => {
+            const cellA = rowA.children[columnIndex].textContent.trim();
+            const cellB = rowB.children[columnIndex].textContent.trim();
+            
+            // Verifica se a coluna é a de nomes (índice 0) ou numérica
+            const isNumericColumn = columnIndex > 0 && !isNaN(cellA) && !isNaN(cellB);
+
+            let comparison = 0;
+            if (isNumericColumn) {
+                // Compara como números
+                comparison = parseFloat(cellA) - parseFloat(cellB);
+            } else {
+                // Compara como texto (sensível à localidade 'pt' para acentos)
+                comparison = cellA.localeCompare(cellB, 'pt', { sensitivity: 'base' });
+            }
+
+            // Inverte o resultado se a direção for descendente
+            return newDirection === 'asc' ? comparison : -comparison;
+        });
+
+        // Limpa o corpo da tabela e adiciona as linhas já ordenadas
+        tbody.innerHTML = '';
+        tbody.append(...rows);
+    });
+}
+
+const populateLanguageFilter = async (selectElement) => {
+    // 1. VERIFICA SE A CACHE JÁ FOI PREENCHIDA ALGUMA VEZ.
+    // Esta verificação evita consultas desnecessárias ao banco de dados.
+    if (allLanguagesCache.length === 0) {
+        try {
+            const nacionalidadesSnapshot = await db.collection('nacionalidades').orderBy('nome').get();
+            
+            // Usamos um Set para garantir que não há duplicados, mesmo que a fonte de dados os tenha.
+            const languages = new Set();
+            nacionalidadesSnapshot.forEach(doc => {
+                languages.add(doc.data().nome);
+            });
+            
+            // A CORREÇÃO CRÍTICA ESTÁ AQUI:
+            // Atribuímos um novo array à cache em vez de usar .push().
+            // Isto impede que múltiplas chamadas adicionem os mesmos itens repetidamente.
+            allLanguagesCache = Array.from(languages);
+
+        } catch (error) {
+            console.error("Erro ao carregar idiomas do Firebase:", error);
+            return; // Sai da função em caso de erro.
+        }
+    }
+
+    // 2. LIMPA O DROPDOWN E PREENCHE-O COM OS DADOS DA CACHE (AGORA SEMPRE LIMPA)
+    selectElement.innerHTML = '<option value="">Todos os Idiomas</option>'; // Garante que a lista está sempre limpa antes de preencher.
+    
+    allLanguagesCache.forEach(lang => {
+        selectElement.innerHTML += `<option value="${lang}">${lang}</option>`;
+    });
+};
+
+const populateDesignationFilter = async () => {
+    const filtroDesignacao = document.getElementById('filtroDesignacaoGeral');
+    const parteSelecionada = document.getElementById('filtroParte').value;
+    filtroDesignacao.innerHTML = '<option value="">Todas as Designações</option>';
+    if (!parteSelecionada) return;
+
+    const designacoesSnapshot = await db.collection('designacoes')
+        .where('parte', '==', parteSelecionada)
+        .where('quando', '==', 'Semana')
+        .orderBy('ordem')
+        .get();
+        
+    designacoesSnapshot.forEach(doc => {
+        filtroDesignacao.innerHTML += `<option value="${doc.id}">${doc.data().nome}</option>`;
+    });
+};
+
+
+
+// Substitui o event listener de placeholder do botão de estatísticas
+document.getElementById('estatisticasButton').removeEventListener('click', () => {}); // Remove o antigo, se houver
+document.getElementById('estatisticasButton').addEventListener('click', () => {
+    estatisticasPopup.style.display = 'flex';
+    document.body.classList.add('popup-open');
+    loadGeralTab();
+});
+
+
+
+
+const getWeekMondaySunday = (ano, mes, semanaNumero) => {
+    const primeiroDiaMes = new Date(ano, mes - 1, 1);
+    let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
+    if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7;
+
+    let diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
+    if (primeiroDiaMes.getDay() === 1) {
+        diasToAddForFirstMonday = 0;
+    }
+
+    const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
+    const monday = new Date(primeiroSegundaMes);
+    monday.setDate(monday.getDate() + (semanaNumero - 1) * 7);
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+
+    monday.setHours(0, 0, 0, 0);
+    sunday.setHours(23, 59, 59, 999);
+
+    return { monday, sunday };
+};
+
+/**
+ * Mostra um painel de confirmação customizado e retorna uma Promise.
+ */
+const showSpecialEventConfirmation = (eventType) => {
+    const eventDisplayNames = {
+        'memorial': 'O Memorial',
+        'assembleia': 'A Assembleia',
+        'congresso': 'O Congresso',
+        'visita-servo': 'A Visita do Servo'
+    };
+    const eventName = eventDisplayNames[eventType] || 'Este evento especial';
+
+    return new Promise((resolve) => {
+        const popup = document.getElementById('specialEventConfirmationPopup');
+        const messageEl = document.getElementById('specialEventPopupMessage');
+        const confirmBtn = document.getElementById('confirmSpecialEventSave');
+        const cancelBtn = document.getElementById('cancelSpecialEventSave');
+
+        messageEl.textContent = `A data de ${eventName} coincide com esta semana. Deseja gravar um evento especial sem designações e concluir?`;
+        popup.style.display = 'flex';
+
+        const handleConfirm = () => {
+            popup.style.display = 'none';
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            resolve(true);
+        };
+
+        const handleCancel = () => {
+            popup.style.display = 'none';
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            resolve(false);
+        };
+
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+    });
+};
+
+/**
+ * Guarda um registo no histórico para um evento especial, sem designações.
+ */
+const saveSpecialEvent = async () => {
+    try {
+        const ano = await getAnoPainelFirebase();
+        const mes = parseInt(document.getElementById('mes').value);
+        const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+        const tipoEvento = document.getElementById('tipo').value;
+        const idiomas = getSelectedNacionalidades();
+        const sala = document.getElementById('sala').value;
+        const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+
+        const historicoData = {
+            ano: ano,
+            mes: mes,
+            semanaNumero: semanaNumero,
+            semanaindex: `(${diasSemana} ${ano})`,
+            designacoes: [], // Lista de designações vazia
+            evento: tipoEvento,
+            tipo: "reuniao",
+            idioma: idiomas,
+            sala: sala,
+            quando: "Semana",
+            parte: "resto da semana", // Identificador desta página
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection("historico").add(historicoData);
+        return true;
+    } catch (error) {
+        console.error("Erro ao gravar evento especial:", error);
+        alert("Ocorreu um erro ao gravar o evento especial: " + error.message);
+        return false;
+    }
+};
+
         // ===================================================================
         // =========== O RESTO DO SEU CÓDIGO ORIGINAL CONTINUA AQUI ============
         // ===================================================================
@@ -1139,6 +1709,11 @@
             return records;
         };
 
+
+
+
+
+
         const openPairAnalysisPopup = async (participants) => {
             const popup = document.getElementById('pairAnalysisPopup');
             const title = document.getElementById('pairAnalysisTitle');
@@ -1161,17 +1736,112 @@
         document.getElementById('closePairAnalysisPopup').addEventListener('click', () => document.getElementById('pairAnalysisPopup').style.display = 'none');
         document.getElementById('closeLabPopup').addEventListener('click', () => document.getElementById('labPopup').style.display = 'none');
         
-        document.getElementById('btnSeguinte').addEventListener('click', async function() {
-            document.getElementById('designacoesSection').classList.add('active');
-            document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
-            const spacer = document.createElement('div');
-            spacer.id = 'temp-scroll-spacer';
-            spacer.style.height = '100vh';
-            document.querySelector('.card').insertAdjacentElement('afterend', spacer);
-            document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth', block: 'center' });
-            await loadDesignacoes();
-            document.getElementById('temp-scroll-spacer')?.remove();
-        });
+  document.getElementById('btnSeguinte').addEventListener('click', async function() {
+    console.log("=====================================================");
+    console.log("[DEBUG] Botão 'Seguinte' clicado. Iniciando verificação (v2)...");
+
+    const tipoReuniao = document.getElementById('tipo').value;
+    console.log(`[DEBUG] 1. Tipo de Reunião selecionado: "${tipoReuniao}"`);
+
+    const specialEventTypes = ['memorial', 'assembleia', 'congresso', 'visita-servo'];
+
+    if (specialEventTypes.includes(tipoReuniao)) {
+        console.log(`[DEBUG] 2. O tipo "${tipoReuniao}" é um evento especial.`);
+
+        const ano = await getAnoPainelFirebase();
+        console.log(`[DEBUG] 3. Ano do painel: ${ano}`);
+
+        const eventNameMap = {
+            'memorial': 'Memorial',
+            'assembleia': 'Assembleia',
+            'congresso': 'Congresso',
+            'visita-servo': 'Visita do Servo'
+        };
+        const eventNameForQuery = eventNameMap[tipoReuniao];
+        console.log(`[DEBUG] 4. Nome para a consulta: "${eventNameForQuery}"`);
+
+        if (eventNameForQuery) {
+            const snapshot = await db.collection('eventos')
+                .where('nome', '==', eventNameForQuery)
+                .where('ano', '==', ano)
+                .get();
+
+            if (!snapshot.empty) {
+                console.log(`[DEBUG] 5. SUCESSO! Foram encontrados ${snapshot.docs.length} evento(s) com este nome.`);
+                
+                const mes = parseInt(document.getElementById('mes').value);
+                const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+                const { monday: weekStart, sunday: weekEnd } = getWeekMondaySunday(ano, mes, semanaNumero);
+                
+                console.log(`[DEBUG] 6. Intervalo da semana a verificar: ${weekStart.toLocaleDateString()} a ${weekEnd.toLocaleDateString()}`);
+
+                let overlapFound = false;
+
+                // ===== INÍCIO DA LÓGICA CORRIGIDA =====
+                // Agora percorremos TODOS os documentos encontrados
+                for (const doc of snapshot.docs) {
+                    const eventData = doc.data();
+                    console.log(`[DEBUG] 7. A verificar o evento com data: ${eventData.data || (eventData.data_inicio + ' a ' + eventData.data_fim)}`);
+
+                    // Verifica evento com data única
+                    if (eventData.data) {
+                        const eventDate = new Date(eventData.data + 'T12:00:00');
+                        if (eventDate >= weekStart && eventDate <= weekEnd) {
+                            overlapFound = true;
+                            console.log(`[DEBUG] 8. VERDADEIRO! Sobreposição encontrada com este evento. A interromper a verificação.`);
+                            break; // Interrompe o loop, pois já encontrámos uma correspondência
+                        }
+                    } 
+                    // Verifica evento com data de início e fim
+                    else if (eventData.data_inicio && eventData.data_fim) {
+                        const eventStart = new Date(eventData.data_inicio + 'T00:00:00');
+                        const eventEnd = new Date(eventData.data_fim + 'T23:59:59');
+                        if (eventStart <= weekEnd && eventEnd >= weekStart) {
+                            overlapFound = true;
+                             console.log(`[DEBUG] 8. VERDADEIRO! Sobreposição encontrada com este evento. A interromper a verificação.`);
+                            break; // Interrompe o loop
+                        }
+                    }
+                }
+                // ===== FIM DA LÓGICA CORRIGIDA =====
+
+
+                if (overlapFound) {
+                    console.log("[DEBUG] 9. A chamar o pop-up de confirmação.");
+                    const confirmed = await showSpecialEventConfirmation(tipoReuniao);
+                    if (confirmed) {
+                        const success = await saveSpecialEvent();
+                        if (success) {
+                            alert(`Evento de ${eventNameForQuery} gravado com sucesso!`);
+                            window.location.reload();
+                        }
+                    }
+                    return; 
+                } else {
+                    console.log("[DEBUG] 8. FALSO. Nenhum dos eventos encontrados coincide com a semana selecionada.");
+                }
+            } else {
+                console.warn(`[DEBUG] 5. AVISO! Nenhum evento correspondente encontrado para "${eventNameForQuery}" em ${ano}.`);
+            }
+        }
+    } else {
+         console.log(`[DEBUG] 2. O tipo "${tipoReuniao}" não é um evento especial.`);
+    }
+
+    console.log("[DEBUG] A continuar para o fluxo normal (mostrar designações).");
+    document.getElementById('designacoesSection').classList.add('active');
+    document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
+    
+    const spacer = document.createElement('div');
+    spacer.id = 'temp-scroll-spacer';
+    spacer.style.height = '100vh';
+    document.querySelector('.card').insertAdjacentElement('afterend', spacer);
+    document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await loadDesignacoes();
+    document.getElementById('temp-scroll-spacer')?.remove();
+});
+
+
 
         document.getElementById('designacoesList').addEventListener('click', async function(event) {
             const orderButton = event.target.closest('.order-button');
