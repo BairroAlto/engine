@@ -244,6 +244,15 @@
             font-weight: 600;
             font-size: 0.9rem;
         }
+        /* ADICIONADO: Estilo para sub-cabeçalhos no modo de edição */
+        .edit-mode h5 {
+            font-size: 0.95rem;
+            color: #007bff;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #e9ecef;
+        }
 
         /* Estilos para Inputs e Selects */
         .form-group input[type="text"],
@@ -887,6 +896,55 @@ body.sidebar-collapsed .column:first-child {
     }
 }
 
+.suggestions-box {
+    position: absolute;
+    width: 100%;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #ced4da;
+    border-top: none;
+    background-color: white;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 100; /* Garante que fica por cima de outros elementos */
+    display: none; /* Começa escondida */
+}
+.suggestions-box div {
+    padding: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+.suggestions-box div:hover {
+    background-color: #f1f3f5;
+}
+
+
+.column h2 {
+            /* ... estilos existentes ... */
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Chave para o alinhamento */
+            gap: 10px; /* Removido para não interferir */
+        }
+
+        /* [NOVO] Agrupa o ícone original e o texto para manter o espaçamento */
+        .column h2 > span {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* [NOVO] Estilo para o link do novo ícone */
+        .column h2 .add-person-btn {
+            color: #adb5bd; /* Cinza claro para não chamar muita atenção */
+            text-decoration: none;
+            font-size: 1rem; /* Tamanho do ícone */
+            transition: color 0.2s ease-in-out;
+        }
+        .column h2 .add-person-btn:hover {
+            color: #ffffff; /* Branco ao passar o mouse */
+        }
+        
 /* Ajustes finos para telas de celular (até 768px) */
 @media (max-width: 768px) {
     html {
@@ -927,6 +985,7 @@ body.sidebar-collapsed .column:first-child {
 }
 
 
+
     </style>
 </head>
 <body>
@@ -955,7 +1014,13 @@ body.sidebar-collapsed .column:first-child {
     <div class="container">
         <!-- Coluna 1: Lista de Pessoas -->
         <div class="column list-column">
-            <h2><i class="fas fa-users"></i> Pessoas</h2>
+         <h2>
+                <!-- MODIFICADO -->
+                <span><i class="fas fa-users"></i> Pessoas</span>
+                <a href="criar-pessoa.html" class="add-person-btn" title="Adicionar Nova Pessoa">
+                    <i class="fas fa-user-plus"></i>
+                </a>
+            </h2>
             <div class="search-box-wrapper">
                 <input type="text" id="filter-pessoas-input" placeholder="Filtrar por nome...">
             </div>
@@ -987,26 +1052,43 @@ body.sidebar-collapsed .column:first-child {
                     <div id="pessoal-tab" class="tab-content active">
                         <div class="display-mode">
                             <h4>Informações Pessoais</h4>
-                            <div class="data-item"><strong>Nome:</strong> <span id="detail-nomePessoa">-</span></div>
+                            <!-- MODIFICADO -->
+                            <div class="data-item"><strong>Nome Curto:</strong> <span id="detail-nomePessoa">-</span></div>
+                            <div class="data-item"><strong>Nome Completo:</strong> <span id="detail-nomeCompletoPessoa">-</span></div>
+                            <!-- ADICIONADO -->
+                            <div class="data-item"><strong>Morada:</strong> <span id="detail-morada">-</span></div>
                             <div class="data-item"><strong>Gênero:</strong> <span id="detail-genero">-</span></div>
                             <div class="data-item"><strong>Idioma:</strong> <span id="detail-idioma">-</span></div>
                             <div class="data-item"><strong>Personalidade:</strong> <span id="detail-personalidade">-</span></div>
                             <div class="data-item"><strong>Nascimento:</strong> <span id="detail-dataNascimento">-</span></div>
+                             <!-- ADICIONADO -->
+                            <div class="data-item"><strong>Batismo:</strong> <span id="detail-dataBatismo">-</span></div>
                             <div class="data-item"><strong>Email:</strong> <span id="detail-email">-</span></div>
                             <div class="data-item"><strong>Telemóvel:</strong> <span id="detail-telemovel">-</span></div>
+                             <!-- ADICIONADO -->
+                            <div class="data-item"><strong>Família:</strong> <div id="detail-familia" class="array-data">-</div></div>
                             <div class="data-item"><strong>Casado(a) Com:</strong> <span id="detail-casadoCom">-</span></div>
                         </div>
-                        <div class="edit-mode" style="display: none;">
+                     <div class="edit-mode" style="display: none;">
                             <h4>Editar Informações Pessoais</h4>
-                            <div class="form-group"><label for="edit-nomePessoa">Nome Completo:</label><input type="text" id="edit-nomePessoa"></div>
+                            <div class="form-group"><label for="edit-nomePessoa">Nome Curto:</label><input type="text" id="edit-nomePessoa"></div>
+                            <div class="form-group"><label for="edit-nomeCompletoPessoa">Nome Completo:</label><input type="text" id="edit-nomeCompletoPessoa"></div>
+                            <div class="form-group"><label for="edit-morada">Morada:</label><input type="text" id="edit-morada"></div>
                             <div class="form-group"><label for="edit-genero">Gênero:</label><select id="edit-genero"><option value="">Selecione</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select></div>
                             <div class="form-group"><label for="edit-idioma">Idioma:</label><input type="text" id="edit-idioma"></div>
                             <div class="form-group"><label for="edit-personalidade">Personalidade:</label><select id="edit-personalidade"><option value="">Selecione</option><option value="- à vontade">- à vontade</option><option value="+ à vontade">+ à vontade</option></select></div>
                             <div class="form-group"><label for="edit-dataNascimento">Data Nascimento:</label><input type="date" id="edit-dataNascimento"></div>
+                            <div class="form-group"><label for="edit-dataBatismo">Data Batismo:</label><input type="date" id="edit-dataBatismo"></div>
                             <div class="form-group"><label for="edit-email">Email:</label><input type="email" id="edit-email"></div>
                             <div class="form-group"><label for="edit-telemovel">Telemóvel:</label><input type="tel" id="edit-telemovel"></div>
-                            <div class="form-group"><label for="edit-casadoCom">Casado(a) Com:</label><input type="text" id="edit-casadoCom"></div>
+                            <div class="form-group"><label for="edit-familia">Família (nomes separados por vírgula):</label><input type="text" id="edit-familia"></div>
+                            <div class="form-group">
+                                <label for="edit-casadoCom">Casado(a) Com:</label>
+                                <input type="text" id="edit-casadoCom">
+                                <div id="casado-com-suggestions" class="suggestions-box"></div>
+                            </div>
                         </div>
+
                         <div class="edit-controls">
                             <button class="edit-btn" data-tab-target="pessoal-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
                             <button class="save-btn" data-tab-target="pessoal-tab"><i class="fas fa-save"></i> Gravar</button>
@@ -1018,17 +1100,38 @@ body.sidebar-collapsed .column:first-child {
                     <div id="espiritual-tab" class="tab-content">
                          <div class="display-mode">
                             <h4>Informações Espirituais</h4>
+                             <!-- ADICIONADO -->
+                            <div class="data-item"><strong>Ativo:</strong> <span id="detail-ativo">-</span></div>
                             <div class="data-item"><strong>Grupo:</strong> <span id="detail-grupo">-</span></div>
-                            <div class="data-item"><strong>Privilégios:</strong> <div id="detail-privilegios" class="array-data">-</div></div>
+                             <!-- MODIFICADO (agora são 3 campos separados para melhor visualização) -->
+                            <div class="data-item"><strong>Privilégios Congregação:</strong> <div id="detail-privilegiosCongregacao" class="array-data">-</div></div>
+                            <div class="data-item"><strong>Privilégios Pregação:</strong> <div id="detail-privilegiosPregacao" class="array-data">-</div></div>
+                            <div class="data-item"><strong>Privilégios Especiais:</strong> <div id="detail-privilegiosEspeciais" class="array-data">-</div></div>
                         </div>
                          <div class="edit-mode" style="display: none;">
                              <h4>Editar Informações Espirituais</h4>
-                             <div class="form-group"><label for="edit-grupo">Grupo:</label><input type="number" id="edit-grupo" min="1"></div>
+                             <!-- ADICIONADO -->
                              <div class="form-group">
-                                 <label>Privilégios:</label>
-                                 <div class="checkbox-group" id="edit-privilegios-group">
-                                     <span class="loading-placeholder">Carregando opções...</span>
-                                 </div>
+                                 <label class="boolean-checkbox-label">
+                                     <input type="checkbox" id="edit-ativo"> Ativo
+                                 </label>
+                             </div>
+                             <div class="form-group"><label for="edit-grupo">Grupo:</label><input type="number" id="edit-grupo" min="1"></div>
+                             
+                             <!-- MODIFICADO: Privilégios agora estão separados por categoria para clareza -->
+                             <h5>Privilégios de Congregação</h5>
+                             <div class="checkbox-group" id="edit-privilegios-congregacao-group">
+                                 <span class="loading-placeholder">Carregando opções...</span>
+                             </div>
+                             
+                             <h5>Privilégios de Pregação</h5>
+                             <div class="checkbox-group" id="edit-privilegios-pregacao-group">
+                                 <span class="loading-placeholder">Carregando opções...</span>
+                             </div>
+
+                             <h5>Privilégios Especiais</h5>
+                             <div class="checkbox-group" id="edit-privilegios-especiais-group">
+                                 <span class="loading-placeholder">Carregando opções...</span>
                              </div>
                         </div>
                          <div class="edit-controls">
@@ -1039,7 +1142,7 @@ body.sidebar-collapsed .column:first-child {
                     </div>
 
                     <!-- Aba de Pregação -->
-                    <div id="pregacao-tab" class="tab-content">
+                  <div id="pregacao-tab" class="tab-content">
                         <div class="display-mode">
                             <h4>Disponibilidade para Pregação</h4>
                             <div class="data-item"><strong>Horários Pregação:</strong> <pre><code id="detail-horariosPregacao">-</code></pre></div>
@@ -1275,7 +1378,7 @@ body.sidebar-collapsed .column:first-child {
 
     <!-- Script principal da página -->
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
+     document.addEventListener('DOMContentLoaded', () => {
         // --- Seletores ---
         const pessoasListUl = document.getElementById('pessoas-list');
         const filterPessoasInput = document.getElementById('filter-pessoas-input');
@@ -1298,31 +1401,29 @@ body.sidebar-collapsed .column:first-child {
         const historyTabContents = document.querySelectorAll('.history-tab-content');
         const sidebarToggleBtn = document.getElementById('sidebar-toggle');
         const bodyEl = document.body;
+        const casadoComInput = document.getElementById('edit-casadoCom');
 
         // --- Variáveis de Estado ---
         let selectedPersonId = null;
-         let chartInstances = {};
+        let chartInstances = {};
         let unfilteredHistoryItems = [];
+        let allPessoasData = [];
         let allPessoasNames = {};
         let selectedPersonData = null;
         let allDesignacoes = { reuniao: [], pregacao: [] };
         let allHorarios = null;
-        let allPrivilegios = [
-            "Ancião", "Servo Ministerial",
-            "Pioneiro Regular", "Pioneiro Auxiliar",
-            "Publicador", "Publicador não Batizado"
-        ];
-        let designationNames = {};
-        let allDesignationDetails = {}; // Armazena detalhes como {id: {nome, tipo, quando}}
+        let allPrivilegios = {
+            congregacao: ["Ancião", "Servo Ministerial", "Publicador", "Publicador não Batizado"],
+            pregacao: ["Pioneiro Regular", "Pioneiro Auxiliar", "Pioneiro Especial", "Missionário"],
+            especiais: ["Servo de Circuito"]
+        };
+        let allDesignationDetails = {};
         let dataLoaded = { designacoes: false, horarios: false, designationDetails: false };
         let selectedAusencias = [];
-
 
         if (bodyEl) {
             bodyEl.classList.add('sidebar-collapsed');
         }
-
-        // Adiciona o evento de clique ao botão para mostrar/esconder o menu
         if (sidebarToggleBtn) {
             sidebarToggleBtn.addEventListener('click', () => {
                 if (bodyEl) {
@@ -1331,6 +1432,102 @@ body.sidebar-collapsed .column:first-child {
             });
         }
 
+         function handlePrivilegeChange(e) {
+            const changedCheckbox = e.target;
+            // Atua apenas quando uma checkbox é marcada (não quando é desmarcada).
+            if (changedCheckbox.type !== 'checkbox' || !changedCheckbox.checked) {
+                return;
+            }
+
+            const checkboxType = changedCheckbox.dataset.type;
+            const checkboxValue = changedCheckbox.value;
+
+            // Regra 1: Privilégios de Congregação são de seleção única (como botões de rádio).
+            if (checkboxType === 'congregacao') {
+                const congregationGroup = document.getElementById('edit-privilegios-congregacao-group');
+                // Desmarca todas as outras checkboxes no mesmo grupo.
+                congregationGroup.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    if (cb !== changedCheckbox) {
+                        cb.checked = false;
+                    }
+                });
+                
+                // Regra 2: Selecionar um privilégio de congregação desmarca "Servo de Circuito".
+                const servoCircuitoCheckbox = document.querySelector('#edit-privilegios-especiais-group input[value="Servo de Circuito"]');
+                if (servoCircuitoCheckbox) {
+                    servoCircuitoCheckbox.checked = false;
+                }
+            }
+
+            // Regra 3: Privilégios de Pregação também são de seleção única.
+            if (checkboxType === 'pregacao') {
+                const pregacaoGroup = document.getElementById('edit-privilegios-pregacao-group');
+                // Desmarca todas as outras checkboxes no mesmo grupo.
+                pregacaoGroup.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    if (cb !== changedCheckbox) {
+                        cb.checked = false;
+                    }
+                });
+            }
+
+            // Regra 4: Selecionar "Servo de Circuito" desmarca qualquer privilégio de congregação.
+            if (checkboxType === 'especiais' && checkboxValue === 'Servo de Circuito') {
+                const congregationGroup = document.getElementById('edit-privilegios-congregacao-group');
+                congregationGroup.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.checked = false;
+                });
+            }
+        }
+
+        // --- Funções de Sugestão ---
+        function showSuggestions(suggestions, container, onSelect) {
+            container.innerHTML = '';
+            if (suggestions.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            suggestions.forEach(suggestionText => {
+                const div = document.createElement('div');
+                div.textContent = suggestionText;
+                div.addEventListener('click', () => onSelect(suggestionText));
+                container.appendChild(div);
+            });
+            container.style.display = 'block';
+        }
+
+        function hideSuggestions(container) {
+            if (container) container.style.display = 'none';
+        }
+
+        function handleSpouseSuggestions() {
+            const suggestionsDiv = document.getElementById('casado-com-suggestions');
+            const inputText = casadoComInput.value.toLowerCase().trim();
+
+            if (!inputText) {
+                hideSuggestions(suggestionsDiv);
+                return;
+            }
+
+            let targetGender = null;
+            if (selectedPersonData?.genero === 'Masculino') targetGender = 'Feminino';
+            else if (selectedPersonData?.genero === 'Feminino') targetGender = 'Masculino';
+
+            let suggestions = allPessoasData.filter(p =>
+                p.nomePessoa.toLowerCase().includes(inputText) && p.id !== selectedPersonId
+            );
+            if (targetGender) {
+                suggestions = suggestions.filter(p => p.genero === targetGender);
+            }
+
+            if (suggestions.length > 0) {
+                showSuggestions(suggestions.map(p => p.nomePessoa), suggestionsDiv, (selectedValue) => {
+                    casadoComInput.value = selectedValue;
+                    hideSuggestions(suggestionsDiv);
+                });
+            } else {
+                hideSuggestions(suggestionsDiv);
+            }
+        }
 
         // --- Funções Auxiliares ---
         function showLoading(type, show = true) {
@@ -1364,7 +1561,20 @@ body.sidebar-collapsed .column:first-child {
         }
 
         function formatBoolean(bool) { return typeof bool === 'boolean' ? (bool ? 'Sim' : 'Não') : '-'; }
-        
+
+        function formatDateString(dateField) {
+            if (!dateField) return '-';
+            if (dateField.toDate) {
+                const d = dateField.toDate();
+                return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+            }
+            if (typeof dateField === 'string') {
+                const parts = dateField.split('-');
+                if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+            return dateField;
+        }
+
         function formatAusencias(ausencias) {
             if (!Array.isArray(ausencias) || ausencias.length === 0) return 'Nenhuma ausência registrada.';
             return ausencias.map(dateStr => {
@@ -1380,7 +1590,6 @@ body.sidebar-collapsed .column:first-child {
             let output = '';
             const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
             const weekendOrder = ["sabado", "domingo"];
-
             if (horarios.semana && Object.keys(horarios.semana).length > 0) {
                 output += 'Semana:\n';
                 weekOrder.forEach(day => {
@@ -1400,58 +1609,39 @@ body.sidebar-collapsed .column:first-child {
             return output.trim();
         }
 
-        function createEditCheckbox(value, name, isChecked) {
-            const label = document.createElement('label'); label.classList.add('checkbox-item');
+        function createEditCheckbox(value, name, isChecked, dataType) {
+            const label = document.createElement('label'); label.className = 'checkbox-item';
             const input = document.createElement('input'); input.type = 'checkbox'; input.name = name; input.value = value; input.checked = isChecked;
+            if (dataType) input.dataset.type = dataType;
             const span = document.createElement('span'); span.textContent = value;
             label.appendChild(input); label.appendChild(span);
             return label;
         }
 
         function createTimeSlotCheckbox(time, dayName, isChecked) {
-            const label = document.createElement('label');
-            label.classList.add('horario-item');
+            const label = document.createElement('label'); label.className = 'horario-item';
             if (isChecked) label.classList.add('selected');
-
-            const input = document.createElement('input');
-            input.type = 'checkbox';
-            input.value = time;
-            input.dataset.day = dayName;
-            input.checked = isChecked;
-            input.classList.add('horario-checkbox');
-
-            const span = document.createElement('span');
-            span.textContent = time;
-
-            label.appendChild(input);
-            label.appendChild(span);
-
-            input.addEventListener('change', () => label.classList.toggle('selected', input.checked));
-
+            const input = document.createElement('input'); input.type = 'checkbox'; input.value = time; input.dataset.day = dayName; input.checked = isChecked; input.className = 'horario-checkbox';
+            const span = document.createElement('span'); span.textContent = time;
+            label.appendChild(input); label.appendChild(span);
+            label.addEventListener('click', (e) => {
+                if (e.target !== input) input.checked = !input.checked;
+                label.classList.toggle('selected', input.checked);
+            });
             return label;
         }
 
         function updateAusenciasDisplay() {
             selectedAusenciasListDiv.innerHTML = '';
             selectedAusencias.sort().forEach(date => {
-                const item = document.createElement('div');
-                item.className = 'ausencia-item';
-
-                const text = document.createElement('span');
-                text.textContent = date.split('-').reverse().join('/'); // Formata para DD/MM/YYYY
-
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'remove-ausencia-btn';
-                removeBtn.innerHTML = '×';
-                removeBtn.title = 'Remover data';
-                removeBtn.type = 'button';
+                const item = document.createElement('div'); item.className = 'ausencia-item';
+                const text = document.createElement('span'); text.textContent = date.split('-').reverse().join('/');
+                const removeBtn = document.createElement('button'); removeBtn.className = 'remove-ausencia-btn'; removeBtn.innerHTML = '×'; removeBtn.title = 'Remover data'; removeBtn.type = 'button';
                 removeBtn.onclick = () => {
                     selectedAusencias = selectedAusencias.filter(d => d !== date);
                     updateAusenciasDisplay();
                 };
-
-                item.appendChild(text);
-                item.appendChild(removeBtn);
+                item.appendChild(text); item.appendChild(removeBtn);
                 selectedAusenciasListDiv.appendChild(item);
             });
         }
@@ -1459,153 +1649,124 @@ body.sidebar-collapsed .column:first-child {
         function filterPessoasList() {
             const filterText = filterPessoasInput.value.toLowerCase().trim();
             const listItems = pessoasListUl.getElementsByTagName('li');
-
             for (let i = 0; i < listItems.length; i++) {
                 const li = listItems[i];
                 if (li.textContent === 'Nenhuma pessoa encontrada.') continue;
-
                 const itemText = li.textContent.toLowerCase();
-                if (itemText.includes(filterText)) {
-                    li.style.display = '';
-                } else {
-                    li.style.display = 'none';
-                }
+                li.style.display = itemText.includes(filterText) ? '' : 'none';
             }
         }
 
-        // --- Carregamento Inicial ---
-       function loadAllDesignacoes() {
-            return db.collection('designacoes').get().then(snapshot => {
-                allDesignacoes.reuniao = [];
-                allDesignacoes.pregacao = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    // Manter a compatibilidade com a estrutura antiga
-                    designationNames[doc.id] = data.nome || 'Desconhecida'; 
-                    
-                    // Nova estrutura que armazena todos os detalhes necessários
-                    allDesignationDetails[doc.id] = {
-                        nome: data.nome || 'Desconhecida',
-                        tipo: data.tipo || 'desconhecido',
-                        quando: data.quando || 'desconhecido',
-                        emoji: data.emoji || '🔹' // Adiciona o emoji com um padrão
-                    };
-
-                    if (data.tipo === 'reuniao') {
-                        allDesignacoes.reuniao.push(data.nome);
-                    } else if (data.tipo === 'pregacao') {
-                        allDesignacoes.pregacao.push(data.nome);
-                    }
-                });
-                allDesignacoes.reuniao.sort();
-                allDesignacoes.pregacao.sort();
-                dataLoaded.designacoes = true;
-                dataLoaded.designationDetails = true;
+        // --- Funções de Carregamento de Dados ---
+        function loadAllPessoasData() {
+            return db.collection('pessoas').get().then(snapshot => {
+                allPessoasData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                allPessoasNames = allPessoasData.reduce((acc, p) => {
+                    acc[p.id] = p.nomePessoa;
+                    return acc;
+                }, {});
             });
         }
 
-        function loadAllPessoasNames() {
-            return db.collection('pessoas').get().then(snapshot => {
+        function loadAllDesignacoes() {
+            return db.collection('designacoes').get().then(snapshot => {
+                allDesignacoes.reuniao = []; allDesignacoes.pregacao = [];
                 snapshot.forEach(doc => {
-                    allPessoasNames[doc.id] = doc.data().nomePessoa || 'Nome Desconhecido';
+                    const data = doc.data();
+                    allDesignationDetails[doc.id] = { nome: data.nome || 'Desconhecida', tipo: data.tipo || 'desconhecido', quando: data.quando || 'desconhecido', emoji: data.emoji || '🔹' };
+                    if (data.tipo === 'reuniao') allDesignacoes.reuniao.push(data.nome);
+                    else if (data.tipo === 'pregacao') allDesignacoes.pregacao.push(data.nome);
                 });
+                allDesignacoes.reuniao.sort(); allDesignacoes.pregacao.sort();
+                dataLoaded.designacoes = true; dataLoaded.designationDetails = true;
             });
         }
 
         function loadAllHorarios() {
-            return db.collection("horarios").orderBy("ano", "desc").limit(1).get()
-                .then(snapshot => {
-                    if (!snapshot.empty) {
-                        const data = snapshot.docs[0].data();
-                        allHorarios = {
-                            semana: data['dias-semana-horarios'] || {},
-                            fimDeSemana: data['dias-fimdesemana-horarios'] || {}
-                        };
-                    } else {
-                        allHorarios = { semana: {}, fimDeSemana: {} };
-                    }
-                    dataLoaded.horarios = true;
-                });
+            return db.collection("horarios").orderBy("ano", "desc").limit(1).get().then(snapshot => {
+                if (!snapshot.empty) {
+                    const data = snapshot.docs[0].data();
+                    allHorarios = { semana: data['dias-semana-horarios'] || {}, fimDeSemana: data['dias-fimdesemana-horarios'] || {} };
+                } else {
+                    allHorarios = { semana: {}, fimDeSemana: {} };
+                }
+                dataLoaded.horarios = true;
+            });
         }
 
         function loadPessoasList() {
             showLoading('list', true);
             pessoasListUl.innerHTML = '';
-            selectPromptDiv.style.display = 'block';
-            detailContentDiv.style.display = 'none';
-            detailLoadingDiv.style.display = 'none';
-            historyLoadingDiv.style.display = 'none';
-            db.collection('pessoas').orderBy('nomePessoa').get()
-                .then(snapshot => {
-                    showLoading('list', false);
-                    if (snapshot.empty) {
-                        pessoasListUl.innerHTML = '<li style="cursor: default; color: #6c757d;">Nenhuma pessoa encontrada.</li>';
-                        return;
-                    }
-                    snapshot.forEach(doc => {
-                        const li = document.createElement('li'); li.textContent = doc.data().nomePessoa; li.dataset.id = doc.id;
-                        li.addEventListener('click', () => {
-                            const currentSelected = pessoasListUl.querySelector('.selected');
-                            if (currentSelected) currentSelected.classList.remove('selected');
-                            li.classList.add('selected');
-                            selectedPersonId = doc.id;
-                            cancelEditMode();
-                            loadPersonDetails(selectedPersonId);
-                            loadPersonHistory(selectedPersonId);
-                        });
-                        pessoasListUl.appendChild(li);
+            selectPromptDiv.style.display = 'block'; detailContentDiv.style.display = 'none'; detailLoadingDiv.style.display = 'none'; historyLoadingDiv.style.display = 'none';
+            db.collection('pessoas').orderBy('nomePessoa').get().then(snapshot => {
+                showLoading('list', false);
+                if (snapshot.empty) {
+                    pessoasListUl.innerHTML = '<li style="cursor: default; color: #6c757d;">Nenhuma pessoa encontrada.</li>';
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const li = document.createElement('li'); li.textContent = doc.data().nomePessoa; li.dataset.id = doc.id;
+                    li.addEventListener('click', () => {
+                        document.querySelector('#pessoas-list li.selected')?.classList.remove('selected');
+                        li.classList.add('selected');
+                        selectedPersonId = doc.id;
+                        cancelEditMode();
+                        loadPersonDetails(selectedPersonId);
+                        loadPersonHistory(selectedPersonId);
                     });
-                })
-                .catch(error => {
-                    showLoading('list', false);
-                    console.error("Erro ao carregar lista de pessoas:", error);
-                    pessoasListUl.innerHTML = '<li style="cursor: default; color: #dc3545;">Erro ao carregar pessoas. Verifique permissões.</li>';
+                    pessoasListUl.appendChild(li);
                 });
+            }).catch(error => {
+                showLoading('list', false);
+                console.error("Erro ao carregar lista de pessoas:", error);
+                pessoasListUl.innerHTML = '<li style="cursor: default; color: #dc3545;">Erro ao carregar.</li>';
+            });
         }
 
-        // --- Carregamento Detalhes/Histórico ---
+        // --- Funções de Preenchimento e Lógica de Edição ---
         function loadPersonDetails(personId) {
             showLoading('detail', true);
-            db.collection('pessoas').doc(personId).get()
-                .then(doc => {
-                    showLoading('detail', false);
-                    if (doc.exists) {
-                        selectedPersonData = doc.data();
-                        detailContentDiv.style.display = 'block'; selectPromptDiv.style.display = 'none';
-                        detailNameH3.textContent = selectedPersonData.nomePessoa || 'Nome não encontrado';
-                        populatePessoalTab(selectedPersonData);
-                        populateEspiritualTab(selectedPersonData);
-                        populatePregacaoTab(selectedPersonData);
-                        populatePermissoesTab(selectedPersonData);
-                        populateDisponibilidadeTab(selectedPersonData);
-                        switchTab('pessoal-tab');
-                    } else { console.error("Pessoa não encontrada"); }
-                })
-                .catch(error => { console.error("Erro ao carregar detalhes:", error); });
+            db.collection('pessoas').doc(personId).get().then(doc => {
+                showLoading('detail', false);
+                if (doc.exists) {
+                    selectedPersonData = doc.data();
+                    detailContentDiv.style.display = 'block'; selectPromptDiv.style.display = 'none';
+                    detailNameH3.textContent = selectedPersonData.nomePessoa || 'Nome não encontrado';
+                    populatePessoalTab(selectedPersonData);
+                    populateEspiritualTab(selectedPersonData);
+                    populatePregacaoTab(selectedPersonData);
+                    populatePermissoesTab(selectedPersonData);
+                    populateDisponibilidadeTab(selectedPersonData);
+                    switchTab('pessoal-tab');
+                } else { console.error("Pessoa não encontrada"); }
+            }).catch(error => { console.error("Erro ao carregar detalhes:", error); });
         }
 
         function populatePessoalTab(data) {
             document.getElementById('detail-nomePessoa').textContent = data.nomePessoa || '-';
+            document.getElementById('detail-nomeCompletoPessoa').textContent = data.nomeCompletoPessoa || '-';
+            document.getElementById('detail-morada').textContent = data.morada || '-';
             document.getElementById('detail-genero').textContent = data.genero || '-';
             document.getElementById('detail-idioma').textContent = data.idioma || '-';
             document.getElementById('detail-personalidade').textContent = data.personalidade || '-';
-            let dataNasc = '-';
-            if (data.dataNascimento) { if (data.dataNascimento.toDate) { const d = data.dataNascimento.toDate(); dataNasc = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; } else if (typeof data.dataNascimento === 'string') { const p = data.dataNascimento.split('-'); if (p.length === 3) dataNasc = `${p[2]}/${p[1]}/${p[0]}`; else dataNasc = data.dataNascimento; } else { dataNasc = data.dataNascimento || '-'; } }
-            document.getElementById('detail-dataNascimento').textContent = dataNasc;
+            document.getElementById('detail-dataNascimento').textContent = formatDateString(data.dataNascimento);
+            document.getElementById('detail-dataBatismo').textContent = formatDateString(data.dataBatismo);
             document.getElementById('detail-email').textContent = data.email || '-';
             document.getElementById('detail-telemovel').textContent = data.telemovel || '-';
+            formatArrayForDisplay(data.familia, 'detail-familia');
             document.getElementById('detail-casadoCom').textContent = data.casadoCom || '-';
         }
+
         function populateEspiritualTab(data) {
+            document.getElementById('detail-ativo').textContent = formatBoolean(data.ativo);
             document.getElementById('detail-grupo').textContent = data.grupo || '-';
-            formatArrayForDisplay(data.privilegios, 'detail-privilegios');
+            formatArrayForDisplay(data.privilegiosCongregacao, 'detail-privilegiosCongregacao');
+            formatArrayForDisplay(data.privilegiosPregacao, 'detail-privilegiosPregacao');
+            formatArrayForDisplay(data.privilegiosEspeciais, 'detail-privilegiosEspeciais');
         }
-        function populatePregacaoTab(data) {
-            document.getElementById('detail-horariosPregacao').textContent = formatHorarios(data.horariosPregacao);
-        }
-        function populateDisponibilidadeTab(data) {
-            document.getElementById('detail-ausencias').textContent = formatAusencias(data.ausencias);
-        }
+
+        function populatePregacaoTab(data) { document.getElementById('detail-horariosPregacao').textContent = formatHorarios(data.horariosPregacao); }
+        function populateDisponibilidadeTab(data) { document.getElementById('detail-ausencias').textContent = formatAusencias(data.ausencias); }
         function populatePermissoesTab(data) {
             document.getElementById('detail-fazDesignacoesReuniao').textContent = formatBoolean(data.fazDesignacoesReuniao);
             formatArrayForDisplay(data.designacoesReuniao, 'detail-designacoesReuniao');
@@ -1615,397 +1776,12 @@ body.sidebar-collapsed .column:first-child {
             document.getElementById('detail-rule').textContent = data.rule || '-';
         }
 
- function createHistoryItemElement(item) {
-            const div = document.createElement('div');
-            div.classList.add('history-item');
-
-            const dateStr = item.date.toLocaleDateString('pt-BR', {
-                day: '2-digit', month: '2-digit', year: 'numeric'
-            });
-
-            let participantsString = '';
-            // NOVA REGRA: Só adiciona a string de nomes se houver mais de um participante
-            if (item.participants && item.participants.length > 1) {
-                const names = item.participants.map(id => allPessoasNames[id] || '...?').join(' - ');
-                participantsString = `: <span class="hist-participants">${names}</span>`;
-            }
-
-            div.innerHTML = `<span class="hist-date">${dateStr}</span> | <span class="hist-designation">${item.emoji} ${item.name}${participantsString}</span>`;
-            
-            return div;
-        }
-
-
-        function parseFirestoreDate(firestoreDateField) {
-            if (firestoreDateField && typeof firestoreDateField.toDate === 'function') {
-                return firestoreDateField.toDate();
-            }
-            if (typeof firestoreDateField === 'string' && firestoreDateField) {
-                const parsedDate = new Date(firestoreDateField);
-                if (!isNaN(parsedDate.getTime())) {
-                    return parsedDate;
-                }
-            }
-            return new Date(0);
-        }
-
-
-
- function loadPersonHistory(personId) {
-            showLoading('history', true);
-            unfilteredHistoryItems = []; // Limpa o estado global
-            
-            // Limpa as abas visualmente para o novo carregamento
-            document.getElementById('hist-tudo').innerHTML = '';
-            document.querySelectorAll('.sub-history-tab-content').forEach(tab => tab.innerHTML = '');
-            // Limpa os filtros antigos para evitar confusão
-            document.querySelectorAll('.filter-select').forEach(select => select.innerHTML = '<option value="">Todos</option>');
-
-            if (!dataLoaded.designationDetails || !allPessoasNames) {
-                console.error("Dependências (designações ou nomes) não carregadas.");
-                showLoading('history', false); 
-                return;
-            }
-
-            const historicoPromise = db.collection('historico').orderBy('dia', 'desc').get();
-            const historicoPregacaoPromise = db.collection('historicoPregacao').orderBy('dia', 'desc').get();
-
-            // O BLOCO .then() É CRUCIAL. TODO O PROCESSAMENTO DEVE ESTAR AQUI DENTRO.
-            Promise.all([historicoPromise, historicoPregacaoPromise]).then(([historicoSnapshot, historicoPregacaoSnapshot]) => {
-                
-                let allItems = [];
-                const processSnapshot = (snapshot, isPregacaoCollection) => {
-                    snapshot.forEach(doc => {
-                        const historicoData = doc.data();
-                        if (historicoData.designacoes && Array.isArray(historicoData.designacoes)) {
-                            historicoData.designacoes.forEach(dInstance => {
-                                let participantIds = [];
-                                if (dInstance.participantes) {
-                                    if (Array.isArray(dInstance.participantes)) participantIds = dInstance.participantes;
-                                    else if (typeof dInstance.participantes === 'object') participantIds = Object.values(dInstance.participantes);
-                                }
-
-                                if (participantIds.includes(personId)) {
-                                    const desigId = dInstance.designacaoId || null;
-                                    let details = allDesignationDetails[desigId] || {};
-                                    let tipo = isPregacaoCollection ? 'pregacao' : details.tipo || 'reuniao';
-                                    
-                                    allItems.push({
-                                        date: parseFirestoreDate(historicoData.dia),
-                                        name: details.nome || 'Desconhecida',
-                                        tipo: tipo,
-                                        quando: details.quando || null,
-                                        emoji: details.emoji || '🔹',
-                                        participants: participantIds,
-                                        parte: historicoData.parte || null,
-                                        ano: historicoData.ano || null,
-                                        mes: historicoData.mes || null,
-                                        semanaIndex: historicoData.semanaindex || null, // Lemos o 'semanaindex' minúsculo
-                                        designacaoId: desigId,
-                                        sala: historicoData.sala || null
-                                    });
-                                }
-                            });
-                        }
-                    });
-                };
-                
-                processSnapshot(historicoSnapshot, false);
-                processSnapshot(historicoPregacaoSnapshot, true);
-
-                // Armazena os dados brutos na variável global
-                unfilteredHistoryItems = allItems.sort((a, b) => b.date - a.date);
-
-                console.log('DADOS CARREGADOS E PRONTOS:', unfilteredHistoryItems.length, 'itens.');
-
-                // APENAS AGORA, com os dados prontos, chamamos as funções de renderização e filtro.
-                populateHistoryFilters(unfilteredHistoryItems); 
-                applyFiltersAndRender(); 
-
-                showLoading('history', false);
-
-            }).catch(error => {
-                showLoading('history', false);
-                console.error("Erro ao carregar e processar histórico:", error);
-                document.getElementById('hist-tudo').innerHTML = `<div class="history-item" style="color: #dc3545;">Erro ao carregar histórico.</div>`;
-            });
-        }
-        
-
-
-
-
-
-function populateHistoryFilters(items) {
-            // --- INÍCIO DA DEPURAÇÃO ---
-            console.log("--- Iniciando depuração de populateHistoryFilters ---");
-            console.log("1. Total de itens de histórico recebidos:", items.length, items);
-            // --- FIM DA DEPURAÇÃO ---
-
-            const anoSelect = document.getElementById('hist-filter-ano');
-            const mesSelect = document.getElementById('hist-filter-mes');
-            const semanaSelect = document.getElementById('hist-filter-semana');
-            const designacaoSelect = document.getElementById('hist-filter-designacao');
-            const salaSelect = document.getElementById('hist-filter-sala');
-
-            const salaNames = {
-                'salao-principal': 'Salão Principal', 'segunda-sala': 'Segunda Sala', 'terceira-sala': 'Terceira Sala'
-            };
-            const monthNames = {
-                '1': 'Janeiro', '2': 'Fevereiro', '3': 'Março', '4': 'Abril', '5': 'Maio', '6': 'Junho',
-                '7': 'Julho', '8': 'Agosto', '9': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
-            };
-
-            const populateSelect = (select, values, nameMap = {}) => {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Todos</option>';
-                const uniqueValues = [...new Set(values)].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-                uniqueValues.forEach(value => {
-                    const option = document.createElement('option');
-                    option.value = value;
-                    option.textContent = nameMap[value] || value;
-                    select.appendChild(option);
-                });
-                select.value = currentValue;
-            };
-
-            populateSelect(anoSelect, items.map(i => i.ano).filter(Boolean));
-            populateSelect(mesSelect, items.map(i => i.mes).filter(Boolean), monthNames);
-            populateSelect(salaSelect, items.map(i => i.sala).filter(Boolean), salaNames);
-
-            // --- LÓGICA CORRIGIDA E COM LOGS PARA A SEMANA ---
-            
-            // AQUI ESTÁ A CORREÇÃO PRINCIPAL: `semanaindex` deve ser minúsculo
-            const todasAsSemanas = items.map(i => i.semanaindex).filter(Boolean);
-          const uniqueSemanas = [...new Set(items.map(i => i.semanaIndex).filter(Boolean))];
-            
-            const semanaNameMap = uniqueSemanas.reduce((acc, week) => {
-                let cleaned = week.replace(/[()]/g, '');
-                const lastSpaceIndex = cleaned.lastIndexOf(' ');
-                if (lastSpaceIndex > -1) {
-                    cleaned = cleaned.substring(0, lastSpaceIndex);
-                }
-                acc[week] = cleaned.trim();
-                return acc;
-            }, {});
-            
-            populateSelect(semanaSelect, uniqueSemanas, semanaNameMap);
-
-
-            // Lógica para designações (inalterada)
-            const uniqueDesignacoes = items.reduce((acc, item) => {
-                if (item.designacaoId && !acc.has(item.designacaoId)) acc.set(item.designacaoId, item.name);
-                return acc;
-            }, new Map());
-            
-            const currentDesignacao = designacaoSelect.value;
-            designacaoSelect.innerHTML = '<option value="">Todas</option>';
-            [...uniqueDesignacoes.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
-                const option = document.createElement('option');
-                option.value = id;
-                option.textContent = name;
-                designacaoSelect.appendChild(option);
-            });
-            designacaoSelect.value = currentDesignacao;
-        }
-
-
-
-
-
-   function applyFiltersAndRender() {
-            // Mapeamento de nomes para a UI
-            const salaNames = { 'salao-principal': 'Salão Principal', 'segunda-sala': 'Segunda Sala', 'terceira-sala': 'Terceira Sala' };
-            const monthNames = { '1': 'Janeiro', '2': 'Fevereiro', '3': 'Março', '4': 'Abril', '5': 'Maio', '6': 'Junho', '7': 'Julho', '8': 'Agosto', '9': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro' };
-
-            // Seletores dos dropdowns
-            const selects = {
-                ano: document.getElementById('hist-filter-ano'),
-                mes: document.getElementById('hist-filter-mes'),
-                semanaIndex: document.getElementById('hist-filter-semana'),
-                designacaoId: document.getElementById('hist-filter-designacao'),
-                tipo: document.getElementById('hist-filter-tipo'),
-                sala: document.getElementById('hist-filter-sala')
-            };
-
-            // Guarda os valores atualmente selecionados ANTES de repopular os dropdowns
-            const currentFilters = {
-                ano: selects.ano.value,
-                mes: selects.mes.value,
-                semanaIndex: selects.semanaIndex.value,
-                designacaoId: selects.designacaoId.value,
-                tipo: selects.tipo.value,
-                sala: selects.sala.value
-            };
-
-            // --- Lógica de Filtros em Cascata ---
-            let items = [...unfilteredHistoryItems];
-
-            // Helper para popular um select, preservando a seleção atual
-            const populateSelect = (select, data, valueKey, textMap = {}) => {
-                const uniqueValues = [...new Set(data.map(item => item[valueKey]).filter(Boolean))]
-                    .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-
-                select.innerHTML = '<option value="">Todos</option>';
-                uniqueValues.forEach(value => {
-                    let text = textMap[value] || value;
-                    // Formatação especial para semana
-                    if (valueKey === 'semanaIndex') {
-                        text = value.replace(/[()]/g, '').replace(/ \d{4}$/, '').trim();
-                    }
-                    const option = document.createElement('option');
-                    option.value = value;
-                    option.textContent = text;
-                    select.appendChild(option);
-                });
-            };
-
-            // 1. Popula os filtros e aplica-os um a um
-            populateSelect(selects.ano, items, 'ano');
-            selects.ano.value = currentFilters.ano; // Restaura a seleção
-            if (currentFilters.ano) items = items.filter(i => i.ano == currentFilters.ano);
-
-            populateSelect(selects.mes, items, 'mes', monthNames);
-            selects.mes.value = currentFilters.mes;
-            if (currentFilters.mes) items = items.filter(i => i.mes == currentFilters.mes);
-
-            populateSelect(selects.semanaIndex, items, 'semanaIndex');
-            selects.semanaIndex.value = currentFilters.semanaIndex;
-            if (currentFilters.semanaIndex) items = items.filter(i => i.semanaIndex == currentFilters.semanaIndex);
-            
-            // O tipo não depende de outros, então é populado com a lista completa
-            populateSelect(selects.tipo, unfilteredHistoryItems, 'tipo', { 'reuniao': 'Reunião', 'pregacao': 'Pregação' });
-            selects.tipo.value = currentFilters.tipo;
-            if (currentFilters.tipo) items = items.filter(i => i.tipo == currentFilters.tipo);
-
-            populateSelect(selects.sala, items, 'sala', salaNames);
-            selects.sala.value = currentFilters.sala;
-            if (currentFilters.sala) items = items.filter(i => i.sala == currentFilters.sala);
-            
-            // Designação é populada por último, com base em todos os outros filtros
-            const uniqueDesignacoes = items.reduce((acc, item) => {
-                if(item.designacaoId && !acc.has(item.designacaoId)) acc.set(item.designacaoId, item.name);
-                return acc;
-            }, new Map());
-            selects.designacaoId.innerHTML = '<option value="">Todas</option>';
-            [...uniqueDesignacoes.entries()].sort((a,b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
-                const option = document.createElement('option');
-                option.value = id;
-                option.textContent = name;
-                selects.designacaoId.appendChild(option);
-            });
-            selects.designacaoId.value = currentFilters.designacaoId;
-            if (currentFilters.designacaoId) items = items.filter(i => i.designacaoId == currentFilters.designacaoId);
-
-
-            // 2. Renderiza as abas com a lista final filtrada
-            renderTudoTab(items);
-            renderArquivoTabs(items);
-             renderEstatisticasTab(items);
-        }
-
-       function renderTudoTab(items) {
-            const tudoTab = document.getElementById('hist-tudo');
-            tudoTab.innerHTML = '';
-            if (items.length === 0) {
-                tudoTab.innerHTML = `<div class="history-item" style="text-align: center; padding: 20px;">Nenhum registo encontrado com os filtros atuais.</div>`;
-                return;
-            }
-            
-            const groupedByMonth = items.reduce((acc, item) => {
-                const monthYear = item.date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-                if (!acc[monthYear]) acc[monthYear] = [];
-                acc[monthYear].push(item);
-                return acc;
-            }, {});
-
-            for (const monthYear in groupedByMonth) {
-                const header = document.createElement('h4');
-                header.textContent = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
-                header.style.cssText = "padding: 15px 20px 10px; background-color: #f8f9fa; border-bottom: 1px solid #e9ecef; font-size: 0.9rem; color: #343a40; margin: 0;";
-                tudoTab.appendChild(header);
-                groupedByMonth[monthYear].forEach(item => tudoTab.appendChild(createHistoryItemElement(item)));
-            }
-        }
-
-
-         function renderArquivoTabs(items) {
-             const renderHistoryList = (targetElement, list) => {
-                targetElement.innerHTML = '';
-                if (list.length === 0) {
-                    targetElement.innerHTML = `<div class="history-item" style="text-align: center; padding: 20px;">Nenhum registo nesta categoria.</div>`;
-                } else {
-                    list.forEach(item => targetElement.appendChild(createHistoryItemElement(item)));
-                }
-            };
-
-            renderHistoryList(document.getElementById('sub-hist-semana'), items.filter(i => i.quando === 'Semana' && i.tipo === 'reuniao'));
-            renderHistoryList(document.getElementById('sub-hist-fds'), items.filter(i => i.quando === 'Fim de Semana' && i.tipo === 'reuniao'));
-            renderHistoryList(document.getElementById('sub-hist-tecnicas'), items.filter(i => i.parte === 'tecnicas' && i.tipo === 'reuniao'));
-            renderHistoryList(document.getElementById('sub-hist-pregacao'), items.filter(i => i.tipo === 'pregacao'));
-        }
-
-
-        // --- Lógica das Abas (Detalhes) ---
-        function switchTab(tabId) {
-            cancelEditMode(); tabButtons.forEach(btn => btn.classList.remove('active')); tabContents.forEach(content => content.classList.remove('active'));
-            const activeButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`); const activeContent = document.getElementById(tabId);
-            if (activeButton) activeButton.classList.add('active'); if (activeContent) activeContent.classList.add('active');
-        }
-        tabButtons.forEach(button => { button.addEventListener('click', () => switchTab(button.dataset.tab)); });
-
-        // --- Lógica das Abas (Histórico) ---
-        if (historyTabsContainer) {
-            historyTabsContainer.addEventListener('click', (e) => {
-                if (e.target.matches('.history-tab-button')) {
-                    const targetTabId = e.target.dataset.tab;
-
-                    historyTabsContainer.querySelector('.active').classList.remove('active');
-                    e.target.classList.add('active');
-
-                    historyTabContents.forEach(content => {
-                        content.classList.remove('active');
-                        if (content.id === targetTabId) {
-                            content.classList.add('active');
-                        }
-                    });
-                }
-            });
-        }
-        
-        // --- Lógica das SUB-Abas (Histórico > Arquivo) ---
-        const arquivoTabContent = document.getElementById('hist-arquivo');
-        if (arquivoTabContent) {
-            arquivoTabContent.addEventListener('click', (e) => {
-                if (e.target.matches('.sub-history-tab-button')) {
-                    const subTabsContainer = e.target.closest('.sub-history-tabs');
-                    const subContentContainer = arquivoTabContent.querySelector('.sub-history-content-container');
-                    const targetTabId = e.target.dataset.tab;
-
-                    subTabsContainer.querySelector('.active').classList.remove('active');
-                    e.target.classList.add('active');
-
-                    subContentContainer.querySelectorAll('.sub-history-tab-content').forEach(content => {
-                        content.classList.remove('active');
-                        if (content.id === targetTabId) {
-                            content.classList.add('active');
-                        }
-                    });
-                }
-            });
-        }
-
-
-        // --- Lógica de Edição ---
-        editButtons.forEach(button => { button.addEventListener('click', (e) => enterEditMode(e.target.closest('button').dataset.tabTarget)); });
-        cancelButtons.forEach(button => { button.addEventListener('click', () => cancelEditMode()); });
-        saveButtons.forEach(button => { button.addEventListener('click', (e) => saveTabData(e.target.closest('button').dataset.tabTarget, e.target.closest('button'))); });
-
         function enterEditMode(tabId) {
             if (!selectedPersonData || !selectedPersonId || !dataLoaded.designacoes || !dataLoaded.horarios) {
                 alert("Aguarde o carregamento dos dados ou selecione uma pessoa."); return;
             }
-            cancelEditMode(); const tabContent = document.getElementById(tabId); if (!tabContent) return;
+            cancelEditMode();
+            const tabContent = document.getElementById(tabId); if (!tabContent) return;
             const displayDiv = tabContent.querySelector('.display-mode'); const editDiv = tabContent.querySelector('.edit-mode');
             const editBtn = tabContent.querySelector('.edit-btn'); const saveBtn = tabContent.querySelector('.save-btn'); const cancelBtn = tabContent.querySelector('.cancel-btn');
             populateEditFields(tabId, selectedPersonData);
@@ -2018,33 +1794,67 @@ function populateHistoryFilters(items) {
                 const displayDiv = tabContent.querySelector('.display-mode'); const editDiv = tabContent.querySelector('.edit-mode');
                 const editBtn = tabContent.querySelector('.edit-btn'); const saveBtn = tabContent.querySelector('.save-btn'); const cancelBtn = tabContent.querySelector('.cancel-btn');
                 if (displayDiv) displayDiv.style.display = 'block'; if (editDiv) editDiv.style.display = 'none';
-                if (editBtn) editBtn.style.display = 'inline-flex'; if (saveBtn) saveBtn.style.display = 'none'; if (cancelBtn) cancelBtn.style.display = 'none';
-                if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> Gravar'; }
+                if (editBtn) editBtn.style.display = 'inline-flex';
+                if (saveBtn) { saveBtn.style.display = 'none'; saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> Gravar'; }
+                if (cancelBtn) cancelBtn.style.display = 'none';
             });
             selectedAusencias = [];
             updateAusenciasDisplay();
         }
 
+        function formatDateForInput(dateField) {
+            if (!dateField) return '';
+            let dateObj;
+            if (dateField.toDate) { dateObj = dateField.toDate(); }
+            else if (typeof dateField === 'string') {
+                const parts = dateField.split(/[-/]/);
+                if (parts.length === 3) {
+                    if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                    if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                } return dateField;
+            } else { return ''; }
+            return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+        }
+
         function populateEditFields(tabId, data) {
             if (tabId === 'pessoal-tab') {
-                document.getElementById('edit-nomePessoa').value = data.nomePessoa || ''; document.getElementById('edit-genero').value = data.genero || ''; document.getElementById('edit-idioma').value = data.idioma || ''; document.getElementById('edit-personalidade').value = data.personalidade || '';
-                let dateForInput = ''; if (data.dataNascimento) { if (data.dataNascimento.toDate) { const dO = data.dataNascimento.toDate(); dateForInput = `${dO.getFullYear()}-${String(dO.getMonth() + 1).padStart(2, '0')}-${String(dO.getDate()).padStart(2, '0')}`; } else if (typeof data.dataNascimento === 'string') { const p = data.dataNascimento.split(/[-/]/); if (p.length === 3) { if (p[0].length === 4) dateForInput = `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`; else if (p[2].length === 4) dateForInput = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` } } else { dateForInput = data.dataNascimento || ''; } }
-                document.getElementById('edit-dataNascimento').value = dateForInput; document.getElementById('edit-email').value = data.email || ''; document.getElementById('edit-telemovel').value = data.telemovel || ''; document.getElementById('edit-casadoCom').value = data.casadoCom || '';
-
+                document.getElementById('edit-nomePessoa').value = data.nomePessoa || '';
+                document.getElementById('edit-nomeCompletoPessoa').value = data.nomeCompletoPessoa || '';
+                document.getElementById('edit-morada').value = data.morada || '';
+                document.getElementById('edit-genero').value = data.genero || '';
+                document.getElementById('edit-idioma').value = data.idioma || '';
+                document.getElementById('edit-personalidade').value = data.personalidade || '';
+                document.getElementById('edit-dataNascimento').value = formatDateForInput(data.dataNascimento);
+                document.getElementById('edit-dataBatismo').value = formatDateForInput(data.dataBatismo);
+                document.getElementById('edit-email').value = data.email || '';
+                document.getElementById('edit-telemovel').value = data.telemovel || '';
+                document.getElementById('edit-familia').value = Array.isArray(data.familia) ? data.familia.join(', ') : '';
+                document.getElementById('edit-casadoCom').value = data.casadoCom || '';
             } else if (tabId === 'espiritual-tab') {
+                document.getElementById('edit-ativo').checked = typeof data.ativo === 'boolean' ? data.ativo : true;
                 document.getElementById('edit-grupo').value = data.grupo || '';
-                const privGroupDiv = document.getElementById('edit-privilegios-group'); privGroupDiv.innerHTML = ''; const currentPrivilegios = data.privilegios || [];
-                allPrivilegios.forEach(priv => { privGroupDiv.appendChild(createEditCheckbox(priv, 'edit-privilegio', currentPrivilegios.includes(priv))); });
+                const populatePrivilegeGroup = (groupDivId, privilegeType, currentPrivileges) => {
+                    const groupDiv = document.getElementById(groupDivId); groupDiv.innerHTML = '';
+                    allPrivilegios[privilegeType].forEach(priv => {
+                        const isChecked = Array.isArray(currentPrivileges) && currentPrivileges.includes(priv);
+                        groupDiv.appendChild(createEditCheckbox(priv, `edit-privilegio-${privilegeType}`, isChecked, privilegeType));
+                    });
+                };
+                populatePrivilegeGroup('edit-privilegios-congregacao-group', 'congregacao', data.privilegiosCongregacao);
+                populatePrivilegeGroup('edit-privilegios-pregacao-group', 'pregacao', data.privilegiosPregacao);
+                populatePrivilegeGroup('edit-privilegios-especiais-group', 'especiais', data.privilegiosEspeciais);
+                 const spiritualEditModeDiv = document.getElementById('espiritual-tab').querySelector('.edit-mode');
+                // Remove o listener antigo para evitar que seja adicionado múltiplas vezes.
+                spiritualEditModeDiv.removeEventListener('change', handlePrivilegeChange); 
+                spiritualEditModeDiv.addEventListener('change', handlePrivilegeChange);
 
             } else if (tabId === 'pregacao-tab') {
                 const horariosSemanaDiv = document.getElementById('edit-horarios-semana');
-                const horariosFimSemanaDiv = document.getElementById('edit-horarios-fim-de-semana');
-                horariosSemanaDiv.innerHTML = '<h5>Semana</h5>';
-                horariosFimSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
+                const horariosFimDeSemanaDiv = document.getElementById('edit-horarios-fim-de-semana');
+                horariosSemanaDiv.innerHTML = '<h5>Semana</h5>'; horariosFimDeSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
                 const currentHorarios = data.horariosPregacao || { semana: {}, fimDeSemana: {} };
                 const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
                 const weekendOrder = ["sabado", "domingo"];
-
                 const populateDay = (day, times, container) => {
                     if (times && times.length > 0) {
                         const dayContainer = document.createElement('div'); dayContainer.className = 'day-container';
@@ -2059,186 +1869,30 @@ function populateHistoryFilters(items) {
                     }
                 };
                 weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv));
-                weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimSemanaDiv));
-
+                weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimDeSemanaDiv));
             } else if (tabId === 'disponibilidade-tab') {
                 selectedAusencias = (data.ausencias || []).map(ausencia => {
-                    if (ausencia && typeof ausencia.toDate === 'function') {
+                    if (ausencia?.toDate) {
                         const dateObj = ausencia.toDate();
                         return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-                    }
-                    return ausencia;
-                }).filter(d => d);
+                    } return ausencia;
+                }).filter(Boolean);
                 updateAusenciasDisplay();
-
             } else if (tabId === 'permissoes-tab') {
-                document.getElementById('edit-fazDesignacoesReuniao').checked = data.fazDesignacoesReuniao || false; document.getElementById('edit-fazDesignacoesPregacao').checked = data.fazDesignacoesPregacao || false; document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false; document.getElementById('edit-rule').value = data.rule || '';
-                const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group'); desigReuniaoGroupDiv.innerHTML = ''; const currentDesigReuniao = data.designacoesReuniao || [];
-                allDesignacoes.reuniao.forEach(desig => { desigReuniaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-reuniao', currentDesigReuniao.includes(desig))); }); if (allDesignacoes.reuniao.length === 0) desigReuniaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
-                const desigPregacaoGroupDiv = document.getElementById('edit-designacoesPregacao-group'); desigPregacaoGroupDiv.innerHTML = ''; const currentDesigPregacao = data.designacoesPregacao || [];
-                allDesignacoes.pregacao.forEach(desig => { desigPregacaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-pregacao', currentDesigPregacao.includes(desig))); }); if (allDesignacoes.pregacao.length === 0) desigPregacaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
+                document.getElementById('edit-fazDesignacoesReuniao').checked = data.fazDesignacoesReuniao || false;
+                document.getElementById('edit-fazDesignacoesPregacao').checked = data.fazDesignacoesPregacao || false;
+                document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false;
+                document.getElementById('edit-rule').value = data.rule || '';
+                const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group'); desigReuniaoGroupDiv.innerHTML = '';
+                const currentDesigReuniao = data.designacoesReuniao || [];
+                allDesignacoes.reuniao.forEach(desig => desigReuniaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-reuniao', currentDesigReuniao.includes(desig))));
+                if (allDesignacoes.reuniao.length === 0) desigReuniaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
+                const desigPregacaoGroupDiv = document.getElementById('edit-designacoesPregacao-group'); desigPregacaoGroupDiv.innerHTML = '';
+                const currentDesigPregacao = data.designacoesPregacao || [];
+                allDesignacoes.pregacao.forEach(desig => desigPregacaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-pregacao', currentDesigPregacao.includes(desig))));
+                if (allDesignacoes.pregacao.length === 0) desigPregacaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
             }
         }
-
-
-        // --- INÍCIO DO NOVO BLOCO DE FUNÇÕES PARA ESTATÍSTICAS ---
-
-        // Função principal que orquestra a renderização da aba
-        function renderEstatisticasTab(items) {
-            const statsContent = document.getElementById('stats-content');
-            const noStatsMessage = document.getElementById('no-stats-message');
-
-            if (items.length === 0) {
-                statsContent.style.display = 'none';
-                noStatsMessage.style.display = 'block';
-                return;
-            }
-            statsContent.style.display = 'block';
-            noStatsMessage.style.display = 'none';
-
-            // 1. Calcular e renderizar os cards
-            const totalReuniao = items.filter(i => i.tipo === 'reuniao').length;
-            const totalPregacao = items.filter(i => i.tipo === 'pregacao').length;
-            document.getElementById('total-reuniao-stat').textContent = totalReuniao;
-            document.getElementById('total-pregacao-stat').textContent = totalPregacao;
-
-            // 2. Calcular e renderizar listas de "Top 5"
-            const designationCounts = items.reduce((acc, item) => {
-                acc[item.name] = (acc[item.name] || 0) + 1;
-                return acc;
-            }, {});
-            const sortedDesignacoes = Object.entries(designationCounts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
-            
-            const partnerCounts = items.reduce((acc, item) => {
-                if (item.participants.length > 1) {
-                    item.participants.forEach(pId => {
-                        if (pId !== selectedPersonId) { // Apenas conta os parceiros
-                            acc[pId] = (acc[pId] || 0) + 1;
-                        }
-                    });
-                }
-                return acc;
-            }, {});
-            const sortedParceiros = Object.entries(partnerCounts).map(([id, count]) => ({ name: allPessoasNames[id] || 'Desconhecido', count })).sort((a, b) => b.count - a.count);
-
-            renderTopList('top-designacoes-list', 'toggle-designacoes', sortedDesignacoes);
-            renderTopList('top-parceiros-list', 'toggle-parceiros', sortedParceiros);
-
-            // 3. Preparar dados e renderizar os gráficos
-            const chartDataByDesignation = getChartDataFromCounts(sortedDesignacoes);
-            const chartDataByYear = getChartDataFromField(items, 'ano');
-            const chartDataByMonth = getChartDataFromField(items, 'mes', { '1': 'Jan', '2': 'Fev', '3': 'Mar', '4': 'Abr', '5': 'Mai', '6': 'Jun', '7': 'Jul', '8': 'Ago', '9': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez' });
-            const chartDataByWeek = getChartDataFromField(items, 'semanaIndex', {}, true);
-
-            createOrUpdateChart('designacoes-por-tipo-chart', 'bar', chartDataByDesignation.labels, chartDataByDesignation.data, 'Designações por Tipo');
-            createOrUpdateChart('designacoes-por-ano-chart', 'bar', chartDataByYear.labels, chartDataByYear.data, 'Designações por Ano');
-            createOrUpdateChart('designacoes-por-mes-chart', 'bar', chartDataByMonth.labels, chartDataByMonth.data, 'Designações por Mês');
-            createOrUpdateChart('designacoes-por-semana-chart', 'bar', chartDataByWeek.labels, chartDataByWeek.data, 'Designações por Semana');
-        }
-        
-        // Helper para renderizar as listas de "Top 5" com botão "Mostrar Mais"
-        function renderTopList(listId, buttonId, data) {
-            const list = document.getElementById(listId);
-            const button = document.getElementById(buttonId);
-            list.innerHTML = '';
-
-            if (data.length === 0) {
-                button.style.display = 'none';
-                list.innerHTML = '<li>Nenhum dado disponível.</li>';
-                return;
-            }
-
-            const render = (limit) => {
-                list.innerHTML = '';
-                const itemsToShow = limit ? data.slice(0, limit) : data;
-                itemsToShow.forEach(item => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span>${item.name}</span> <span class="count">${item.count}</span>`;
-                    list.appendChild(li);
-                });
-            };
-
-            render(5); // Renderiza inicialmente o Top 5
-
-            if (data.length > 5) {
-                button.style.display = 'block';
-                button.textContent = `Mostrar Todos (${data.length})`;
-                button.onclick = () => {
-                    const isShowingAll = button.textContent.startsWith('Mostrar Menos');
-                    if (isShowingAll) {
-                        render(5);
-                        button.textContent = `Mostrar Todos (${data.length})`;
-                    } else {
-                        render(null); // Mostra todos
-                        button.textContent = 'Mostrar Menos';
-                    }
-                };
-            } else {
-                button.style.display = 'none';
-            }
-        }
-
-        // Helper para criar ou atualizar um gráfico
-        function createOrUpdateChart(canvasId, type, labels, data, title) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            if (chartInstances[canvasId]) {
-                chartInstances[canvasId].destroy(); // Destrói o gráfico anterior
-            }
-            chartInstances[canvasId] = new Chart(ctx, {
-                type: type,
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Total',
-                        data: data,
-                        backgroundColor: 'rgba(0, 123, 255, 0.5)',
-                        borderColor: 'rgba(0, 123, 255, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        title: { display: true, text: title, font: { size: 16 } },
-                        legend: { display: false }
-                    },
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
-        }
-        
-        // Helpers para preparar os dados para os gráficos
-        function getChartDataFromCounts(sortedCounts) {
-            const labels = sortedCounts.map(item => item.name);
-            const data = sortedCounts.map(item => item.count);
-            return { labels, data };
-        }
-
-        function getChartDataFromField(items, field, nameMap = {}, cleanWeek = false) {
-            const counts = items.reduce((acc, item) => {
-                if (item[field]) {
-                    acc[item[field]] = (acc[item[field]] || 0) + 1;
-                }
-                return acc;
-            }, {});
-            
-            const sorted = Object.entries(counts).sort((a,b) => String(a[0]).localeCompare(String(b[0]), undefined, {numeric: true}));
-            
-            const labels = sorted.map(([key, _]) => {
-                if (cleanWeek) return key.replace(/[()]/g, '').replace(/ \d{4}$/, '').trim();
-                return nameMap[key] || key;
-            });
-            const data = sorted.map(([_, value]) => value);
-            
-            return { labels, data };
-        }
-
-        // --- FIM DO NOVO BLOCO DE FUNÇÕES ---
-
-
-
-
 
         function saveTabData(tabId, saveButton) {
             if (!selectedPersonId) return;
@@ -2246,59 +1900,398 @@ function populateHistoryFilters(items) {
             let dataToUpdate = {};
             try {
                 if (tabId === 'pessoal-tab') {
-                    dataToUpdate = { nomePessoa: document.getElementById('edit-nomePessoa').value.trim(), genero: document.getElementById('edit-genero').value, idioma: document.getElementById('edit-idioma').value, personalidade: document.getElementById('edit-personalidade').value, dataNascimento: document.getElementById('edit-dataNascimento').value || null, email: document.getElementById('edit-email').value.trim(), telemovel: document.getElementById('edit-telemovel').value.trim(), casadoCom: document.getElementById('edit-casadoCom').value.trim() || null };
-
-                } else if (tabId === 'espiritual-tab') {
-                    const selectedPrivilegios = Array.from(document.querySelectorAll('#edit-privilegios-group input:checked')).map(cb => cb.value);
+                    const familiaValue = document.getElementById('edit-familia').value.trim();
                     dataToUpdate = {
-                        grupo: document.getElementById('edit-grupo').value || null,
-                        privilegios: selectedPrivilegios
+                        nomePessoa: document.getElementById('edit-nomePessoa').value.trim(),
+                        nomeCompletoPessoa: document.getElementById('edit-nomeCompletoPessoa').value.trim(),
+                        morada: document.getElementById('edit-morada').value.trim(),
+                        genero: document.getElementById('edit-genero').value,
+                        idioma: document.getElementById('edit-idioma').value,
+                        personalidade: document.getElementById('edit-personalidade').value,
+                        dataNascimento: document.getElementById('edit-dataNascimento').value || null,
+                        dataBatismo: document.getElementById('edit-dataBatismo').value || null,
+                        email: document.getElementById('edit-email').value.trim(),
+                        telemovel: document.getElementById('edit-telemovel').value.trim(),
+                        familia: familiaValue ? familiaValue.split(',').map(name => name.trim()).filter(Boolean) : [],
+                        casadoCom: document.getElementById('edit-casadoCom').value.trim() || null
                     };
-
+                } else if (tabId === 'espiritual-tab') {
+                    const getSelectedPrivileges = (type) => Array.from(document.querySelectorAll(`#edit-privilegios-${type}-group input:checked`)).map(cb => cb.value);
+                    dataToUpdate = {
+                        ativo: document.getElementById('edit-ativo').checked,
+                        grupo: document.getElementById('edit-grupo').value || null,
+                        privilegiosCongregacao: getSelectedPrivileges('congregacao'),
+                        privilegiosPregacao: getSelectedPrivileges('pregacao'),
+                        privilegiosEspeciais: getSelectedPrivileges('especiais')
+                    };
                 } else if (tabId === 'pregacao-tab') {
                     const horariosPregacao = { semana: {}, fimDeSemana: {} };
                     document.querySelectorAll('#edit-horarios-semana .horario-checkbox:checked').forEach(cb => {
-                        const day = cb.dataset.day;
-                        if (!horariosPregacao.semana[day]) horariosPregacao.semana[day] = [];
-                        horariosPregacao.semana[day].push(cb.value);
+                        const day = cb.dataset.day; if (!horariosPregacao.semana[day]) horariosPregacao.semana[day] = []; horariosPregacao.semana[day].push(cb.value);
                     });
                     document.querySelectorAll('#edit-horarios-fim-de-semana .horario-checkbox:checked').forEach(cb => {
-                        const day = cb.dataset.day;
-                        if (!horariosPregacao.fimDeSemana[day]) horariosPregacao.fimDeSemana[day] = [];
-                        horariosPregacao.fimDeSemana[day].push(cb.value);
+                        const day = cb.dataset.day; if (!horariosPregacao.fimDeSemana[day]) horariosPregacao.fimDeSemana[day] = []; horariosPregacao.fimDeSemana[day].push(cb.value);
                     });
                     dataToUpdate = { horariosPregacao: horariosPregacao };
-
                 } else if (tabId === 'disponibilidade-tab') {
                     dataToUpdate = { ausencias: selectedAusencias.sort() };
-
                 } else if (tabId === 'permissoes-tab') {
                     const selectedDesigReuniao = Array.from(document.querySelectorAll('#edit-designacoesReuniao-group input:checked')).map(cb => cb.value);
                     const selectedDesigPregacao = Array.from(document.querySelectorAll('#edit-designacoesPregacao-group input:checked')).map(cb => cb.value);
-                    dataToUpdate = { fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked, designacoesReuniao: selectedDesigReuniao, fazDesignacoesPregacao: document.getElementById('edit-fazDesignacoesPregacao').checked, designacoesPregacao: selectedDesigPregacao, acompanhaCarrinhos: document.getElementById('edit-acompanhaCarrinhos').checked, rule: document.getElementById('edit-rule').value.trim() || null };
+                    dataToUpdate = {
+                        fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked, designacoesReuniao: selectedDesigReuniao,
+                        fazDesignacoesPregacao: document.getElementById('edit-fazDesignacoesPregacao').checked, designacoesPregacao: selectedDesigPregacao,
+                        acompanhaCarrinhos: document.getElementById('edit-acompanhaCarrinhos').checked, rule: document.getElementById('edit-rule').value.trim() || null
+                    };
                 }
-            } catch (error) { console.error("Erro ao coletar dados:", error); alert("Erro ao ler dados do formulário."); saveButton.disabled = false; saveButton.innerHTML = '<i class="fas fa-save"></i> Gravar'; return; }
+            } catch (error) {
+                console.error("Erro ao coletar dados:", error); alert("Erro ao ler dados do formulário.");
+                saveButton.disabled = false; saveButton.innerHTML = '<i class="fas fa-save"></i> Gravar'; return;
+            }
 
-            db.collection('pessoas').doc(selectedPersonId).update(dataToUpdate)
-                .then(() => {
-                    console.log("Dados atualizados!");
-                    selectedPersonData = { ...selectedPersonData, ...dataToUpdate };
-
-                    if (tabId === 'pessoal-tab') { populatePessoalTab(selectedPersonData); }
-                    else if (tabId === 'espiritual-tab') { populateEspiritualTab(selectedPersonData); }
-                    else if (tabId === 'pregacao-tab') { populatePregacaoTab(selectedPersonData); }
-                    else if (tabId === 'disponibilidade-tab') { populateDisponibilidadeTab(selectedPersonData); }
-                    else if (tabId === 'permissoes-tab') { populatePermissoesTab(selectedPersonData); }
-
-                    if (dataToUpdate.nomePessoa && document.querySelector(`#pessoas-list li[data-id="${selectedPersonId}"]`)) {
-                        document.querySelector(`#pessoas-list li[data-id="${selectedPersonId}"]`).textContent = dataToUpdate.nomePessoa;
-                        detailNameH3.textContent = dataToUpdate.nomePessoa;
-                    }
-                    cancelEditMode(); alert('Dados gravados com sucesso!');
-                })
-                .catch(error => { console.error("Erro ao gravar:", error); alert(error.code === 'permission-denied' ? 'Erro: Permissão negada.' : 'Erro ao gravar dados.'); cancelEditMode(); });
+            db.collection('pessoas').doc(selectedPersonId).update(dataToUpdate).then(() => {
+                selectedPersonData = { ...selectedPersonData, ...dataToUpdate };
+                if (tabId === 'pessoal-tab') populatePessoalTab(selectedPersonData);
+                else if (tabId === 'espiritual-tab') populateEspiritualTab(selectedPersonData);
+                else if (tabId === 'pregacao-tab') populatePregacaoTab(selectedPersonData);
+                else if (tabId === 'disponibilidade-tab') populateDisponibilidadeTab(selectedPersonData);
+                else if (tabId === 'permissoes-tab') populatePermissoesTab(selectedPersonData);
+                if (dataToUpdate.nomePessoa) {
+                    document.querySelector(`#pessoas-list li[data-id="${selectedPersonId}"]`).textContent = dataToUpdate.nomePessoa;
+                    detailNameH3.textContent = dataToUpdate.nomePessoa;
+                }
+                cancelEditMode(); alert('Dados gravados com sucesso!');
+            }).catch(error => {
+                console.error("Erro ao gravar:", error); alert(error.code === 'permission-denied' ? 'Erro: Permissão negada.' : 'Erro ao gravar dados.'); cancelEditMode();
+            });
         }
 
+
+// --- INÍCIO DO BLOCO DE FUNÇÕES DO HISTÓRICO ---
+
+        function createHistoryItemElement(item) {
+            const div = document.createElement('div');
+            div.classList.add('history-item');
+
+            const dateStr = item.date.toLocaleDateString('pt-BR', {
+                day: '2-digit', month: '2-digit', year: 'numeric'
+            });
+
+            let participantsString = '';
+            if (item.participants && item.participants.length > 1) {
+                const names = item.participants.map(id => allPessoasNames[id] || '...?').join(' - ');
+                participantsString = `: <span class="hist-participants">${names}</span>`;
+            }
+
+            div.innerHTML = `<span class="hist-date">${dateStr}</span> | <span class="hist-designation">${item.emoji} ${item.name}${participantsString}</span>`;
+            
+            return div;
+        }
+
+        function parseFirestoreDate(firestoreDateField) {
+            if (firestoreDateField && typeof firestoreDateField.toDate === 'function') {
+                return firestoreDateField.toDate();
+            }
+            if (typeof firestoreDateField === 'string' && firestoreDateField) {
+                const parsedDate = new Date(firestoreDateField);
+                if (!isNaN(parsedDate.getTime())) {
+                    return parsedDate;
+                }
+            }
+            return new Date(0);
+        }
+
+        function loadPersonHistory(personId) {
+            showLoading('history', true);
+            unfilteredHistoryItems = [];
+            document.getElementById('hist-tudo').innerHTML = '';
+            document.querySelectorAll('.sub-history-tab-content').forEach(tab => tab.innerHTML = '');
+            document.querySelectorAll('.filter-select').forEach(select => select.innerHTML = '<option value="">Todos</option>');
+
+            if (!dataLoaded.designationDetails || !Object.keys(allPessoasNames).length) {
+                console.error("Dependências (designações ou nomes) não carregadas.");
+                showLoading('history', false); 
+                return;
+            }
+
+            const historicoPromise = db.collection('historico').orderBy('dia', 'desc').get();
+            const historicoPregacaoPromise = db.collection('historicoPregacao').orderBy('dia', 'desc').get();
+
+            Promise.all([historicoPromise, historicoPregacaoPromise]).then(([historicoSnapshot, historicoPregacaoSnapshot]) => {
+                let allItems = [];
+                const processSnapshot = (snapshot, isPregacaoCollection) => {
+                    snapshot.forEach(doc => {
+                        const historicoData = doc.data();
+                        if (historicoData.designacoes && Array.isArray(historicoData.designacoes)) {
+                            historicoData.designacoes.forEach(dInstance => {
+                                let participantIds = [];
+                                if (dInstance.participantes) {
+                                    if (Array.isArray(dInstance.participantes)) participantIds = dInstance.participantes;
+                                    else if (typeof dInstance.participantes === 'object') participantIds = Object.values(dInstance.participantes);
+                                }
+                                if (participantIds.includes(personId)) {
+                                    const desigId = dInstance.designacaoId || null;
+                                    let details = allDesignationDetails[desigId] || {};
+                                    let tipo = isPregacaoCollection ? 'pregacao' : details.tipo || 'reuniao';
+                                    allItems.push({
+                                        date: parseFirestoreDate(historicoData.dia), name: details.nome || 'Desconhecida',
+                                        tipo: tipo, quando: details.quando || null, emoji: details.emoji || '🔹',
+                                        participants: participantIds, parte: historicoData.parte || null,
+                                        ano: historicoData.ano || null, mes: historicoData.mes || null,
+                                        semanaIndex: historicoData.semanaindex || null, designacaoId: desigId,
+                                        sala: historicoData.sala || null
+                                    });
+                                }
+                            });
+                        }
+                    });
+                };
+                processSnapshot(historicoSnapshot, false);
+                processSnapshot(historicoPregacaoSnapshot, true);
+                unfilteredHistoryItems = allItems.sort((a, b) => b.date - a.date);
+                populateHistoryFilters(unfilteredHistoryItems); 
+                applyFiltersAndRender(); 
+                showLoading('history', false);
+            }).catch(error => {
+                showLoading('history', false);
+                console.error("Erro ao carregar e processar histórico:", error);
+                document.getElementById('hist-tudo').innerHTML = `<div class="history-item" style="color: #dc3545;">Erro ao carregar histórico.</div>`;
+            });
+        }
+
+        function populateHistoryFilters(items) {
+            const anoSelect = document.getElementById('hist-filter-ano');
+            const mesSelect = document.getElementById('hist-filter-mes');
+            const semanaSelect = document.getElementById('hist-filter-semana');
+            const designacaoSelect = document.getElementById('hist-filter-designacao');
+            const salaSelect = document.getElementById('hist-filter-sala');
+            const salaNames = { 'salao-principal': 'Salão Principal', 'segunda-sala': 'Segunda Sala', 'terceira-sala': 'Terceira Sala' };
+            const monthNames = { '1': 'Janeiro', '2': 'Fevereiro', '3': 'Março', '4': 'Abril', '5': 'Maio', '6': 'Junho', '7': 'Julho', '8': 'Agosto', '9': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro' };
+            const populateSelect = (select, values, nameMap = {}) => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Todos</option>';
+                const uniqueValues = [...new Set(values)].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+                uniqueValues.forEach(value => {
+                    const option = document.createElement('option'); option.value = value; option.textContent = nameMap[value] || value; select.appendChild(option);
+                });
+                select.value = currentValue;
+            };
+            populateSelect(anoSelect, items.map(i => i.ano).filter(Boolean));
+            populateSelect(mesSelect, items.map(i => i.mes).filter(Boolean), monthNames);
+            populateSelect(salaSelect, items.map(i => i.sala).filter(Boolean), salaNames);
+            const uniqueSemanas = [...new Set(items.map(i => i.semanaIndex).filter(Boolean))];
+            const semanaNameMap = uniqueSemanas.reduce((acc, week) => {
+                let cleaned = week.replace(/[()]/g, ''); const lastSpaceIndex = cleaned.lastIndexOf(' ');
+                if (lastSpaceIndex > -1) cleaned = cleaned.substring(0, lastSpaceIndex);
+                acc[week] = cleaned.trim(); return acc;
+            }, {});
+            populateSelect(semanaSelect, uniqueSemanas, semanaNameMap);
+            const uniqueDesignacoes = items.reduce((acc, item) => {
+                if (item.designacaoId && !acc.has(item.designacaoId)) acc.set(item.designacaoId, item.name);
+                return acc;
+            }, new Map());
+            const currentDesignacao = designacaoSelect.value; designacaoSelect.innerHTML = '<option value="">Todas</option>';
+            [...uniqueDesignacoes.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+                const option = document.createElement('option'); option.value = id; option.textContent = name; designacaoSelect.appendChild(option);
+            });
+            designacaoSelect.value = currentDesignacao;
+        }
+
+        function applyFiltersAndRender() {
+            const salaNames = { 'salao-principal': 'Salão Principal', 'segunda-sala': 'Segunda Sala', 'terceira-sala': 'Terceira Sala' };
+            const monthNames = { '1': 'Janeiro', '2': 'Fevereiro', '3': 'Março', '4': 'Abril', '5': 'Maio', '6': 'Junho', '7': 'Julho', '8': 'Agosto', '9': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro' };
+            const selects = { ano: document.getElementById('hist-filter-ano'), mes: document.getElementById('hist-filter-mes'), semanaIndex: document.getElementById('hist-filter-semana'), designacaoId: document.getElementById('hist-filter-designacao'), tipo: document.getElementById('hist-filter-tipo'), sala: document.getElementById('hist-filter-sala') };
+            const currentFilters = { ano: selects.ano.value, mes: selects.mes.value, semanaIndex: selects.semanaIndex.value, designacaoId: selects.designacaoId.value, tipo: selects.tipo.value, sala: selects.sala.value };
+            let items = [...unfilteredHistoryItems];
+            const populateSelect = (select, data, valueKey, textMap = {}) => {
+                const uniqueValues = [...new Set(data.map(item => item[valueKey]).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+                select.innerHTML = '<option value="">Todos</option>';
+                uniqueValues.forEach(value => {
+                    let text = textMap[value] || value;
+                    if (valueKey === 'semanaIndex') text = value.replace(/[()]/g, '').replace(/ \d{4}$/, '').trim();
+                    const option = document.createElement('option'); option.value = value; option.textContent = text; select.appendChild(option);
+                });
+            };
+            populateSelect(selects.ano, items, 'ano'); selects.ano.value = currentFilters.ano;
+            if (currentFilters.ano) items = items.filter(i => i.ano == currentFilters.ano);
+            populateSelect(selects.mes, items, 'mes', monthNames); selects.mes.value = currentFilters.mes;
+            if (currentFilters.mes) items = items.filter(i => i.mes == currentFilters.mes);
+            populateSelect(selects.semanaIndex, items, 'semanaIndex'); selects.semanaIndex.value = currentFilters.semanaIndex;
+            if (currentFilters.semanaIndex) items = items.filter(i => i.semanaIndex == currentFilters.semanaIndex);
+            populateSelect(selects.tipo, unfilteredHistoryItems, 'tipo', { 'reuniao': 'Reunião', 'pregacao': 'Pregação' }); selects.tipo.value = currentFilters.tipo;
+            if (currentFilters.tipo) items = items.filter(i => i.tipo == currentFilters.tipo);
+            populateSelect(selects.sala, items, 'sala', salaNames); selects.sala.value = currentFilters.sala;
+            if (currentFilters.sala) items = items.filter(i => i.sala == currentFilters.sala);
+            const uniqueDesignacoes = items.reduce((acc, item) => { if(item.designacaoId && !acc.has(item.designacaoId)) acc.set(item.designacaoId, item.name); return acc; }, new Map());
+            selects.designacaoId.innerHTML = '<option value="">Todas</option>';
+            [...uniqueDesignacoes.entries()].sort((a,b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+                const option = document.createElement('option'); option.value = id; option.textContent = name; selects.designacaoId.appendChild(option);
+            });
+            selects.designacaoId.value = currentFilters.designacaoId;
+            if (currentFilters.designacaoId) items = items.filter(i => i.designacaoId == currentFilters.designacaoId);
+            renderTudoTab(items);
+            renderArquivoTabs(items);
+            renderEstatisticasTab(items);
+        }
+
+        function renderTudoTab(items) {
+            const tudoTab = document.getElementById('hist-tudo'); tudoTab.innerHTML = '';
+            if (items.length === 0) {
+                tudoTab.innerHTML = `<div class="history-item" style="text-align: center; padding: 20px;">Nenhum registo encontrado com os filtros atuais.</div>`; return;
+            }
+            const groupedByMonth = items.reduce((acc, item) => {
+                const monthYear = item.date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+                if (!acc[monthYear]) acc[monthYear] = []; acc[monthYear].push(item); return acc;
+            }, {});
+            for (const monthYear in groupedByMonth) {
+                const header = document.createElement('h4');
+                header.textContent = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
+                header.style.cssText = "padding: 15px 20px 10px; background-color: #f8f9fa; border-bottom: 1px solid #e9ecef; font-size: 0.9rem; color: #343a40; margin: 0;";
+                tudoTab.appendChild(header);
+                groupedByMonth[monthYear].forEach(item => tudoTab.appendChild(createHistoryItemElement(item)));
+            }
+        }
+
+        function renderArquivoTabs(items) {
+            const renderHistoryList = (targetElement, list) => {
+                targetElement.innerHTML = '';
+                if (list.length === 0) {
+                    targetElement.innerHTML = `<div class="history-item" style="text-align: center; padding: 20px;">Nenhum registo nesta categoria.</div>`;
+                } else {
+                    list.forEach(item => targetElement.appendChild(createHistoryItemElement(item)));
+                }
+            };
+            renderHistoryList(document.getElementById('sub-hist-semana'), items.filter(i => i.quando === 'Semana' && i.tipo === 'reuniao'));
+            renderHistoryList(document.getElementById('sub-hist-fds'), items.filter(i => i.quando === 'Fim de Semana' && i.tipo === 'reuniao'));
+            renderHistoryList(document.getElementById('sub-hist-tecnicas'), items.filter(i => i.parte === 'tecnicas' && i.tipo === 'reuniao'));
+            renderHistoryList(document.getElementById('sub-hist-pregacao'), items.filter(i => i.tipo === 'pregacao'));
+        }
+
+        function renderEstatisticasTab(items) {
+            const statsContent = document.getElementById('stats-content');
+            const noStatsMessage = document.getElementById('no-stats-message');
+            if (items.length === 0) {
+                statsContent.style.display = 'none'; noStatsMessage.style.display = 'block'; return;
+            }
+            statsContent.style.display = 'block'; noStatsMessage.style.display = 'none';
+            const totalReuniao = items.filter(i => i.tipo === 'reuniao').length;
+            const totalPregacao = items.filter(i => i.tipo === 'pregacao').length;
+            document.getElementById('total-reuniao-stat').textContent = totalReuniao;
+            document.getElementById('total-pregacao-stat').textContent = totalPregacao;
+            const designationCounts = items.reduce((acc, item) => { acc[item.name] = (acc[item.name] || 0) + 1; return acc; }, {});
+            const sortedDesignacoes = Object.entries(designationCounts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+            const partnerCounts = items.reduce((acc, item) => {
+                if (item.participants.length > 1) {
+                    item.participants.forEach(pId => { if (pId !== selectedPersonId) acc[pId] = (acc[pId] || 0) + 1; });
+                } return acc;
+            }, {});
+            const sortedParceiros = Object.entries(partnerCounts).map(([id, count]) => ({ name: allPessoasNames[id] || 'Desconhecido', count })).sort((a, b) => b.count - a.count);
+            renderTopList('top-designacoes-list', 'toggle-designacoes', sortedDesignacoes);
+            renderTopList('top-parceiros-list', 'toggle-parceiros', sortedParceiros);
+            const chartDataByDesignation = getChartDataFromCounts(sortedDesignacoes);
+            const chartDataByYear = getChartDataFromField(items, 'ano');
+            const chartDataByMonth = getChartDataFromField(items, 'mes', { '1': 'Jan', '2': 'Fev', '3': 'Mar', '4': 'Abr', '5': 'Mai', '6': 'Jun', '7': 'Jul', '8': 'Ago', '9': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez' });
+            const chartDataByWeek = getChartDataFromField(items, 'semanaIndex', {}, true);
+            createOrUpdateChart('designacoes-por-tipo-chart', 'bar', chartDataByDesignation.labels, chartDataByDesignation.data, 'Designações por Tipo');
+            createOrUpdateChart('designacoes-por-ano-chart', 'bar', chartDataByYear.labels, chartDataByYear.data, 'Designações por Ano');
+            createOrUpdateChart('designacoes-por-mes-chart', 'bar', chartDataByMonth.labels, chartDataByMonth.data, 'Designações por Mês');
+            createOrUpdateChart('designacoes-por-semana-chart', 'bar', chartDataByWeek.labels, chartDataByWeek.data, 'Designações por Semana');
+        }
+        
+        function renderTopList(listId, buttonId, data) {
+            const list = document.getElementById(listId);
+            const button = document.getElementById(buttonId);
+            list.innerHTML = '';
+            if (data.length === 0) {
+                button.style.display = 'none'; list.innerHTML = '<li>Nenhum dado disponível.</li>'; return;
+            }
+            const render = (limit) => {
+                list.innerHTML = ''; const itemsToShow = limit ? data.slice(0, limit) : data;
+                itemsToShow.forEach(item => {
+                    const li = document.createElement('li'); li.innerHTML = `<span>${item.name}</span> <span class="count">${item.count}</span>`; list.appendChild(li);
+                });
+            };
+            render(5);
+            if (data.length > 5) {
+                button.style.display = 'block'; button.textContent = `Mostrar Todos (${data.length})`;
+                button.onclick = () => {
+                    const isShowingAll = button.textContent.startsWith('Mostrar Menos');
+                    if (isShowingAll) { render(5); button.textContent = `Mostrar Todos (${data.length})`; }
+                    else { render(null); button.textContent = 'Mostrar Menos'; }
+                };
+            } else { button.style.display = 'none'; }
+        }
+
+        function createOrUpdateChart(canvasId, type, labels, data, title) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: type, data: { labels: labels, datasets: [{ label: 'Total', data: data, backgroundColor: 'rgba(0, 123, 255, 0.5)', borderColor: 'rgba(0, 123, 255, 1)', borderWidth: 1 }] },
+                options: { responsive: true, maintainAspectRatio: true, plugins: { title: { display: true, text: title, font: { size: 16 } }, legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+        }
+        
+        function getChartDataFromCounts(sortedCounts) {
+            return { labels: sortedCounts.map(item => item.name), data: sortedCounts.map(item => item.count) };
+        }
+
+        function getChartDataFromField(items, field, nameMap = {}, cleanWeek = false) {
+            const counts = items.reduce((acc, item) => { if (item[field]) acc[item[field]] = (acc[item[field]] || 0) + 1; return acc; }, {});
+            const sorted = Object.entries(counts).sort((a,b) => String(a[0]).localeCompare(String(b[0]), undefined, {numeric: true}));
+            const labels = sorted.map(([key, _]) => cleanWeek ? key.replace(/[()]/g, '').replace(/ \d{4}$/, '').trim() : nameMap[key] || key);
+            const data = sorted.map(([_, value]) => value);
+            return { labels, data };
+        }
+
+        // --- Lógica das Abas (Histórico) ---
+        if (historyTabsContainer) {
+            historyTabsContainer.addEventListener('click', (e) => {
+                if (e.target.matches('.history-tab-button')) {
+                    const targetTabId = e.target.dataset.tab;
+                    historyTabsContainer.querySelector('.active').classList.remove('active');
+                    e.target.classList.add('active');
+                    historyTabContents.forEach(content => { content.classList.toggle('active', content.id === targetTabId); });
+                }
+            });
+        }
+        
+        const arquivoTabContent = document.getElementById('hist-arquivo');
+        if (arquivoTabContent) {
+            arquivoTabContent.addEventListener('click', (e) => {
+                if (e.target.matches('.sub-history-tab-button')) {
+                    const subTabsContainer = e.target.closest('.sub-history-tabs');
+                    const subContentContainer = arquivoTabContent.querySelector('.sub-history-content-container');
+                    const targetTabId = e.target.dataset.tab;
+                    subTabsContainer.querySelector('.active').classList.remove('active');
+                    e.target.classList.add('active');
+                    subContentContainer.querySelectorAll('.sub-history-tab-content').forEach(content => { content.classList.toggle('active', content.id === targetTabId); });
+                }
+            });
+        }
+        
+        // --- FIM DO BLOCO DE FUNÇÕES DO HISTÓRICO ---
+
+
+        function switchTab(tabId) {
+            cancelEditMode(); tabButtons.forEach(btn => btn.classList.remove('active')); tabContents.forEach(content => content.classList.remove('active'));
+            const activeButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`); const activeContent = document.getElementById(tabId);
+            if (activeButton) activeButton.classList.add('active'); if (activeContent) activeContent.classList.add('active');
+        }
+        
+        // --- Event Listeners e Inicialização ---
+        filterPessoasInput.addEventListener('input', filterPessoasList);
+        tabButtons.forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
+        editButtons.forEach(button => button.addEventListener('click', (e) => enterEditMode(e.target.closest('button').dataset.tabTarget)));
+        cancelButtons.forEach(button => button.addEventListener('click', cancelEditMode));
+        saveButtons.forEach(button => button.addEventListener('click', (e) => saveTabData(e.target.closest('button').dataset.tabTarget, e.target.closest('button'))));
+        casadoComInput.addEventListener('input', handleSpouseSuggestions);
+        document.addEventListener('click', (e) => {
+            const suggestionsDiv = document.getElementById('casado-com-suggestions');
+            if (suggestionsDiv && !suggestionsDiv.contains(e.target) && e.target !== casadoComInput) {
+                hideSuggestions(suggestionsDiv);
+            }
+        });
+        
         addSingleAusenciaBtn.addEventListener('click', () => {
             const dateInput = document.getElementById('ausencia-single-date');
             if (dateInput.value && !selectedAusencias.includes(dateInput.value)) {
@@ -2324,34 +2317,16 @@ function populateHistoryFilters(items) {
             }
         });
 
-        // --- Event Listeners e Inicialização ---
-      if (filterPessoasInput) {
-            filterPessoasInput.addEventListener('input', filterPessoasList);
-        }
-
-document.querySelectorAll('.filter-select').forEach(select => {
-            select.addEventListener('change', applyFiltersAndRender);
-        });
-
-        document.getElementById('reset-history-filters').addEventListener('click', () => {
-            document.querySelectorAll('.filter-select').forEach(select => select.value = '');
-            applyFiltersAndRender();
-        });
-
-
-        
         console.log("Iniciando carregamento...");
         showLoading('list', true);
-        
         Promise.all([
-            loadAllPessoasNames(), // <-- ADICIONE ESTA LINHA
+            loadAllPessoasData(),
             loadAllDesignacoes().catch(err => console.error("Falha ao carregar designações.", err)),
             loadAllHorarios().catch(err => console.error("Falha ao carregar horários.", err))
         ]).finally(() => {
             console.log("Carregamento inicial de configurações concluído. Carregando pessoas...");
             loadPessoasList();
         });
-
     });
     </script>
     
