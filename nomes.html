@@ -944,7 +944,43 @@ body.sidebar-collapsed .column:first-child {
         .column h2 .add-person-btn:hover {
             color: #ffffff; /* Branco ao passar o mouse */
         }
-        
+
+
+        .grid-row {
+    display: grid;
+    /* Cria 2 colunas de tamanho igual */
+    grid-template-columns: 1fr 1fr; 
+    /* Espaçamento entre as colunas */
+    gap: 20px; 
+}
+
+/* Remove a margem inferior dos itens que estão dentro da linha para evitar espaçamento duplo */
+.grid-row > .data-item,
+.grid-row > .form-group {
+    margin-bottom: 0;
+}
+
+/* Garante que a linha em si tenha um espaçamento inferior */
+.display-mode .grid-row {
+    margin-bottom: 14px;
+}
+.edit-mode .grid-row {
+    margin-bottom: 18px;
+}
+
+@media (max-width: 768px) {
+    .edit-mode .grid-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+    .edit-mode .grid-row > .form-group {
+        margin-bottom: 18px;
+    }
+    .edit-mode .grid-row > .form-group:last-child {
+        margin-bottom: 0;
+    }
+}
+
 /* Ajustes finos para telas de celular (até 768px) */
 @media (max-width: 768px) {
     html {
@@ -984,6 +1020,28 @@ body.sidebar-collapsed .column:first-child {
     }
 }
 
+.grid-row {
+    display: grid;
+    /* Cria 2 colunas de tamanho igual */
+    grid-template-columns: 1fr 1fr; 
+    /* Espaçamento entre as colunas */
+    gap: 20px; 
+}
+
+/* Remove a margem inferior dos itens que estão dentro da linha para evitar espaçamento duplo */
+.grid-row > .data-item,
+.grid-row > .form-group {
+    margin-bottom: 0;
+}
+
+/* Garante que a linha em si tenha um espaçamento inferior */
+.display-mode .grid-row {
+    margin-bottom: 14px;
+}
+.edit-mode .grid-row {
+    margin-bottom: 18px;
+}
+
 
 
     </style>
@@ -1013,10 +1071,10 @@ body.sidebar-collapsed .column:first-child {
     <!-- Conteúdo Principal da Página -->
     <div class="container">
         <!-- Coluna 1: Lista de Pessoas -->
-        <div class="column list-column">
+       <div class="column list-column">
          <h2>
                 <!-- MODIFICADO -->
-                <span><i class="fas fa-users"></i> Pessoas</span>
+              <span><i class="fas fa-users"></i> Pessoas</span>
                 <a href="criar-pessoa.html" class="add-person-btn" title="Adicionar Nova Pessoa">
                     <i class="fas fa-user-plus"></i>
                 </a>
@@ -1044,49 +1102,66 @@ body.sidebar-collapsed .column:first-child {
                         <button class="tab-button active" data-tab="pessoal-tab">Pessoal</button>
                         <button class="tab-button" data-tab="espiritual-tab">Espiritual</button>
                         <button class="tab-button" data-tab="pregacao-tab">Pregação</button>
-                        <button class="tab-button" data-tab="permissoes-tab">Permissões</button>
+                        <button class="tab-button" data-tab="permissoes-tab">Designações</button>
                         <button class="tab-button" data-tab="disponibilidade-tab">Ausências</button>
                     </div>
 
-                    <!-- Aba Pessoal -->
+                    <!-- Aba Pessoal (MODIFICADA PARA O NOVO LAYOUT) -->
                     <div id="pessoal-tab" class="tab-content active">
                         <div class="display-mode">
                             <h4>Informações Pessoais</h4>
-                            <!-- MODIFICADO -->
+                            <!-- Modo de visualização: Lista vertical simples -->
                             <div class="data-item"><strong>Nome Curto:</strong> <span id="detail-nomePessoa">-</span></div>
                             <div class="data-item"><strong>Nome Completo:</strong> <span id="detail-nomeCompletoPessoa">-</span></div>
-                            <!-- ADICIONADO -->
-                            <div class="data-item"><strong>Morada:</strong> <span id="detail-morada">-</span></div>
                             <div class="data-item"><strong>Gênero:</strong> <span id="detail-genero">-</span></div>
                             <div class="data-item"><strong>Idioma:</strong> <span id="detail-idioma">-</span></div>
-                            <div class="data-item"><strong>Personalidade:</strong> <span id="detail-personalidade">-</span></div>
-                            <div class="data-item"><strong>Nascimento:</strong> <span id="detail-dataNascimento">-</span></div>
-                             <!-- ADICIONADO -->
-                            <div class="data-item"><strong>Batismo:</strong> <span id="detail-dataBatismo">-</span></div>
                             <div class="data-item"><strong>Email:</strong> <span id="detail-email">-</span></div>
                             <div class="data-item"><strong>Telemóvel:</strong> <span id="detail-telemovel">-</span></div>
-                             <!-- ADICIONADO -->
+                            <div class="data-item"><strong>Nascimento:</strong> <span id="detail-dataNascimento">-</span></div>
+                            <div class="data-item"><strong>Batismo:</strong> <span id="detail-dataBatismo">-</span></div>
                             <div class="data-item"><strong>Família:</strong> <div id="detail-familia" class="array-data">-</div></div>
                             <div class="data-item"><strong>Casado(a) Com:</strong> <span id="detail-casadoCom">-</span></div>
+                            <div class="data-item"><strong>Morada:</strong> <span id="detail-morada">-</span></div>
+                            <div class="data-item"><strong>Personalidade:</strong> <span id="detail-personalidade">-</span></div>
+                            <div class="data-item"><strong>Na Congregação?:</strong> <span id="detail-naCongregacao">-</span></div>
                         </div>
-                     <div class="edit-mode" style="display: none;">
+                        
+                        <div class="edit-mode" style="display: none;">
                             <h4>Editar Informações Pessoais</h4>
-                            <div class="form-group"><label for="edit-nomePessoa">Nome Curto:</label><input type="text" id="edit-nomePessoa"></div>
-                            <div class="form-group"><label for="edit-nomeCompletoPessoa">Nome Completo:</label><input type="text" id="edit-nomeCompletoPessoa"></div>
-                            <div class="form-group"><label for="edit-morada">Morada:</label><input type="text" id="edit-morada"></div>
-                            <div class="form-group"><label for="edit-genero">Gênero:</label><select id="edit-genero"><option value="">Selecione</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select></div>
-                            <div class="form-group"><label for="edit-idioma">Idioma:</label><input type="text" id="edit-idioma"></div>
-                            <div class="form-group"><label for="edit-personalidade">Personalidade:</label><select id="edit-personalidade"><option value="">Selecione</option><option value="- à vontade">- à vontade</option><option value="+ à vontade">+ à vontade</option></select></div>
-                            <div class="form-group"><label for="edit-dataNascimento">Data Nascimento:</label><input type="date" id="edit-dataNascimento"></div>
-                            <div class="form-group"><label for="edit-dataBatismo">Data Batismo:</label><input type="date" id="edit-dataBatismo"></div>
-                            <div class="form-group"><label for="edit-email">Email:</label><input type="email" id="edit-email"></div>
-                            <div class="form-group"><label for="edit-telemovel">Telemóvel:</label><input type="tel" id="edit-telemovel"></div>
-                            <div class="form-group"><label for="edit-familia">Família (nomes separados por vírgula):</label><input type="text" id="edit-familia"></div>
-                            <div class="form-group">
-                                <label for="edit-casadoCom">Casado(a) Com:</label>
-                                <input type="text" id="edit-casadoCom">
-                                <div id="casado-com-suggestions" class="suggestions-box"></div>
+                            
+                            <!-- Modo de edição: Layout de grade lado a lado -->
+                            <div class="grid-row">
+                                <div class="form-group"><label for="edit-nomePessoa">Nome Curto:</label><input type="text" id="edit-nomePessoa"></div>
+                                <div class="form-group"><label for="edit-nomeCompletoPessoa">Nome Completo:</label><input type="text" id="edit-nomeCompletoPessoa"></div>
                             </div>
+                            <div class="grid-row">
+                                <div class="form-group"><label for="edit-genero">Gênero:</label><select id="edit-genero"><option value="">Selecione</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select></div>
+                                <div class="form-group"><label for="edit-idioma">Idioma:</label><input type="text" id="edit-idioma"></div>
+                            </div>
+                            <div class="grid-row">
+                                <div class="form-group"><label for="edit-email">Email:</label><input type="email" id="edit-email"></div>
+                                <div class="form-group"><label for="edit-telemovel">Telemóvel:</label><input type="tel" id="edit-telemovel"></div>
+                            </div>
+                            <div class="grid-row">
+                                <div class="form-group"><label for="edit-dataNascimento">Data Nascimento:</label><input type="date" id="edit-dataNascimento"></div>
+                                <div class="form-group"><label for="edit-dataBatismo">Data Batismo:</label><input type="date" id="edit-dataBatismo"></div>
+                            </div>
+                            <div class="grid-row">
+                                <div class="form-group"><label for="edit-familia">Família (nomes por vírgula):</label><input type="text" id="edit-familia"></div>
+                                <div class="form-group">
+                                    <label for="edit-casadoCom">Casado(a) Com:</label>
+                                    <input type="text" id="edit-casadoCom">
+                                    <div id="casado-com-suggestions" class="suggestions-box"></div>
+                                </div>
+                            </div>
+
+                            <div class="form-group"><label for="edit-morada">Morada:</label><input type="text" id="edit-morada"></div>
+                            <div class="form-group"><label for="edit-personalidade">Personalidade:</label><select id="edit-personalidade"><option value="">Selecione</option><option value="- à vontade">- à vontade</option><option value="+ à vontade">+ à vontade</option></select></div>
+                            <div class="form-group">
+                                 <label class="boolean-checkbox-label">
+                                     <input type="checkbox" id="edit-naCongregacao"> Na Congregação?
+                                 </label>
+                             </div>
                         </div>
 
                         <div class="edit-controls">
@@ -1100,25 +1175,20 @@ body.sidebar-collapsed .column:first-child {
                     <div id="espiritual-tab" class="tab-content">
                          <div class="display-mode">
                             <h4>Informações Espirituais</h4>
-                             <!-- ADICIONADO -->
                             <div class="data-item"><strong>Ativo:</strong> <span id="detail-ativo">-</span></div>
                             <div class="data-item"><strong>Grupo:</strong> <span id="detail-grupo">-</span></div>
-                             <!-- MODIFICADO (agora são 3 campos separados para melhor visualização) -->
                             <div class="data-item"><strong>Privilégios Congregação:</strong> <div id="detail-privilegiosCongregacao" class="array-data">-</div></div>
                             <div class="data-item"><strong>Privilégios Pregação:</strong> <div id="detail-privilegiosPregacao" class="array-data">-</div></div>
                             <div class="data-item"><strong>Privilégios Especiais:</strong> <div id="detail-privilegiosEspeciais" class="array-data">-</div></div>
                         </div>
                          <div class="edit-mode" style="display: none;">
                              <h4>Editar Informações Espirituais</h4>
-                             <!-- ADICIONADO -->
                              <div class="form-group">
                                  <label class="boolean-checkbox-label">
                                      <input type="checkbox" id="edit-ativo"> Ativo
                                  </label>
                              </div>
-                             <div class="form-group"><label for="edit-grupo">Grupo:</label><input type="number" id="edit-grupo" min="1"></div>
-                             
-                             <!-- MODIFICADO: Privilégios agora estão separados por categoria para clareza -->
+<div class="form-group"> <label for="edit-grupo">Grupo:</label> <select id="edit-grupo"> <option value="">Sem Grupo</option> <option value="1">1</option> <option value="2">2</option> <option value="3">3</option> <option value="4">4</option> <option value="5">5</option> <option value="6">6</option> <option value="7">7</option> <option value="8">8</option> <option value="9">9</option> <option value="10">10</option> <option value="11">11</option> <option value="12">12</option> <option value="13">13</option> <option value="14">14</option> <option value="15">15</option> </select> </div>                             
                              <h5>Privilégios de Congregação</h5>
                              <div class="checkbox-group" id="edit-privilegios-congregacao-group">
                                  <span class="loading-placeholder">Carregando opções...</span>
@@ -1142,13 +1212,28 @@ body.sidebar-collapsed .column:first-child {
                     </div>
 
                     <!-- Aba de Pregação -->
-                  <div id="pregacao-tab" class="tab-content">
+                    <div id="pregacao-tab" class="tab-content">
                         <div class="display-mode">
-                            <h4>Disponibilidade para Pregação</h4>
+                            <h4>Disponibilidade e Funções de Pregação</h4>
+                            <div class="data-item"><strong>Faz Desig. Pregação:</strong> <span id="detail-fazDesignacoesPregacao">-</span></div>
+                            <div class="data-item"><strong>Designações Pregação:</strong> <div id="detail-designacoesPregacao" class="array-data">-</div></div>
                             <div class="data-item"><strong>Horários Pregação:</strong> <pre><code id="detail-horariosPregacao">-</code></pre></div>
+                            <div class="data-item"><strong>Acompanha Carrinhos:</strong> <span id="detail-acompanhaCarrinhos">-</span></div>
                         </div>
                         <div class="edit-mode" style="display: none;">
-                            <h4>Editar Horários de Pregação</h4>
+                            <h4>Editar Funções e Horários de Pregação</h4>
+                            <div class="form-group">
+                                <label class="boolean-checkbox-label">
+                                    <input type="checkbox" id="edit-fazDesignacoesPregacao"> Faz Designações Dirigente?
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Designações que pode fazer (Pregação):</label>
+                                <div class="checkbox-group" id="edit-designacoesPregacao-group">
+                                     <span class="loading-placeholder">Carregando opções...</span>
+                                </div>
+                            </div>
+                            <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
                             <div class="form-group">
                                 <label>Horários de Pregação:</label>
                                 <div class="horarios-edit-container">
@@ -1162,6 +1247,11 @@ body.sidebar-collapsed .column:first-child {
                                     </div>
                                 </div>
                             </div>
+                            <div class="form-group">
+                                 <label class="boolean-checkbox-label">
+                                     <input type="checkbox" id="edit-acompanhaCarrinhos"> Acompanha Carrinhos
+                                 </label>
+                            </div>
                         </div>
                         <div class="edit-controls">
                             <button class="edit-btn" data-tab-target="pregacao-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
@@ -1173,16 +1263,13 @@ body.sidebar-collapsed .column:first-child {
                     <!-- Aba Permissões -->
                     <div id="permissoes-tab" class="tab-content">
                         <div class="display-mode">
-                            <h4>Permissões e Designações</h4>
+                            <h4>Permissões e Designações de Reunião</h4>
                             <div class="data-item"><strong>Faz Desig. Reunião:</strong> <span id="detail-fazDesignacoesReuniao">-</span></div>
                             <div class="data-item"><strong>Designações Reunião:</strong> <div id="detail-designacoesReuniao" class="array-data">-</div></div>
-                            <div class="data-item"><strong>Faz Desig. Pregação:</strong> <span id="detail-fazDesignacoesPregacao">-</span></div>
-                            <div class="data-item"><strong>Designações Pregação:</strong> <div id="detail-designacoesPregacao" class="array-data">-</div></div>
-                            <div class="data-item"><strong>Acompanha Carrinhos:</strong> <span id="detail-acompanhaCarrinhos">-</span></div>
                             <div class="data-item"><strong>Regra (Rule):</strong> <span id="detail-rule">-</span></div>
                         </div>
                          <div class="edit-mode" style="display: none;">
-                             <h4>Editar Permissões e Designações</h4>
+                             <h4>Editar Permissões de Reunião</h4>
                              <div class="form-group">
                                  <label class="boolean-checkbox-label">
                                      <input type="checkbox" id="edit-fazDesignacoesReuniao"> Faz Designações Reunião
@@ -1194,24 +1281,6 @@ body.sidebar-collapsed .column:first-child {
                                      <span class="loading-placeholder">Carregando opções...</span>
                                  </div>
                              </div>
-                             <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
-                             <div class="form-group">
-                                 <label class="boolean-checkbox-label">
-                                     <input type="checkbox" id="edit-fazDesignacoesPregacao"> Faz Designações Pregação
-                                 </label>
-                             </div>
-                             <div class="form-group">
-                                 <label>Designações que pode fazer (Pregação):</label>
-                                 <div class="checkbox-group" id="edit-designacoesPregacao-group">
-                                      <span class="loading-placeholder">Carregando opções...</span>
-                                 </div>
-                             </div>
-                             <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
-                             <div class="form-group">
-                                 <label class="boolean-checkbox-label">
-                                     <input type="checkbox" id="edit-acompanhaCarrinhos"> Acompanha Carrinhos
-                                 </label>
-                              </div>
                              <div class="form-group"><label for="edit-rule">Regra (Rule):</label><input type="text" id="edit-rule"></div>
                         </div>
                          <div class="edit-controls">
@@ -1375,7 +1444,6 @@ body.sidebar-collapsed .column:first-child {
 
                      <div id="no-history" style="display: none; padding: 30px; text-align: center; color: #6c757d;">Nenhum histórico encontrado para esta pessoa.</div>
     </div>
-
     <!-- Script principal da página -->
     <script>
      document.addEventListener('DOMContentLoaded', () => {
@@ -1618,16 +1686,39 @@ body.sidebar-collapsed .column:first-child {
             return label;
         }
 
-        function createTimeSlotCheckbox(time, dayName, isChecked) {
-            const label = document.createElement('label'); label.className = 'horario-item';
-            if (isChecked) label.classList.add('selected');
-            const input = document.createElement('input'); input.type = 'checkbox'; input.value = time; input.dataset.day = dayName; input.checked = isChecked; input.className = 'horario-checkbox';
-            const span = document.createElement('span'); span.textContent = time;
-            label.appendChild(input); label.appendChild(span);
-            label.addEventListener('click', (e) => {
-                if (e.target !== input) input.checked = !input.checked;
-                label.classList.toggle('selected', input.checked);
+     function createTimeSlotCheckbox(time, dayName, isChecked) {
+            const label = document.createElement('label');
+            label.className = 'horario-item';
+            if (isChecked) {
+                label.classList.add('selected');
+            }
+
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.value = time;
+            input.dataset.day = dayName;
+            input.checked = isChecked;
+            input.className = 'horario-checkbox';
+
+            const span = document.createElement('span');
+            span.textContent = time;
+
+            label.appendChild(input);
+            label.appendChild(span);
+
+            // --- VERSÃO CORRIGIDA E SIMPLIFICADA ---
+            // Removemos a lógica complexa. Agora, simplesmente ouvimos o clique.
+            label.addEventListener('click', () => {
+                // O browser já altera o estado 'checked' da checkbox automaticamente.
+                // A nossa única tarefa é sincronizar a classe CSS com o estado da checkbox.
+                // Usamos um pequeno 'setTimeout' para garantir que este código executa
+                // DEPOIS de o browser ter tido tempo de atualizar o estado da checkbox.
+                setTimeout(() => {
+                    label.classList.toggle('selected', input.checked);
+                }, 0); 
             });
+            // --- FIM DA CORREÇÃO ---
+
             return label;
         }
 
@@ -1765,21 +1856,36 @@ body.sidebar-collapsed .column:first-child {
             formatArrayForDisplay(data.privilegiosEspeciais, 'detail-privilegiosEspeciais');
         }
 
-        function populatePregacaoTab(data) { document.getElementById('detail-horariosPregacao').textContent = formatHorarios(data.horariosPregacao); }
-        function populateDisponibilidadeTab(data) { document.getElementById('detail-ausencias').textContent = formatAusencias(data.ausencias); }
-        function populatePermissoesTab(data) {
-            document.getElementById('detail-fazDesignacoesReuniao').textContent = formatBoolean(data.fazDesignacoesReuniao);
-            formatArrayForDisplay(data.designacoesReuniao, 'detail-designacoesReuniao');
+     function populatePregacaoTab(data) {
+            // AGORA, esta função lida com TODOS os campos da sua aba
             document.getElementById('detail-fazDesignacoesPregacao').textContent = formatBoolean(data.fazDesignacoesPregacao);
             formatArrayForDisplay(data.designacoesPregacao, 'detail-designacoesPregacao');
+            document.getElementById('detail-horariosPregacao').textContent = formatHorarios(data.horariosPregacao);
             document.getElementById('detail-acompanhaCarrinhos').textContent = formatBoolean(data.acompanhaCarrinhos);
+        }
+
+        function populateDisponibilidadeTab(data) { document.getElementById('detail-ausencias').textContent = formatAusencias(data.ausencias); }
+        
+        function populatePermissoesTab(data) {
+            // E esta função agora lida APENAS com os campos da sua aba
+            document.getElementById('detail-fazDesignacoesReuniao').textContent = formatBoolean(data.fazDesignacoesReuniao);
+            formatArrayForDisplay(data.designacoesReuniao, 'detail-designacoesReuniao');
             document.getElementById('detail-rule').textContent = data.rule || '-';
         }
 
-        function enterEditMode(tabId) {
-            if (!selectedPersonData || !selectedPersonId || !dataLoaded.designacoes || !dataLoaded.horarios) {
-                alert("Aguarde o carregamento dos dados ou selecione uma pessoa."); return;
+     function enterEditMode(tabId) {
+            // --- GUARDA DE PROTEÇÃO ---
+            // Verifica se os dados da pessoa e os dados globais de horários estão carregados
+            if (!selectedPersonData || !dataLoaded.horarios) {
+                alert("Os dados ainda estão a ser carregados. Por favor, aguarde um momento e tente novamente."); 
+                return; // Impede a execução do resto da função
             }
+            // A verificação original de 'designacoes' também é importante
+            if (!dataLoaded.designacoes) {
+                alert("As opções de designação ainda não foram carregadas. Tente novamente em breve.");
+                return;
+            }
+
             cancelEditMode();
             const tabContent = document.getElementById(tabId); if (!tabContent) return;
             const displayDiv = tabContent.querySelector('.display-mode'); const editDiv = tabContent.querySelector('.edit-mode');
@@ -1816,7 +1922,10 @@ body.sidebar-collapsed .column:first-child {
             return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
         }
 
-        function populateEditFields(tabId, data) {
+ function populateEditFields(tabId, data) {
+            // Log geral para sabermos quando a função é chamada (pode remover depois)
+            console.log(`--- Iniciando populateEditFields para a aba: ${tabId} ---`);
+
             if (tabId === 'pessoal-tab') {
                 document.getElementById('edit-nomePessoa').value = data.nomePessoa || '';
                 document.getElementById('edit-nomeCompletoPessoa').value = data.nomeCompletoPessoa || '';
@@ -1844,32 +1953,50 @@ body.sidebar-collapsed .column:first-child {
                 populatePrivilegeGroup('edit-privilegios-pregacao-group', 'pregacao', data.privilegiosPregacao);
                 populatePrivilegeGroup('edit-privilegios-especiais-group', 'especiais', data.privilegiosEspeciais);
                  const spiritualEditModeDiv = document.getElementById('espiritual-tab').querySelector('.edit-mode');
-                // Remove o listener antigo para evitar que seja adicionado múltiplas vezes.
                 spiritualEditModeDiv.removeEventListener('change', handlePrivilegeChange); 
                 spiritualEditModeDiv.addEventListener('change', handlePrivilegeChange);
 
             } else if (tabId === 'pregacao-tab') {
+                document.getElementById('edit-fazDesignacoesPregacao').checked = data.fazDesignacoesPregacao || false;
+                document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false;
+
+                const desigPregacaoGroupDiv = document.getElementById('edit-designacoesPregacao-group');
+                desigPregacaoGroupDiv.innerHTML = '';
+                const currentDesigPregacao = data.designacoesPregacao || [];
+                allDesignacoes.pregacao.forEach(desig => desigPregacaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-pregacao', currentDesigPregacao.includes(desig))));
+                if (allDesignacoes.pregacao.length === 0) desigPregacaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
+
                 const horariosSemanaDiv = document.getElementById('edit-horarios-semana');
                 const horariosFimDeSemanaDiv = document.getElementById('edit-horarios-fim-de-semana');
                 horariosSemanaDiv.innerHTML = '<h5>Semana</h5>'; horariosFimDeSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
+                
                 const currentHorarios = data.horariosPregacao || { semana: {}, fimDeSemana: {} };
                 const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
                 const weekendOrder = ["sabado", "domingo"];
+                
                 const populateDay = (day, times, container) => {
                     if (times && times.length > 0) {
                         const dayContainer = document.createElement('div'); dayContainer.className = 'day-container';
                         const dayTitle = document.createElement('h6'); dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
                         dayContainer.appendChild(dayTitle);
+                        
+                        // --- ESTA É A LINHA CORRIGIDA ---
+                        // Em vez de .includes('semana'), usamos uma comparação exata do ID do container.
+                        const keyToUse = container.id === 'edit-horarios-semana' ? 'semana' : 'fimDeSemana';
+                        const personTimesForThisDay = (currentHorarios[keyToUse] || {})[day] || [];
+                        // --- FIM DA CORREÇÃO ---
+
                         times.sort().forEach(time => {
-                            const personTimes = (currentHorarios[container.id.includes('semana') ? 'semana' : 'fimDeSemana'] || {})[day] || [];
-                            const isChecked = personTimes.includes(time);
+                            const isChecked = personTimesForThisDay.includes(time);
                             dayContainer.appendChild(createTimeSlotCheckbox(time, day, isChecked));
                         });
                         container.appendChild(dayContainer);
                     }
                 };
+                
                 weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv));
                 weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimDeSemanaDiv));
+
             } else if (tabId === 'disponibilidade-tab') {
                 selectedAusencias = (data.ausencias || []).map(ausencia => {
                     if (ausencia?.toDate) {
@@ -1880,21 +2007,16 @@ body.sidebar-collapsed .column:first-child {
                 updateAusenciasDisplay();
             } else if (tabId === 'permissoes-tab') {
                 document.getElementById('edit-fazDesignacoesReuniao').checked = data.fazDesignacoesReuniao || false;
-                document.getElementById('edit-fazDesignacoesPregacao').checked = data.fazDesignacoesPregacao || false;
-                document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false;
                 document.getElementById('edit-rule').value = data.rule || '';
                 const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group'); desigReuniaoGroupDiv.innerHTML = '';
                 const currentDesigReuniao = data.designacoesReuniao || [];
                 allDesignacoes.reuniao.forEach(desig => desigReuniaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-reuniao', currentDesigReuniao.includes(desig))));
                 if (allDesignacoes.reuniao.length === 0) desigReuniaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
-                const desigPregacaoGroupDiv = document.getElementById('edit-designacoesPregacao-group'); desigPregacaoGroupDiv.innerHTML = '';
-                const currentDesigPregacao = data.designacoesPregacao || [];
-                allDesignacoes.pregacao.forEach(desig => desigPregacaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-pregacao', currentDesigPregacao.includes(desig))));
-                if (allDesignacoes.pregacao.length === 0) desigPregacaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
             }
         }
 
-        function saveTabData(tabId, saveButton) {
+
+   function saveTabData(tabId, saveButton) {
             if (!selectedPersonId) return;
             saveButton.disabled = true; saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gravando...';
             let dataToUpdate = {};
@@ -1917,14 +2039,16 @@ body.sidebar-collapsed .column:first-child {
                     };
                 } else if (tabId === 'espiritual-tab') {
                     const getSelectedPrivileges = (type) => Array.from(document.querySelectorAll(`#edit-privilegios-${type}-group input:checked`)).map(cb => cb.value);
+                    const grupoValue = document.getElementById('edit-grupo').value;
                     dataToUpdate = {
                         ativo: document.getElementById('edit-ativo').checked,
-                        grupo: document.getElementById('edit-grupo').value || null,
+                        grupo: grupoValue ? parseInt(grupoValue, 10) : null,
                         privilegiosCongregacao: getSelectedPrivileges('congregacao'),
                         privilegiosPregacao: getSelectedPrivileges('pregacao'),
                         privilegiosEspeciais: getSelectedPrivileges('especiais')
                     };
                 } else if (tabId === 'pregacao-tab') {
+                    // --- GRAVAÇÃO DOS DADOS DE PREGAÇÃO CENTRALIZADA AQUI ---
                     const horariosPregacao = { semana: {}, fimDeSemana: {} };
                     document.querySelectorAll('#edit-horarios-semana .horario-checkbox:checked').forEach(cb => {
                         const day = cb.dataset.day; if (!horariosPregacao.semana[day]) horariosPregacao.semana[day] = []; horariosPregacao.semana[day].push(cb.value);
@@ -1932,16 +2056,23 @@ body.sidebar-collapsed .column:first-child {
                     document.querySelectorAll('#edit-horarios-fim-de-semana .horario-checkbox:checked').forEach(cb => {
                         const day = cb.dataset.day; if (!horariosPregacao.fimDeSemana[day]) horariosPregacao.fimDeSemana[day] = []; horariosPregacao.fimDeSemana[day].push(cb.value);
                     });
-                    dataToUpdate = { horariosPregacao: horariosPregacao };
+                    const selectedDesigPregacao = Array.from(document.querySelectorAll('#edit-designacoesPregacao-group input:checked')).map(cb => cb.value);
+                    dataToUpdate = { 
+                        horariosPregacao: horariosPregacao,
+                        fazDesignacoesPregacao: document.getElementById('edit-fazDesignacoesPregacao').checked, 
+                        designacoesPregacao: selectedDesigPregacao,
+                        acompanhaCarrinhos: document.getElementById('edit-acompanhaCarrinhos').checked
+                    };
+
                 } else if (tabId === 'disponibilidade-tab') {
                     dataToUpdate = { ausencias: selectedAusencias.sort() };
                 } else if (tabId === 'permissoes-tab') {
+                    // --- GRAVAÇÃO DOS DADOS DE PERMISSÕES (APENAS REUNIÃO) AGORA ESTÁ LIMPA ---
                     const selectedDesigReuniao = Array.from(document.querySelectorAll('#edit-designacoesReuniao-group input:checked')).map(cb => cb.value);
-                    const selectedDesigPregacao = Array.from(document.querySelectorAll('#edit-designacoesPregacao-group input:checked')).map(cb => cb.value);
                     dataToUpdate = {
-                        fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked, designacoesReuniao: selectedDesigReuniao,
-                        fazDesignacoesPregacao: document.getElementById('edit-fazDesignacoesPregacao').checked, designacoesPregacao: selectedDesigPregacao,
-                        acompanhaCarrinhos: document.getElementById('edit-acompanhaCarrinhos').checked, rule: document.getElementById('edit-rule').value.trim() || null
+                        fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked, 
+                        designacoesReuniao: selectedDesigReuniao,
+                        rule: document.getElementById('edit-rule').value.trim() || null
                     };
                 }
             } catch (error) {
