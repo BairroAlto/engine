@@ -1565,9 +1565,6 @@ const getRecentPairs = async () => {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - RECENT_MONTHS_WINDOW);
     
-    // Usaremos um Map para armazenar a informação detalhada do último encontro do par
-    // Chave: 'id_A_id_B'
-    // Valor: { lastDate: 'YYYY-MM-DD', lastRoles: 'id_A:dirigente_id_B:morador' }
     const recentPairsMap = new Map();
     const historicoRef = db.collection('historico');
 
@@ -1582,11 +1579,9 @@ const getRecentPairs = async () => {
                     const ids = Object.values(desig.participantes);
                     const pairKey = ids.sort().join('_'); // Chave canónica do par
 
-                    // Criar a chave canónica dos papéis (ordenada pelo ID)
                     const rolesEntries = Object.entries(desig.participantes).sort((a, b) => a[1].localeCompare(b[1]));
                     const rolesKey = rolesEntries.map(([role, id]) => `${id}:${role}`).join('_');
 
-                    // Guardamos apenas o encontro MAIS RECENTE do par
                     if (!recentPairsMap.has(pairKey) || new Date(historico.dia) > new Date(recentPairsMap.get(pairKey).lastDate)) {
                         recentPairsMap.set(pairKey, {
                             lastDate: historico.dia,
@@ -1597,17 +1592,22 @@ const getRecentPairs = async () => {
             });
         }
     });
-    // console.log("Mapa de Pares Recentes:", recentPairsMap);
+    // LOG ADICIONADO
+    console.log("[VALIDATION] -> DADOS (Pares Recentes):", recentPairsMap);
     return recentPairsMap;
 };
 
 
-// --- Função principal que valida TODAS as seleções na página (MODIFICADA) ---
+// --- Função principal que valida TODAS as seleções na página (COM LOGS) ---
 const validateAllSelections = async () => {
+    // LOG ADICIONADO
+    console.log("[VALIDATION] 🚀 Função validateAllSelections iniciada.");
+
     const alertContainer = document.getElementById('validation-alert-container');
     const alertIcon = document.getElementById('validation-alert-icon');
     const validationList = document.getElementById('validation-list');
 
+    // Limpa erros antigos
     document.querySelectorAll('.form-select.invalid-selection').forEach(el => el.classList.remove('invalid-selection'));
     validationList.innerHTML = '';
     let allViolations = [];
@@ -1616,13 +1616,18 @@ const validateAllSelections = async () => {
     const mes = parseInt(document.getElementById('mes').value);
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
 
+    // LOG ADICIONADO
+    console.log(`[VALIDATION] Contexto: Ano=${ano}, Mês=${mes}, Semana=${semanaNumero}`);
+    console.log("[VALIDATION] 📊 A obter dados para as regras...");
+    
     // --- OBTENÇÃO DOS DADOS ---
     const participantsLastWeek = await getParticipantsLastWeek(ano, mes, semanaNumero);
-    const participantsNextWeek = await getParticipantsNextWeek(ano, mes, semanaNumero); // <<< NOVO DADO OBTIDO AQUI
+    const participantsNextWeek = await getParticipantsNextWeek(ano, mes, semanaNumero);
     const participantsThisMonth = await getParticipantsThisMonth(ano, mes);
     const recentPairsMap = await getRecentPairs();
 
-    // --- VERIFICAÇÕES INDIVIDUAIS (COM SELETOR CORRIGIDO) ---
+    // --- VERIFICAÇÕES INDIVIDUAIS ---
+    console.log("[VALIDATION] 👤 Verificando designações individuais...");
     const allSelects = document.querySelectorAll('#activeDesignationsContainer .form-select, #leituraBibliaDesignationContainer .form-select');
     const currentSelections = new Map();
 
@@ -1631,10 +1636,17 @@ const validateAllSelections = async () => {
             const personId = select.value;
             const personName = select.options[select.selectedIndex].text;
             
+            // LOG ADICIONADO
+            console.log(`[VALIDATION] -> Verificando seleção: '${personName}' (ID: ${personId})`);
+
             // Regra: Dupla designação na mesma semana
             if (currentSelections.has(personId)) {
                 const violationMessage = `${personName} está designado para mais de uma tarefa nesta semana.`;
-                if (!allViolations.includes(violationMessage)) allViolations.push(violationMessage);
+                if (!allViolations.includes(violationMessage)) {
+                    allViolations.push(violationMessage);
+                    // LOG ADICIONADO
+                    console.warn(`❗️ VIOLAÇÃO DETETADA: '${personName}' está duplicado na mesma semana.`);
+                }
                 select.classList.add('invalid-selection');
                 currentSelections.get(personId).selectElement.classList.add('invalid-selection');
             } else {
@@ -1644,22 +1656,29 @@ const validateAllSelections = async () => {
             // Regra: Participou na semana anterior
             if (participantsLastWeek.has(personId)) {
                 const violationMessage = `${personName} participou na semana anterior e não pode ser designado(a).`;
-                if (!allViolations.includes(violationMessage)) allViolations.push(violationMessage);
+                if (!allViolations.includes(violationMessage)) {
+                    allViolations.push(violationMessage);
+                    // LOG ADICIONADO
+                    console.warn(`❗️ VIOLAÇÃO DETETADA: '${personName}' participou na semana anterior.`);
+                }
                 select.classList.add('invalid-selection');
             }
             
-            // <<< INÍCIO DA NOVA VERIFICAÇÃO >>>
             // Regra: Já está designado para a semana seguinte
             if (participantsNextWeek.has(personId)) {
                 const violationMessage = `${personName} já está designado(a) para a semana seguinte.`;
-                if (!allViolations.includes(violationMessage)) allViolations.push(violationMessage);
+                if (!allViolations.includes(violationMessage)) {
+                    allViolations.push(violationMessage);
+                    // LOG ADICIONADO
+                    console.warn(`❗️ VIOLAÇÃO DETETADA: '${personName}' já está na semana seguinte.`);
+                }
                 select.classList.add('invalid-selection');
             }
-            // <<< FIM DA NOVA VERIFICAÇÃO >>>
         }
     });
 
-    // --- VERIFICAÇÃO DE PARES (COM SELETOR CORRIGIDO) ---
+    // --- VERIFICAÇÃO DE PARES ---
+    console.log("[VALIDATION] 👥 Verificando designações de pares...");
     const designationInstances = document.querySelectorAll('#activeDesignationsContainer .designacao-instance-container, #leituraBibliaDesignationContainer .designacao-instance-container');
     designationInstances.forEach(instance => {
         const selectedPeople = [];
@@ -1679,6 +1698,9 @@ const validateAllSelections = async () => {
         });
 
         if (selectedPeople.length >= 2) {
+            const pairNames = selectedPeople.map(p => p.name).join(' e ');
+            console.log(`[VALIDATION] -> Analisando par: '${pairNames}'`);
+
             const ids = selectedPeople.map(p => p.id).sort();
             const pairKey = ids.join('_');
 
@@ -1686,30 +1708,38 @@ const validateAllSelections = async () => {
             const currentRolesKey = currentRolesEntries.map(([role, id]) => `${id}:${role}`).join('_');
 
             if (recentPairsMap.has(pairKey)) {
+                console.log(`[VALIDATION] -> Chave do par: '${pairKey}'. Encontrado no histórico.`);
                 const history = recentPairsMap.get(pairKey);
                 const lastDate = new Date(history.lastDate);
-                const currentDate = new Date(getMeetingDayOfMonth(getDiasSemana(ano, mes, semanaNumero), (document.getElementById('tipo').value === 'normal' ? 'segunda-feira' : '...')));
+                const currentDate = new Date();
                 
+                console.log(`[VALIDATION] -> Data da última colaboração: ${lastDate.toDateString()}`);
+
                 const lastMonthYear = lastDate.getFullYear() * 12 + lastDate.getMonth();
                 const currentMonthYear = currentDate.getFullYear() * 12 + currentDate.getMonth();
 
                 if (Math.abs(currentMonthYear - lastMonthYear) <= 1) {
-                    const pairNames = selectedPeople.map(p => p.name).join(' e ');
                     allViolations.push(`${pairNames} trabalharam juntos no mês passado ou neste mês. Não podem ser designados em meses consecutivos.`);
                     selectedPeople.forEach(p => p.element.classList.add('invalid-selection'));
+                    // LOG ADICIONADO
+                    console.warn(`❗️ VIOLAÇÃO DETETADA: O par '${pairNames}' trabalhou junto no mês passado ou neste mês.`);
                 }
                 else if (history.lastRoles === currentRolesKey) {
-                    const pairNames = selectedPeople.map(p => p.name).join(' e ');
                     allViolations.push(`Aviso: ${pairNames} já fizeram esta designação juntos com os mesmos papéis.`);
                     selectedPeople.forEach(p => p.element.classList.add('invalid-selection'));
+                    // LOG ADICIONADO
+                    console.info(`💡 AVISO: O par '${pairNames}' já fez esta parte com os mesmos papéis.`);
                 }
             }
         }
     });
 
-    // Atualizar a UI (sem alterações)
-     if (allViolations.length > 0) {
+    // --- Atualizar a UI ---
+    console.log("[VALIDATION] ✅ Verificação concluída.");
+    console.log(`[VALIDATION] -> Total de violações encontradas: ${allViolations.length}`);
+    if (allViolations.length > 0) {
         const uniqueViolations = [...new Set(allViolations)];
+        console.log("[VALIDATION] -> Lista de Erros:", uniqueViolations);
         uniqueViolations.forEach(msg => {
             const li = document.createElement('li');
             li.textContent = msg;
@@ -1720,18 +1750,25 @@ const validateAllSelections = async () => {
         alertContainer.style.display = 'none';
         document.getElementById('validation-panel').classList.remove('active');
     }
+    console.log("[VALIDATION] 🚦 A atualizar a interface do utilizador com os resultados.");
 };
 
-
-// --- Helper para obter a data da reunião (pode precisar de uma versão melhorada) ---
-// Nota: Esta função pode precisar de ser ajustada para obter o dia da semana correto de forma mais robusta.
+// Helper para obter a data da reunião (pode precisar de uma versão melhorada)
 function getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao) {
     if (!diasSemanaString || !diaSemanaReuniao) return new Date(); // Fallback
-    // ... (a sua lógica existente para extrair a data) ...
-    // Esta é uma versão simplificada, a sua função original é mais complexa e deve ser usada
     const [startDay] = diasSemanaString.split(' ')[0].split('-');
     return new Date(new Date().getFullYear(), new Date().getMonth(), parseInt(startDay));
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2832,9 +2869,9 @@ document.addEventListener('click', function(event) {
             };
 
 
-   const loadPeopleOptionsIntoSelects = async (designacao, container, preferences = {}, diasSemana, diaSemanaReuniaoString, genderPreference = 'masculino feminino') => {
-    console.log("[loadPeopleOptionsIntoSelects] START - Designation:", designacao.nome, ", Preferences:", preferences, ", Gender Preference:", genderPreference);
+  const loadPeopleOptionsIntoSelects = async (designacao, container, preferences = {}, diasSemana, diaSemanaReuniaoString, genderPreference = 'masculino feminino') => {
     try {
+    const anoFirebase = await getAnoPainelFirebase(); 
         const pessoasRef = db.collection('pessoas');
         const preferenceForDesignation = preferences[designacao.id];
 
@@ -2859,7 +2896,7 @@ document.addEventListener('click', function(event) {
                 
                 // Aplicar regras gerais de elegibilidade aqui
                 let isAbsent = false;
-                const designationDateFormatted = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString);
+                const designationDateFormatted = getMeetingDayOfMonth(anoFirebase, diasSemana, diaSemanaReuniaoString);
                 if (designationDateFormatted) {
                     if (pessoa.ausencias && Array.isArray(pessoa.ausencias)) {
                         isAbsent = pessoa.ausencias.includes(designationDateFormatted);
@@ -2890,15 +2927,35 @@ document.addEventListener('click', function(event) {
                     eligiblePeopleList.forEach(person => {
                         const pessoaData = person.data;
 
+                        // ===================================================================
+                        // =========== INÍCIO DA ALTERAÇÃO APLICADA AQUI =====================
+                        // ===================================================================
+                        
                         // Aplicar a regra de personalidade específica do papel
                         let podeAssumirEstePapel = false;
                         if (participantIndex === 0) { // Se for o dropdown 'Dirigente'
+                            // REGRA ANTIGA: por defeito, só quem tem '+ à vontade' pode ser dirigente
                             if (pessoaData.personalidade === '+ à vontade') {
                                 podeAssumirEstePapel = true;
                             }
+
+                            // NOVA REGRA: verifica se a própria designação permite '- à vontade'
+                            // Se permitir, as pessoas com essa personalidade também se tornam elegíveis
+                            if (
+                                Array.isArray(designacao.personalidade) &&
+                                designacao.personalidade.includes('- à vontade') &&
+                                pessoaData.personalidade === '- à vontade'
+                            ) {
+                                podeAssumirEstePapel = true;
+                            }
+
                         } else { // Se for 'Morador' ou 'Ajudante'
                             podeAssumirEstePapel = true;
                         }
+                        
+                        // ===================================================================
+                        // ============ FIM DA ALTERAÇÃO APLICADA AQUI =======================
+                        // ===================================================================
                         
                         // Adicionar a opção se a regra do papel for cumprida
                         if (podeAssumirEstePapel) {
@@ -3526,60 +3583,81 @@ document.addEventListener('click', function(event) {
 
 
 
+// Função "inteligente" para calcular o contexto da semana anterior
+async function getPreviousWeekContext(currentAno, currentMes, currentSemana) {
+    if (currentSemana > 1) {
+        // Caso simples: a semana anterior está no mesmo mês
+        return { ano: currentAno, mes: currentMes, semana: currentSemana - 1 };
+    } else {
+        // Caso complexo: a semana anterior está no mês/ano anterior
+        let prevMes = currentMes - 1;
+        let prevAno = currentAno;
+        if (prevMes === 0) {
+            // Se o mês atual é Janeiro, voltamos para Dezembro do ano anterior
+            prevMes = 12;
+            prevAno = currentAno - 1;
+        }
+        // Descobrimos qual era a última semana desse mês anterior
+        const ultimaSemanaDoMesAnterior = await countHistoricoSemanas(prevAno, prevMes);
+        return { ano: prevAno, mes: prevMes, semana: ultimaSemanaDoMesAnterior };
+    }
+}
+
+// Função "inteligente" para calcular o contexto da próxima semana
+async function getNextWeekContext(currentAno, currentMes, currentSemana) {
+    const totalSemanasNoMes = await getTotalSemanasNoMes(currentAno, currentMes);
+    if (currentSemana < totalSemanasNoMes) {
+        // Caso simples: a próxima semana está no mesmo mês
+        return { ano: currentAno, mes: currentMes, semana: currentSemana + 1 };
+    } else {
+        // Caso complexo: a próxima semana está no próximo mês/ano
+        let proxMes = currentMes + 1;
+        let proxAno = currentAno;
+        if (proxMes === 13) {
+            // Se o mês atual é Dezembro, avançamos para Janeiro do próximo ano
+            proxMes = 1;
+            proxAno = currentAno + 1;
+        }
+        return { ano: proxAno, mes: proxMes, semana: 1 };
+    }
+}
+
+
+
+
+
 // Função auxiliar para obter os participantes da semana anterior
 const getParticipantsLastWeek = async (ano, mes, semanaNumero) => {
     try {
-        // --- Passo 1: Descobrir a data exata da reunião desta semana ---
-        const diasSemanaString = getDiasSemana(ano, mes, semanaNumero);
-        const horariosData = await getHorariosFromFirebase(ano); // Busca o dia da semana (ex: 'segunda-feira')
-        const diaSemanaReuniao = horariosData['dia-semana'];
-
-        if (!diaSemanaReuniao) {
-            console.error("Não foi possível determinar o dia da semana da reunião a partir dos horários.");
-            return new Set();
-        }
+        const prevWeek = await getPreviousWeekContext(ano, mes, semanaNumero);
         
-        const currentMeetingDateStr = getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao);
+        console.log(`[VALIDATION] -> A procurar semana anterior com contexto: Ano=${prevWeek.ano}, Mês=${prevWeek.mes}, Semana=${prevWeek.semana}`);
 
-        if (!currentMeetingDateStr) {
-            console.error("Não foi possível calcular a data da reunião atual.");
-            return new Set();
-        }
-
-        // --- Passo 2: Subtrair 7 dias para encontrar a data da semana passada ---
-        const currentMeetingDate = new Date(currentMeetingDateStr + "T12:00:00Z"); // Adiciona hora para evitar problemas de fuso horário
-        currentMeetingDate.setDate(currentMeetingDate.getDate() - 7);
-
-        // Formatar a data da semana passada para o formato 'YYYY-MM-DD'
-        const lastWeekDateStr = currentMeetingDate.toISOString().split('T')[0];
-        
-        // --- Passo 3: Consultar o histórico usando a data exata ---
-        const historicoRef = db.collection('historico');
-        const q = historicoRef.where("dia", "==", lastWeekDateStr);
+        const q = db.collection('historico')
+            // A MUDANÇA ESTÁ AQUI: Usamos o operador 'in' para apanhar tanto o número como o texto.
+            .where("ano", "in", [prevWeek.ano, String(prevWeek.ano)]) 
+            .where("mes", "==", prevWeek.mes)
+            .where("semanaNumero", "==", prevWeek.semana);
 
         const snapshot = await q.get();
         const participants = new Set();
         
         if (!snapshot.empty) {
-            const doc = snapshot.docs[0];
-            const historicoData = doc.data();
-            if (historicoData.designacoes) {
-                historicoData.designacoes.forEach(desig => {
-                    if (desig.participantes) {
-                        // Usar .toString() para garantir a consistência dos tipos de dados
-                        Object.values(desig.participantes).forEach(personId => participants.add(personId.toString()));
-                    }
-                });
-            }
+            snapshot.docs[0].data().designacoes.forEach(desig => {
+                if (desig.participantes) {
+                    Object.values(desig.participantes).forEach(personId => participants.add(personId.toString()));
+                }
+            });
         }
-        // console.log(`[getParticipantsLastWeek] Encontrados para a data ${lastWeekDateStr}:`, participants);
+        console.log(`[VALIDATION] -> DADOS (Semana Anterior):`, participants);
         return participants;
 
     } catch (error) {
-        console.error("Erro em getParticipantsLastWeek:", error);
-        return new Set(); // Retorna um Set vazio em caso de erro
+        console.error("Erro em getParticipantsLastWeek (versão robusta):", error);
+        return new Set();
     }
 };
+
 
 // Função auxiliar para obter os participantes deste mês (até agora)
 const getParticipantsThisMonth = async (ano, mes) => {
@@ -3844,12 +3922,12 @@ document.getElementById('createFluxoSemanal').addEventListener('click', async fu
                             // Fallback: se não encontrar o evento, calcula a data normalmente e avisa
                             console.warn(`AVISO: Evento 'Visita do Servo' para o ano ${ano} não encontrado na base de dados. A usar a data calculada da semana.`);
                             const diaSemanaReuniaoString = horariosData['dia-semana'];
-                            meetingDayOfMonth = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString);
+                            meetingDayOfMonth = getMeetingDayOfMonth(ano, diasSemana, diaSemanaReuniaoString);
                         }
                     } else {
                         // Para todos os outros tipos de reunião ("normal", etc.), calcula a data como antes
                         const diaSemanaReuniaoString = horariosData['dia-semana'];
-                        meetingDayOfMonth = getMeetingDayOfMonth(diasSemana, diaSemanaReuniaoString);
+                        meetingDayOfMonth = getMeetingDayOfMonth(ano, diasSemana, diaSemanaReuniaoString);
                     }
                     
                     // --- 3. Construção do objeto para o histórico (agora usa a data correta) ---
@@ -3936,62 +4014,61 @@ document.getElementById('createFluxoSemanal').addEventListener('click', async fu
 
 
           // --- Helper function to get meeting day of month (CORRIGIDA) ---
-function getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao) { // FUNÇÃO 2 CORRIGIDA
-    if (!diasSemanaString || !diaSemanaReuniao) {
+function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
+    if (!diasSemanaString || !diaSemanaReuniao || !ano) {
+        console.error("[getMeetingDayOfMonth] Erro: Faltam parâmetros essenciais (ano, diasSemanaString, ou diaSemanaReuniao).");
         return null;
     }
 
-    const parts = diasSemanaString.split(" - ");
-    if (parts.length !== 2) {
-        return null;
-    }
-    const startDay = parseInt(parts[0]);
-    const endPart = parts[1].split(" ");
-    if (endPart.length !== 2) {
-        return null;
-    }
-    const endDay = parseInt(endPart[0]);
-    let startMonthStr = parts[0].split(" ")[1] || "";
-    const endMonthStr = endPart[1];
+    try {
+        const parts = diasSemanaString.split(" - ");
+        if (parts.length < 2) return null;
 
-    // O mesmo erro de digitação no array de meses foi corrigido aqui também.
-    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        // Extrai o dia e o mês de início
+        const startParts = parts[0].split(" ");
+        const startDay = parseInt(startParts[0]);
+        let startMonthStr = startParts.length > 1 ? startParts[1] : null;
 
-    let startMonthIndex = monthNames.indexOf(startMonthStr);
-    const endMonthIndex = monthNames.indexOf(endMonthStr);
+        // Extrai o dia e o mês de fim
+        const endParts = parts[1].split(" ");
+        const endDay = parseInt(endParts[0]);
+        const endMonthStr = endParts[1];
 
-    if (startMonthIndex === -1) {
-        startMonthIndex = endMonthIndex;
-    }
-    if (startMonthIndex === -1 || endMonthIndex === -1) {
-        return null;
-    }
-
-    const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
-    if (dayOfWeekMeetingNumber === null) {
-        return null;
-    }
-
-    const currentYear = new Date().getFullYear();
-    const startOfWeekDate = new Date(currentYear, startMonthIndex, startDay);
-    const endOfWeekDate = new Date(currentYear, endMonthIndex, endDay);
-
-    let designationDateYYYYMMDD = null;
-    let middleDayOfMonth = null;
-    let currentDay = new Date(startOfWeekDate);
-
-    for (let i = 0; currentDay <= endOfWeekDate; i++) {
-        if (currentDay.getDay() === dayOfWeekMeetingNumber) {
-            middleDayOfMonth = currentDay.getDate();
-            const month = String(currentDay.getMonth() + 1).padStart(2, '0');
-            const day = String(middleDayOfMonth).padStart(2, '0');
-            designationDateYYYYMMDD = `${currentYear}-${month}-${day}`;
-            break;
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        
+        // Se o mês não estiver na parte inicial (ex: "24 - 30 Jul"), usa o mês final
+        if (!startMonthStr) {
+            startMonthStr = endMonthStr;
         }
-        currentDay.setDate(currentDay.getDate() + 1);
-    }
 
-    return designationDateYYYYMMDD;
+        const startMonthIndex = monthNames.indexOf(startMonthStr);
+        const endMonthIndex = monthNames.indexOf(endMonthStr);
+
+        if (startMonthIndex === -1 || endMonthIndex === -1) return null;
+
+        const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
+        if (dayOfWeekMeetingNumber === null) return null;
+
+        // Usa o ANO recebido para criar as datas, corrigindo o bug
+        const startOfWeekDate = new Date(ano, startMonthIndex, startDay);
+        const endOfWeekDate = new Date(ano, endMonthIndex, endDay);
+
+        let currentDay = startOfWeekDate;
+        while (currentDay <= endOfWeekDate) {
+            if (currentDay.getDay() === dayOfWeekMeetingNumber) {
+                const month = String(currentDay.getMonth() + 1).padStart(2, '0');
+                const day = String(currentDay.getDate()).padStart(2, '0');
+                // Retorna a data formatada corretamente
+                return `${ano}-${month}-${day}`;
+            }
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+        return null; // Retorna null se não encontrar o dia na semana
+
+    } catch (error) {
+        console.error("[getMeetingDayOfMonth] Ocorreu uma exceção ao calcular a data:", error);
+        return null;
+    }
 }
 
 
@@ -4006,7 +4083,8 @@ function getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao) { // FUNÇÃO 
                 const query = designacoesRef
                     .where('tipo', '==', 'reuniao')
                     .where('quando', '==', 'Semana')
-                    .where('parte', '==', 'escola');
+                    .where('parte', '==', 'escola')
+                     .orderBy('ordem');
                 const snapshot = await query.get();
                 const designacoesList = document.getElementById('designacoesList');
                 designacoesList.innerHTML = '';
@@ -4322,53 +4400,33 @@ function buildHistoryTable(records, titleText) {
 
 const getParticipantsNextWeek = async (ano, mes, semanaNumero) => {
     try {
-        // --- Passo 1: Descobrir a data exata da reunião desta semana ---
-        const diasSemanaString = getDiasSemana(ano, mes, semanaNumero);
-        const horariosData = await getHorariosFromFirebase(ano);
-        const diaSemanaReuniao = horariosData['dia-semana'];
+        const nextWeek = await getNextWeekContext(ano, mes, semanaNumero);
 
-        if (!diaSemanaReuniao) {
-            console.error("Não foi possível determinar o dia da semana da reunião.");
-            return new Set();
-        }
-        
-        const currentMeetingDateStr = getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao);
-        if (!currentMeetingDateStr) {
-            console.error("Não foi possível calcular a data da reunião atual.");
-            return new Set();
-        }
+        console.log(`[VALIDATION] -> A procurar próxima semana com contexto: Ano=${nextWeek.ano}, Mês=${nextWeek.mes}, Semana=${nextWeek.semana}`);
 
-        // --- Passo 2: Adicionar 7 dias para encontrar a data da semana seguinte ---
-        const currentMeetingDate = new Date(currentMeetingDateStr + "T12:00:00Z");
-        currentMeetingDate.setDate(currentMeetingDate.getDate() + 7); // A única diferença: somamos em vez de subtrair
-
-        // Formatar a data da semana seguinte para o formato 'YYYY-MM-DD'
-        const nextWeekDateStr = currentMeetingDate.toISOString().split('T')[0];
-        
-        // --- Passo 3: Consultar o histórico usando a data da próxima semana ---
-        const historicoRef = db.collection('historico');
-        const q = historicoRef.where("dia", "==", nextWeekDateStr).where("quando", "==", "Semana");
+        const q = db.collection('historico')
+            // A MUDANÇA ESTÁ AQUI: Usamos o operador 'in' para apanhar tanto o número como o texto.
+            .where("ano", "in", [nextWeek.ano, String(nextWeek.ano)])
+            .where("mes", "==", nextWeek.mes)
+            .where("semanaNumero", "==", nextWeek.semana)
+            .where("quando", "==", "Semana");
 
         const snapshot = await q.get();
         const participants = new Set();
         
         if (!snapshot.empty) {
-            const doc = snapshot.docs[0];
-            const historicoData = doc.data();
-            if (historicoData.designacoes) {
-                historicoData.designacoes.forEach(desig => {
-                    if (desig.participantes) {
-                        Object.values(desig.participantes).forEach(personId => participants.add(personId.toString()));
-                    }
-                });
-            }
+            snapshot.docs[0].data().designacoes.forEach(desig => {
+                if (desig.participantes) {
+                    Object.values(desig.participantes).forEach(personId => participants.add(personId.toString()));
+                }
+            });
         }
-        // console.log(`[getParticipantsNextWeek] Encontrados para a data ${nextWeekDateStr}:`, participants);
+        console.log(`[VALIDATION] -> DADOS (Semana Seguinte):`, participants);
         return participants;
 
     } catch (error) {
-        console.error("Erro em getParticipantsNextWeek:", error);
-        return new Set(); // Retorna um Set vazio em caso de erro
+        console.error("Erro em getParticipantsNextWeek (versão robusta):", error);
+        return new Set();
     }
 };
 
@@ -4492,14 +4550,38 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
                 return quantitySubmenu;
             };
 
+            function saveSelectionsForDesignation(designacaoId) {
+                // Inicializa ou limpa o estado para esta designação
+                participantSelections[designacaoId] = {};
 
-            const updateActiveDesignationDisplay = async (designacao, order, quantity, instancePreferences = {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences = {}) => {
+                const allInstances = document.querySelectorAll(`.active-designation-container[data-designacao-id="${designacaoId}"]`);
+
+                allInstances.forEach(container => {
+                    // Extrai o número da instância a partir do ID do container
+                    const instanceNumber = parseInt(container.id.split('-').pop());
+                    if (!isNaN(instanceNumber)) {
+                        const selects = container.querySelectorAll('.form-select');
+                        // Guarda um array com os valores dos dropdowns para esta instância
+                        participantSelections[designacaoId][instanceNumber] = Array.from(selects).map(s => s.value);
+                    }
+                });
+            }
+
+
+
+
+
+   const updateActiveDesignationDisplay = async (designacao, order, quantity, instancePreferences = {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences = {}) => {
     const designacaoId = designacao.id;
+
+    // PASSO 1: SALVA O ESTADO ATUAL (OS NOMES SELECIONADOS) ANTES DE FAZER QUALQUER ALTERAÇÃO VISUAL
+    saveSelectionsForDesignation(designacaoId);
+
     const isLeituraBiblia = designacao.nome === 'Leitura da Bíblia';
     const containerToUse = isLeituraBiblia ? document.getElementById('leituraBibliaDesignationContainer') : document.getElementById('activeDesignationsContainer');
 
     if (quantity <= 0) {
-        // Remove all instances if quantity becomes 0 (já a funcionar)
+        // Remove todas as instâncias se a quantidade for 0 ou menos
         for (let instanceIndex = 1; instanceIndex <= 7; instanceIndex++) {
             const existingDisplay = containerToUse.querySelector(`#active-designation-${designacaoId}-${instanceIndex}`);
             if (existingDisplay) {
@@ -4509,31 +4591,8 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
         return;
     }
 
-
-    async function getEligiblePeopleForRole(designacao, role) {
-    // A LINHA QUE FALTAVA ESTÁ AQUI:
-    const pessoasRef = db.collection('pessoas'); 
-
-    let query = pessoasRef
-        .where('fazDesignacoesReuniao', '==', true)
-        .where('designacoesReuniao', 'array-contains', designacao.nome);
-
-    // Aplica a regra de personalidade com base no papel
-    if (role === 'dirigente') {
-        query = query.where('personalidade', '==', '+ à vontade');
-    }
-
-    const snapshot = await query.get();
-    const eligiblePeople = [];
-    snapshot.forEach(doc => {
-        eligiblePeople.push({ id: doc.id, name: doc.data().nomePessoa });
-    });
-    return eligiblePeople;
-}
-
-
-     // Loop through each instance to create/update containers
-     for (let designacaoInstance = 1; designacaoInstance <= quantity; designacaoInstance++) {
+    // Loop através de cada instância para criar ou atualizar os seus containers
+    for (let designacaoInstance = 1; designacaoInstance <= quantity; designacaoInstance++) {
         let designationDisplayContainer;
         const containerId = `active-designation-${designacaoId}-${designacaoInstance}`;
         let existingDisplay = containerToUse.querySelector(`#${containerId}`);
@@ -4544,21 +4603,18 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
             designationDisplayContainer.className = 'active-designation-container';
             designationDisplayContainer.style.marginTop = '20px';
             designationDisplayContainer.style.padding = '15px';
-            // The background color will be set dynamically based on order level
             designationDisplayContainer.style.borderRadius = '8px';
             designationDisplayContainer.dataset.designacaoId = designacao.id;
-            containerToUse.appendChild(designationDisplayContainer); // Append only if new
+            containerToUse.appendChild(designationDisplayContainer);
         } else {
-            designationDisplayContainer = existingDisplay; // Reuse existing container
-            designationDisplayContainer.innerHTML = ''; // IMPORTANT: Clear only the content inside designationDisplayContainer, not the container itself. We will rebuild the instance container part.
+            designationDisplayContainer = existingDisplay;
+            designationDisplayContainer.innerHTML = ''; // Limpa o conteúdo para reconstruir
         }
-
 
         const designacaoInstanceContainer = document.createElement('div');
         designacaoInstanceContainer.className = 'designacao-instance-container';
         designacaoInstanceContainer.style.marginBottom = '20px';
-        
-        // Set background color based on order level
+
         const orderLevel = designacao.ordem || 0;
         if (orderLevel === 1) {
             designationDisplayContainer.style.backgroundColor = 'rgba(46, 204, 113, 0.1)';
@@ -4579,19 +4635,15 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
         }
 
         const title = document.createElement('h5');
-        let designacaoNome = designacao.nome || designacaoId;
-        let tituloText = `${designacaoNome} (${designacaoInstance})`; // Title now includes instance number
-        title.textContent = tituloText;
+        title.textContent = `${designacao.nome || designacaoId} (${designacaoInstance})`;
         title.style.marginBottom = '10px';
         designacaoInstanceContainer.appendChild(title);
 
-        let numeroParticipantesDynamic = 1; // Default to 1
+        let numeroParticipantesDynamic = 1;
         const instanceKey = `participantes-${designacaoId}-${designacaoInstance}`;
         if (temporaryPreferences[instanceKey]) {
             numeroParticipantesDynamic = parseInt(temporaryPreferences[instanceKey]);
-        } else if (instancePreferences && instancePreferences.numeroParticipantes && designacaoInstance === 1) { //Instance preference is only relevant for the first instance in this structure
-            numeroParticipantesDynamic = parseInt(instancePreferences.numeroParticipantes);
-        } else if (designacao.numeroParticipantes && designacaoInstance === 1) { //Designation's default participant number is only relevant for the first instance in this structure
+        } else if (designacao.numeroParticipantes) {
             numeroParticipantesDynamic = parseInt(designacao.numeroParticipantes);
         }
 
@@ -4604,12 +4656,6 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
             participantRoles.push("Dirigente", "Morador", "Ajudante");
         }
 
-        // Get existing select elements within designacaoInstanceContainer
-        const existingSelects = Array.from(designacaoInstanceContainer.querySelectorAll('.form-select'));
-        let selectCount = existingSelects.length;
-
-
-        // Add or update participant selects
         for (let i = 0; i < numeroParticipantesDynamic; i++) {
             const roleLabel = document.createElement('span');
             roleLabel.textContent = (numeroParticipantesDynamic > 1) ? participantRoles[i] : `Participante`;
@@ -4619,494 +4665,160 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
             roleLabel.style.marginBottom = '3px';
             designacaoInstanceContainer.appendChild(roleLabel);
 
-            let participantSelect;
-            if (i < selectCount) {
-                // Reuse existing select element
-                participantSelect = existingSelects[i];
-                participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>'; // Clear options, keep the select element
-            } else {
-                // Create new select element
-                participantSelect = document.createElement('select');
-                participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
-                participantSelect.className = 'form-select';
-                participantSelect.style.marginBottom = '10px';
-                participantSelect.style.width = '100%';
-                participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
-                designacaoInstanceContainer.appendChild(participantSelect);
+            let participantSelect = document.createElement('select');
+            participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
+            participantSelect.className = 'form-select';
+            participantSelect.style.marginBottom = '10px';
+            participantSelect.style.width = '100%';
+            participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
+
+            // PASSO 2: RESTAURA O ESTADO NO DROPDOWN RECÉM-CRIADO
+            if (participantSelections[designacaoId] &&
+                participantSelections[designacaoId][designacaoInstance] &&
+                participantSelections[designacaoId][designacaoInstance][i]) {
+                participantSelect.value = participantSelections[designacaoId][designacaoInstance][i];
             }
+
+            // PASSO 3: ADICIONA O LISTENER PARA MANTER O ESTADO SEMPRE ATUALIZADO
+            participantSelect.addEventListener('change', () => {
+                saveSelectionsForDesignation(designacaoId);
+            });
+
+            designacaoInstanceContainer.appendChild(participantSelect);
         }
-
-
-        // Remove extra select elements if needed
-        while (designacaoInstanceContainer.children.length > (numeroParticipantesDynamic * 2 + 1)) { // *2 for label and select, +1 for title
-             designacaoInstanceContainer.removeChild(designacaoInstanceContainer.lastChild); // Remove from the end
-        }
-
 
         designationDisplayContainer.appendChild(designacaoInstanceContainer);
         designationDisplayContainer.style.position = 'relative';
 
-        const filterIcon = designationDisplayContainer.querySelector('.filter-icon') || document.createElement('i'); // Reuse or create filter icon
+        const filterIcon = document.createElement('i');
         filterIcon.className = 'fas fa-filter filter-icon';
         filterIcon.title = 'Filtrar';
 
-        let filterPopup = designationDisplayContainer.querySelector('.filter-popup'); // Reuse or create filter popup
-        if (!filterPopup) {
-            filterPopup = document.createElement('div');
-            filterPopup.className = 'filter-popup';
-            // **ALTERAÇÃO AQUI: MUDAR "Ambos os Sexos" PARA "Masculino Feminino"**
-            filterPopup.innerHTML = `
-                <h4>Filtros</h4>
-                <div class="filter-options">
-                    <label for="num-participantes">Número de Participantes</label>
-                    <select id="num-participantes">
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                    </select>
-                </div>
-                <div class="filter-options" style="margin-top: 15px;">
-                    <label for="genero-preferencia">Preferência de Género</label>
-                    <select id="genero-preferencia">
-                        <!-- TEXTO CORRIGIDO E FINAL -->
-                        <option value="masculino feminino">Masculino/Feminino</option> 
-                        <option value="masculino">Masculino</option>
-                        <option value="feminino">Feminino</option>
-                    </select>
-                </div>
-            `;
+        const filterPopup = document.createElement('div');
+        filterPopup.className = 'filter-popup';
+        filterPopup.innerHTML = `
+            <h4>Filtros</h4>
+            <div class="filter-options">
+                <label for="num-participantes-${designacaoInstance}">Número de Participantes</label>
+                <select id="num-participantes-${designacaoInstance}">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+            </div>
+            <div class="filter-options" style="margin-top: 15px;">
+                <label for="genero-preferencia-${designacaoInstance}">Preferência de Género</label>
+                <select id="genero-preferencia-${designacaoInstance}">
+                    <option value="masculino feminino">Masculino/Feminino</option>
+                    <option value="masculino">Masculino</option>
+                    <option value="feminino">Feminino</option>
+                </select>
+            </div>
+        `;
 
-            // Set the initial value from Firebase data (only if popup was newly created)
-            const numParticipantesSelect = filterPopup.querySelector('#num-participantes');
-            const filterInstanceKey = `participantes-${designacao.id}-${designacaoInstance}`;
-            if (temporaryPreferences[filterInstanceKey]) {
-                numParticipantesSelect.value = temporaryPreferences[filterInstanceKey];
-            } else if (designacao.numeroParticipantes) {
-                numParticipantesSelect.value = designacao.numeroParticipantes;
-            }
-
-// **DEFINIR VALOR PADRÃO DO FILTRO DE GENERO E EVENT LISTENER**
-const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia');
-            generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos'; // Define valor padrão com base em designacao.feitoPor
-
-            generoPreferenciaSelect.addEventListener('change', (e) => {
-                const selectedGender = e.target.value;
-                // Recarregar as opções de pessoas, aplicando o filtro de género
-                loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGender); // Passar selectedGender para loadPeopleOptionsIntoSelects
-                filterPopup.classList.remove('active'); // **ADD THIS LINE TO CLOSE POPUP**
-            });
-
-
-              // Update temporary preferences when the dropdown value changes (only if popup was newly created)
-              numParticipantesSelect.addEventListener('change', (e) => {
-                temporaryPreferences[filterInstanceKey] = e.target.value;
-                updateActiveDesignationDisplay(designacao, order, quantity, instancePreferences, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
-            });
-
-             filterIcon.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const allPopups = document.querySelectorAll('.filter-popup');
-                allPopups.forEach(popup => {
-                    if (popup !== filterPopup) {
-                        popup.classList.remove('active');
-                    }
-                });
-                filterPopup.classList.toggle('active');
-            });
-
-            document.addEventListener('click', (e) => {
-                if (!filterPopup.contains(e.target) && !filterIcon.contains(e.target)) {
-                    filterPopup.classList.remove('active');
-                }
-            });
-
-
-            designationDisplayContainer.appendChild(filterPopup);
-            designationDisplayContainer.appendChild(filterIcon); // Append filter icon only if popup was newly created (or just always append it - doesn't really matter)
-
-        } else {
-             // **DEFINIR VALOR PADRÃO DO FILTRO DE GENERO PARA POPUPS REUTILIZADOS (se necessário)**
-             const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia');
-            generoPreferenciaSelect.addEventListener('change', (e) => {
-                const selectedGender = e.target.value;
-                // Recarregar as opções de pessoas, aplicando o filtro de género
-                loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGender); // Passar selectedGender para loadPeopleOptionsIntoSelects
-                filterPopup.classList.remove('active'); // **ADD THIS LINE TO CLOSE POPUP**
-            });
-        }
-
-        async function openLabPopup(originalContainer) {
-    const popup = document.getElementById('labPopup');
-    const selectionContainer = document.getElementById('labSelectionContainer');
-    const suggestionsContainer = document.getElementById('labSuggestionsContainer');
-    
-    const originalSelects = originalContainer.querySelectorAll('.form-select');
-    const originalValues = Array.from(originalSelects).map(select => select.value);
-    const instanceContainer = originalContainer.querySelector('.designacao-instance-container').cloneNode(true);
-    selectionContainer.innerHTML = '';
-    selectionContainer.appendChild(instanceContainer);
-    
-    const popupSelects = instanceContainer.querySelectorAll('.form-select');
-    popupSelects.forEach((popupSelect, index) => {
-        popupSelect.value = originalValues[index];
-    });
-
-    suggestionsContainer.innerHTML = 'A procurar as melhores alternativas...';
-    popup.style.display = 'flex';
-
-    const ano = await getAnoPainelFirebase();
-    const mes = parseInt(document.getElementById('mes').value);
-    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
-    
-    const participantsLastWeek = await getParticipantsLastWeek(ano, mes, semanaNumero);
-    const recentPairsMap = await getRecentPairs();
-
-    // Obter os participantes atuais para gerar os grupos de alternativas
-    const currentParticipants = Array.from(popupSelects).map((select, index) => {
-        if (!select.value) return null;
-        return {
-            id: select.value,
-            name: select.options[select.selectedIndex].text,
-            role: (index === 0) ? 'dirigente' : 'morador'
-        };
-    }).filter(Boolean);
-    
-    const designacaoId = originalContainer.dataset.designacaoId;
-    const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
-    if (!designacaoDoc.exists) {
-        suggestionsContainer.innerHTML = 'Erro: Designação não encontrada.';
-        return;
-    }
-    const designacao = { id: designacaoDoc.id, ...designacaoDoc.data() };
-    
-    const suggestions = await generateSuggestions(designacao, currentParticipants, participantsLastWeek, recentPairsMap, ano);
-    
-    suggestionsContainer.innerHTML = '';
-    // <<< ALTERAÇÃO 1: Adicionamos o 'index' ao loop >>>
-    currentParticipants.forEach((participant, index) => {
-        const group = document.createElement('div');
-        group.className = 'suggestion-group';
-        group.innerHTML = `<h4>Alternativas para ${participant.name}:</h4>`;
-
-        if (suggestions[participant.id] && suggestions[participant.id].length > 0) {
-            suggestions[participant.id].forEach(suggestion => {
-                const item = document.createElement('div');
-                item.className = 'suggestion-item';
-                item.dataset.personId = suggestion.id;
-                item.innerHTML = `${suggestion.name} <span class="suggestion-justification">(${suggestion.justification})</span>`;
-                
-                item.addEventListener('click', () => {
-                    // <<< ALTERAÇÃO 2: Usamos o 'index' para identificar o dropdown correto >>>
-                    const selectToChange = popupSelects[index];
-                    
-                    if (selectToChange) {
-                        selectToChange.value = suggestion.id;
-                        updateLabSuggestionsVisibility();
-                    }
-                });
-                group.appendChild(item);
-            });
-        } else {
-            group.innerHTML += '<p>Nenhuma alternativa válida encontrada.</p>';
-        }
-        suggestionsContainer.appendChild(group);
-    });
-
-    popupSelects.forEach(select => {
-        select.addEventListener('change', updateLabSuggestionsVisibility);
-    });
-
-    document.getElementById('applyLabChanges').onclick = () => {
-        popupSelects.forEach((popupSelect, index) => {
-            originalSelects[index].value = popupSelect.value;
-        });
-        popup.style.display = 'none';
-        validateAllSelections();
-    };
-
-    updateLabSuggestionsVisibility();
-}
-
-
-// Função-chave para gerar as sugestões
-async function generateSuggestions(designacao, currentParticipants, participantsLastWeek, recentPairsMap, ano) {
-    const suggestions = {};
-    const currentParticipantIds = currentParticipants.map(p => p.id);
-
-    // Para cada pessoa na seleção atual (ex: Susana), vamos encontrar alternativas
-    for (const participant of currentParticipants) {
-        const partner = currentParticipants.find(p => p.id !== participant.id);
-        suggestions[participant.id] = [];
-
-        // 1. Encontra todos os que são ELEGÍVEIS para o papel da pessoa que queremos substituir
-        const allEligibleForRole = await getEligiblePeopleForRole(designacao, participant.role);
-
-        // 2. Filtra essa lista com as regras do "Foguetão"
-        const validCandidates = allEligibleForRole.filter(candidate => {
-            if (currentParticipantIds.includes(candidate.id)) return false;
-            if (participantsLastWeek.has(candidate.id)) return false;
-            
-            if (partner) {
-                const newPairKey = [candidate.id, partner.id].sort().join('_');
-                if (recentPairsMap.has(newPairKey)) {
-                    return false; 
-                }
-            }
-            return true;
+        const numParticipantesSelect = filterPopup.querySelector(`#num-participantes-${designacaoInstance}`);
+        numParticipantesSelect.value = numeroParticipantesDynamic;
+        numParticipantesSelect.addEventListener('change', (e) => {
+            temporaryPreferences[instanceKey] = e.target.value;
+            updateActiveDesignationDisplay(designacao, order, quantity, instancePreferences, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
         });
         
-        if (validCandidates.length > 0) {
-            // 3. Rankeia os candidatos válidos (os que têm menos partes aparecem primeiro)
-            const candidateIds = validCandidates.map(c => c.id);
-            
-            // Esta chamada agora retorna um ARRAY de objetos, graças à correção acima.
-            const rankedCandidates = await rankPeopleByDesignationCount(candidateIds, designacao.nome, ano, true);
+        const generoPreferenciaSelect = filterPopup.querySelector(`#genero-preferencia-${designacaoInstance}`);
+        generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'masculino feminino';
+        generoPreferenciaSelect.addEventListener('change', (e) => {
+            const selectedGender = e.target.value;
+            loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGender);
+            filterPopup.classList.remove('active');
+        });
 
-            // 4. Cria as sugestões com uma justificação
-            // A linha abaixo AGORA FUNCIONA, pois rankedCandidates é um array.
-            for (const rankedCand of rankedCandidates.slice(0, 5)) {
-                const candidateData = validCandidates.find(c => c.id === rankedCand.personId);
-                suggestions[participant.id].push({
-                    id: candidateData.id,
-                    name: candidateData.name,
-                    justification: `${rankedCand.totalDesignations} designações este ano.`
-                });
+        filterIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.filter-popup').forEach(popup => {
+                if (popup !== filterPopup) popup.classList.remove('active');
+            });
+            filterPopup.classList.toggle('active');
+        });
+
+        designationDisplayContainer.appendChild(filterPopup);
+        designationDisplayContainer.appendChild(filterIcon);
+
+        const lockIcon = document.createElement('i');
+        lockIcon.className = 'fas fa-lock-open lock-icon';
+        lockIcon.title = 'Bloquear/Desbloquear Designação';
+        if (designationDisplayContainer.dataset.locked === 'true') {
+            lockIcon.classList.add('locked', 'fa-lock');
+            lockIcon.classList.remove('fa-lock-open');
+        }
+        lockIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const container = e.target.closest('.active-designation-container');
+            const isCurrentlyLocked = container.dataset.locked === 'true';
+            container.dataset.locked = isCurrentlyLocked ? 'false' : 'true';
+            e.target.classList.toggle('locked');
+            e.target.classList.toggle('fa-lock');
+            e.target.classList.toggle('fa-lock-open');
+        });
+        designationDisplayContainer.appendChild(lockIcon);
+
+        const lupaIcon = document.createElement('i');
+        lupaIcon.className = 'fas fa-search-plus lupa-icon';
+        lupaIcon.title = 'Analisar Histórico';
+        lupaIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const container = e.target.closest('.active-designation-container');
+            const selectedParticipants = Array.from(container.querySelectorAll('.form-select'))
+                .map(select => select.value ? { id: select.value, name: select.options[select.selectedIndex].text } : null)
+                .filter(Boolean);
+            if (selectedParticipants.length === 0) {
+                alert("Por favor, selecione pelo menos um participante para analisar.");
+                return;
             }
-        }
+            if (selectedParticipants.length === 1) {
+                document.getElementById('pesquisaPessoa').value = selectedParticipants[0].name;
+                loadParticipantProfile(selectedParticipants[0].id);
+                document.getElementById('perfilPopup').style.display = 'flex';
+            } else {
+                openPairAnalysisPopup(selectedParticipants);
+            }
+        });
+        designationDisplayContainer.appendChild(lupaIcon);
+
+        const labIcon = document.createElement('i');
+        labIcon.className = 'fas fa-flask lab-icon';
+        labIcon.title = 'Laboratório de Combinações';
+        labIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openLabPopup(e.target.closest('.active-designation-container'));
+        });
+        designationDisplayContainer.appendChild(labIcon);
+        
+        const selectedGenderOnLoad = generoPreferenciaSelect.value;
+        await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGenderOnLoad);
     }
-    return suggestions;
-}
-
-
-function makeTableSortable(table) {
-    console.log("✅ makeTableSortable foi chamada para a tabela:", table); // Log 1
-
-    const header = table.querySelector('thead');
-    if (!header) {
-        console.error("❌ ERRO: A tabela não tem um <thead>.", table); // Log de erro
-        return;
-    }
-
-    header.querySelectorAll('th').forEach(th => {
-        th.style.cursor = 'pointer';
-        th.title = 'Clique para ordenar esta coluna';
-    });
-
-    header.addEventListener('click', (e) => {
-        console.log("🖱️ O cabeçalho (thead) foi clicado!"); // Log 2
-
-        const th = e.target.closest('th');
-        if (!th) return;
-
-        const tbody = table.querySelector('tbody');
-        const columnIndex = Array.from(th.parentNode.children).indexOf(th);
-        
-        console.log(`➡️ Coluna clicada: '${th.textContent.trim()}' (índice ${columnIndex})`); // Log 3
-        
-        const currentDirection = th.dataset.sortDirection || 'desc';
-        const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
-        
-        console.log(`🔄 Direção da ordenação: ${newDirection.toUpperCase()}`); // Log 4
-
-        header.querySelectorAll('th').forEach(h => delete h.dataset.sortDirection);
-        th.dataset.sortDirection = newDirection;
-
-        sortColumn(tbody, columnIndex, newDirection);
-    });
-}
-
-
-
-function sortColumn(tbody, columnIndex, direction) {
-    const rows = Array.from(tbody.querySelectorAll('tr'));
     
-    // Verifica se a coluna é numérica para ordenar corretamente
-    const isNumericColumn = rows.length > 0 && !isNaN(parseFloat(rows[0].children[columnIndex].textContent.trim()));
-
-    rows.sort((rowA, rowB) => {
-        // A CORREÇÃO PRINCIPAL ESTÁ AQUI: Adicionado .trim()
-        const valA = rowA.children[columnIndex].textContent.trim();
-        const valB = rowB.children[columnIndex].textContent.trim();
-
-        let comparison = 0;
-        if (isNumericColumn) {
-            // Usamos os valores já limpos para a conversão numérica
-            comparison = parseFloat(valA) - parseFloat(valB);
-        } else {
-            comparison = valA.localeCompare(valB, undefined, { sensitivity: 'base' });
+    // PASSO 4 (REAPLICAR): Garante que as seleções são mantidas mesmo depois de as opções serem carregadas
+    for (let designacaoInstance = 1; designacaoInstance <= quantity; designacaoInstance++) {
+        const containerId = `active-designation-${designacaoId}-${designacaoInstance}`;
+        const container = containerToUse.querySelector(`#${containerId}`);
+        if (container && participantSelections[designacaoId] && participantSelections[designacaoId][designacaoInstance]) {
+            const selects = container.querySelectorAll('.form-select');
+            selects.forEach((select, i) => {
+                const savedValue = participantSelections[designacaoId][designacaoInstance][i];
+                if (savedValue) {
+                    // Verifica se a opção ainda existe antes de a definir
+                    if (select.querySelector(`option[value="${savedValue}"]`)) {
+                        select.value = savedValue;
+                    }
+                }
+            });
         }
-
-        return direction === 'asc' ? comparison : -comparison;
-    });
-
-    tbody.innerHTML = '';
-    rows.forEach(row => tbody.appendChild(row));
-}
-
-
-const statsPopupNode = document.getElementById('estatisticasPopup');
-const observerConfig = { childList: true, subtree: true };
-
-const observerCallback = function(mutationsList, observer) {
-    // Esta nova abordagem é mais simples e robusta.
-    // Em vez de analisar cada mutação, simplesmente procuramos por tabelas
-    // que ainda não foram tornadas ordenáveis sempre que algo muda no pop-up.
-
-    // Procura TODAS as tabelas de estatísticas dentro do pop-up.
-    const allTablesInPopup = statsPopupNode.querySelectorAll('.estatisticas-table');
-
-    allTablesInPopup.forEach(table => {
-        // Aplica a lógica APENAS se a tabela ainda não tiver sido processada.
-        // A marca 'dataset.sortable' impede que adicionemos múltiplos 'event listeners' à mesma tabela.
-        if (!table.dataset.sortable) {
-            // Adicionamos um log para confirmar que a tabela foi encontrada
-            console.log("✅ Observer encontrou uma nova tabela. A aplicar funcionalidade de ordenação.", table);
-            
-            makeTableSortable(table);
-            table.dataset.sortable = 'true';
-        }
-    });
+    }
 };
 
 
-// Cria e inicia o observador
-const tableObserver = new MutationObserver(observerCallback);
-tableObserver.observe(statsPopupNode, observerConfig);
-
-// ======================================================================== //
-// ============  NOVA FUNÇÃO: ATUALIZAR VISIBILIDADE DO LAB  ============== //
-// ======================================================================== //
-
-function updateLabSuggestionsVisibility() {
-    const labPopup = document.getElementById('labPopup');
-    if (!labPopup || labPopup.style.display === 'none') {
-        return; // Não faz nada se o popup estiver fechado
-    }
-
-    // 1. Obter os IDs de todas as pessoas atualmente selecionadas nos dropdowns
-    const selectedIds = Array.from(labPopup.querySelectorAll('.lab-current-selection .form-select'))
-                             .map(select => select.value)
-                             .filter(Boolean); // Garante que não apanhamos valores vazios
-
-    // 2. Obter todos os itens de sugestão
-    const allSuggestionItems = labPopup.querySelectorAll('.suggestion-item');
-
-    // 3. Iterar e definir a visibilidade
-    allSuggestionItems.forEach(item => {
-        const personId = item.dataset.personId;
-        // Se o ID do item da sugestão estiver na lista de selecionados, esconde-o.
-        if (selectedIds.includes(personId)) {
-            item.style.display = 'none';
-        } else {
-            // Caso contrário, mostra-o.
-            item.style.display = 'block';
-        }
-    });
-}
-
-// Lógica para fechar o popup do laboratório
-document.getElementById('closeLabPopup').addEventListener('click', () => {
-    document.getElementById('labPopup').style.display = 'none';
-});
 
 
-        const lockIcon = designationDisplayContainer.querySelector('.lock-icon') || document.createElement('i');
-lockIcon.className = 'fas fa-lock-open lock-icon'; // Começa aberto por defeito
-lockIcon.title = 'Bloquear/Desbloquear Designação';
 
-// Verifica o estado atual para manter a aparência correta ao recarregar
-if (designationDisplayContainer.dataset.locked === 'true') {
-    lockIcon.classList.add('locked');
-    lockIcon.classList.remove('fa-lock-open');
-    lockIcon.classList.add('fa-lock');
-}
-
-
-// Adiciona o evento de clique para bloquear/desbloquear
-lockIcon.addEventListener('click', (e) => {
-    e.stopPropagation(); // Evita que outros eventos sejam disparados
-    const container = e.target.closest('.active-designation-container');
-    const isCurrentlyLocked = container.dataset.locked === 'true';
-
-    if (isCurrentlyLocked) {
-        // Se está bloqueado, vamos desbloquear
-        container.dataset.locked = 'false';
-        e.target.classList.remove('locked');
-        e.target.classList.remove('fa-lock');
-        e.target.classList.add('fa-lock-open');
-    } else {
-        // Se está desbloqueado, vamos bloquear
-        container.dataset.locked = 'true';
-        e.target.classList.add('locked');
-        e.target.classList.remove('fa-lock-open');
-        e.target.classList.add('fa-lock');
-    }
-});
-
-
-designationDisplayContainer.appendChild(lockIcon);
-
-
-const lupaIcon = designationDisplayContainer.querySelector('.lupa-icon') || document.createElement('i');
-lupaIcon.className = 'fas fa-search-plus lupa-icon';
-lupaIcon.title = 'Analisar Histórico';
-
-lupaIcon.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const container = e.target.closest('.active-designation-container');
-    const selectedParticipants = [];
-    container.querySelectorAll('.form-select').forEach(select => {
-        if (select.value) {
-            selectedParticipants.push({
-                id: select.value,
-                name: select.options[select.selectedIndex].text
-            });
-        }
-    });
-
-    if (selectedParticipants.length === 0) {
-        alert("Por favor, selecione pelo menos um participante para analisar.");
-        return;
-    }
-
-    // Comportamento para 1 pessoa: reutiliza o popup de perfil existente
-    if (selectedParticipants.length === 1) {
-        const participant = selectedParticipants[0];
-        const perfilPopup = document.getElementById('perfilPopup');
-        const pesquisaInput = document.getElementById('pesquisaPessoa');
-        
-        pesquisaInput.value = participant.name;
-        loadParticipantProfile(participant.id); // Esta função já existe no seu código
-        perfilPopup.style.display = 'flex';
-    } 
-    // Comportamento para 2 ou mais pessoas: abre o novo popup de análise
-    else {
-        openPairAnalysisPopup(selectedParticipants);
-    }
-});
-
-designationDisplayContainer.appendChild(lupaIcon);
-
-const labIcon = designationDisplayContainer.querySelector('.lab-icon') || document.createElement('i');
-labIcon.className = 'fas fa-flask lab-icon';
-labIcon.title = 'Laboratório de Combinações';
-
-labIcon.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const container = e.target.closest('.active-designation-container');
-    openLabPopup(container);
-});
-
-designationDisplayContainer.appendChild(labIcon);
-
-
-        // **MODIFIED: AWAIT loadPeopleOptionsIntoSelects - RETURN the promise from loadPeopleOptionsIntoSelects**
-        const generoPreferenciaSelect = filterPopup.querySelector('#genero-preferencia'); // Buscar o dropdown de género *agora*, depois de ter sido (re)criado
-        const selectedGenderOnLoad = generoPreferenciaSelect.value; // Obter o valor *inicial* do dropdown de género
-        await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGenderOnLoad); // Passar selectedGenderOnLoad para loadPeopleOptionsIntoSelects
-
-    }
-};
 
 
 
@@ -5153,7 +4865,7 @@ designationDisplayContainer.appendChild(labIcon);
             }
 
             let temporaryPreferences = {}; // Objeto para guardar as preferências temporárias
-
+let participantSelections = {};
 
             // Initial load of designacoes
             loadDesignacoes();
