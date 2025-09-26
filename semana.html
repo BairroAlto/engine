@@ -70,6 +70,9 @@
 
         /* Estilos para Modals e Popups */
         .modal-overlay, .popup-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); justify-content: center; align-items: center; z-index: 1000; }
+        #pairAnalysisPopup {
+    z-index: 1010; /* Um valor maior que 1000 para ficar à frente */
+}
         .modal-overlay.active, .popup-overlay.active { display: flex; }
         .modal-content, .popup-content { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 90%; max-width: 500px; position: relative; }
         .modal-header, .popup-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
@@ -78,7 +81,11 @@
         .modal-close:hover, .popup-close-button:hover { color: #333; }
         .popup-body .form-group { margin-bottom: 15px;}
         .popup-body .form-group label { font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #555; }
-        .popup-actions { margin-top: 20px; text-align: right; }
+      .popup-actions { 
+    margin-top: 20px; 
+    display: flex; 
+    align-items: center; 
+}
         #editPopupFilters .filter-group { min-width: 140px; } /* Ajuste de tamanho para os filtros do popup */
 
 
@@ -153,6 +160,8 @@
     align-items: flex-start;
 }
 
+
+
 .history-item-header {
     width: 100%;
     display: flex;
@@ -173,6 +182,16 @@
 .history-item-participants small {
     display: block;
     margin-bottom: 3px;
+}
+
+
+#createDesignationPopup .popup-content.team-suggester-mode .rocket-suggester {
+    display: none;
+}
+
+/* Garante que os foguetões individuais aparecem por defeito */
+#createDesignationPopup .popup-content .rocket-suggester {
+    display: inline-block;
 }
 
         @media (max-width: 768px) {
@@ -302,6 +321,48 @@
         </div>
     </div>
 </div>
+
+<!-- Popup de Criação de Designação -->
+<div id="createDesignationPopup" class="popup-overlay">
+    <div class="popup-content" style="max-width: 90%; width: 800px;">
+        <div class="popup-header">
+            <h2 class="popup-title">Criar Nova Designação</h2>
+            <button class="popup-close-button" id="closeCreatePopup">×</button>
+        </div>
+        <div class="popup-body">
+            <!-- Passo 1: Escolher a Designação -->
+            <div id="create-step-1" class="form-group">
+                <label for="createDesignationSelect" style="font-size: 1.1em;">Selecione a designação que deseja adicionar:</label>
+                <select id="createDesignationSelect" class="form-select" style="margin-top: 10px;"></select>
+            </div>
+            
+            <!-- Passo 2: Definir Participantes (inicialmente escondido) -->
+            <div id="create-step-2" style="display: none; margin-top: 20px;">
+                <div id="createPopupFilters" style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee;">
+                    <!-- Filtros serão inseridos aqui pelo JS, idênticos ao popup de edição -->
+                </div>
+                <div id="createPopupParticipants">
+                    <!-- Dropdowns de participantes serão inseridos aqui -->
+                </div>
+            </div>
+        </div>
+ <div class="popup-actions">
+    <!-- Layout final com botões de ajuda agrupados à esquerda -->
+    <button id="global-suggester-btn" class="action-button" 
+            style="display: none; background-color: #3498db;" 
+            title="Sugerir uma equipa completa">
+        <i class="fas fa-users" style="margin-right: 8px;"></i>Sugerir Equipa
+    </button>
+    
+    <!-- A margem foi movida para este botão para empurrar o botão "Criar" para a direita -->
+    <button id="create-pair-analysis-button" class="action-button" 
+            style="display: none; background-color: #7f8c8d; margin-right: auto;" 
+            title="Ver histórico do par"></button>
+    
+    <button class="btn-submit" id="saveNewDesignationBtn" disabled>Criar Designação</button>
+</div>
+
+
     <!-- ===== FIM: HTML DE TODOS OS POPUPS AVANÇADOS ===== -->
 
 
@@ -319,6 +380,24 @@
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.firestore();
+        let isCreationViewInitialized = false; // O nosso interruptor, começa desligado.
+
+        async function initializeCreationViewOnce() {
+    // 1. Verifica se a preparação já foi feita. Se sim, não faz mais nada.
+    if (isCreationViewInitialized) {
+        return; 
+    }
+
+    console.log("A preparar a área de criação pela primeira vez...");
+
+    // 2. AQUI DENTRO, vamos colocar o código que prepara os popups e os filtros.
+    // Por exemplo, a lógica que estavas a ver em loop nos teus logs.
+    // (Por agora, vamos deixar este espaço, focando-nos em parar o loop).
+    
+    // 3. No final, ligamos o nosso "interruptor" para que isto não aconteça de novo.
+    isCreationViewInitialized = true;
+    console.log("Área de criação pronta!");
+}
 
         document.addEventListener('DOMContentLoaded', async function() {
             // ===================================================================
@@ -335,6 +414,11 @@
             const createButton = document.getElementById('create-button');
             const scheduleDisplay = document.getElementById('schedule-display');
             const scheduleContent = document.getElementById('schedule-content');
+            const createDesignationPopup = document.getElementById('createDesignationPopup');
+const closeCreatePopup = document.getElementById('closeCreatePopup');
+const createDesignationSelect = document.getElementById('createDesignationSelect');
+const saveNewDesignationBtn = document.getElementById('saveNewDesignationBtn');
+const createStep2 = document.getElementById('create-step-2');
             
             // Modais e Popups
             const modalOverlay = document.getElementById('action-modal-overlay');
@@ -392,7 +476,11 @@ closePairAnalysisPopup.addEventListener('click', () => {
                         allPeopleDataMap.set(doc.id, doc.data()); // Cache all person data for rules
                     });
 
-                    designacoesSnap.forEach(doc => designationMap.set(doc.id, doc.data()));
+                    designacoesSnap.forEach(doc => {
+    const data = doc.data();
+    data.id = doc.id; // Adiciona o ID do documento ao próprio objeto de dados
+    designationMap.set(doc.id, data);
+});
                     cabecalhosSnap.forEach(doc => headerMap.set(doc.id, doc.data()));
                     allScheduleData = historicoSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     
@@ -407,21 +495,26 @@ closePairAnalysisPopup.addEventListener('click', () => {
                 }
             }
 
-   async function getPairHistory(participantIds) {
+ async function getPairHistory(participantIds, isCreateMode = false) { // Adicionado isCreateMode
     if (participantIds.length < 2) return [];
 
     const history = [];
+    
+    const originalSignature = (!isCreateMode && currentEditData.originalDesignation) 
+        ? createParticipantSignature(currentEditData.originalDesignation.participantes)
+        : null;
+
     for (const doc of allScheduleData) {
         if (!doc.designacoes) continue;
 
         for (const desig of doc.designacoes) {
-            // ===== CONDIÇÃO DE IGNORE ADICIONADA AQUI =====
-            // Se esta entrada do histórico é a mesma que estamos a editar, salta para a próxima
-            if (doc.id === currentEditData.historicoDocRefId && 
-                desig.designacaoId === currentEditData.originalDesignation.designacaoId) {
-                continue; 
+            
+            if (!isCreateMode && originalSignature) {
+                const currentSignature = createParticipantSignature(desig.participantes);
+                if (doc.id === currentEditData.historicoDocRefId && currentSignature === originalSignature) {
+                    continue; 
+                }
             }
-            // ===============================================
 
             const participantsInDesig = Object.values(desig.participantes || {});
             if (participantsInDesig.length < 2) continue;
@@ -461,6 +554,355 @@ async function updateAccountabilityButton() {
     pairAnalysisButton.textContent = `Contabilidade (${currentPairHistory.length})`;
 }
 
+
+async function openCreateDesignationPopup() {
+    console.log("1. Abrindo o popup de criação...");
+    createStep2.style.display = 'none';
+    saveNewDesignationBtn.disabled = true;
+    document.getElementById('createPopupParticipants').innerHTML = '';
+    document.getElementById('createPopupFilters').innerHTML = '';
+
+    if (allLanguagesCache.length === 0) {
+        const nacSnap = await db.collection('nacionalidades').orderBy('nome').get();
+        nacSnap.forEach(doc => allLanguagesCache.push(doc.data().nome));
+    }
+
+    const availableDesignations = Array.from(designationMap.values())
+        .filter(d => d.quando === 'Semana' && d.tipo === 'reuniao')
+        .sort((a, b) => (a.ordem || 999) - (b.ordem || 999));
+
+    createDesignationSelect.innerHTML = '<option value="">Escolha uma designação...</option>';
+    availableDesignations.forEach(desig => {
+        createDesignationSelect.add(new Option(desig.nome, desig.id));
+    });
+
+    createDesignationSelect.onchange = () => {
+        const selectedId = createDesignationSelect.value;
+        if (selectedId) {
+            const numSelect = document.getElementById('createNumParticipantes');
+            if (numSelect) numSelect.dataset.initialized = 'false';
+            renderCreateStep2(selectedId);
+        } else {
+            createStep2.style.display = 'none';
+            saveNewDesignationBtn.disabled = true;
+        }
+    };
+
+    const filtersContainer = document.getElementById('createPopupFilters');
+    if (!filtersContainer.dataset.eventsAttached) {
+        filtersContainer.addEventListener('change', (event) => {
+            if (event.target.matches('.form-select')) {
+                const selectedId = createDesignationSelect.value;
+                if (selectedId) renderCreateStep2(selectedId);
+            }
+        });
+        filtersContainer.dataset.eventsAttached = 'true';
+    }
+    
+    // ===== CORREÇÃO CRÍTICA: Ligar o botão do foguetão de equipa =====
+    setupGlobalSuggesterButton();
+    // ================================================================
+    
+    createDesignationPopup.classList.add('active');
+    document.body.classList.add('popup-open');
+}
+
+
+
+
+
+
+// Função 2: Renderiza os filtros e dropdowns de participantes (reutiliza muita lógica)
+async function renderCreateStep2(designationId) {
+    console.log(`Renderizando Passo 2 para a designação: ${designationId}`);
+
+    const fullDesigData = designationMap.get(designationId);
+    if (!fullDesigData) return;
+
+    const filtersContainer = document.getElementById('createPopupFilters');
+    if (!filtersContainer.hasChildNodes()) {
+        filtersContainer.innerHTML = `
+            <div class="filter-group" style="flex: 1;"><label>Nº de Participantes</label><select id="createNumParticipantes" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+            <div class="filter-group" style="flex: 1;"><label>Idioma</label><select id="createIdioma" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+            <div class="filter-group" style="flex: 1;"><label>Género</label><select id="createGeneroPreferencia" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+            <div class="filter-group" style="flex: 1;"><label>Permitir Par Misto</label><select id="createGeneroMix" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+        `;
+        document.getElementById('createNumParticipantes').innerHTML = '<option value="1">1</option><option value="2">2</option><option value="3">3</option>';
+        document.getElementById('createGeneroPreferencia').innerHTML = '<option value="masculino feminino">Qualquer Género</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option>';
+        document.getElementById('createGeneroMix').innerHTML = '<option value="nao">Não</option><option value="sim">Sim</option>';
+        const idiomaSelect = document.getElementById('createIdioma');
+        idiomaSelect.innerHTML = '<option value="todos">Todos</option>';
+        allLanguagesCache.forEach(lang => idiomaSelect.add(new Option(lang, lang)));
+    }
+
+    const numParticipantesSelect = document.getElementById('createNumParticipantes');
+    const idiomaSelect = document.getElementById('createIdioma');
+    const generoPreferenciaSelect = document.getElementById('createGeneroPreferencia');
+
+    if (numParticipantesSelect.dataset.initialized !== 'true') {
+        numParticipantesSelect.value = fullDesigData.numeroParticipantes || 1;
+        numParticipantesSelect.dataset.initialized = 'true';
+    }
+
+    const numParticipantes = parseInt(numParticipantesSelect.value);
+    const globalSuggesterBtn = document.getElementById('global-suggester-btn');
+    const popupContent = document.getElementById('createDesignationPopup').querySelector('.popup-content');
+    
+    if (numParticipantes > 1) {
+        globalSuggesterBtn.style.display = 'block';
+        popupContent.classList.add('team-suggester-mode');
+    } else {
+        globalSuggesterBtn.style.display = 'none';
+        popupContent.classList.remove('team-suggester-mode');
+    }
+    
+    const createPopupParticipantsContainer = document.getElementById('createPopupParticipants');
+    const existingSelects = createPopupParticipantsContainer.querySelectorAll('.form-select');
+    const savedValues = Array.from(existingSelects).map(select => select.value);
+
+    const participantRoles = [];
+    if (numParticipantes === 1) participantRoles.push({ key: 'participante', label: "Participante" });
+    else if (numParticipantes === 2) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" });
+    else if (numParticipantes >= 3) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" }, { key: 'ajudante', label: "Ajudante" });
+
+    let dropdownsHTML = '';
+    participantRoles.forEach((role, i) => {
+        dropdownsHTML += `<div class="form-group"><label>${role.label}</label><div class="participant-row"><select class="form-select" data-role-key="${role.key}" data-role-index="${i}"></select><i class="fas fa-rocket rocket-suggester" title="Sugerir participante válido"></i></div></div>`;
+    });
+    createPopupParticipantsContainer.innerHTML = dropdownsHTML;
+
+    const selectedWeekDoc = allScheduleData.find(d => d.semanaindex === weekFilter.value);
+    if (!selectedWeekDoc) return;
+    
+    const allSelects = createPopupParticipantsContainer.querySelectorAll('.form-select');
+    for (const [index, select] of allSelects.entries()) {
+        await populateSingleEditDropdown(select, selectedWeekDoc, fullDesigData, generoPreferenciaSelect.value, idiomaSelect.value);
+        if (savedValues[index] && select.querySelector(`option[value="${savedValues[index]}"]`)) {
+            select.value = savedValues[index];
+        }
+        
+        // ===== INTEGRAÇÃO FINAL =====
+        // Adiciona o event listener que chama a validação sempre que um participante muda
+        select.addEventListener('change', () => {
+            handleGenderSync(select);
+            validateCreatePopupSelections(); // Chama a nossa nova função de validação!
+        });
+    }
+    
+    const individualRockets = createPopupParticipantsContainer.querySelectorAll('.rocket-suggester');
+    individualRockets.forEach(rocket => {
+        rocket.addEventListener('click', async (event) => {
+            const selectElement = event.target.previousElementSibling;
+            await findNextForCreate(selectElement);
+        });
+    });
+
+    if (allSelects.length > 0) { 
+        handleGenderSync(allSelects[0]); 
+        await validateCreatePopupSelections(); // Validação inicial
+    }
+    
+    createStep2.style.display = 'block';
+    saveNewDesignationBtn.disabled = false;
+}
+
+
+
+
+function setupGlobalSuggesterButton() {
+    const globalSuggesterBtn = document.getElementById('global-suggester-btn');
+    if (globalSuggesterBtn && !globalSuggesterBtn.dataset.listenerAttached) {
+        globalSuggesterBtn.addEventListener('click', findNextValidGroup);
+        globalSuggesterBtn.dataset.listenerAttached = 'true';
+    }
+}
+
+
+
+async function validateCreatePopupSelections(historicoDoc, fullDesigData) {
+    const createPopupParticipantsContainer = document.getElementById('createPopupParticipants');
+    const popupSelects = createPopupParticipantsContainer.querySelectorAll('.form-select');
+    // Esta função seria uma cópia de 'validatePopupSelections', mas simplificada,
+    // pois não precisa de ignorar o 'currentEditData'.
+    // Por agora, vamos mantê-la simples para provar que está a ser chamada.
+    console.log("Validação do popup de criação acionada.");
+}
+
+// Função de sugestão ("foguetão") adaptada para o popup de CRIAÇÃO
+async function findNextForCreate(selectElement, historicoDoc, fullDesigData) {
+    // Esta função seria uma cópia de 'findNextAvailableParticipant', mas simplificada.
+    // O mapa 'currentWeekAssignments' seria construído sem nenhuma exclusão.
+    // Por agora, vamos mantê-la simples.
+    console.log("Foguetão de criação acionado.");
+}
+
+
+
+
+
+
+function getCombinations(arrays) {
+    if (!arrays || arrays.length === 0) return [];
+    let result = arrays[0].map(item => [item]);
+    for (let i = 1; i < arrays.length; i++) {
+        let nextResult = [];
+        result.forEach(r => {
+            arrays[i].forEach(item => {
+                nextResult.push([...r, item]);
+            });
+        });
+        result = nextResult;
+    }
+    return result;
+}
+
+async function findNextValidGroup() {
+    const participantSelects = Array.from(document.getElementById('createPopupParticipants').querySelectorAll('.form-select'));
+    if (participantSelects.length === 0) return;
+
+    const eligibleOptionsPerSelect = await Promise.all(
+        participantSelects.map(select => Array.from(select.options).filter(opt => opt.value !== "").map(opt => opt.value))
+    );
+
+    const allPossibleGroups = getCombinations(eligibleOptionsPerSelect);
+    const selectedWeekDoc = allScheduleData.find(d => d.semanaindex === weekFilter.value);
+    const context = { ano: selectedWeekDoc.ano, mes: selectedWeekDoc.mes, semana: selectedWeekDoc.semanaNumero };
+    const [lastWeek, nextWeek, recentPairs] = await Promise.all([
+        getParticipantsLastWeek(context.ano, context.mes, context.semana),
+        getParticipantsNextWeek(context.ano, context.mes, context.semana),
+        getRecentPairs()
+    ]);
+    const currentWeekAssignments = new Set(Object.values(selectedWeekDoc.designacoes || {}).flatMap(d => Object.values(d.participantes || {})));
+    const allowMixedPair = document.getElementById('createGeneroMix').value === 'sim';
+
+    const validGroups = allPossibleGroups.filter(group => {
+        if (new Set(group).size !== group.length) return false;
+        if (!allowMixedPair) {
+            const genders = group.map(id => allPeopleDataMap.get(id)?.genero);
+            if (new Set(genders).size > 1) return false;
+        }
+        for (const personId of group) {
+            if (lastWeek.has(personId) || nextWeek.has(personId) || currentWeekAssignments.has(personId)) return false;
+        }
+        for (let i = 0; i < group.length; i++) {
+            for (let j = i + 1; j < group.length; j++) {
+                const pairKey = [group[i], group[j]].sort().join('_');
+                if (recentPairs.has(pairKey)) return false;
+            }
+        }
+        return true;
+    });
+
+    if (validGroups.length === 0) {
+        alert("Não foram encontradas equipas válidas com os filtros atuais.");
+        return;
+    }
+
+    const currentGroup = participantSelects.map(s => s.value);
+    const currentIndex = validGroups.findIndex(group => group.every((id, i) => id === currentGroup[i]));
+    const nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % validGroups.length;
+    const nextGroup = validGroups[nextIndex];
+
+    participantSelects.forEach((select, i) => { select.value = nextGroup[i]; });
+    if (participantSelects[0]) participantSelects[0].dispatchEvent(new Event('change'));
+}
+
+
+
+
+
+async function findNextForCreate(selectElement) {
+    const selectedWeekDoc = allScheduleData.find(d => d.semanaindex === weekFilter.value);
+    const createDesignationSelect = document.getElementById('createDesignationSelect');
+    const fullDesigData = designationMap.get(createDesignationSelect.value);
+    if (!selectedWeekDoc || !fullDesigData) return;
+
+    const currentPersonId = selectElement.value;
+    const allEligibleOptions = Array.from(selectElement.options).filter(opt => opt.value !== "").map(opt => opt.value);
+    if (allEligibleOptions.length <= 1) return;
+
+    const context = { ano: selectedWeekDoc.ano, mes: selectedWeekDoc.mes, semana: selectedWeekDoc.semanaNumero };
+    const [lastWeek, nextWeek, recentPairs] = await Promise.all([
+        getParticipantsLastWeek(context.ano, context.mes, context.semana),
+        getParticipantsNextWeek(context.ano, context.mes, context.semana),
+        getRecentPairs()
+    ]);
+    const currentWeekAssignments = new Set(Object.values(selectedWeekDoc.designacoes || {}).flatMap(d => Object.values(d.participantes || {})));
+    const otherSelectedIds = Array.from(document.getElementById('createPopupParticipants').querySelectorAll('.form-select')).filter(s => s !== selectElement && s.value !== "").map(s => s.value);
+    const allowMixedPair = document.getElementById('createGeneroMix').value === 'sim';
+    let requiredGender = null;
+
+    if (!allowMixedPair) {
+        for (const otherId of otherSelectedIds) {
+            const personData = allPeopleDataMap.get(otherId);
+            if (personData && personData.genero) {
+                requiredGender = personData.genero;
+                break;
+            }
+        }
+    }
+    // ====================================================================
+
+    // Filtrar para encontrar as sugestões válidas
+    const validSuggestionIds = allEligibleOptions.filter(candidateId => {
+        // ===== INÍCIO DA CORREÇÃO: Aplicar o filtro de género =====
+        if (requiredGender) {
+            const candidateData = allPeopleDataMap.get(candidateId);
+            // Se o género do candidato não for o exigido, descarta-o imediatamente
+            if (!candidateData || candidateData.genero !== requiredGender) {
+                return false;
+            }
+        }
+        // ==========================================================
+
+        // (O resto das regras de validação continua igual)
+        if (otherSelectedIds.includes(candidateId)) return false; 
+        if (lastWeek.has(candidateId) || nextWeek.has(candidateId)) return false; 
+        if (currentWeekAssignments.has(candidateId)) return false; 
+        
+        for (const otherId of otherSelectedIds) {
+            const pairKey = [candidateId, otherId].sort().join('_');
+            if (recentPairs.has(pairKey)) return false;
+        }
+        return true;
+    });
+
+    if (validSuggestionIds.length === 0) return; 
+
+    // Encontrar o próximo da lista e selecioná-lo (lógica existente)
+    const currentIndex = validSuggestionIds.indexOf(currentPersonId);
+    const nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % validSuggestionIds.length;
+    selectElement.value = validSuggestionIds[nextIndex];
+    selectElement.dispatchEvent(new Event('change'));
+}
+
+
+
+
+function initializeCreationFilters() {
+    const filtersContainer = document.getElementById('createPopupFilters');
+    // Só cria o HTML se ele ainda não existir
+    if (filtersContainer.hasChildNodes()) {
+        return; 
+    }
+
+    filtersContainer.innerHTML = `
+        <div class="filter-group" style="flex: 1;"><label>Nº de Participantes</label><select id="createNumParticipantes" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+        <div class="filter-group" style="flex: 1;"><label>Idioma</label><select id="createIdioma" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+        <div class="filter-group" style="flex: 1;"><label>Género</label><select id="createGeneroPreferencia" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+        <div class="filter-group" style="flex: 1;"><label>Permitir Par Misto</label><select id="createGeneroMix" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+    `;
+
+    // Popula as opções estáticas
+    document.getElementById('createNumParticipantes').innerHTML = '<option value="1">1</option><option value="2">2</option><option value="3">3</option>';
+    document.getElementById('createGeneroPreferencia').innerHTML = '<option value="masculino feminino">Qualquer Género</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option>';
+    document.getElementById('createGeneroMix').innerHTML = '<option value="nao">Não</option><option value="sim">Sim</option>';
+    
+    // Popula o filtro de idioma
+    const idiomaSelect = document.getElementById('createIdioma');
+    idiomaSelect.innerHTML = '<option value="todos">Todos</option>';
+    allLanguagesCache.forEach(lang => idiomaSelect.add(new Option(lang, lang)));
+}
 
 
 function openPairAnalysisPopup() {
@@ -545,21 +987,50 @@ function openPairAnalysisPopup() {
 
 
 async function findNextAvailableParticipant(selectElement, historicoDoc, fullDesigData) {
+    console.clear(); 
+    console.log("%c🚀 INICIANDO ANÁLISE DO FOGUETÃO DE EDIÇÃO 🚀", "color: #3498db; font-size: 16px; font-weight: bold;");
+
+    // 1. PONTO DE PARTIDA (Sem alterações)
     const currentPersonId = selectElement.value;
-
     const allEligibleOptions = Array.from(selectElement.options).filter(opt => opt.value !== "").map(opt => opt.value);
-    if (allEligibleOptions.length <= 1) return;
+    
+    console.log("1. Ponto de Partida:", {
+        participanteAtual: allPeopleDataMap.get(currentPersonId)?.nomePessoa || "Nenhum",
+        totalOpcoesElegiveis: allEligibleOptions.length,
+        listaOpcoesIds: allEligibleOptions
+    });
 
+    if (allEligibleOptions.length <= 1) {
+        console.warn("Análise interrompida: Não há opções suficientes para sugerir um participante alternativo.");
+        return;
+    }
+
+    // 2. CONTEXTO DE DISPONIBILIDADE (Sem alterações)
     const context = { ano: historicoDoc.ano, mes: historicoDoc.mes, semana: historicoDoc.semanaNumero };
+    console.log("2. Buscando contexto de disponibilidade para:", context);
     const [lastWeek, nextWeek, recentPairs] = await Promise.all([
         getParticipantsLastWeek(context.ano, context.mes, context.semana),
         getParticipantsNextWeek(context.ano, context.mes, context.semana),
         getRecentPairs()
     ]);
 
+    console.log("   => Contexto Carregado:", {
+        participantesSemanaAnterior: lastWeek,
+        participantesSemanaSeguinte: nextWeek,
+        paresRecentesRegistados: recentPairs.size
+    });
+
+    // 3. MAPEAMENTO DA SEMANA ATUAL (Área Corrigida)
+    console.log("%c3. Mapeando designações da semana atual (para detetar conflitos)...", "color: blue; font-weight: bold;");
     const currentWeekAssignments = new Map();
     const currentlyEditedDesignationId = currentEditData.originalDesignation.designacaoId;
-    const originalParticipantsString = JSON.stringify(Object.values(currentEditData.originalDesignation.participantes || {}).sort());
+    const currentlyEditedDesignationName = designationMap.get(currentlyEditedDesignationId)?.nome || "Desconhecida";
+
+    // ===== INÍCIO DA CORREÇÃO CRÍTICA =====
+    // Stringify dos participantes originais para uma comparação única e fiável.
+    const originalParticipantsString = JSON.stringify(currentEditData.originalDesignation.participantes);
+    console.log(`   Ignorando a instância específica de "${currentlyEditedDesignationName}" com os participantes:`, currentEditData.originalDesignation.participantes);
+    // =====================================
 
     const weekHistoricoDocs = allScheduleData.filter(item =>
         item.ano === historicoDoc.ano &&
@@ -569,39 +1040,237 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
 
     for (const doc of weekHistoricoDocs) {
         for (const desig of doc.designacoes) {
-            const participantsInDesigString = JSON.stringify(Object.values(desig.participantes || {}).sort());
+            const desigName = designationMap.get(desig.designacaoId)?.nome || "Desconhecida";
             
-            if (doc.id === currentEditData.historicoDocRefId && desig.designacaoId === currentlyEditedDesignationId && participantsInDesigString === originalParticipantsString) {
-                continue;
+            // ===== LÓGICA DE COMPARAÇÃO ATUALIZADA =====
+            const isTheExactSameDesignationInstance = 
+                desig.designacaoId === currentlyEditedDesignationId &&
+                JSON.stringify(desig.participantes) === originalParticipantsString;
+
+            if (isTheExactSameDesignationInstance) {
+                console.log(`   -> Ignorando [${desigName}] porque é a instância exata que está em edição.`);
+                continue; 
             }
-            
+            // =========================================
+
+            console.log(`   -> Analisando [${desigName}]...`);
             for (const personId of Object.values(desig.participantes)) {
+                const personName = allPeopleDataMap.get(personId)?.nomePessoa;
+                console.log(`      - ${personName} está ocupado(a) com esta designação.`);
                 currentWeekAssignments.set(personId, desig.designacaoId);
             }
         }
     }
+    
+    console.log("   => Mapa final de participantes ocupados nesta semana:", currentWeekAssignments);
 
+    // 4. LÓGICA DE FILTRAGEM (Sem alterações, mas agora funcionará corretamente)
+    console.log("%c4. Iniciando a filtragem dos " + allEligibleOptions.length + " participantes elegíveis...", "color: blue; font-weight: bold;");
     const otherSelectedIds = Array.from(editPopupParticipantsContainer.querySelectorAll('.form-select'))
         .filter(s => s !== selectElement && s.value !== "")
         .map(s => s.value);
 
     const validSuggestionIds = allEligibleOptions.filter(candidateId => {
-        if (otherSelectedIds.includes(candidateId)) return false;
-        if (lastWeek.has(candidateId) || nextWeek.has(candidateId)) return false;
-        if (currentWeekAssignments.has(candidateId)) return false;
-        
+        const candidateName = allPeopleDataMap.get(candidateId)?.nomePessoa || "Desconhecido";
+        console.log(`\n--- Verificando Candidato: ${candidateName} (${candidateId}) ---`);
+
+        const isAlreadySelected = otherSelectedIds.includes(candidateId);
+        if (isAlreadySelected) {
+            console.log(`   ❌ Rejeitado: Já está selecionado noutro dropdown.`);
+            return false;
+        }
+        const wasInLastWeek = lastWeek.has(candidateId);
+        if (wasInLastWeek) {
+            console.log(`   ❌ Rejeitado: Participou na semana anterior.`);
+            return false;
+        }
+        const isInNextWeek = nextWeek.has(candidateId);
+        if (isInNextWeek) {
+            console.log(`   ❌ Rejeitado: Já está escalado para a semana seguinte.`);
+            return false;
+        }
+        const hasOtherAssignment = currentWeekAssignments.has(candidateId);
+        if (hasOtherAssignment) {
+            const conflictDesigId = currentWeekAssignments.get(candidateId);
+            const conflictDesigName = designationMap.get(conflictDesigId)?.nome;
+            console.log(`   ❌ Rejeitado: Já tem outra designação ("${conflictDesigName}") esta semana.`);
+            return false;
+        }
         for (const otherId of otherSelectedIds) {
             const pairKey = [candidateId, otherId].sort().join('_');
-            if (recentPairs.has(pairKey)) return false;
+            if (recentPairs.has(pairKey)) {
+                console.log(`   ❌ Rejeitado: Formou um par recente com ${allPeopleDataMap.get(otherId)?.nomePessoa}.`);
+                return false;
+            }
         }
+        console.log(`   ✅ Aprovado: ${candidateName} é uma sugestão válida.`);
         return true;
     });
 
-    if (validSuggestionIds.length === 0) return;
+    // 5. RESULTADO FINAL (Sem alterações)
+    console.log("%c\n5. Resultado Final:", "color: green; font-size: 16px; font-weight: bold;");
+    console.log({
+        sugestoesValidasEncontradas: validSuggestionIds.length,
+        listaDeIdsValidos: validSuggestionIds,
+        listaDeNomesValidos: validSuggestionIds.map(id => allPeopleDataMap.get(id)?.nomePessoa)
+    });
+
+    if (validSuggestionIds.length === 0) {
+        console.error("FALHA: Nenhuma sugestão válida foi encontrada após aplicar todas as regras.");
+        return;
+    }
+
     const currentIndex = validSuggestionIds.indexOf(currentPersonId);
     const nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % validSuggestionIds.length;
-    selectElement.value = validSuggestionIds[nextIndex];
-    selectElement.dispatchEvent(new Event('change'));
+    const nextId = validSuggestionIds[nextIndex];
+    const nextName = allPeopleDataMap.get(nextId)?.nomePessoa;
+
+    console.log(`   => A aplicar a próxima sugestão ao dropdown: ${nextName} (${nextId})`);
+    
+    selectElement.value = nextId;
+    selectElement.dispatchEvent(new Event('change')); 
+    console.log("%c✅ Análise Concluída!", "color: green; font-weight: bold;");
+}
+
+
+function createParticipantSignature(participantsObj) {
+    if (!participantsObj || typeof participantsObj !== 'object' || Object.keys(participantsObj).length === 0) {
+        return '{}';
+    }
+    // Ordena as chaves (dirigente, morador, etc.) para garantir que a ordem não afeta a assinatura
+    const sortedKeys = Object.keys(participantsObj).sort();
+    const sortedObj = {};
+    for (const key of sortedKeys) {
+        sortedObj[key] = participantsObj[key];
+    }
+    return JSON.stringify(sortedObj);
+}
+
+
+
+// ===== NOVA FUNÇÃO 1: Validação para o Popup de CRIAÇÃO =====
+async function validateCreatePopupSelections() {
+    const createPopupParticipantsContainer = document.getElementById('createPopupParticipants');
+    const popupSelects = createPopupParticipantsContainer.querySelectorAll('.form-select');
+    const allViolations = new Set();
+    const validationList = document.getElementById('validation-list');
+    const alertContainer = document.getElementById('validation-alert-container');
+
+    popupSelects.forEach(s => s.classList.remove('invalid-selection'));
+    validationList.innerHTML = '';
+
+    const selectedWeekDoc = allScheduleData.find(d => d.semanaindex === weekFilter.value);
+    if (!selectedWeekDoc) return;
+
+    const context = { ano: selectedWeekDoc.ano, mes: selectedWeekDoc.mes, semana: selectedWeekDoc.semanaNumero };
+    const [lastWeek, nextWeek, recentPairs] = await Promise.all([
+        getParticipantsLastWeek(context.ano, context.mes, context.semana),
+        getParticipantsNextWeek(context.ano, context.mes, context.semana),
+        getRecentPairs()
+    ]);
+
+    const currentWeekAssignments = new Set(Object.values(selectedWeekDoc.designacoes || {}).flatMap(d => Object.values(d.participantes || {})));
+    const selections = new Map();
+    const currentPair = [];
+
+    for (const select of popupSelects) {
+        if (select.value) {
+            const personId = select.value;
+            const personName = select.options[select.selectedIndex].text;
+            currentPair.push({id: personId, el: select, name: personName});
+
+            if (selections.has(personId)) {
+                allViolations.add(`${personName} está selecionado mais de uma vez.`);
+                select.classList.add('invalid-selection');
+                selections.get(personId).el.classList.add('invalid-selection');
+            } else {
+                selections.set(personId, { el: select });
+            }
+
+            if (lastWeek.has(personId)) { allViolations.add(`${personName} participou na semana anterior.`); select.classList.add('invalid-selection'); }
+            if (nextWeek.has(personId)) { allViolations.add(`${personName} já está na semana seguinte.`); select.classList.add('invalid-selection'); }
+            if (currentWeekAssignments.has(personId)) { allViolations.add(`${personName} já tem outra designação esta semana.`); select.classList.add('invalid-selection'); }
+        }
+    }
+
+    if (currentPair.length >= 2) {
+        const pairKey = currentPair.map(p => p.id).sort().join('_');
+        if (recentPairs.has(pairKey)) {
+            allViolations.add(`${currentPair.map(p => p.name).join(' e ')} trabalharam juntos recentemente.`);
+            currentPair.forEach(p => p.el.classList.add('invalid-selection'));
+        }
+    }
+    
+    if (allViolations.size > 0) {
+        allViolations.forEach(msg => validationList.innerHTML += `<li>${msg}</li>`);
+        alertContainer.style.display = 'block';
+    } else {
+        alertContainer.style.display = 'none';
+        document.getElementById('validation-panel').classList.remove('active');
+    }
+    
+    // Chama a atualização do botão de contabilidade
+    await updateCreateAccountabilityButton();
+}
+
+// ===== NOVA FUNÇÃO 2: Atualizador do botão de Contabilidade para CRIAÇÃO =====
+async function updateCreateAccountabilityButton() {
+    const pairAnalysisButton = document.getElementById('create-pair-analysis-button');
+    const selectedIds = Array.from(document.getElementById('createPopupParticipants').querySelectorAll('.form-select'))
+        .map(s => s.value)
+        .filter(id => id !== "");
+
+    if (selectedIds.length < 2) {
+        pairAnalysisButton.style.display = 'none';
+        return;
+    }
+
+    pairAnalysisButton.style.display = 'block';
+    pairAnalysisButton.textContent = 'Contabilidade (...)';
+    
+    // A função getPairHistory funciona aqui porque não precisa do currentEditData quando cria
+    const history = await getPairHistory(selectedIds, true); // O 'true' indica que é para criação
+    
+    pairAnalysisButton.textContent = `Contabilidade (${history.length})`;
+    // Armazena o histórico para o popup usar
+    pairAnalysisButton.dataset.history = JSON.stringify(history); 
+}
+
+// ===== NOVA FUNÇÃO 3: Abre o popup de análise para CRIAÇÃO =====
+function openCreatePairAnalysisPopup() {
+    const pairAnalysisButton = document.getElementById('create-pair-analysis-button');
+    const list = document.getElementById('pair-analysis-list');
+    const intro = document.getElementById('pair-analysis-intro');
+    const title = document.getElementById('pairAnalysisTitle');
+    list.innerHTML = '';
+
+    const selectedNames = Array.from(document.getElementById('createPopupParticipants').querySelectorAll('.form-select'))
+        .filter(s => s.value !== "")
+        .map(s => s.options[s.selectedIndex].text);
+    
+    const history = JSON.parse(pairAnalysisButton.dataset.history || '[]');
+
+    title.textContent = `Histórico de: ${selectedNames.join(' & ')}`;
+    intro.textContent = `Este grupo trabalhou junto ${history.length} vez(es):`;
+
+    if (history.length === 0) {
+        list.innerHTML = '<li>Nenhum histórico de colaboração encontrado.</li>';
+    } else {
+        history.forEach(item => {
+            const li = document.createElement('li');
+            let participantsHTML = '';
+            if (item.participants) {
+                for (const [role, personId] of Object.entries(item.participants)) {
+                    participantsHTML += `<small><em>${role.charAt(0).toUpperCase() + role.slice(1)}:</em> ${personMap.get(personId) || 'N/A'}</small>`;
+                }
+            }
+            li.innerHTML = `<div class="history-item-header"><span>${item.designation}</span><strong>${item.date}</strong></div><div class="history-item-participants">${participantsHTML}</div>`;
+            list.appendChild(li);
+        });
+    }
+    
+    pairAnalysisPopup.classList.add('active');
+    document.body.classList.add('popup-open');
 }
 
 
@@ -819,22 +1488,36 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
             }
 
             // Event Listeners da página original
-            editButton.addEventListener('click', () => {
-                if (weekFilter.value === 'todas') {
-                    openModal('Ação Bloqueada', 'Por favor, selecione uma semana específica para poder editar.');
-                    return;
-                }
-                isEditMode = !isEditMode;
-                renderSchedule();
-            });
+  
 
-            createButton.addEventListener('click', () => {
-                if (weekFilter.value === 'todas') {
-                    openModal('Ação Bloqueada', 'Por favor, selecione uma semana para usar como modelo para a criação.');
-                    return;
-                }
-                openModal('Criar Nova Escala', `Você está criando uma nova escala usando a semana "${weekFilter.value}" como modelo.`);
-            });
+  editButton.addEventListener('click', () => {
+    if (weekFilter.value === 'todas') {
+        openModal('Ação Bloqueada', 'Por favor, selecione uma semana específica para poder editar.');
+        return;
+    }
+    isEditMode = !isEditMode;
+    renderSchedule();
+});
+
+// A SUBSTITUIÇÃO ACONTECE AQUI
+createButton.addEventListener('click', () => {
+    if (weekFilter.value === 'todas') {
+        openModal('Ação Bloqueada', 'Por favor, selecione uma semana específica para poder adicionar uma designação.');
+        return;
+    }
+    openCreateDesignationPopup(); // Chama a função correta para abrir o popup de criação
+});
+
+closeCreatePopup.addEventListener('click', () => {
+    createDesignationPopup.classList.remove('active');
+    document.body.classList.remove('popup-open');
+});
+
+saveNewDesignationBtn.addEventListener('click', async () => {
+    await saveNewDesignation();
+});
+
+document.getElementById('create-pair-analysis-button').addEventListener('click', openCreatePairAnalysisPopup);
 
             modalCloseButton?.addEventListener('click', closeModal);
             modalOverlay.addEventListener('click', (event) => { if (event.target === modalOverlay) closeModal(); });
@@ -849,54 +1532,57 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
             // ===================================================================
             
             // --- Lógica de Sincronização de Género ---
-            const handleGenderSync = (changedSelect) => {
-                const instanceContainer = changedSelect.closest('.popup-body');
-                if (!instanceContainer) return;
+       const handleGenderSync = (changedSelect) => {
+    const instanceContainer = changedSelect.closest('.popup-body');
+    if (!instanceContainer) return;
 
-                const genderMixSelect = instanceContainer.querySelector('#editGeneroMix');
-                
-                if (genderMixSelect && genderMixSelect.value === 'sim') {
-                    const allSelectsInInstance = instanceContainer.querySelectorAll('.form-select');
-                    allSelectsInInstance.forEach(select => {
-                        Array.from(select.options).forEach(option => option.style.display = '');
-                    });
-                    return;
-                }
+    const genderMixSelect = instanceContainer.querySelector('[id$="GeneroMix"]'); 
 
-                const allSelectsInInstance = instanceContainer.querySelectorAll('#editPopupParticipants .form-select');
-                const selectedPersonId = changedSelect.value;
+    if (genderMixSelect && genderMixSelect.value === 'sim') {
+        const allSelectsInInstance = instanceContainer.querySelectorAll('.form-select');
+        allSelectsInInstance.forEach(select => {
+            Array.from(select.options).forEach(option => option.style.display = '');
+        });
+        return;
+    }
 
-                if (!selectedPersonId) {
-                    allSelectsInInstance.forEach(select => {
-                        Array.from(select.options).forEach(option => option.style.display = '');
-                    });
-                    allSelectsInInstance.forEach(select => { if (select.value) handleGenderSync(select); });
-                    return;
-                }
+    const participantsContainer = instanceContainer.querySelector('[id$="PopupParticipants"]');
+    if (!participantsContainer) return;
 
-                const personData = allPeopleDataMap.get(selectedPersonId);
-                if (!personData || !personData.genero) return;
-                const requiredGender = personData.genero;
+    const allSelectsInInstance = participantsContainer.querySelectorAll('.form-select');
+    const selectedPersonId = changedSelect.value;
 
-                allSelectsInInstance.forEach(select => {
-                    if (select !== changedSelect && select.value) {
-                        const otherPersonData = allPeopleDataMap.get(select.value);
-                        if (!otherPersonData || otherPersonData.genero !== requiredGender) select.value = '';
-                    }
-                    Array.from(select.options).forEach(option => {
-                        if (!option.value) {
-                            option.style.display = '';
-                            return;
-                        }
-                        const optionPersonData = allPeopleDataMap.get(option.value);
-                        if (optionPersonData && optionPersonData.genero === requiredGender) {
-                            option.style.display = '';
-                        } else {
-                            option.style.display = 'none';
-                        }
-                    });
-                });
-            };
+    if (!selectedPersonId) {
+        allSelectsInInstance.forEach(select => {
+            Array.from(select.options).forEach(option => option.style.display = '');
+        });
+        allSelectsInInstance.forEach(select => { if (select.value) handleGenderSync(select); });
+        return;
+    }
+
+    const personData = allPeopleDataMap.get(selectedPersonId);
+    if (!personData || !personData.genero) return;
+    const requiredGender = personData.genero;
+
+    allSelectsInInstance.forEach(select => {
+        if (select !== changedSelect && select.value) {
+            const otherPersonData = allPeopleDataMap.get(select.value);
+            if (!otherPersonData || otherPersonData.genero !== requiredGender) select.value = '';
+        }
+        Array.from(select.options).forEach(option => {
+            if (!option.value) {
+                option.style.display = '';
+                return;
+            }
+            const optionPersonData = allPeopleDataMap.get(option.value);
+            if (optionPersonData && optionPersonData.genero === requiredGender) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+    });
+};
             
             // --- Funções de Validação em Tempo Real ---
         const getRecentPairs = async () => {
@@ -994,7 +1680,7 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
                 historicoDocRefId: null
             };
             
-     async function openEditDesignationPopup(designationIndex) {
+ async function openEditDesignationPopup(designationIndex) {
     const selectedWeekValue = weekFilter.value;
     const weekHistoricoDocs = allScheduleData.filter(item => item.semanaindex === selectedWeekValue);
 
@@ -1040,28 +1726,28 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
     generoMixSelect.innerHTML = '<option value="nao">Não</option><option value="sim">Sim</option>';
     
     if (allLanguagesCache.length === 0) {
-        const nacSnap = await db.collection('nacionalidades').orderBy('nome').get();
-        nacSnap.forEach(doc => allLanguagesCache.push(doc.data().nome));
+        try {
+            const nacSnap = await db.collection('nacionalidades').orderBy('nome').get();
+            nacSnap.forEach(doc => allLanguagesCache.push(doc.data().nome));
+        } catch (error) { console.error("Falha ao carregar idiomas do Firebase:", error); }
     }
     idiomaSelect.innerHTML = '<option value="todos">Todos</option>';
     allLanguagesCache.forEach(lang => idiomaSelect.add(new Option(lang, lang)));
-
-    const currentParticipantsCount = Object.keys(targetDesignationObj.participantes || {}).length;
-    numParticipantesSelect.value = currentParticipantsCount > 0 ? currentParticipantsCount : (fullDesigData.numeroParticipantes || 1);
-
-    // ========================================================================
-    // INÍCIO DA NOVA LÓGICA INTELIGENTE DE PRÉ-SELEÇÃO DE FILTROS
-    // ========================================================================
+    
     let defaultIdioma = 'todos';
     let defaultGenero = 'masculino feminino';
     let defaultMix = 'nao';
 
     const participantIds = Object.values(targetDesignationObj.participantes || {});
 
+    // ===== INÍCIO DA CORREÇÃO: Definir o Nº de Participantes corretamente =====
+    // Esta é a linha que estava em falta.
+    numParticipantesSelect.value = participantIds.length > 0 ? participantIds.length : 1;
+    // =========================================================================
+
     if (participantIds.length > 0) {
         const languages = new Set();
         const genders = new Set();
-
         participantIds.forEach(id => {
             const personData = allPeopleDataMap.get(id);
             if (personData) {
@@ -1070,28 +1756,14 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
             }
         });
 
-        // Lógica para o Idioma
-        if (languages.size === 1) {
-            defaultIdioma = languages.values().next().value;
-        }
-
-        // Lógica para o Género e Par Misto
-        if (genders.size === 1) {
-            const singleGender = genders.values().next().value.toLowerCase(); // "masculino" ou "feminino"
-            defaultGenero = singleGender;
-        } else if (genders.size > 1) {
-            // Se houver mais de um género, significa que o par é misto
-            defaultMix = 'sim';
-        }
+        if (languages.size === 1) defaultIdioma = languages.values().next().value;
+        if (genders.size === 1) defaultGenero = genders.values().next().value.toLowerCase();
+        else if (genders.size > 1) defaultMix = 'sim';
     }
 
-    // Aplicar os valores padrão apurados
     idiomaSelect.value = defaultIdioma;
     generoPreferenciaSelect.value = defaultGenero;
     generoMixSelect.value = defaultMix;
-    // ========================================================================
-    // FIM DA NOVA LÓGICA
-    // ========================================================================
 
     await generateEditPopupUI(targetHistoricoDoc, fullDesigData);
 
@@ -1111,7 +1783,18 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
 
 
             
-          async function generateEditPopupUI(historicoDoc, fullDesigData) {
+      async function generateEditPopupUI(historicoDoc, fullDesigData) {
+    // ===== INÍCIO DA CORREÇÃO (PASSO 1: GUARDAR VALORES) =====
+    // Antes de destruir qualquer coisa, lemos e guardamos os valores que já estão selecionados.
+    const savedValues = {};
+    editPopupParticipantsContainer.querySelectorAll('.form-select').forEach(select => {
+        if (select.value) {
+            // Guardamos o valor associado ao seu papel (ex: { dirigente: 'id_do_jose_vieira' })
+            savedValues[select.dataset.roleKey] = select.value;
+        }
+    });
+    // =========================================================
+
     editPopupParticipantsContainer.innerHTML = '<div class="loading-spinner" style="display: block; position: relative; top: auto; left: auto; transform: none;"><i class="fas fa-spinner fa-spin"></i></div>';
 
     const numParticipantes = parseInt(document.getElementById('editNumParticipantes').value);
@@ -1126,7 +1809,6 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
 
     let dropdownsHTML = '';
     participantRoles.forEach((role, i) => {
-        // ===== ALTERAÇÃO AQUI: Nova estrutura HTML com o botão foguetão =====
         dropdownsHTML += `
             <div class="form-group">
                 <label>${role.label}</label>
@@ -1136,24 +1818,38 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
                 </div>
             </div>
         `;
-        // =======================================================================
     });
     editPopupParticipantsContainer.innerHTML = dropdownsHTML;
 
     const allSelects = editPopupParticipantsContainer.querySelectorAll('.form-select');
     for (const select of allSelects) {
         await populateSingleEditDropdown(select, historicoDoc, fullDesigData, generoPreferencia, idiomaPreferencia);
+        
+        // ===== INÍCIO DA CORREÇÃO (PASSO 2: RESTAURAR VALORES) =====
         const roleKey = select.dataset.roleKey;
-        if (originalParticipants[roleKey] && select.querySelector(`option[value="${originalParticipants[roleKey]}"]`)) {
-            select.value = originalParticipants[roleKey];
+        let valueToSet = '';
+
+        // Prioridade 1: Usar o valor que guardámos antes de recriar os campos.
+        if (savedValues[roleKey]) {
+            valueToSet = savedValues[roleKey];
+        } 
+        // Prioridade 2 (fallback): Se não havia nada guardado, usar o valor original da designação.
+        else if (originalParticipants[roleKey]) {
+            valueToSet = originalParticipants[roleKey];
         }
+        
+        // Define o valor, mas só se ele ainda for uma opção válida no dropdown.
+        if (valueToSet && select.querySelector(`option[value="${valueToSet}"]`)) {
+            select.value = valueToSet;
+        }
+        // =============================================================
+
         select.addEventListener('change', () => {
             handleGenderSync(select);
             validatePopupSelections(historicoDoc, fullDesigData);
         });
     }
 
-    // ===== NOVO: Adicionar o evento de clique aos botões foguetão =====
     const rocketButtons = editPopupParticipantsContainer.querySelectorAll('.rocket-suggester');
     rocketButtons.forEach(button => {
         button.addEventListener('click', async () => {
@@ -1161,14 +1857,16 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
             await findNextAvailableParticipant(selectElement, historicoDoc, fullDesigData);
         });
     });
-    // ==================================================================
 
     if (allSelects.length > 0) {
         handleGenderSync(allSelects[0]);
         await validatePopupSelections(historicoDoc, fullDesigData);
     }
-    await updateAccountabilityButton();
+    // A chamada a updateAccountabilityButton já acontece dentro de validatePopupSelections,
+    // por isso não precisamos de a chamar aqui de novo.
 }
+
+
             
           async function populateSingleEditDropdown(selectElement, historicoDoc, fullDesigData, generoPreferencia, idiomaPreferencia) {
     selectElement.innerHTML = '<option value="">Selecione...</option>';
@@ -1210,7 +1908,7 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
 }
 
             
-          async function validatePopupSelections(historicoDoc, fullDesigData) {
+   async function validatePopupSelections(historicoDoc, fullDesigData) {
     const popupSelects = editPopupParticipantsContainer.querySelectorAll('.form-select');
     const allViolations = new Set();
     const validationList = document.getElementById('validation-list');
@@ -1226,31 +1924,32 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
         getRecentPairs()
     ]);
     
-    // NOVO: Mapear todas as outras designações e seus participantes na semana atual
     const currentWeekAssignments = new Map();
-    // NOVO: Obter o ID da designação que está sendo editada
     const currentlyEditedDesignationId = currentEditData.originalDesignation.designacaoId;
+    const originalParticipantsSignature = createParticipantSignature(currentEditData.originalDesignation.participantes);
 
-    // NOVO: Filtrar os documentos do histórico para encontrar apenas os da semana atual
     const weekHistoricoDocs = allScheduleData.filter(item =>
         item.ano === historicoDoc.ano &&
         item.mes === historicoDoc.mes &&
         item.semanaNumero === historicoDoc.semanaNumero
     );
 
-    // NOVO: Iterar sobre os documentos da semana para construir o mapa de participantes
     for (const doc of weekHistoricoDocs) {
         for (const desig of doc.designacoes) {
-            // Ignora a própria designação que estamos editando para evitar autoconflito
-            if (desig.designacaoId === currentlyEditedDesignationId) continue;
+            const currentDesigSignature = createParticipantSignature(desig.participantes);
+            const isTheExactSameDesignationInstance = 
+                desig.designacaoId === currentlyEditedDesignationId &&
+                currentDesigSignature === originalParticipantsSignature;
+
+            if (isTheExactSameDesignationInstance) {
+                continue;
+            }
             
             for (const personId of Object.values(desig.participantes)) {
-                // Mapeia o ID da pessoa para o ID da designação que ela já tem
                 currentWeekAssignments.set(personId, desig.designacaoId);
             }
         }
     }
-
 
     const selections = new Map();
     const currentPair = [];
@@ -1261,7 +1960,6 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
             const personName = select.options[select.selectedIndex].text;
             currentPair.push({id: personId, el: select, name: personName});
 
-            // Validação 1: Dupla seleção no mesmo popup
             if (selections.has(personId)) {
                 allViolations.add(`${personName} está selecionado mais de uma vez.`);
                 select.classList.add('invalid-selection');
@@ -1270,60 +1968,42 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
                 selections.set(personId, { el: select });
             }
             
-            // Validação 2: Semana anterior
             if (lastWeek.has(personId)) { allViolations.add(`${personName} participou na semana anterior.`); select.classList.add('invalid-selection'); }
-            
-            // Validação 3: Semana seguinte
             if (nextWeek.has(personId)) { allViolations.add(`${personName} já está na semana seguinte.`); select.classList.add('invalid-selection'); }
 
-            // ==========================================================
-            // NOVO: INÍCIO DA LÓGICA DE VALIDAÇÃO DE BLOQUEIO
-            // ==========================================================
             if (currentWeekAssignments.has(personId)) {
-                // A pessoa selecionada já tem outra tarefa esta semana.
                 const existingAssignmentId = currentWeekAssignments.get(personId);
                 const existingAssignmentData = designationMap.get(existingAssignmentId);
                 
-                // Verifica se a designação existente possui regras de bloqueio
-                if (existingAssignmentData && existingAssignmentData.bloqueio) {
-                    
-                    // A regra é: A designação EXISTENTE bloqueia a designação NOVA (que estamos editando)?
-                    const blockRule = existingAssignmentData.bloqueio[currentlyEditedDesignationId];
-                    
-                    if (blockRule === "Não") {
+                if (existingAssignmentData) {
+                    const blockRule = existingAssignmentData.bloqueio ? existingAssignmentData.bloqueio[currentlyEditedDesignationId] : null;
+                    if (blockRule !== "Sim") {
                         const errorMessage = `${personName} já está a fazer "${existingAssignmentData.nome}" esta semana.`;
                         allViolations.add(errorMessage);
                         select.classList.add('invalid-selection');
                     }
                 }
             }
-            // ==========================================================
-            // NOVO: FIM DA LÓGICA DE VALIDAÇÃO DE BLOQUEIO
-            // ==========================================================
         }
     }
 
-    // Validação 4: Pares recentes
-  if (currentPair.length >= 2) {
-    const pairKey = currentPair.map(p => p.id).sort().join('_');
-    if (recentPairs.has(pairKey)) {
-        // ===== INÍCIO DA MODIFICAÇÃO =====
-        const recentPairData = recentPairs.get(pairKey);
-
-        // A CONDIÇÃO CHAVE: Só aciona o aviso se o par recente NÃO for da mesma designação que estamos a editar
-        if (recentPairData.historicoId !== currentEditData.historicoDocRefId) {
-            const lastDate = new Date(recentPairData.lastDate);
-            const meetingDate = new Date(historicoDoc.dia + "T12:00:00Z");
-            const monthDiff = (meetingDate.getFullYear() - lastDate.getFullYear()) * 12 + meetingDate.getMonth() - lastDate.getMonth();
-            if (monthDiff <= 1) {
-                allViolations.add(`${currentPair.map(p => p.name).join(' e ')} trabalharam juntos recentemente.`);
-                currentPair.forEach(p => p.el.classList.add('invalid-selection'));
+    if (currentPair.length >= 2) {
+        const pairKey = currentPair.map(p => p.id).sort().join('_');
+        if (recentPairs.has(pairKey)) {
+            const recentPairData = recentPairs.get(pairKey);
+            const currentPairSignature = createParticipantSignature(Object.fromEntries(currentPair.map((p, i) => [i === 0 ? 'dirigente' : 'morador', p.id])));
+            
+            if (currentPairSignature !== originalParticipantsSignature) {
+                 const lastDate = new Date(recentPairData.lastDate);
+                 const meetingDate = new Date(historicoDoc.dia + "T12:00:00Z");
+                 const monthDiff = (meetingDate.getFullYear() - lastDate.getFullYear()) * 12 + meetingDate.getMonth() - lastDate.getMonth();
+                 if (monthDiff <= 1) {
+                    allViolations.add(`${currentPair.map(p => p.name).join(' e ')} trabalharam juntos recentemente.`);
+                    currentPair.forEach(p => p.el.classList.add('invalid-selection'));
+                }
             }
         }
-        // ===== FIM DA MODIFICAÇÃO =====
     }
-}
-
     
     if (allViolations.size > 0) {
         allViolations.forEach(msg => validationList.innerHTML += `<li>${msg}</li>`);
@@ -1332,7 +2012,13 @@ async function findNextAvailableParticipant(selectElement, historicoDoc, fullDes
         alertContainer.style.display = 'none';
         document.getElementById('validation-panel').classList.remove('active');
     }
+
+    // Garante que o botão de contabilidade é sempre atualizado após qualquer validação.
+    await updateAccountabilityButton();
+
 }
+
+
 
 
 
