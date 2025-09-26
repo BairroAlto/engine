@@ -108,6 +108,73 @@
         #estatisticasPopup .popup-content, #perfilPopup .popup-content, #pairAnalysisPopup .popup-content, #editDesignationPopup .popup-content { display: flex; flex-direction: column; max-height: 90vh; }
         #estatisticasPopup .popup-body, #perfilPopup .popup-body, #pairAnalysisPopup .popup-body, #editDesignationPopup .popup-body { flex-grow: 1; overflow-y: auto; padding: 15px; }
 
+        .participant-row {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Espaçamento entre o dropdown e o botão */
+}
+
+/* Faz o select ocupar o espaço disponível */
+.participant-row .form-select {
+    flex-grow: 1;
+    width: auto; /* Permite que o flex-grow controle a largura */
+}
+
+/* Estilo para o botão "foguetão" de sugestão */
+.rocket-suggester {
+    font-size: 20px;
+    color: #3498db; /* Cor azul, consistente com a UI */
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, color 0.2s;
+    padding: 5px;
+}
+
+.rocket-suggester:hover {
+    color: #2980b9; /* Cor mais escura no hover */
+    transform: scale(1.1); /* Efeito de zoom sutil */
+}
+
+#pair-analysis-list li {
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+}
+
+#pair-analysis-list li strong {
+    color: #34495e;
+}
+
+#pair-analysis-list li {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.history-item-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1em;
+    margin-bottom: 8px;
+}
+
+.history-item-participants {
+    width: 100%;
+    padding-left: 15px;
+    font-size: 0.9em;
+    color: #555;
+    border-left: 2px solid #e0e0e0;
+}
+
+.history-item-participants small {
+    display: block;
+    margin-bottom: 3px;
+}
+
         @media (max-width: 768px) {
             .sidebar { width: 70px; }
             .sidebar .logo h2, .sidebar .nav-item a span { display: none; }
@@ -201,7 +268,10 @@
                 <div id="editPopupParticipants"></div>
             </div>
             <div class="popup-actions">
+                 <button id="pair-analysis-button" class="action-button" style="display: none; background-color: #7f8c8d; margin-right: auto;"></button>
                 <button class="btn-submit" id="saveDesignationChanges">Guardar Alterações</button>
+                
+                
             </div>
         </div>
     </div>
@@ -217,6 +287,21 @@
             <ul id="validation-list"></ul>
         </div>
     </div>
+    <!-- Popup de Análise de Pares (Contabilidade) -->
+<div id="pairAnalysisPopup" class="popup-overlay">
+    <div class="popup-content">
+        <div class="popup-header">
+            <h2 class="popup-title" id="pairAnalysisTitle">Histórico do Par</h2>
+            <button class="popup-close-button" id="closePairAnalysisPopup">×</button>
+        </div>
+        <div class="popup-body">
+            <p id="pair-analysis-intro" style="margin-bottom: 15px;"></p>
+            <ul id="pair-analysis-list" style="list-style: none; padding-left: 0;">
+                <!-- O histórico será inserido aqui pelo JavaScript -->
+            </ul>
+        </div>
+    </div>
+</div>
     <!-- ===== FIM: HTML DE TODOS OS POPUPS AVANÇADOS ===== -->
 
 
@@ -256,7 +341,16 @@
             const modalTitle = document.getElementById('modal-title');
             const modalMessage = document.getElementById('modal-message');
             const modalCloseButton = document.getElementById('modal-close-button');
+const pairAnalysisPopup = document.getElementById('pairAnalysisPopup');
+const closePairAnalysisPopup = document.getElementById('closePairAnalysisPopup');
+const pairAnalysisButton = document.getElementById('pair-analysis-button');
+let currentPairHistory = [];
 
+pairAnalysisButton.addEventListener('click', () => openPairAnalysisPopup());
+closePairAnalysisPopup.addEventListener('click', () => {
+    pairAnalysisPopup.classList.remove('active');
+    document.body.classList.remove('popup-open');
+});
             // --- CORREÇÃO: DECLARAÇÃO DE VARIÁVEIS MOVIDA PARA O TOPO ---
             const allPeopleDataMap = new Map();
             let allScheduleData = [];
@@ -313,6 +407,112 @@
                 }
             }
 
+   async function getPairHistory(participantIds) {
+    if (participantIds.length < 2) return [];
+
+    const history = [];
+    for (const doc of allScheduleData) {
+        if (!doc.designacoes) continue;
+
+        for (const desig of doc.designacoes) {
+            // ===== CONDIÇÃO DE IGNORE ADICIONADA AQUI =====
+            // Se esta entrada do histórico é a mesma que estamos a editar, salta para a próxima
+            if (doc.id === currentEditData.historicoDocRefId && 
+                desig.designacaoId === currentEditData.originalDesignation.designacaoId) {
+                continue; 
+            }
+            // ===============================================
+
+            const participantsInDesig = Object.values(desig.participantes || {});
+            if (participantsInDesig.length < 2) continue;
+
+            const allFound = participantIds.every(id => participantsInDesig.includes(id));
+
+            if (allFound) {
+                const desigData = designationMap.get(desig.designacaoId);
+                history.push({
+                    date: doc.semanaindex || doc.dia,
+                    designation: desigData ? desigData.nome : 'Designação Desconhecida',
+                    participants: desig.participantes
+                });
+            }
+        }
+    }
+    return history;
+}
+
+
+async function updateAccountabilityButton() {
+    const selectedIds = Array.from(editPopupParticipantsContainer.querySelectorAll('.form-select'))
+        .map(s => s.value)
+        .filter(id => id !== ""); // Filtra valores vazios
+
+    if (selectedIds.length < 2) {
+        pairAnalysisButton.style.display = 'none';
+        return;
+    }
+
+    pairAnalysisButton.style.display = 'block';
+    pairAnalysisButton.textContent = 'Contabilidade (...)';
+    
+    // Busca o histórico e atualiza o estado global
+    currentPairHistory = await getPairHistory(selectedIds);
+    
+    pairAnalysisButton.textContent = `Contabilidade (${currentPairHistory.length})`;
+}
+
+
+
+function openPairAnalysisPopup() {
+    const list = document.getElementById('pair-analysis-list');
+    const intro = document.getElementById('pair-analysis-intro');
+    const title = document.getElementById('pairAnalysisTitle');
+    list.innerHTML = '';
+
+    const selectedNames = Array.from(editPopupParticipantsContainer.querySelectorAll('.form-select'))
+        .filter(s => s.value !== "")
+        .map(s => s.options[s.selectedIndex].text);
+
+    title.textContent = `Histórico de: ${selectedNames.join(' & ')}`;
+    intro.textContent = `Este grupo trabalhou junto ${currentPairHistory.length} vez(es):`;
+
+    if (currentPairHistory.length === 0) {
+        list.innerHTML = '<li>Nenhum histórico de colaboração encontrado.</li>';
+    } else {
+        // ===== LÓGICA DE RENDERIZAÇÃO ATUALIZADA =====
+        currentPairHistory.forEach(item => {
+            const li = document.createElement('li');
+            
+            // Constrói o HTML para a lista de participantes
+            let participantsHTML = '';
+            if (item.participants) {
+                for (const [role, personId] of Object.entries(item.participants)) {
+                    const personName = personMap.get(personId) || 'N/A';
+                    const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
+                    participantsHTML += `<small><em>${formattedRole}:</em> ${personName}</small>`;
+                }
+            }
+
+            // Define o innerHTML do item da lista com a nova estrutura
+            li.innerHTML = `
+                <div class="history-item-header">
+                    <span>${item.designation}</span>
+                    <strong>${item.date}</strong>
+                </div>
+                <div class="history-item-participants">
+                    ${participantsHTML}
+                </div>
+            `;
+            list.appendChild(li);
+        });
+        // ============================================
+    }
+    
+    pairAnalysisPopup.classList.add('active');
+    document.body.classList.add('popup-open');
+}
+
+
             function populateYearFilter() {
                 const years = [...new Set(allScheduleData.map(item => item.ano))].sort((a, b) => b - a);
                 yearFilter.innerHTML = ''; 
@@ -342,6 +542,69 @@
                     monthFilter.value = 'todos';
                 }
             }
+
+
+async function findNextAvailableParticipant(selectElement, historicoDoc, fullDesigData) {
+    const currentPersonId = selectElement.value;
+
+    const allEligibleOptions = Array.from(selectElement.options).filter(opt => opt.value !== "").map(opt => opt.value);
+    if (allEligibleOptions.length <= 1) return;
+
+    const context = { ano: historicoDoc.ano, mes: historicoDoc.mes, semana: historicoDoc.semanaNumero };
+    const [lastWeek, nextWeek, recentPairs] = await Promise.all([
+        getParticipantsLastWeek(context.ano, context.mes, context.semana),
+        getParticipantsNextWeek(context.ano, context.mes, context.semana),
+        getRecentPairs()
+    ]);
+
+    const currentWeekAssignments = new Map();
+    const currentlyEditedDesignationId = currentEditData.originalDesignation.designacaoId;
+    const originalParticipantsString = JSON.stringify(Object.values(currentEditData.originalDesignation.participantes || {}).sort());
+
+    const weekHistoricoDocs = allScheduleData.filter(item =>
+        item.ano === historicoDoc.ano &&
+        item.mes === historicoDoc.mes &&
+        item.semanaNumero === historicoDoc.semanaNumero
+    );
+
+    for (const doc of weekHistoricoDocs) {
+        for (const desig of doc.designacoes) {
+            const participantsInDesigString = JSON.stringify(Object.values(desig.participantes || {}).sort());
+            
+            if (doc.id === currentEditData.historicoDocRefId && desig.designacaoId === currentlyEditedDesignationId && participantsInDesigString === originalParticipantsString) {
+                continue;
+            }
+            
+            for (const personId of Object.values(desig.participantes)) {
+                currentWeekAssignments.set(personId, desig.designacaoId);
+            }
+        }
+    }
+
+    const otherSelectedIds = Array.from(editPopupParticipantsContainer.querySelectorAll('.form-select'))
+        .filter(s => s !== selectElement && s.value !== "")
+        .map(s => s.value);
+
+    const validSuggestionIds = allEligibleOptions.filter(candidateId => {
+        if (otherSelectedIds.includes(candidateId)) return false;
+        if (lastWeek.has(candidateId) || nextWeek.has(candidateId)) return false;
+        if (currentWeekAssignments.has(candidateId)) return false;
+        
+        for (const otherId of otherSelectedIds) {
+            const pairKey = [candidateId, otherId].sort().join('_');
+            if (recentPairs.has(pairKey)) return false;
+        }
+        return true;
+    });
+
+    if (validSuggestionIds.length === 0) return;
+    const currentIndex = validSuggestionIds.indexOf(currentPersonId);
+    const nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % validSuggestionIds.length;
+    selectElement.value = validSuggestionIds[nextIndex];
+    selectElement.dispatchEvent(new Event('change'));
+}
+
+
 
             function updateWeekFilter() {
                 const selectedYear = parseInt(yearFilter.value);
@@ -513,14 +776,26 @@
                                 bodyHTML += `</div>`;
                                 
                                 if (desig.participantes && Object.keys(desig.participantes).length > 0) {
-                                    bodyHTML += '<ul class="participant-list">';
-                                    for (const [role, personId] of Object.entries(desig.participantes)) {
-                                        const personName = personMap.get(personId) || 'N/A';
-                                        const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
-                                        bodyHTML += `<li><em>${formattedRole}:</em> ${personName}</li>`;
-                                    }
-                                    bodyHTML += '</ul>';
-                                }
+    bodyHTML += '<ul class="participant-list">';
+
+    // ===== INÍCIO DA CORREÇÃO: Ordenar os participantes por papel =====
+    const roleOrder = ['dirigente', 'morador', 'participante', 'ajudante']; // Ordem de prioridade
+
+    const sortedParticipants = Object.entries(desig.participantes).sort((a, b) => {
+        const roleA = a[0];
+        const roleB = b[0];
+        return roleOrder.indexOf(roleA) - roleOrder.indexOf(roleB);
+    });
+    // ===================================================================
+
+    // Agora iteramos sobre a lista ORDENADA
+    for (const [role, personId] of sortedParticipants) {
+        const personName = personMap.get(personId) || 'N/A';
+        const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
+        bodyHTML += `<li><em>${formattedRole}:</em> ${personName}</li>`;
+    }
+    bodyHTML += '</ul>';
+}
                                 bodyHTML += '</li></ul>';
                                 cumulativeIndex++;
                             });
@@ -624,24 +899,26 @@
             };
             
             // --- Funções de Validação em Tempo Real ---
-            const getRecentPairs = async () => {
-                const startDate = new Date();
-                startDate.setMonth(startDate.getMonth() - 12);
-                const recentPairsMap = new Map();
-                const snapshot = await db.collection('historico').where("timestamp", ">=", startDate).get();
-                snapshot.forEach(doc => {
-                    doc.data().designacoes?.forEach(desig => {
-                        if (desig.participantes && Object.keys(desig.participantes).length >= 2) {
-                            const ids = Object.values(desig.participantes).sort();
-                            const pairKey = ids.join('_');
-                            if (!recentPairsMap.has(pairKey) || new Date(doc.data().dia) > new Date(recentPairsMap.get(pairKey).lastDate)) {
-                                recentPairsMap.set(pairKey, { lastDate: doc.data().dia });
-                            }
-                        }
-                    });
+        const getRecentPairs = async () => {
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 12);
+    const recentPairsMap = new Map();
+    const snapshot = await db.collection('historico').where("timestamp", ">=", startDate).get();
+    snapshot.forEach(doc => {
+        doc.data().designacoes?.forEach(desig => {
+            if (desig.participantes && Object.keys(desig.participantes).length >= 2) {
+                const ids = Object.values(desig.participantes).sort();
+                const pairKey = ids.join('_');
+                // Adicionamos o ID do documento de histórico à entrada
+                recentPairsMap.set(pairKey, { 
+                    lastDate: doc.data().dia,
+                    historicoId: doc.id // Esta é a nova informação crucial
                 });
-                return recentPairsMap;
-            };
+            }
+        });
+    });
+    return recentPairsMap;
+};
 
             const getParticipantsForWeek = async (ano, mes, semana) => {
                 if(!ano || !mes || !semana) return new Set();
@@ -717,7 +994,7 @@
                 historicoDocRefId: null
             };
             
-        async function openEditDesignationPopup(designationIndex) {
+     async function openEditDesignationPopup(designationIndex) {
     const selectedWeekValue = weekFilter.value;
     const weekHistoricoDocs = allScheduleData.filter(item => item.semanaindex === selectedWeekValue);
 
@@ -769,16 +1046,52 @@
     idiomaSelect.innerHTML = '<option value="todos">Todos</option>';
     allLanguagesCache.forEach(lang => idiomaSelect.add(new Option(lang, lang)));
 
-    // ===== CORREÇÃO APLICADA AQUI =====
-    // A variável 'item' foi substituída pela correta 'targetDesignationObj'
     const currentParticipantsCount = Object.keys(targetDesignationObj.participantes || {}).length;
-    // ===================================
-    
     numParticipantesSelect.value = currentParticipantsCount > 0 ? currentParticipantsCount : (fullDesigData.numeroParticipantes || 1);
-    
-    generoPreferenciaSelect.value = "masculino feminino";
-    generoMixSelect.value = "nao";
-    idiomaSelect.value = "todos";
+
+    // ========================================================================
+    // INÍCIO DA NOVA LÓGICA INTELIGENTE DE PRÉ-SELEÇÃO DE FILTROS
+    // ========================================================================
+    let defaultIdioma = 'todos';
+    let defaultGenero = 'masculino feminino';
+    let defaultMix = 'nao';
+
+    const participantIds = Object.values(targetDesignationObj.participantes || {});
+
+    if (participantIds.length > 0) {
+        const languages = new Set();
+        const genders = new Set();
+
+        participantIds.forEach(id => {
+            const personData = allPeopleDataMap.get(id);
+            if (personData) {
+                if (personData.idioma) languages.add(personData.idioma);
+                if (personData.genero) genders.add(personData.genero);
+            }
+        });
+
+        // Lógica para o Idioma
+        if (languages.size === 1) {
+            defaultIdioma = languages.values().next().value;
+        }
+
+        // Lógica para o Género e Par Misto
+        if (genders.size === 1) {
+            const singleGender = genders.values().next().value.toLowerCase(); // "masculino" ou "feminino"
+            defaultGenero = singleGender;
+        } else if (genders.size > 1) {
+            // Se houver mais de um género, significa que o par é misto
+            defaultMix = 'sim';
+        }
+    }
+
+    // Aplicar os valores padrão apurados
+    idiomaSelect.value = defaultIdioma;
+    generoPreferenciaSelect.value = defaultGenero;
+    generoMixSelect.value = defaultMix;
+    // ========================================================================
+    // FIM DA NOVA LÓGICA
+    // ========================================================================
 
     await generateEditPopupUI(targetHistoricoDoc, fullDesigData);
 
@@ -795,44 +1108,67 @@
 }
 
 
+
+
             
-            async function generateEditPopupUI(historicoDoc, fullDesigData) {
-                editPopupParticipantsContainer.innerHTML = '<div class="loading-spinner" style="display: block; position: relative; top: auto; left: auto; transform: none;"><i class="fas fa-spinner fa-spin"></i></div>';
-            
-                const numParticipantes = parseInt(document.getElementById('editNumParticipantes').value);
-                const idiomaPreferencia = document.getElementById('editIdioma').value;
-                const generoPreferencia = document.getElementById('editGeneroPreferencia').value;
-                const originalParticipants = currentEditData.originalDesignation.participantes || {};
-            
-                const participantRoles = [];
-                if (numParticipantes === 1) participantRoles.push({ key: 'participante', label: "Participante" });
-                else if (numParticipantes === 2) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" });
-                else if (numParticipantes >= 3) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" }, { key: 'ajudante', label: "Ajudante" });
-            
-                let dropdownsHTML = '';
-                participantRoles.forEach((role, i) => {
-                    dropdownsHTML += `<div class="form-group"><label>${role.label}</label><select class="form-select" data-role-key="${role.key}" data-role-index="${i}"></select></div>`;
-                });
-                editPopupParticipantsContainer.innerHTML = dropdownsHTML;
-            
-                const allSelects = editPopupParticipantsContainer.querySelectorAll('.form-select');
-                for (const select of allSelects) {
-                    await populateSingleEditDropdown(select, historicoDoc, fullDesigData, generoPreferencia, idiomaPreferencia);
-                    const roleKey = select.dataset.roleKey;
-                    if (originalParticipants[roleKey] && select.querySelector(`option[value="${originalParticipants[roleKey]}"]`)) {
-                        select.value = originalParticipants[roleKey];
-                    }
-                    select.addEventListener('change', () => {
-                        handleGenderSync(select);
-                        validatePopupSelections(historicoDoc);
-                    });
-                }
-            
-                if (allSelects.length > 0) {
-                    handleGenderSync(allSelects[0]);
-                    validatePopupSelections(historicoDoc);
-                }
-            }
+          async function generateEditPopupUI(historicoDoc, fullDesigData) {
+    editPopupParticipantsContainer.innerHTML = '<div class="loading-spinner" style="display: block; position: relative; top: auto; left: auto; transform: none;"><i class="fas fa-spinner fa-spin"></i></div>';
+
+    const numParticipantes = parseInt(document.getElementById('editNumParticipantes').value);
+    const idiomaPreferencia = document.getElementById('editIdioma').value;
+    const generoPreferencia = document.getElementById('editGeneroPreferencia').value;
+    const originalParticipants = currentEditData.originalDesignation.participantes || {};
+
+    const participantRoles = [];
+    if (numParticipantes === 1) participantRoles.push({ key: 'participante', label: "Participante" });
+    else if (numParticipantes === 2) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" });
+    else if (numParticipantes >= 3) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" }, { key: 'ajudante', label: "Ajudante" });
+
+    let dropdownsHTML = '';
+    participantRoles.forEach((role, i) => {
+        // ===== ALTERAÇÃO AQUI: Nova estrutura HTML com o botão foguetão =====
+        dropdownsHTML += `
+            <div class="form-group">
+                <label>${role.label}</label>
+                <div class="participant-row">
+                    <select class="form-select" data-role-key="${role.key}" data-role-index="${i}"></select>
+                    <i class="fas fa-rocket rocket-suggester" title="Sugerir próximo participante válido"></i>
+                </div>
+            </div>
+        `;
+        // =======================================================================
+    });
+    editPopupParticipantsContainer.innerHTML = dropdownsHTML;
+
+    const allSelects = editPopupParticipantsContainer.querySelectorAll('.form-select');
+    for (const select of allSelects) {
+        await populateSingleEditDropdown(select, historicoDoc, fullDesigData, generoPreferencia, idiomaPreferencia);
+        const roleKey = select.dataset.roleKey;
+        if (originalParticipants[roleKey] && select.querySelector(`option[value="${originalParticipants[roleKey]}"]`)) {
+            select.value = originalParticipants[roleKey];
+        }
+        select.addEventListener('change', () => {
+            handleGenderSync(select);
+            validatePopupSelections(historicoDoc, fullDesigData);
+        });
+    }
+
+    // ===== NOVO: Adicionar o evento de clique aos botões foguetão =====
+    const rocketButtons = editPopupParticipantsContainer.querySelectorAll('.rocket-suggester');
+    rocketButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+            const selectElement = button.previousElementSibling;
+            await findNextAvailableParticipant(selectElement, historicoDoc, fullDesigData);
+        });
+    });
+    // ==================================================================
+
+    if (allSelects.length > 0) {
+        handleGenderSync(allSelects[0]);
+        await validatePopupSelections(historicoDoc, fullDesigData);
+    }
+    await updateAccountabilityButton();
+}
             
           async function populateSingleEditDropdown(selectElement, historicoDoc, fullDesigData, generoPreferencia, idiomaPreferencia) {
     selectElement.innerHTML = '<option value="">Selecione...</option>';
@@ -968,18 +1304,26 @@
     }
 
     // Validação 4: Pares recentes
-    if (currentPair.length >= 2) {
-        const pairKey = currentPair.map(p => p.id).sort().join('_');
-        if (recentPairs.has(pairKey)) {
-             const lastDate = new Date(recentPairs.get(pairKey).lastDate);
-             const meetingDate = new Date(historicoDoc.dia + "T12:00:00Z");
-             const monthDiff = (meetingDate.getFullYear() - lastDate.getFullYear()) * 12 + meetingDate.getMonth() - lastDate.getMonth();
-             if (monthDiff <= 1) {
-                 allViolations.add(`${currentPair.map(p => p.name).join(' e ')} trabalharam juntos recentemente.`);
-                 currentPair.forEach(p => p.el.classList.add('invalid-selection'));
-             }
+  if (currentPair.length >= 2) {
+    const pairKey = currentPair.map(p => p.id).sort().join('_');
+    if (recentPairs.has(pairKey)) {
+        // ===== INÍCIO DA MODIFICAÇÃO =====
+        const recentPairData = recentPairs.get(pairKey);
+
+        // A CONDIÇÃO CHAVE: Só aciona o aviso se o par recente NÃO for da mesma designação que estamos a editar
+        if (recentPairData.historicoId !== currentEditData.historicoDocRefId) {
+            const lastDate = new Date(recentPairData.lastDate);
+            const meetingDate = new Date(historicoDoc.dia + "T12:00:00Z");
+            const monthDiff = (meetingDate.getFullYear() - lastDate.getFullYear()) * 12 + meetingDate.getMonth() - lastDate.getMonth();
+            if (monthDiff <= 1) {
+                allViolations.add(`${currentPair.map(p => p.name).join(' e ')} trabalharam juntos recentemente.`);
+                currentPair.forEach(p => p.el.classList.add('invalid-selection'));
+            }
         }
+        // ===== FIM DA MODIFICAÇÃO =====
     }
+}
+
     
     if (allViolations.size > 0) {
         allViolations.forEach(msg => validationList.innerHTML += `<li>${msg}</li>`);
