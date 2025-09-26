@@ -286,9 +286,14 @@
                 </div>
                 <div id="editPopupParticipants"></div>
             </div>
-            <div class="popup-actions">
-                 <button id="pair-analysis-button" class="action-button" style="display: none; background-color: #7f8c8d; margin-right: auto;"></button>
-                <button class="btn-submit" id="saveDesignationChanges">Guardar Alterações</button>
+           <div class="popup-actions">
+                <button id="pair-analysis-button" class="action-button" style="display: none; background-color: #7f8c8d; margin-right: auto;"></button>
+                
+                <!-- NOVO BOTÃO DE FILTRO AVANÇADO -->
+                <button id="advanced-edit-btn" class="action-button" title="Alterar Designação" style="background-color: #95a5a6; margin-left: 10px;">
+                    <i class="fas fa-filter"></i>
+                </button>
+            <button class="btn-submit" id="saveDesignationChanges">Guardar Alterações</button>
                 
                 
             </div>
@@ -306,6 +311,26 @@
             <ul id="validation-list"></ul>
         </div>
     </div>
+<!-- ===== INÍCIO: NOVO POPUP DE FILTRO AVANÇADO ===== -->
+    <div id="advancedEditPopup" class="popup-overlay">
+        <div class="popup-content" style="max-width: 500px;">
+            <div class="popup-header">
+                <h2 class="popup-title">Alterar Designação</h2>
+                <button class="popup-close-button" id="closeAdvancedEditPopup">×</button>
+            </div>
+            <div class="popup-body">
+                <div class="form-group">
+                    <label for="advancedDesignationSelect">Selecione a nova designação para esta entrada:</label>
+                    <select id="advancedDesignationSelect" class="form-select" style="margin-top: 10px;"></select>
+                </div>
+            </div>
+            <div class="popup-actions" style="justify-content: flex-end;">
+                <button class="btn-submit" id="applyAdvancedChangeBtn">Aplicar Alteração</button>
+            </div>
+        </div>
+    </div>
+    <!-- ===== FIM: NOVO POPUP DE FILTRO AVANÇADO ===== -->
+
     <!-- Popup de Análise de Pares (Contabilidade) -->
 <div id="pairAnalysisPopup" class="popup-overlay">
     <div class="popup-content">
@@ -351,7 +376,7 @@
     <button id="global-suggester-btn" class="action-button" 
             style="display: none; background-color: #3498db;" 
             title="Sugerir uma equipa completa">
-        <i class="fas fa-users" style="margin-right: 8px;"></i>Sugerir Equipa
+        <i class="fas fa-users" style="margin-right: 8px;"></i>Sugerir Combinação
     </button>
     
     <!-- A margem foi movida para este botão para empurrar o botão "Criar" para a direita -->
@@ -419,6 +444,12 @@ const closeCreatePopup = document.getElementById('closeCreatePopup');
 const createDesignationSelect = document.getElementById('createDesignationSelect');
 const saveNewDesignationBtn = document.getElementById('saveNewDesignationBtn');
 const createStep2 = document.getElementById('create-step-2');
+   const advancedEditBtn = document.getElementById('advanced-edit-btn');
+            const advancedEditPopup = document.getElementById('advancedEditPopup');
+            const closeAdvancedEditPopup = document.getElementById('closeAdvancedEditPopup');
+            const applyAdvancedChangeBtn = document.getElementById('applyAdvancedChangeBtn');
+            const advancedDesignationSelect = document.getElementById('advancedDesignationSelect');
+
             
             // Modais e Popups
             const modalOverlay = document.getElementById('action-modal-overlay');
@@ -905,6 +936,18 @@ function initializeCreationFilters() {
 }
 
 
+// Função para limpar o estado da edição atual
+            function resetEditState() {
+                currentEditData = {
+                    historicoId: null,
+                    originalDesignation: null,
+                    historicoDocRefId: null,
+                    trueOriginalDesignationId: null, // Limpa também o estado intocável
+                    trueOriginalSignature: null
+                };
+            }
+
+
 function openPairAnalysisPopup() {
     const list = document.getElementById('pair-analysis-list');
     const intro = document.getElementById('pair-analysis-intro');
@@ -955,6 +998,62 @@ function openPairAnalysisPopup() {
 }
 
 
+  // Função para abrir o popup de filtro avançado
+            function openAdvancedEditPopup() {
+                // Pega a designação atual que está em edição
+                const currentDesignationId = currentEditData.originalDesignation.designacaoId;
+                
+                // Filtra a lista de designações para mostrar apenas as de reunião da semana
+                const availableDesignations = Array.from(designationMap.values())
+                    .filter(d => d.quando === 'Semana' && d.tipo === 'reuniao')
+                    .sort((a, b) => (a.ordem || 999) - (b.ordem || 999));
+                
+                // Limpa e preenche o dropdown
+                advancedDesignationSelect.innerHTML = '';
+                availableDesignations.forEach(desig => {
+                    const option = new Option(desig.nome, desig.id);
+                    if (desig.id === currentDesignationId) {
+                        option.selected = true; // Pré-seleciona a designação atual
+                    }
+                    advancedDesignationSelect.add(option);
+                });
+
+                // Exibe o popup
+                advancedEditPopup.classList.add('active');
+            }
+
+            // Função para aplicar a mudança de designação
+        async function applyDesignationChange() {
+                const newDesignationId = advancedDesignationSelect.value;
+                const oldDesignationId = currentEditData.originalDesignation.designacaoId;
+
+                if (newDesignationId === oldDesignationId) {
+                    advancedEditPopup.classList.remove('active');
+                    return;
+                }
+
+                const newDesignationData = designationMap.get(newDesignationId);
+                
+                // Atualiza o objeto de estado da edição com o NOVO ID da designação
+                currentEditData.originalDesignation.designacaoId = newDesignationId;
+            
+
+                document.getElementById('editPopupTitle').textContent = `Editar: ${newDesignationData.nome}`;
+                const historicoDoc = allScheduleData.find(d => d.id === currentEditData.historicoDocRefId);
+
+                if (historicoDoc) {
+                    await generateEditPopupUI(historicoDoc, newDesignationData);
+                }
+
+                advancedEditPopup.classList.remove('active');
+            }
+
+            // Adiciona os "ouvintes" de eventos para os novos botões
+            advancedEditBtn.addEventListener('click', openAdvancedEditPopup);
+            closeAdvancedEditPopup.addEventListener('click', () => advancedEditPopup.classList.remove('active'));
+            applyAdvancedChangeBtn.addEventListener('click', applyDesignationChange);
+
+
             function populateYearFilter() {
                 const years = [...new Set(allScheduleData.map(item => item.ano))].sort((a, b) => b - a);
                 yearFilter.innerHTML = ''; 
@@ -984,6 +1083,80 @@ function openPairAnalysisPopup() {
                     monthFilter.value = 'todos';
                 }
             }
+
+
+
+async function saveNewDesignation() {
+    // 1. Obter referências aos elementos do popup
+    const createDesignationSelect = document.getElementById('createDesignationSelect');
+    const createPopupParticipantsContainer = document.getElementById('createPopupParticipants');
+    const participantSelects = createPopupParticipantsContainer.querySelectorAll('.form-select');
+
+    const selectedDesignationId = createDesignationSelect.value;
+    const newParticipants = {};
+    let allParticipantsSelected = true;
+
+    // 2. Coletar os participantes selecionados e seus papéis
+    participantSelects.forEach(select => {
+        const role = select.dataset.roleKey;
+        const personId = select.value;
+        if (personId) {
+            newParticipants[role] = personId;
+        } else {
+            allParticipantsSelected = false; // Marca se algum campo ficou vazio
+        }
+    });
+
+    // 3. Validação simples para garantir que todos os campos foram preenchidos
+    if (!selectedDesignationId || !allParticipantsSelected) {
+        openModal("Erro de Validação", "Por favor, selecione uma designação e preencha todos os campos de participante.");
+        return;
+    }
+
+    // 4. Encontrar o documento de histórico correto para a semana selecionada
+    const selectedWeekValue = weekFilter.value;
+    const historicoDocToUpdate = allScheduleData.find(d => d.semanaindex === selectedWeekValue);
+
+    if (!historicoDocToUpdate) {
+        openModal("Erro", "Não foi possível encontrar o documento da semana para salvar a designação.");
+        return;
+    }
+
+    // 5. Criar o novo objeto de designação
+    const newDesignationObject = {
+        designacaoId: selectedDesignationId,
+        participantes: newParticipants
+    };
+
+    // 6. Adicionar a nova designação à lista existente
+    // Garante que o campo 'designacoes' existe e é um array
+    if (!historicoDocToUpdate.designacoes) {
+        historicoDocToUpdate.designacoes = [];
+    }
+    historicoDocToUpdate.designacoes.push(newDesignationObject);
+
+    // 7. Salvar os dados atualizados no Firebase
+    try {
+        saveNewDesignationBtn.disabled = true; // Desativa o botão para evitar cliques duplos
+        saveNewDesignationBtn.textContent = 'A Guardar...';
+
+        await db.collection('historico').doc(historicoDocToUpdate.id).update({
+            designacoes: historicoDocToUpdate.designacoes
+        });
+
+        // 8. Fechar o popup e atualizar a tela
+        closeCreatePopup.click();
+        renderSchedule(); // Recarrega a visualização da escala
+
+    } catch (error) {
+        console.error("Erro ao criar a nova designação:", error);
+        openModal("Erro de Gravação", "Não foi possível guardar a nova designação. Tente novamente.");
+    } finally {
+        // Garante que o botão volte ao normal, mesmo em caso de erro
+        saveNewDesignationBtn.disabled = false;
+        saveNewDesignationBtn.textContent = 'Criar Designação';
+    }
+}
 
 
 async function findNextAvailableParticipant(selectElement, historicoDoc, fullDesigData) {
@@ -1193,13 +1366,36 @@ async function validateCreatePopupSelections() {
         }
     }
 
-    if (currentPair.length >= 2) {
+ if (currentPair.length >= 2) {
         const pairKey = currentPair.map(p => p.id).sort().join('_');
+        
+        // Verifica se este par existe no histórico recente
         if (recentPairs.has(pairKey)) {
-            allViolations.add(`${currentPair.map(p => p.name).join(' e ')} trabalharam juntos recentemente.`);
-            currentPair.forEach(p => p.el.classList.add('invalid-selection'));
+            // Pega a LISTA de todas as vezes que este par trabalhou junto
+            const recentInstances = recentPairs.get(pairKey);
+            
+            // Procura na lista por uma instância que seja de um DOCUMENTO DIFERENTE do que estamos a editar
+            const conflictingInstance = recentInstances.find(
+                instance => instance.historicoId !== currentEditData.historicoDocRefId
+            );
+
+            // Se encontrámos uma instância conflituosa (ou seja, o par trabalhou junto noutro dia/designação)
+            if (conflictingInstance) {
+                const lastDate = new Date(conflictingInstance.lastDate);
+                const meetingDate = new Date(historicoDoc.dia + "T12:00:00Z");
+                const monthDiff = (meetingDate.getFullYear() - lastDate.getFullYear()) * 12 + meetingDate.getMonth() - lastDate.getMonth();
+                
+                // Aplica a regra de violação apenas se o evento foi há 1 mês ou menos
+                if (monthDiff <= 1) {
+                    allViolations.add(`${currentPair.map(p => p.name).join(' e ')} trabalharam juntos recentemente.`);
+                    currentPair.forEach(p => p.el.classList.add('invalid-selection'));
+                }
+            }
+            // Se 'conflictingInstance' for undefined, significa que todas as ocorrências do par
+            // eram do mesmo documento que estamos a editar, então não há violação.
         }
     }
+
     
     if (allViolations.size > 0) {
         allViolations.forEach(msg => validationList.innerHTML += `<li>${msg}</li>`);
@@ -1585,24 +1781,36 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
 };
             
             // --- Funções de Validação em Tempo Real ---
-        const getRecentPairs = async () => {
+ const getRecentPairs = async () => {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 12);
     const recentPairsMap = new Map();
+
     const snapshot = await db.collection('historico').where("timestamp", ">=", startDate).get();
+    
     snapshot.forEach(doc => {
-        doc.data().designacoes?.forEach(desig => {
+        const designacoes = doc.data().designacoes || [];
+        
+        designacoes.forEach(desig => {
             if (desig.participantes && Object.keys(desig.participantes).length >= 2) {
                 const ids = Object.values(desig.participantes).sort();
                 const pairKey = ids.join('_');
-                // Adicionamos o ID do documento de histórico à entrada
-                recentPairsMap.set(pairKey, { 
+                
+                if (!recentPairsMap.has(pairKey)) {
+                    recentPairsMap.set(pairKey, []);
+                }
+                
+                // Adiciona a assinatura para uma comparação precisa
+                recentPairsMap.get(pairKey).push({ 
                     lastDate: doc.data().dia,
-                    historicoId: doc.id // Esta é a nova informação crucial
+                    historicoId: doc.id,
+                    designacaoId: desig.designacaoId,
+                    signature: createParticipantSignature(desig.participantes) // NOVO
                 });
             }
         });
     });
+
     return recentPairsMap;
 };
 
@@ -1711,11 +1919,19 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
 
     const fullDesigData = designationMap.get(targetDesignationObj.designacaoId);
 
+    // --- INÍCIO DA CORREÇÃO CRÍTICA ---
+    // Guarda um "retrato" da designação que está a ser modificada.
     currentEditData.originalDesignation = JSON.parse(JSON.stringify(targetDesignationObj));
     currentEditData.historicoDocRefId = targetHistoricoDoc.id;
 
+    // GUARDA O ESTADO ORIGINAL INTOCÁVEL. Estas variáveis nunca serão mudadas durante a edição.
+    currentEditData.trueOriginalDesignationId = targetDesignationObj.designacaoId;
+    currentEditData.trueOriginalSignature = createParticipantSignature(targetDesignationObj.participantes);
+    // --- FIM DA CORREÇÃO CRÍTICA ---
+
     document.getElementById('editPopupTitle').textContent = `Editar: ${fullDesigData.nome}`;
 
+    // ... (o resto da função continua exatamente igual)
     const numParticipantesSelect = document.getElementById('editNumParticipantes');
     const idiomaSelect = document.getElementById('editIdioma');
     const generoPreferenciaSelect = document.getElementById('editGeneroPreferencia');
@@ -1739,11 +1955,7 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
     let defaultMix = 'nao';
 
     const participantIds = Object.values(targetDesignationObj.participantes || {});
-
-    // ===== INÍCIO DA CORREÇÃO: Definir o Nº de Participantes corretamente =====
-    // Esta é a linha que estava em falta.
     numParticipantesSelect.value = participantIds.length > 0 ? participantIds.length : 1;
-    // =========================================================================
 
     if (participantIds.length > 0) {
         const languages = new Set();
@@ -1783,24 +1995,18 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
 
 
             
-      async function generateEditPopupUI(historicoDoc, fullDesigData) {
-    // ===== INÍCIO DA CORREÇÃO (PASSO 1: GUARDAR VALORES) =====
-    // Antes de destruir qualquer coisa, lemos e guardamos os valores que já estão selecionados.
-    const savedValues = {};
-    editPopupParticipantsContainer.querySelectorAll('.form-select').forEach(select => {
-        if (select.value) {
-            // Guardamos o valor associado ao seu papel (ex: { dirigente: 'id_do_jose_vieira' })
-            savedValues[select.dataset.roleKey] = select.value;
-        }
-    });
-    // =========================================================
-
+    async function generateEditPopupUI(historicoDoc, fullDesigData) {
     editPopupParticipantsContainer.innerHTML = '<div class="loading-spinner" style="display: block; position: relative; top: auto; left: auto; transform: none;"><i class="fas fa-spinner fa-spin"></i></div>';
 
     const numParticipantes = parseInt(document.getElementById('editNumParticipantes').value);
     const idiomaPreferencia = document.getElementById('editIdioma').value;
     const generoPreferencia = document.getElementById('editGeneroPreferencia').value;
-    const originalParticipants = currentEditData.originalDesignation.participantes || {};
+    
+    // ===== INÍCIO DA CORREÇÃO CRÍTICA =====
+    // A fonte da verdade para os participantes a serem exibidos é sempre o estado 'originalDesignation'
+    // que é definido quando o popup abre.
+    const participantsToDisplay = currentEditData.originalDesignation.participantes || {};
+    // ===== FIM DA CORREÇÃO CRÍTICA =====
 
     const participantRoles = [];
     if (numParticipantes === 1) participantRoles.push({ key: 'participante', label: "Participante" });
@@ -1825,24 +2031,13 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
     for (const select of allSelects) {
         await populateSingleEditDropdown(select, historicoDoc, fullDesigData, generoPreferencia, idiomaPreferencia);
         
-        // ===== INÍCIO DA CORREÇÃO (PASSO 2: RESTAURAR VALORES) =====
+        // Lógica de restauração simplificada e robusta
         const roleKey = select.dataset.roleKey;
-        let valueToSet = '';
-
-        // Prioridade 1: Usar o valor que guardámos antes de recriar os campos.
-        if (savedValues[roleKey]) {
-            valueToSet = savedValues[roleKey];
-        } 
-        // Prioridade 2 (fallback): Se não havia nada guardado, usar o valor original da designação.
-        else if (originalParticipants[roleKey]) {
-            valueToSet = originalParticipants[roleKey];
-        }
+        const personIdToSet = participantsToDisplay[roleKey];
         
-        // Define o valor, mas só se ele ainda for uma opção válida no dropdown.
-        if (valueToSet && select.querySelector(`option[value="${valueToSet}"]`)) {
-            select.value = valueToSet;
+        if (personIdToSet && select.querySelector(`option[value="${personIdToSet}"]`)) {
+            select.value = personIdToSet;
         }
-        // =============================================================
 
         select.addEventListener('change', () => {
             handleGenderSync(select);
@@ -1862,8 +2057,6 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
         handleGenderSync(allSelects[0]);
         await validatePopupSelections(historicoDoc, fullDesigData);
     }
-    // A chamada a updateAccountabilityButton já acontece dentro de validatePopupSelections,
-    // por isso não precisamos de a chamar aqui de novo.
 }
 
 
@@ -1908,12 +2101,11 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
 }
 
             
-   async function validatePopupSelections(historicoDoc, fullDesigData) {
+async function validatePopupSelections(historicoDoc, fullDesigData) {
     const popupSelects = editPopupParticipantsContainer.querySelectorAll('.form-select');
     const allViolations = new Set();
     const validationList = document.getElementById('validation-list');
     const alertContainer = document.getElementById('validation-alert-container');
-
     popupSelects.forEach(s => s.classList.remove('invalid-selection'));
     validationList.innerHTML = '';
 
@@ -1923,33 +2115,32 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
         getParticipantsNextWeek(context.ano, context.mes, context.semana),
         getRecentPairs()
     ]);
-    
+
     const currentWeekAssignments = new Map();
-    const currentlyEditedDesignationId = currentEditData.originalDesignation.designacaoId;
-    const originalParticipantsSignature = createParticipantSignature(currentEditData.originalDesignation.participantes);
-
     const weekHistoricoDocs = allScheduleData.filter(item =>
-        item.ano === historicoDoc.ano &&
-        item.mes === historicoDoc.mes &&
-        item.semanaNumero === historicoDoc.semanaNumero
+        item.ano === historicoDoc.ano && item.mes === historicoDoc.mes && item.semanaNumero === historicoDoc.semanaNumero
     );
-
+    
+    // ===== INÍCIO DA CORREÇÃO CRÍTICA =====
     for (const doc of weekHistoricoDocs) {
         for (const desig of doc.designacoes) {
-            const currentDesigSignature = createParticipantSignature(desig.participantes);
-            const isTheExactSameDesignationInstance = 
-                desig.designacaoId === currentlyEditedDesignationId &&
-                currentDesigSignature === originalParticipantsSignature;
-
-            if (isTheExactSameDesignationInstance) {
-                continue;
-            }
             
-            for (const personId of Object.values(desig.participantes)) {
-                currentWeekAssignments.set(personId, desig.designacaoId);
+            // A condição de ignorar PRECISA ser tão precisa quanto a da validação de pares.
+            // Compara o ID do documento, o ID da designação E a assinatura dos participantes.
+            const isTheTrueOriginalEntry = 
+                doc.id === currentEditData.historicoDocRefId &&
+                desig.designacaoId === currentEditData.trueOriginalDesignationId &&
+                createParticipantSignature(desig.participantes) === currentEditData.trueOriginalSignature;
+
+            // Se NÃO for a entrada exata que estamos a editar, adiciona os participantes à lista de ocupados.
+            if (!isTheTrueOriginalEntry) {
+                 for (const personId of Object.values(desig.participantes)) {
+                    currentWeekAssignments.set(personId, desig.designacaoId);
+                }
             }
         }
     }
+    // ===== FIM DA CORREÇÃO CRÍTICA =====
 
     const selections = new Map();
     const currentPair = [];
@@ -1964,40 +2155,39 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
                 allViolations.add(`${personName} está selecionado mais de uma vez.`);
                 select.classList.add('invalid-selection');
                 selections.get(personId).el.classList.add('invalid-selection');
-            } else {
-                selections.set(personId, { el: select });
-            }
+            } else { selections.set(personId, { el: select }); }
             
             if (lastWeek.has(personId)) { allViolations.add(`${personName} participou na semana anterior.`); select.classList.add('invalid-selection'); }
             if (nextWeek.has(personId)) { allViolations.add(`${personName} já está na semana seguinte.`); select.classList.add('invalid-selection'); }
-
+            
+            // A verificação de conflito em si
             if (currentWeekAssignments.has(personId)) {
-                const existingAssignmentId = currentWeekAssignments.get(personId);
-                const existingAssignmentData = designationMap.get(existingAssignmentId);
-                
+                const existingAssignmentData = designationMap.get(currentWeekAssignments.get(personId));
                 if (existingAssignmentData) {
-                    const blockRule = existingAssignmentData.bloqueio ? existingAssignmentData.bloqueio[currentlyEditedDesignationId] : null;
-                    if (blockRule !== "Sim") {
-                        const errorMessage = `${personName} já está a fazer "${existingAssignmentData.nome}" esta semana.`;
-                        allViolations.add(errorMessage);
-                        select.classList.add('invalid-selection');
-                    }
+                    allViolations.add(`${personName} já está a fazer "${existingAssignmentData.nome}" esta semana.`);
+                    select.classList.add('invalid-selection');
                 }
             }
         }
     }
-
+    
+    // A lógica de "pares recentes" que já estava correta.
     if (currentPair.length >= 2) {
         const pairKey = currentPair.map(p => p.id).sort().join('_');
         if (recentPairs.has(pairKey)) {
-            const recentPairData = recentPairs.get(pairKey);
-            const currentPairSignature = createParticipantSignature(Object.fromEntries(currentPair.map((p, i) => [i === 0 ? 'dirigente' : 'morador', p.id])));
-            
-            if (currentPairSignature !== originalParticipantsSignature) {
-                 const lastDate = new Date(recentPairData.lastDate);
-                 const meetingDate = new Date(historicoDoc.dia + "T12:00:00Z");
-                 const monthDiff = (meetingDate.getFullYear() - lastDate.getFullYear()) * 12 + meetingDate.getMonth() - lastDate.getMonth();
-                 if (monthDiff <= 1) {
+            const recentInstances = recentPairs.get(pairKey);
+            const conflictingInstance = recentInstances.find(instance => {
+                const isTheTrueOriginalEntry = 
+                    instance.historicoId === currentEditData.historicoDocRefId &&
+                    instance.designacaoId === currentEditData.trueOriginalDesignationId &&
+                    instance.signature === currentEditData.trueOriginalSignature;
+                return !isTheTrueOriginalEntry;
+            });
+            if (conflictingInstance) {
+                const lastDate = new Date(conflictingInstance.lastDate);
+                const meetingDate = new Date(historicoDoc.dia + "T12:00:00Z");
+                const monthDiff = (meetingDate.getFullYear() - lastDate.getFullYear()) * 12 + meetingDate.getMonth() - lastDate.getMonth();
+                if (monthDiff <= 1) {
                     allViolations.add(`${currentPair.map(p => p.name).join(' e ')} trabalharam juntos recentemente.`);
                     currentPair.forEach(p => p.el.classList.add('invalid-selection'));
                 }
@@ -2013,11 +2203,8 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
         document.getElementById('validation-panel').classList.remove('active');
     }
 
-    // Garante que o botão de contabilidade é sempre atualizado após qualquer validação.
     await updateAccountabilityButton();
-
 }
-
 
 
 
@@ -2037,42 +2224,51 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
                 document.body.classList.remove('popup-open');
                 document.getElementById('validation-alert-container').style.display = 'none';
                 document.getElementById('validation-panel').classList.remove('active');
+                resetEditState();
             });
 
-            saveDesignationChangesBtn.addEventListener('click', async () => {
+          saveDesignationChangesBtn.addEventListener('click', async () => {
+                // 1. Coleta os novos participantes selecionados no popup
                 const newParticipants = {};
                 editPopupParticipantsContainer.querySelectorAll('.form-select').forEach(select => {
                     if (select.value) newParticipants[select.dataset.roleKey] = select.value;
                 });
                 
+                // 2. Encontra o documento de histórico correto nos dados locais
                 const historicoDocToUpdate = allScheduleData.find(d => d.id === currentEditData.historicoDocRefId);
+
                 if (historicoDocToUpdate) {
-                    
-                    const originalString = JSON.stringify(currentEditData.originalDesignation.participantes);
+                    // 3. USA OS DADOS ORIGINAIS INTOCÁVEIS PARA ENCONTRAR a designação exata a ser modificada
                     const desigToUpdate = historicoDocToUpdate.designacoes.find(d => 
-                        d.designacaoId === currentEditData.originalDesignation.designacaoId &&
-                        JSON.stringify(d.participantes) === originalString
+                        d.designacaoId === currentEditData.trueOriginalDesignationId &&
+                        createParticipantSignature(d.participantes) === currentEditData.trueOriginalSignature
                     );
 
                     if (desigToUpdate) {
+                        // 4. ATUALIZA COM OS NOVOS DADOS DO POPUP
+                        // O ID da nova designação (se mudou) está em currentEditData.originalDesignation
+                        desigToUpdate.designacaoId = currentEditData.originalDesignation.designacaoId;
                         desigToUpdate.participantes = newParticipants;
                     } else {
+                        // Esta mensagem de erro agora só aparecerá se houver um problema real de dados
                         console.error("Não foi possível encontrar a designação original para atualizar nos dados locais.");
-                        openModal("Erro", "Ocorreu um erro ao tentar aplicar as alterações localmente.");
+                        openModal("Erro", "Ocorreu um erro ao tentar aplicar as alterações localmente. A designação original pode ter sido alterada noutro local.");
                         return;
                     }
 
+                    // 5. Salva o documento inteiro com a designação modificada no Firebase
                     try {
                         await db.collection('historico').doc(currentEditData.historicoDocRefId).update({
                             designacoes: historicoDocToUpdate.designacoes
                         });
-                        renderSchedule();
+                        renderSchedule(); // Atualiza a visualização na página principal
                     } catch (error) {
                         console.error("Erro ao atualizar o documento:", error);
                         openModal("Erro de Gravação", "Não foi possível guardar as alterações. Por favor, tente novamente.");
                     }
                 }
                 closeEditPopup.click();
+                 resetEditState(); 
             });
 
             // Painel de Validação
