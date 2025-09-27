@@ -104,105 +104,130 @@
 
     <!-- Terceiro: O script com a lógica específica desta página -->
   <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            const orderListContainer = document.getElementById('order-list-container');
-            const saveButton = document.getElementById('save-order-btn');
+ document.addEventListener('DOMContentLoaded', async function() {
+    const orderListContainer = document.getElementById('order-list-container');
+    const saveButton = document.getElementById('save-order-btn');
 
-            // As definições de categorias permanecem as mesmas
-            const categoryStructure = {
-                "Semana": ["escola", "resto da semana"],
-                "Fim de Semana": ["fim de semana"],
-                "Técnicas": ["tecnicas"],
-                "Pregação": ["pregacao", "dirigencia saida"]
-            };
-            const orderedCategories = ["Semana", "Fim de Semana", "Técnicas", "Pregação"];
-            const categoryToClass = {
-                'Semana': 'category-semana',
-                'Fim de Semana': 'category-fim-de-semana',
-                'Pregação': 'category-pregacao',
-                'Técnicas': 'category-tecnicas'
-            };
-            
-            const formatSubcategoryName = (text) => text.charAt(0).toUpperCase() + text.slice(1).replace(/_/g, ' ');
-            
-            try {
-                // Carrega as designações já ordenadas para a exibição inicial
-                const designacoesSnapshot = await db.collection('designacoes').orderBy('ordem').get();
-                const allDesignations = designacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderOrderList(allDesignations);
-            } catch (error) {
-                console.error("Erro ao carregar designações: ", error);
-                orderListContainer.innerHTML = "<p>Erro ao carregar designações.</p>";
+    // As definições de categorias permanecem as mesmas
+    const categoryStructure = {
+        "Semana": ["escola", "resto da semana"],
+        "Fim de Semana": ["fim de semana"],
+        "Técnicas": ["tecnicas"],
+        "Pregação": ["pregacao", "dirigencia saida"]
+    };
+    const orderedCategories = ["Semana", "Fim de Semana", "Técnicas", "Pregação"];
+    const categoryToClass = {
+        'Semana': 'category-semana',
+        'Fim de Semana': 'category-fim-de-semana',
+        'Pregação': 'category-pregacao',
+        'Técnicas': 'category-tecnicas'
+    };
+    
+    const formatSubcategoryName = (text) => text.charAt(0).toUpperCase() + text.slice(1).replace(/_/g, ' ');
+    
+    try {
+        // ALTERAÇÃO 1: Mudamos a consulta do Firebase.
+        // Removemos .orderBy('ordem') e adicionamos .where('status', '==', true)
+        const designacoesSnapshot = await db.collection('designacoes').where('status', '==', true).get();
+        
+        const allDesignations = designacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // ALTERAÇÃO 2: Processamento dos dados no lado do cliente
+        // Verificamos cada item. Se não tiver 'ordem', atribuímos 99.
+        allDesignations.forEach(designation => {
+            if (designation.ordem === undefined || designation.ordem === null) {
+                designation.ordem = 99;
             }
+        });
 
-            function renderOrderList(designations) {
-                let html = '';
-                orderedCategories.forEach(categoryName => {
-                    const partes = categoryStructure[categoryName];
-                    const categoryHasItems = designations.some(d => partes.includes(d.parte));
-                    if (categoryHasItems) {
-                        const className = categoryToClass[categoryName] || '';
-                        html += `<h3 class="category-header ${className}">${categoryName}</h3>`;
-                        partes.forEach(parte => {
-                            const designationsInParte = designations.filter(d => d.parte === parte).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-                            if (designationsInParte.length > 0) {
-                                html += `<h4 class="subcategory-header ${className}">${formatSubcategoryName(parte)}</h4>`;
-                                designationsInParte.forEach(d => {
-                                    html += `<div class="order-item"><span class="order-item-name">${d.nome}</span><input type="number" class="order-input" value="${d.ordem}" data-designation-id="${d.id}"></div>`;
-                                });
-                            }
+        // ALTERAÇÃO 3: Ordenamos a lista aqui, usando JavaScript
+        allDesignations.sort((a, b) => a.ordem - b.ordem);
+
+        // A partir daqui, a função renderOrderList recebe uma lista já limpa e ordenada.
+        renderOrderList(allDesignations);
+
+    } catch (error) {
+        console.error("Erro ao carregar designações: ", error);
+        orderListContainer.innerHTML = "<p>Erro ao carregar designações. O erro pode ser a falta de um índice no Firestore. Verifique o console para um link de criação de índice.</p>";
+    }
+
+    // A função renderOrderList e o listener do botão permanecem os mesmos
+    function renderOrderList(designations) {
+        // ... (esta função não precisa de nenhuma alteração)
+        let html = '';
+        orderedCategories.forEach(categoryName => {
+            const partes = categoryStructure[categoryName];
+            const categoryHasItems = designations.some(d => d.parte && partes.includes(d.parte.trim()));
+            if (categoryHasItems) {
+                const className = categoryToClass[categoryName] || '';
+                html += `<h3 class="category-header ${className}">${categoryName}</h3>`;
+                partes.forEach(parte => {
+                    const designationsInParte = designations.filter(d => d.parte && d.parte.trim() === parte);
+                    if (designationsInParte.length > 0) {
+                        html += `<h4 class="subcategory-header ${className}">${formatSubcategoryName(parte)}</h4>`;
+                        designationsInParte.forEach(d => {
+                            html += `<div class="order-item"><span class="order-item-name">${d.nome}</span><input type="number" class="order-input" value="${d.ordem}" data-designation-id="${d.id}"></div>`;
                         });
                     }
                 });
-                orderListContainer.innerHTML = html;
             }
+        });
+        orderListContainer.innerHTML = html;
+    }
+    
+  saveButton.addEventListener('click', async () => {
+        const feedbackEl = document.getElementById('save-feedback');
+        saveButton.disabled = true;
+        saveButton.textContent = 'Salvando...';
+        feedbackEl.textContent = '';
 
-            // <-- MUDANÇA PRINCIPAL: A função 'handleOrderChange' e seu 'event listener' foram REMOVIDOS -->
-            
-            saveButton.addEventListener('click', async () => {
-                const feedbackEl = document.getElementById('save-feedback');
-                saveButton.disabled = true;
-                saveButton.textContent = 'Salvando...';
-                feedbackEl.textContent = '';
-
-                // 1. Ler todos os valores atuais dos inputs na tela
-                const inputs = orderListContainer.querySelectorAll('.order-input');
-                let userDefinedOrder = [];
-                inputs.forEach(input => {
-                    userDefinedOrder.push({
-                        id: input.dataset.designationId,
-                        // Usa o valor do input, ou um número muito grande se estiver vazio/inválido
-                        ordem: parseInt(input.value, 10) || 99999 
-                    });
-                });
-
-                // 2. Ordenar a lista com base nos números que o usuário digitou
-                userDefinedOrder.sort((a, b) => a.ordem - b.ordem);
-
-                const batch = db.batch();
-                
-                // 3. Criar o batch de atualização com a ordem corrigida e sequencial
-                userDefinedOrder.forEach((item, index) => {
-                    const finalSequentialOrder = index + 1; // Cria a ordem 1, 2, 3, ...
-                    const docRef = db.collection('designacoes').doc(item.id);
-                    batch.update(docRef, { ordem: finalSequentialOrder });
-                });
-
-                try {
-                    // 4. Enviar as atualizações para o banco de dados
-                    await batch.commit();
-                    feedbackEl.textContent = "Ordem salva com sucesso!";
-                    feedbackEl.style.color = "#2ecc71";
-                    setTimeout(() => { location.reload(); }, 1000); // Recarrega para mostrar a nova ordem limpa
-                } catch (error) {
-                    console.error("Erro ao salvar a ordem: ", error);
-                    feedbackEl.textContent = "Erro ao salvar. Tente novamente.";
-                    feedbackEl.style.color = "#e74c3c";
-                    saveButton.disabled = false;
-                    saveButton.textContent = 'Salvar Ordem';
-                }
+        // 1. Ler todos os valores atuais dos inputs na tela
+        const inputs = orderListContainer.querySelectorAll('.order-input');
+        let userDefinedOrder = [];
+        inputs.forEach(input => {
+            userDefinedOrder.push({
+                id: input.dataset.designationId,
+                // Usa o valor do input, ou um número muito grande (99999) se estiver vazio ou for inválido.
+                // Isso garante que os itens em branco vão para o final da lista.
+                ordem: parseInt(input.value, 10) || 99999 
             });
         });
+
+        // 2. Ordenar a lista com base nos números que o usuário digitou
+        userDefinedOrder.sort((a, b) => a.ordem - b.ordem);
+
+        // Inicia um "batch write", que permite múltiplas escritas como uma única operação atômica
+        const batch = db.batch();
+        
+        // 3. Criar o batch de atualização com a ordem corrigida e sequencial
+        // Isso garante que a ordem final seja sempre 1, 2, 3, ... sem buracos.
+        userDefinedOrder.forEach((item, index) => {
+            const finalSequentialOrder = index + 1; 
+            const docRef = db.collection('designacoes').doc(item.id);
+            
+            // Adiciona a atualização ao batch. O campo 'ordem' será salvo com o novo número sequencial.
+            batch.update(docRef, { ordem: finalSequentialOrder });
+        });
+
+        try {
+            // 4. Enviar todas as atualizações de uma só vez para o banco de dados
+            await batch.commit();
+            feedbackEl.textContent = "Ordem salva com sucesso!";
+            feedbackEl.style.color = "#2ecc71";
+
+            // Recarrega a página após 1 segundo para mostrar a nova ordem limpa e refletir as mudanças
+            setTimeout(() => { location.reload(); }, 1000); 
+        } catch (error) {
+            console.error("Erro ao salvar a ordem: ", error);
+            feedbackEl.textContent = "Erro ao salvar. Tente novamente.";
+            feedbackEl.style.color = "#e74c3c";
+
+            // Se der erro, reabilita o botão para que o usuário possa tentar de novo
+            saveButton.disabled = false;
+            saveButton.textContent = 'Salvar Ordem';
+        }
+    });
+});
     </script>
     
     <!-- Quarto: O script que carrega o menu -->
