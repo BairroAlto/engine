@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Discursos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        /* Estilos Gerais (sem alterações) */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; }
+
+        /* Sidebar (sem alterações) */
+        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding-top: 20px; height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; }
+        .logo { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #34495e; }
+        .logo h2 { margin: 0; }
+        .nav-list { list-style: none; padding: 0; }
+        .nav-item a { color: white; text-decoration: none; display: flex; align-items: center; padding: 15px 20px; transition: background-color 0.3s; }
+        .nav-item a i { margin-right: 15px; width: 20px; text-align: center; }
+        .nav-item a:hover { background-color: #34495e; }
+        .nav-item.active a { background-color: #1abc9c; }
+
+        /* Conteúdo Principal */
+        .content { margin-left: 250px; padding: 30px; flex-grow: 1; width: calc(100% - 250px); }
+        h1 { color: #2c3e50; margin-bottom: 20px; }
+        
+        /* Botão Criar */
+        .btn-criar-topo {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: background-color 0.3s;
+        }
+        .btn-criar-topo:hover { background-color: #2980b9; }
+
+        /* Tabela de Discursos */
+        .discursos-table { width: 100%; border-collapse: collapse; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        .discursos-table th, .discursos-table td { padding: 15px; text-align: left; border-bottom: 1px solid #ecf0f1; }
+        .discursos-table th { background-color: #ecf0f1; color: #34495e; font-weight: bold; }
+        .discursos-table tr:hover { background-color: #f9f9f9; }
+        .discursos-table .actions { text-align: center; }
+        .discursos-table .btn-edit { background: none; border: none; color: #f39c12; cursor: pointer; font-size: 18px; }
+        .discursos-table .btn-edit:hover { color: #d68910; }
+
+        /* Estilo para linha inativa */
+        .discursos-table tr.inactive { color: #e74c3c; text-decoration: line-through; }
+        .discursos-table tr.inactive .btn-edit { color: #e74c3c; }
+
+
+        /* Estilos do Popup (Modal) */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content h2 { margin-top: 0; margin-bottom: 20px; color: #2c3e50; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #34495e; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 5px; font-size: 16px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .modal-actions .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .btn-save { background-color: #2ecc71; color: white; }
+        .btn-cancel { background-color: #e74c3c; color: white; }
+
+        /* Responsividade */
+        @media (max-width: 768px) { .sidebar { width: 70px; } .sidebar .logo h2, .sidebar .nav-item a span { display: none; } .content { margin-left: 70px; width: calc(100% - 70px);} }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <!-- Sidebar, manter item "Criar" ativo -->
+        <div class="logo"><h2>Sistema de Escala</h2></div>
+        <nav><ul class="nav-list">
+            <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
+            <li class="nav-item"><a href="semana.html"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
+            <li class="nav-item"><a href="fimdesemana.html"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
+            <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
+            <li class="nav-item"><a href="estatisticas.html"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
+            <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
+            <li class="nav-item"><a href="iniciar.html"><i class="fas fa-play"></i><span>Iniciar</span></a></li>
+            <li class="nav-item active"><a href="criar.html"><i class="fas fa-plus"></i><span>Criar</span></a></li>
+        </ul></nav>
+    </div>
+
+    <main class="content">
+        <h1>Gerenciar Discursos</h1>
+
+        <button class="btn-criar-topo" id="criarDiscursoBtn"><i class="fas fa-plus"></i> Criar Discurso</button>
+
+        <table class="discursos-table">
+            <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Nome do Discurso</th>
+                    <th>Ativo</th>
+                    <th class="actions">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="discursos-list">
+                <!-- Linhas serão inseridas aqui pelo JavaScript -->
+            </tbody>
+        </table>
+    </main>
+
+    <!-- Popup/Modal para Criar e Editar -->
+    <div class="modal-overlay" id="discursoModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Criar Novo Discurso</h2>
+            <form id="discursoForm">
+                <input type="hidden" id="discursoId">
+                <div class="form-group">
+                    <label for="discursoNumero">Número</label>
+                    <input type="number" id="discursoNumero" required>
+                </div>
+                <div class="form-group">
+                    <label for="discursoNome">Nome do Discurso</label>
+                    <input type="text" id="discursoNome" required>
+                </div>
+                <div class="form-group">
+                    <label for="discursoAtivo">Ativo</label>
+                    <select id="discursoAtivo" required>
+                        <option value="true">Sim</option>
+                        <option value="false">Não</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" id="cancelBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-save">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+            authDomain: "escalas-6e0f9.firebaseapp.com",
+            projectId: "escalas-6e0f9",
+            storageBucket: "escalas-6e0f9.firebasestorage.app",
+            messagingSenderId: "19118998563",
+            appId: "1:19118998563:web:5412be658ae34bd45add96"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- Elementos do DOM ---
+        const criarBtn = document.getElementById('criarDiscursoBtn');
+        const modal = document.getElementById('discursoModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const discursoForm = document.getElementById('discursoForm');
+        const discursoList = document.getElementById('discursos-list');
+        
+        const idInput = document.getElementById('discursoId');
+        const numeroInput = document.getElementById('discursoNumero');
+        const nomeInput = document.getElementById('discursoNome');
+        const ativoInput = document.getElementById('discursoAtivo');
+
+        // --- Funções do Modal ---
+        const openModal = (title) => {
+            modalTitle.textContent = title;
+            modal.style.display = 'flex';
+        };
+
+        const closeModal = () => {
+            discursoForm.reset();
+            idInput.value = '';
+            modal.style.display = 'none';
+        };
+
+        // --- Lógica do CRUD ---
+
+        // 1. Carregar e Exibir Discursos
+        const fetchAndDisplayDiscursos = async () => {
+            discursoList.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
+            try {
+                const snapshot = await db.collection('discursos').orderBy('numero').get();
+                
+                if (snapshot.empty) {
+                    discursoList.innerHTML = '<tr><td colspan="4">Nenhum discurso encontrado.</td></tr>';
+                    return;
+                }
+
+                discursoList.innerHTML = ''; // Limpa a lista
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const tr = document.createElement('tr');
+                    
+                    if (!data.ativo) {
+                        tr.classList.add('inactive');
+                    }
+                    
+                    tr.innerHTML = `
+                        <td>${data.numero}</td>
+                        <td>${data.nome}</td>
+                        <td>${data.ativo ? 'Sim' : 'Não'}</td>
+                        <td class="actions">
+                            <button class="btn-edit" data-id="${doc.id}"><i class="fas fa-edit"></i></button>
+                        </td>
+                    `;
+                    discursoList.appendChild(tr);
+                });
+            } catch (error) {
+                console.error("Erro ao buscar discursos: ", error);
+                discursoList.innerHTML = '<tr><td colspan="4">Erro ao carregar os dados.</td></tr>';
+            }
+        };
+
+        // 2. Abrir modal para Criar
+        criarBtn.addEventListener('click', () => {
+            discursoForm.reset();
+            idInput.value = '';
+            openModal('Criar Novo Discurso');
+        });
+        
+        // 3. Abrir modal para Editar
+        discursoList.addEventListener('click', async (e) => {
+            const editButton = e.target.closest('.btn-edit');
+            if (editButton) {
+                const docId = editButton.dataset.id;
+                const docRef = db.collection('discursos').doc(docId);
+                const docSnap = await docRef.get();
+                if (docSnap.exists) {
+                    const data = docSnap.data();
+                    idInput.value = docId;
+                    numeroInput.value = data.numero;
+                    nomeInput.value = data.nome;
+                    ativoInput.value = data.ativo;
+                    openModal('Editar Discurso');
+                } else {
+                    alert('Discurso não encontrado!');
+                }
+            }
+        });
+
+        // 4. Salvar (Criar ou Atualizar)
+        discursoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = idInput.value;
+            const discursoData = {
+                numero: parseInt(numeroInput.value, 10),
+                nome: nomeInput.value.trim(),
+                ativo: ativoInput.value === 'true'
+            };
+
+            if (isNaN(discursoData.numero) || !discursoData.nome) {
+                alert("Por favor, preencha todos os campos corretamente.");
+                return;
+            }
+
+            try {
+                if (id) {
+                    // Atualizar
+                    await db.collection('discursos').doc(id).update(discursoData);
+                    alert('Discurso atualizado com sucesso!');
+                } else {
+                    // Criar
+                    await db.collection('discursos').add(discursoData);
+                    alert('Discurso criado com sucesso!');
+                }
+                closeModal();
+                fetchAndDisplayDiscursos(); // Recarrega a lista
+            } catch (error) {
+                console.error("Erro ao salvar discurso: ", error);
+                alert('Ocorreu um erro ao salvar. Tente novamente.');
+            }
+        });
+
+        // --- Event Listeners Globais ---
+        cancelBtn.addEventListener('click', closeModal);
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Carregar dados ao iniciar a página
+        document.addEventListener('DOMContentLoaded', fetchAndDisplayDiscursos);
+    </script>
+</body>
+</html>
