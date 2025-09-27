@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <!-- ... (head da sua página de criação, sem alterações) ... -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criar Designação - Sistema de Escala</title>
@@ -10,8 +9,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
+        /* Estilos existentes */
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
-        .form-group { margin-bottom: 15px; }
+        .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 5px; color: #2c3e50; }
         .form-group input[type="text"], .form-group input[type="number"], .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
         .switch-group { display: flex; align-items: center; justify-content: space-between; }
@@ -34,6 +34,22 @@
         .checkbox-item:has(input[value="Pioneiro Auxiliar"]) { background-color: #ffecb3; }
         .checkbox-item:has(input[value="Publicador"]) { background-color: #ffcdd2; }
         .checkbox-item:has(input[value="Publicador não Batizado"]) { background-color: #f8bbd0; }
+        .help-text { font-style: italic; font-size: 0.7em; color: #7f8c8d; font-weight: normal; margin-left: 8px; }
+        .checkbox-group-horizontal { display: flex; gap: 10px; flex-wrap: wrap; }
+        /* Ajuste no nome para ser mais genérico, já que agora serve para radio e checkbox */
+        .option-item-horizontal { display: flex; align-items: center; padding: 8px 16px; border-radius: 20px; background-color: #ecf0f1; border: 1px solid #bdc3c7; cursor: pointer; transition: background-color 0.3s; }
+        .option-item-horizontal:has(input:checked) { background-color: #3498db; color: white; border-color: #2980b9; }
+        .option-item-horizontal input[type="checkbox"], .option-item-horizontal input[type="radio"] { margin-right: 8px; }
+
+        /* Estilos para as Abas */
+        .tab-nav { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
+        .tab-button { padding: 10px 20px; cursor: pointer; border: none; background-color: transparent; font-size: 16px; color: #7f8c8d; border-bottom: 2px solid transparent; transition: all 0.3s ease; }
+        .tab-button.active { color: #2c3e50; border-bottom: 2px solid #2c3e50; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .form-navigation { display: flex; justify-content: space-between; margin-top: 20px; }
+        .btn-nav { background-color: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .btn-nav.prev { background-color: #95a5a6; }
     </style>
 </head>
 <body>
@@ -43,18 +59,67 @@
         <h1>Criar Designação</h1>
         <div class="card">
             <form id="criar-designacao-form">
-                <!-- Campos do formulário (sem alterações no HTML) -->
-                 <div class="form-group"><label for="nome-designacao">Nome da Designação</label><input type="text" id="nome-designacao" required></div>
-                <div class="form-group"><label for="numero-participantes">Número de Participantes</label><input type="number" id="numero-participantes" min="1" required></div>
-                <div class="form-group"><label for="feito-por">Feito por</label><select id="feito-por" required><option value="Masculino">Apenas Homens</option><option value="Feminino">Apenas Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
-                <div class="form-group"><label for="preferencia">Preferência</label><select id="preferencia" required><option value="Masculino">Homens</option><option value="Feminino">Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
-                <div class="form-group"><label for="quando">Quando?</label><select id="quando" required><option value="Semana">Semana</option><option value="Fim de Semana">Fim de Semana</option><option value="Semana e Fim de Semana">Semana e Fim de Semana</option></select></div>
-                <div class="form-group"><label for="tipo">Tipo</label><select id="tipo" required><option value="reuniao">Reunião</option><option value="pregacao">Pregação</option></select></div>
-                <div class="form-group"><label for="parte">Parte</label><select id="parte" required><option value="escola">Escola</option><option value="resto da semana">Resto da Semana</option><option value="fim de semana">Fim de Semana</option><option value="tecnicas">Técnicas</option><option value="pregacao">Pregação</option><option value="dirigencia saida">Dirigência Saída</option></select></div>
-                <div class="form-group"><label for="anexo">Anexo</label><select id="anexo" required><option value="">Carregando...</option></select></div>
-                <div class="form-group"><label>Quem faz? (Opcional)</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião"> Ancião</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial"> Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular"> Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar"> Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador"> Publicador</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado"> Publicador não Batizado</label></div></div>
-                <div class="form-group switch-group"><label for="status">Desligado/Ligado</label><label class="switch"><input type="checkbox" id="status" checked><span class="slider round"></span></label></div>
-                <button type="submit" class="btn-criar">Criar Designação</button>
+                <!-- Navegação das Abas -->
+                <div class="tab-nav">
+                    <button type="button" class="tab-button active" data-tab="1">1. Geral</button>
+                    <button type="button" class="tab-button" data-tab="2">2. Detalhes</button>
+                    <button type="button" class="tab-button" data-tab="3">3. Participantes</button>
+                </div>
+
+                <!-- Conteúdo das Abas -->
+                <div class="tab-content">
+                    <!-- Aba 1: Geral -->
+                    <div id="tab-1" class="tab-pane active">
+                        <div class="form-group"><label for="nome-designacao">Nome da Designação</label><input type="text" id="nome-designacao" required></div>
+                        <div class="form-group"><label for="numero-participantes">Número de Participantes</label><select id="numero-participantes"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+                        <div class="form-group"><label for="feito-por">Feito por</label><select id="feito-por" required><option value="Masculino">Apenas Homens</option><option value="Feminino">Apenas Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
+                        <div class="form-group"><label for="preferencia">Preferência</label><select id="preferencia" required><option value="Masculino">Homens</option><option value="Feminino">Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
+                        
+                        <!-- ALTERADO PARA RADIO BUTTONS -->
+                        <div class="form-group">
+                            <label>Personalidade (do Dirigente)</label>
+                            <div class="checkbox-group-horizontal">
+                                <label class="option-item-horizontal">
+                                    <input type="radio" name="personalidade" value="- à vontade"> - à vontade
+                                </label>
+                                <label class="option-item-horizontal">
+                                    <input type="radio" name="personalidade" value="+ à vontade"> + à vontade
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group switch-group"><label for="status">Desligado/Ligado</label><label class="switch"><input type="checkbox" id="status" checked><span class="slider round"></span></label></div>
+                        
+                        <div class="form-navigation">
+                            <button type="button" class="btn-nav next-btn" data-next-tab="2">Seguinte</button>
+                        </div>
+                    </div>
+
+                    <!-- Aba 2: Detalhes -->
+                    <div id="tab-2" class="tab-pane">
+                        <div class="form-group"><label for="quando">Quando?</label><select id="quando" required><option value="Semana">Semana</option><option value="Fim de Semana">Fim de Semana</option><option value="Semana e Fim de Semana">Semana e Fim de Semana</option></select></div>
+                        <div class="form-group"><label for="tipo">Tipo</label><select id="tipo" required><option value="reuniao">Reunião</option><option value="pregacao">Pregação</option></select></div>
+                        <div class="form-group"><label for="parte">Parte</label><select id="parte" required><option value="escola">Escola</option><option value="resto da semana">Resto da Semana</option><option value="fim de semana">Fim de Semana</option><option value="tecnicas">Técnicas</option><option value="pregacao">Pregação</option><option value="dirigencia saida">Dirigência Saída</option></select></div>
+                        <div class="form-group"><label for="anexo">Anexo <span class="help-text">(Anexar a um Cabeçalho para aparecer na Escala)</span></label><select id="anexo"><option value="">Nenhum</option></select></div>
+                        <div class="form-group"><label for="descricao">Descrição <span class="help-text">(Necessidades Locais, Orador, etc...)</span></label><select id="descricao"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+                        <div class="form-group"><label for="emoji">Emoji (Opcional)</label><input type="text" id="emoji" maxlength="2"></div>
+
+                        <div class="form-navigation">
+                            <button type="button" class="btn-nav prev prev-btn" data-prev-tab="1">Anterior</button>
+                            <button type="button" class="btn-nav next-btn" data-next-tab="3">Seguinte</button>
+                        </div>
+                    </div>
+
+                    <!-- Aba 3: Participantes -->
+                    <div id="tab-3" class="tab-pane">
+                        <div class="form-group"><label>Quem faz?</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label></div></div>
+                        
+                        <div class="form-navigation">
+                            <button type="button" class="btn-nav prev prev-btn" data-prev-tab="2">Anterior</button>
+                            <button type="submit" class="btn-criar" style="width: auto;">Criar Designação</button>
+                        </div>
+                    </div>
+                </div>
             </form>
         </div>
     </main>
@@ -65,7 +130,22 @@
         document.addEventListener('DOMContentLoaded', async function() {
             if (typeof db === 'undefined') { alert("Erro de configuração do banco de dados."); return; }
 
-            // --- FUNÇÃO PARA CARREGAR ANEXOS (MODIFICADA) ---
+            // Lógica para controlar as abas
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+
+            function showTab(tabNumber) {
+                tabPanes.forEach(pane => pane.classList.remove('active'));
+                tabButtons.forEach(button => button.classList.remove('active'));
+                document.getElementById(`tab-${tabNumber}`).classList.add('active');
+                document.querySelector(`.tab-button[data-tab="${tabNumber}"]`).classList.add('active');
+            }
+
+            tabButtons.forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-tab'))));
+            document.querySelectorAll('.next-btn').forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-next-tab'))));
+            document.querySelectorAll('.prev-btn').forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-prev-tab'))));
+
+            // Carregamento de dados
             async function carregarAnexos() {
                 const anexoSelect = document.getElementById('anexo');
                 anexoSelect.innerHTML = '<option value="">Selecione um anexo</option>';
@@ -74,8 +154,8 @@
                     snapshot.forEach(doc => {
                         const anexo = doc.data();
                         const option = document.createElement('option');
-                        option.value = doc.id; // ALTERAÇÃO: Usa o ID do documento
-                        option.textContent = anexo.nome; // Usa o nome para o texto
+                        option.value = doc.id;
+                        option.textContent = anexo.nome;
                         anexoSelect.appendChild(option);
                     });
                 } catch (error) { console.error("Erro ao carregar anexos: ", error); }
@@ -83,20 +163,35 @@
 
             await carregarAnexos();
 
-            // --- LÓGICA DE SUBMISSÃO ---
+            // Submissão do formulário
             const form = document.getElementById('criar-designacao-form');
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
+
+                // Validação
+                const quemFazSelecionado = document.querySelector('input[name="quem_faz"]:checked');
+                if (!quemFazSelecionado) {
+                    alert('O campo "Quem faz?" é obrigatório. Por favor, selecione pelo menos uma opção.');
+                    showTab(3);
+                    return;
+                }
                 
+                // JAVASCRIPT ATUALIZADO PARA PEGAR O VALOR DO RADIO BUTTON
+                const personalidadeSelecionada = document.querySelector('input[name="personalidade"]:checked');
+
                 const designacao = {
                     nome: document.getElementById('nome-designacao').value,
                     numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
                     feitoPor: document.getElementById('feito-por').value,
                     preferencia: document.getElementById('preferencia').value,
+                    // Salva o valor do radio button ou uma string vazia se nada for selecionado
+                    personalidade: personalidadeSelecionada ? personalidadeSelecionada.value : "",
                     quando: document.getElementById('quando').value,
                     tipo: document.getElementById('tipo').value,
                     parte: document.getElementById('parte').value,
-                    anexo: document.getElementById('anexo').value, // Automaticamente pega o ID
+                    anexo: document.getElementById('anexo').value,
+                    descricao: document.getElementById('descricao').value,
+                    emoji: document.getElementById('emoji').value,
                     status: document.getElementById('status').checked,
                     quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
                     dataCriacao: new Date()
