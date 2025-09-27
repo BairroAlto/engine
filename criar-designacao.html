@@ -96,19 +96,61 @@
                     </div>
 
                     <!-- Aba 2: Detalhes -->
-                    <div id="tab-2" class="tab-pane">
-                        <div class="form-group"><label for="quando">Quando?</label><select id="quando" required><option value="Semana">Semana</option><option value="Fim de Semana">Fim de Semana</option><option value="Semana e Fim de Semana">Semana e Fim de Semana</option></select></div>
-                        <div class="form-group"><label for="tipo">Tipo</label><select id="tipo" required><option value="reuniao">Reunião</option><option value="pregacao">Pregação</option></select></div>
-                        <div class="form-group"><label for="parte">Parte</label><select id="parte" required><option value="escola">Escola</option><option value="resto da semana">Resto da Semana</option><option value="fim de semana">Fim de Semana</option><option value="tecnicas">Técnicas</option><option value="pregacao">Pregação</option><option value="dirigencia saida">Dirigência Saída</option></select></div>
-                        <div class="form-group"><label for="anexo">Anexo <span class="help-text">(Anexar a um Cabeçalho para aparecer na Escala)</span></label><select id="anexo"><option value="">Nenhum</option></select></div>
-                        <div class="form-group"><label for="descricao">Descrição <span class="help-text">(Necessidades Locais, Orador, etc...)</span></label><select id="descricao"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
-                        <div class="form-group"><label for="emoji">Emoji (Opcional)</label><input type="text" id="emoji" maxlength="2"></div>
+             <div id="tab-2" class="tab-pane">
+    <div class="form-group">
+        <label for="quando">Quando?</label>
+        <select id="quando" required>
+            <option value="Semana">Semana</option>
+            <option value="Fim de Semana">Fim de Semana</option>
+            <option value="Semana e Fim de Semana">Semana e Fim de Semana</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="tipo">Tipo</label>
+        <select id="tipo" required>
+            <option value="reuniao">Reunião</option>
+            <option value="pregacao">Pregação</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="parte">Parte</label>
+        <select id="parte" required>
+            <option value="escola">Escola</option>
+            <option value="resto da semana">Resto da Semana</option>
+            <option value="fim de semana">Fim de Semana</option>
+            <option value="tecnicas">Técnicas</option>
+            <option value="pregacao">Pregação</option>
+            <option value="dirigencia saida">Dirigência Saída</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="anexo">Anexo <span class="help-text">(Anexar a um Cabeçalho para aparecer na Escala)</span></label>
+        <select id="anexo"><option value="">Nenhum</option></select>
+    </div>
+    <div class="form-group">
+        <label for="descricao">Descrição <span class="help-text">(Necessidades Locais, Orador, etc...)</span></label>
+        <select id="descricao">
+            <option value="nao">Não</option>
+            <option value="sim">Sim</option>
+        </select>
+    </div>
+    <div class="form-group" id="anexado-discursos-group" style="display: none;">
+        <label for="anexado-discursos">Anexado a Discursos</label>
+        <select id="anexado-discursos">
+            <option value="nao" selected>Não</option>
+            <option value="sim">Sim</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="emoji">Emoji (Opcional)</label>
+        <input type="text" id="emoji" maxlength="2">
+    </div>
 
-                        <div class="form-navigation">
-                            <button type="button" class="btn-nav prev prev-btn" data-prev-tab="1">Anterior</button>
-                            <button type="button" class="btn-nav next-btn" data-next-tab="3">Seguinte</button>
-                        </div>
-                    </div>
+    <div class="form-navigation">
+        <button type="button" class="btn-nav prev prev-btn" data-prev-tab="1">Anterior</button>
+        <button type="button" class="btn-nav next-btn" data-next-tab="3">Seguinte</button>
+    </div>
+</div>
 
                     <!-- Aba 3: Participantes -->
                     <div id="tab-3" class="tab-pane">
@@ -145,6 +187,17 @@
             document.querySelectorAll('.next-btn').forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-next-tab'))));
             document.querySelectorAll('.prev-btn').forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-prev-tab'))));
 
+             const descricaoSelect = document.getElementById('descricao');
+        const anexadoDiscursosGroup = document.getElementById('anexado-discursos-group');
+
+        descricaoSelect.addEventListener('change', function() {
+            if (this.value === 'sim') {
+                anexadoDiscursosGroup.style.display = 'block'; // Mostra o campo
+            } else {
+                anexadoDiscursosGroup.style.display = 'none'; // Oculta o campo
+                document.getElementById('anexado-discursos').value = 'nao'; // Reseta o valor para "não"
+            }
+        });
             // Carregamento de dados
             async function carregarAnexos() {
                 const anexoSelect = document.getElementById('anexo');
@@ -191,6 +244,7 @@
                     parte: document.getElementById('parte').value,
                     anexo: document.getElementById('anexo').value,
                     descricao: document.getElementById('descricao').value,
+                    anexadoDiscursos: document.getElementById('anexado-discursos').value,
                     emoji: document.getElementById('emoji').value,
                     status: document.getElementById('status').checked,
                     quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
