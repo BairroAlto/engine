@@ -250,6 +250,32 @@ body.popup-open {
     background-color: #fff;
 }
 
+.turbo-button {
+    overflow: visible;
+}
+
+/* Adiciona posicionamento relativo e z-index para que o container fique por cima de outros elementos */
+.turbo-button-container {
+    position: relative;
+    z-index: 10;
+}
+
+/* A transição base para a animação do foguetão */
+.turbo-button i.fa-rocket {
+    transition: transform 0.5s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+}
+
+/* ESTADO 1: O foguetão está a voar para cima, ponta para cima */
+.turbo-button.is-flying i.fa-rocket {
+    transform: translateY(-80px) rotate(0deg);
+}
+
+/* ESTADO 2: O foguetão ainda está no ar, mas vira-se para descer (ponta para baixo) */
+/* A rotação será mais rápida que o voo */
+.turbo-button.is-returning i.fa-rocket {
+    transform: translateY(-80px) rotate(180deg);
+    transition-duration: 0.2s; /* Faz a rotação ser mais rápida */
+}
 
     </style>
 </head>
@@ -514,24 +540,65 @@ body.popup-open {
 });
 
         // Botão de Foguetão (Placeholder)
-       document.getElementById('turboButton').addEventListener('click', async (event) => {
+   document.getElementById('turboButton').addEventListener('click', async (event) => {
             const button = event.currentTarget;
+
+            if (button.disabled) return;
             button.disabled = true;
-            button.querySelector('i').classList.add('fa-spin'); // Adiciona um feedback visual
+
+            button.classList.add('is-flying');
 
             try {
-                await preencherAutomaticamente();
-                alert("Preenchimento automático concluído!");
+                // Obter a lista de pessoas atualmente atribuídas pelo foguetão
+                const exclusionSet = new Set(currentTurboAssignments.values());
+                
+                // Tenta encontrar uma nova combinação excluindo as pessoas atuais
+                let newAssignments = await preencherAutomaticamente(exclusionSet);
+
+                // Se não encontrou novas combinações, reinicia o ciclo
+                if (Object.keys(newAssignments).length === 0) {
+                    console.log("Não foram encontradas mais combinações. A reiniciar o ciclo.");
+                    currentTurboAssignments.clear(); // Limpa o estado
+                    newAssignments = await preencherAutomaticamente(new Set()); // Tenta novamente do zero
+                }
+                
+                // Aplica os resultados encontrados na interface
+                for (const [elementId, pessoaId] of Object.entries(newAssignments)) {
+                    const selectElement = document.getElementById(elementId);
+                    if (selectElement) {
+                        selectElement.value = pessoaId;
+                    }
+                }
+                
+                // Guarda o novo estado
+                currentTurboAssignments = new Map(Object.entries(newAssignments));
+
             } catch (error) {
                 console.error("Ocorreu um erro crítico no preenchimento automático:", error);
                 alert("Ocorreu um erro durante o preenchimento automático. Verifique a consola para mais detalhes.");
             } finally {
-                button.disabled = false;
-                button.querySelector('i').classList.remove('fa-spin'); // Remove o feedback
+                // A mesma lógica de animação de antes
+                const ROTATION_TIME = 200;
+                const FLIGHT_TIME = 500;
+
+                button.classList.remove('is-flying');
+                button.classList.add('is-returning');
+
+                setTimeout(() => {
+                    button.classList.remove('is-returning');
+                }, ROTATION_TIME);
+
+                setTimeout(() => {
+                    button.disabled = false;
+                }, ROTATION_TIME + FLIGHT_TIME);
             }
         });
         
   
+
+
+
+
         // Botão de Pesquisa (Placeholder)
         document.getElementById('pesquisarButton').addEventListener('click', () => {
             alert('A função de Pesquisa será implementada futuramente.');
@@ -561,6 +628,7 @@ body.popup-open {
         let allPeople = [];
         let allDiscursosCache = [];
         let temporaryPreferences = {};
+        let currentTurboAssignments = new Map();
     
         // ===================================================================
         // =========== CÓDIGO PARA O FLUXO DE CONFIRMAÇÃO ============
@@ -1214,87 +1282,117 @@ const handleGenderSync = (changedSelect) => {
 };
 
 
-   const loadPeopleOptionsIntoSelects = async (designacao, container, genderPreference = 'ambos', idiomas = []) => {
+const loadPeopleOptionsIntoSelects = async (designacao, container, genderPreference = 'ambos', idiomas = []) => {
     try {
         const ano = await getAnoPainelFirebase();
         const mes = parseInt(document.getElementById('mes').value);
         const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
         const diasSemana = getDiasSemana(ano, mes, semanaNumero);
         const horarios = await getHorariosFromFirebase(ano);
-
-        // Calcula a data exata da reunião para a verificação de ausência
         const meetingDate = getMeetingDayOfMonth(ano, diasSemana, horarios['dia-semana']);
 
-        // 1. Faz a consulta inicial ao Firebase com os filtros gerais
+        // ETAPA 1: FILTRAGEM RESTRITIVA (Lógica do "código antigo")
+        // Define quais privilégios são necessários para esta designação.
+        const privilegiosExigidos = designacao.quemFaz && designacao.quemFaz.length > 0 
+            ? designacao.quemFaz 
+            : ["Publicador", "Pioneiro", "Pioneiro Regular", "Servo Ministerial", "Ancião"]; // Um default seguro
+
         let query = db.collection('pessoas').where('fazDesignacoesReuniao', '==', true);
-        if (idiomas.length > 0) {
-            query = query.where('idioma', 'in', idiomas);
-        }
+        if (idiomas.length > 0) query = query.where('idioma', 'in', idiomas);
         if (genderPreference === 'masculino') query = query.where('genero', '==', 'Masculino');
         if (genderPreference === 'feminino') query = query.where('genero', '==', 'Feminino');
         
         const snapshot = await query.get();
 
-        // 2. Cria uma lista pré-filtrada com as pessoas que cumprem os requisitos básicos
         const eligiblePeopleList = [];
         snapshot.docs.forEach(doc => {
             const p = doc.data();
+
+            // A verificação restritiva acontece aqui!
+            const temPrivilegiosNecessarios = privilegiosExigidos.some(
+                privilegio => p.privilegiosCongregacao && p.privilegiosCongregacao.includes(privilegio)
+            );
+
             const podeFazer = p.designacoesReuniao && p.designacoesReuniao.includes(designacao.nome);
             const isAbsent = meetingDate && p.ausencias && p.ausencias.includes(meetingDate);
             
-            // Adiciona à lista apenas se puder fazer a designação e não estiver ausente
-            if (podeFazer && !isAbsent) {
+            // A pessoa só é adicionada à lista se passar em TODOS os filtros, incluindo o de privilégio.
+            if (podeFazer && !isAbsent && temPrivilegiosNecessarios) {
                 eligiblePeopleList.push({ id: doc.id, data: p });
             }
         });
         
-        // Ordena a lista alfabeticamente uma única vez
-        eligiblePeopleList.sort((a, b) => a.data.nomePessoa.localeCompare(b.data.nomePessoa));
+        // ETAPA 2: ORGANIZAÇÃO VISUAL (Lógica do "código novo")
+        // Agora, pegamos a lista já filtrada e a organizamos em grupos.
+        const groupedPeople = new Map();
+        const DEFAULT_GROUP = 'Publicadores';
+        const groupOrder = ['Ancião', 'Servo Ministerial', 'Pioneiro Regular', 'Pioneiro Auxiliar', 'Publicadores'];
 
-        // 3. Itera sobre cada dropdown (select) dentro do cartão da designação
+        eligiblePeopleList.forEach(person => {
+            const priorityOrder = ['Ancião', 'Servo Ministerial', 'Pioneiro Regular', 'Pioneiro Auxiliar'];
+            let assignedGroup = DEFAULT_GROUP;
+            const userPrivileges = person.data.privilegiosCongregacao;
+
+            if (Array.isArray(userPrivileges)) {
+                for (const priority of priorityOrder) {
+                    if (userPrivileges.includes(priority)) {
+                        assignedGroup = priority;
+                        break;
+                    }
+                }
+            }
+            if (!groupedPeople.has(assignedGroup)) {
+                groupedPeople.set(assignedGroup, []);
+            }
+            groupedPeople.get(assignedGroup).push(person);
+        });
+        
+        // Ordena as pessoas dentro de cada grupo alfabeticamente.
+        for (const group of groupedPeople.values()) {
+            group.sort((a, b) => a.data.nomePessoa.localeCompare(b.data.nomePessoa));
+        }
+
+        // ETAPA 3: CONSTRUÇÃO DO DROPDOWN
+        // Esta parte agora constrói os <optgroup> usando apenas as pessoas qualificadas.
         container.querySelectorAll('select.form-select').forEach((participantSelect, participantIndex) => { 
             const currentValue = participantSelect.value;
-            participantSelect.innerHTML = '<option value="">Selecione...</option>'; // Limpa as opções anteriores
+            participantSelect.innerHTML = '<option value="">Selecione...</option>';
 
-            // 4. Itera sobre a lista de pessoas elegíveis para criar as opções de cada dropdown
-            eligiblePeopleList.forEach(person => {
-                const pessoaData = person.data;
+            const pluralize = (name) => (name.endsWith('s') ? name : name + 's');
 
-                
-                let podeAssumirEstePapel = false;
-                
-                // Verifica se é a função de "Dirigente" (o primeiro dropdown numa designação com mais de uma pessoa)
-                if (participantIndex === 0 && (designacao.numeroParticipantes || 1) > 1) {
-                    
-                    // REGRA PADRÃO: Pessoas com '+ à vontade' são sempre elegíveis como dirigentes
-                    if (pessoaData.personalidade === '+ à vontade') {
-                        podeAssumirEstePapel = true;
-                    }
+            groupOrder.forEach(groupName => {
+                if (groupedPeople.has(groupName)) {
+                    const peopleInGroup = groupedPeople.get(groupName);
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = `--- ${pluralize(groupName)} ---`;
 
-                    // NOVA EXCEÇÃO: Se a própria designação permitir, pessoas com '- à vontade' também são elegíveis
-                    if (
-                        Array.isArray(designacao.personalidade) &&
-                        designacao.personalidade.includes('- à vontade') &&
-                        pessoaData.personalidade === '- à vontade'
-                    ) {
-                        podeAssumirEstePapel = true;
-                    }
-
-                } else {
-                    // Para todas as outras funções (Participante, Ajudante 1, Ajudante 2), não há restrição de personalidade
-                    podeAssumirEstePapel = true;
-                }
+                    peopleInGroup.forEach(person => {
+                        const pessoaData = person.data;
+                        let podeAssumirEstePapel = false;
+                        
+                        // A regra de personalidade para o dirigente continua a aplicar-se.
+                        if (participantIndex === 0 && (designacao.numeroParticipantes || 1) > 1) {
+                            if (pessoaData.personalidade === '+ à vontade' || (Array.isArray(designacao.personalidade) && designacao.personalidade.includes('- à vontade'))) {
+                                podeAssumirEstePapel = true;
+                            }
+                        } else {
+                            podeAssumirEstePapel = true;
+                        }
             
+                        if (podeAssumirEstePapel) {
+                            const option = document.createElement('option');
+                            option.value = person.id;
+                            option.textContent = pessoaData.nomePessoa;
+                            optgroup.appendChild(option);
+                        }
+                    });
 
-                if (podeAssumirEstePapel) {
-                    const option = document.createElement('option');
-                    option.value = person.id;
-                    option.textContent = pessoaData.nomePessoa;
-                    participantSelect.appendChild(option);
+                    if (optgroup.children.length > 0) {
+                        participantSelect.appendChild(optgroup);
+                    }
                 }
             });
-
-            // Restaura o valor que estava selecionado anteriormente, se ainda for uma opção válida
+            
             if (currentValue) {
                participantSelect.value = currentValue;
             }
@@ -1303,6 +1401,9 @@ const handleGenderSync = (changedSelect) => {
         console.error(`Erro ao carregar pessoas para a designação '${designacao.nome}':`, error);
     }
 };
+
+
+
 
         const initializeSystemData = async () => {
             try {
@@ -1358,174 +1459,308 @@ const handleGenderSync = (changedSelect) => {
     return null;
 }
 
+function getDetailedParticipantsInRange(start, end, historicoData) {
+    const participantsMap = new Map();
+    const relevantHistory = historicoData.filter(h => h.dia >= start && h.dia <= end);
+
+    relevantHistory.forEach(h => {
+        h.designacoes?.forEach(d => {
+            Object.values(d.participantes).forEach(personId => {
+                if (!participantsMap.has(personId)) {
+                    participantsMap.set(personId, new Set());
+                }
+                participantsMap.get(personId).add(d.designacaoId);
+            });
+        });
+    });
+
+    return participantsMap;
+}
+
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
 // Garanta que a função getDayOfWeekNumber também existe
 function getDayOfWeekNumber(dayOfWeekString) {
     const days = { 'domingo': 0, 'segunda-feira': 1, 'terca-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sabado': 6 };
     return days[dayOfWeekString.toLowerCase()];
 }
 
-        async function preencherAutomaticamente() {
-            console.log("🚀 Iniciando o preenchimento automático...");
-            const ano = await getAnoPainelFirebase();
-            const mes = parseInt(document.getElementById('mes').value);
-            const semana = parseInt(document.getElementById('semanaNumero').value);
-            const dateRanges = getWeekDateRanges(ano, mes, semana);
+ async function preencherAutomaticamente(exclusionSet = new Set()) {
+    console.log("🚀 Iniciando o preenchimento automático (v9 - Correção Final)...");
+    const ano = await getAnoPainelFirebase(); // Mantemos esta linha, pois 'ano' é usado em outros locais.
+    const mes = parseInt(document.getElementById('mes').value);
+    const semana = parseInt(document.getElementById('semanaNumero').value);
+    const dateRanges = getWeekDateRanges(ano, mes, semana);
 
-            const vagas = [];
-            document.querySelectorAll('.active-designation-container').forEach(card => {
-                if (card.dataset.locked === 'true') return;
-                card.querySelectorAll('select.form-select').forEach((select, index) => {
-                    vagas.push({
-                        elementId: select.id,
-                        designacaoId: card.dataset.designacaoId,
-                        instanceIndex: parseInt(select.id.split('-')[2]) - 1,
-                        roleIndex: index,
-                        filters: {
-                            genero: card.querySelector('.genero-preferencia-select')?.value || 'ambos',
-                            idiomas: getSelectedNacionalidades()
+    // ... (a lógica de 'preloadedAssignmentsMap' e 'vagas' continua igual) ...
+    let atribuicoesFinais = {};
+    const preloadedAssignmentsMap = new Map();
+
+    try {
+        const historicoAtualSnapshot = await db.collection('historico').where('ano', '==', ano).where('mes', '==', mes).where('semanaNumero', '==', semana).get();
+        if (!historicoAtualSnapshot.empty) {
+            historicoAtualSnapshot.forEach(doc => {
+                doc.data().designacoes?.forEach(d => {
+                    Object.values(d.participantes).forEach(pId => {
+                        if (!preloadedAssignmentsMap.has(pId)) {
+                            preloadedAssignmentsMap.set(pId, new Set());
                         }
+                        preloadedAssignmentsMap.get(pId).add(d.designacaoId);
                     });
                 });
             });
-
-            if (vagas.length === 0) {
-                console.log("Nenhuma vaga desbloqueada para preencher.");
-                return;
-            }
-
-            const { peopleMap, designationsMap, historicoData } = await getDataFromFirebase();
-            let candidatosPorVaga = await Promise.all(vagas.map(vaga =>
-                gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRanges)
-            ));
-            
-            candidatosPorVaga.sort((a, b) => a.candidatos.length - b.candidatos.length);
-
-            let atribuicoesFinais = {};
-            let pessoasAtribuidas = new Set();
-
-            candidatosPorVaga.forEach(item => {
-                for (const candidato of item.candidatos) {
-                    if (isCandidatoValido(candidato, item.vaga, atribuicoesFinais, pessoasAtribuidas, designationsMap, 'Não')) {
-                        atribuicoesFinais[item.vaga.elementId] = candidato.id;
-                        pessoasAtribuidas.add(candidato.id);
-                        break;
-                    }
+            console.log(`[Regra 4] Mapa de pessoas pré-carregadas:`, preloadedAssignmentsMap);
+        }
+    } catch (error) {
+        console.error("Erro ao verificar o histórico da semana atual:", error);
+    }
+    
+    const vagas = [];
+    document.querySelectorAll('.active-designation-container:not([data-locked="true"])').forEach(card => {
+        card.querySelectorAll('select.form-select').forEach(select => {
+            vagas.push({
+                elementId: select.id,
+                designacaoId: card.dataset.designacaoId,
+                filters: {
+                    genero: card.querySelector('.genero-preferencia-select')?.value || 'ambos',
+                    idiomas: getSelectedNacionalidades()
                 }
             });
-            
-            const vagasVazias = candidatosPorVaga.filter(item => !atribuicoesFinais[item.vaga.elementId]);
-            if (vagasVazias.length > 0) {
-                vagasVazias.forEach(item => {
-                    for (const candidato of item.candidatos) {
-                        if (isCandidatoValido(candidato, item.vaga, atribuicoesFinais, pessoasAtribuidas, designationsMap, 'Moderado')) {
-                             atribuicoesFinais[item.vaga.elementId] = candidato.id;
-                             pessoasAtribuidas.add(candidato.id);
-                             break;
-                        }
-                    }
-                });
-            }
+        });
+    });
 
-            const vagasAindaVazias = candidatosPorVaga.filter(item => !atribuicoesFinais[item.vaga.elementId]);
-             if (vagasAindaVazias.length > 0) {
-                vagasAindaVazias.forEach(item => {
-                    const melhorCandidato = item.candidatos.find(c => !pessoasAtribuidas.has(c.id));
-                     if (melhorCandidato) {
-                        atribuicoesFinais[item.vaga.elementId] = melhorCandidato.id;
-                        pessoasAtribuidas.add(melhorCandidato.id);
-                     }
-                });
-            }
+    if (vagas.length === 0) {
+        console.log("Nenhuma vaga desbloqueada para preencher.");
+        return {};
+    }
 
-            for (const [elementId, pessoaId] of Object.entries(atribuicoesFinais)) {
-                const selectElement = document.getElementById(elementId);
-                if (selectElement) {
-                    selectElement.value = pessoaId;
-                }
-            }
-            console.log("✅ Preenchimento automático concluído.");
-        }
+    // ALTERADO: A chamada agora é simples, sem parâmetros.
+    const { peopleMap, designationsMap, historicoData } = await getDataFromFirebase();
+    
+    // ... (o resto da função continua exatamente igual) ...
+    const detailedPreviousWeek = getDetailedParticipantsInRange(dateRanges.previous.start, dateRanges.previous.end, historicoData);
+    const detailedNextWeek = getDetailedParticipantsInRange(dateRanges.next.start, dateRanges.next.end, historicoData);
+    
+    const availablePeopleMap = new Map();
+    peopleMap.forEach((person, id) => {
+        if (!exclusionSet.has(id)) availablePeopleMap.set(id, person);
+    });
 
-        async function getDataFromFirebase() {
-            const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
-                db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get(),
-                db.collection('designacoes').get(),
-                db.collection('historico').get()
-            ]);
-
-            const peopleMap = new Map();
-            pessoasSnapshot.forEach(doc => peopleMap.set(doc.id, { id: doc.id, ...doc.data() }));
-            const designationsMap = new Map();
-            designacoesSnapshot.forEach(doc => designationsMap.set(doc.id, { id: doc.id, ...doc.data() }));
-            const historicoData = [];
-            historicoSnapshot.forEach(doc => historicoData.push({ id: doc.id, ...doc.data() }));
-
-            return { peopleMap, designationsMap, historicoData };
-        }
-
-        async function gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRanges) {
-            let candidatos = Array.from(peopleMap.values());
-            const designacao = allDesignations.get(vaga.designacaoId);
-            candidatos = candidatos.filter(p => {
-                const atendeGenero = vaga.filters.genero === 'ambos' || p.genero?.toLowerCase() === vaga.filters.genero;
-                const atendeIdioma = vaga.filters.idiomas.includes(p.idioma);
-                const podeFazerDesignacao = p.designacoesReuniao?.includes(designacao.nome);
-                return atendeGenero && atendeIdioma && podeFazerDesignacao;
-            });
-
-            const historicoRelevante = historicoData.filter(h =>
-                (h.dia >= dateRanges.previous.start && h.dia <= dateRanges.previous.end) ||
-                (h.dia >= dateRanges.next.start && h.dia <= dateRanges.next.end)
-            );
-            const pessoasBloqueadasPorHistorico = new Set();
-            historicoRelevante.forEach(h => {
-                h.designacoes?.forEach(d => {
-                    if (d.designacaoId === vaga.designacaoId) {
-                        Object.values(d.participantes).forEach(pessoaId => pessoasBloqueadasPorHistorico.add(pessoaId));
+    const vagaGroups = [];
+    const processedVagas = new Set();
+    vagas.forEach(vaga => {
+        if (processedVagas.has(vaga.elementId)) return;
+        const currentGroup = [vaga];
+        processedVagas.add(vaga.elementId);
+        const designacao = designationsMap.get(vaga.designacaoId);
+        if (designacao && designacao.repeticao && designacao.repeticao.length > 0) {
+            designacao.repeticao.forEach(linkedDesignacaoId => {
+                vagas.forEach(otherVaga => {
+                    if (otherVaga.designacaoId === linkedDesignacaoId && !processedVagas.has(otherVaga.elementId)) {
+                        currentGroup.push(otherVaga);
+                        processedVagas.add(otherVaga.elementId);
                     }
                 });
             });
-            candidatos = candidatos.filter(p => !pessoasBloqueadasPorHistorico.has(p.id));
-
-            const candidatosComFrequencia = candidatos.map(candidato => {
-                let frequencia = 0;
-                historicoData.forEach(h => {
-                    h.designacoes?.forEach(d => {
-                        if (d.designacaoId === vaga.designacaoId && Object.values(d.participantes).includes(candidato.id)) {
-                            frequencia++;
-                        }
-                    });
-                });
-                return { ...candidato, frequencia };
-            });
-            candidatosComFrequencia.sort((a, b) => a.frequencia - b.frequencia);
-            return { vaga, candidatos: candidatosComFrequencia };
         }
+        vagaGroups.push(currentGroup);
+    });
+    
+    vagaGroups.sort((a, b) => b.length - a.length);
+
+    for (const group of vagaGroups) {
+        const sharedCandidates = await findSharedCandidatesForGroup(group, availablePeopleMap, historicoData, dateRanges, detailedPreviousWeek, detailedNextWeek);
+        if (sharedCandidates.length === 0) continue;
         
-        function isCandidatoValido(candidato, vaga, atribuicoesAtuais, pessoasAtribuidas, designationsMap, nivelBloqueio) {
-            const designacaoAtual = designationsMap.get(vaga.designacaoId);
-            if (!designacaoAtual) return false;
-            if (pessoasAtribuidas.has(candidato.id)) {
-                const vagaOcupadaId = Object.keys(atribuicoesAtuais).find(key => atribuicoesAtuais[key] === candidato.id);
-                const designacaoOcupada = designationsMap.get(vagaOcupadaId.split('-')[1]);
-                const repeticaoPermite = designacaoAtual.repeticao?.includes(designacaoOcupada?.id) || designacaoOcupada?.repeticao?.includes(designacaoAtual.id);
-                return repeticaoPermite;
+        const bestScore = sharedCandidates[0].frequencia;
+        const bestCandidates = sharedCandidates.filter(c => c.frequencia === bestScore);
+        shuffleArray(bestCandidates);
+
+        for (const chosenCandidate of bestCandidates) {
+            if (isCandidatoValido(chosenCandidate, group[0], atribuicoesFinais, preloadedAssignmentsMap, designationsMap, 'Não')) {
+                group.forEach(vagaInGroup => {
+                    atribuicoesFinais[vagaInGroup.elementId] = chosenCandidate.id;
+                });
+                break; 
             }
-            for (const [vagaAtribuidaId, pessoaId] of Object.entries(atribuicoesAtuais)) {
-                const designacaoAtribuidaId = document.getElementById(vagaAtribuidaId).closest('.active-designation-container').dataset.designacaoId;
-                const designacaoAtribuida = designationsMap.get(designacaoAtribuidaId);
-                if (!designacaoAtribuida) continue;
-                const bloqueioAtual = designacaoAtual.bloqueio?.[designacaoAtribuida.id];
-                if (bloqueioAtual === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioAtual === 'Moderado')) {
-                    return false;
-                }
-                const bloqueioOutro = designacaoAtribuida.bloqueio?.[designacaoAtual.id];
-                if (bloqueioOutro === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioOutro === 'Moderado')) {
-                    return false;
-                }
-            }
-            return true;
         }
+    }
+    
+    console.log("✅ Preenchimento (v9) concluído.");
+    return atribuicoesFinais;
+}
+
+
+
+
+
+async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dateRanges, participantesSemanaAnterior, participantesSemanaSeguinte) {
+    if (!group || group.length === 0) {
+        return [];
+    }
+
+    // Gera candidatos para a primeira vaga do grupo para ter uma lista inicial.
+    const firstVagaItem = await gerarCandidatosParaVaga(group[0], peopleMap, historicoData, dateRanges, participantesSemanaAnterior, participantesSemanaSeguinte);
+    let sharedCandidates = new Map(firstVagaItem.candidatos.map(c => [c.id, c]));
+
+    // Se houver mais vagas no grupo, filtra a lista inicial.
+    for (let i = 1; i < group.length; i++) {
+        if (sharedCandidates.size === 0) break; // Otimização: se já não há candidatos, para.
+        
+        const nextVagaItem = await gerarCandidatosParaVaga(group[i], peopleMap, historicoData, dateRanges, participantesSemanaAnterior, participantesSemanaSeguinte);
+        const nextCandidatesIds = new Set(nextVagaItem.candidatos.map(c => c.id));
+        
+        // Mantém apenas os candidatos que também são válidos para a vaga seguinte.
+        for (const candidateId of sharedCandidates.keys()) {
+            if (!nextCandidatesIds.has(candidateId)) {
+                sharedCandidates.delete(candidateId);
+            }
+        }
+    }
+
+    const finalCandidates = Array.from(sharedCandidates.values());
+    
+    // Reordena a lista final de candidatos partilhados.
+    finalCandidates.sort((a, b) => {
+        if (a.frequencia !== b.frequencia) return a.frequencia - b.frequencia;
+        return a.isFromNextWeek - b.isFromNextWeek;
+    });
+
+    return finalCandidates;
+}
+
+    async function getDataFromFirebase() {
+    // NOVO: A função agora é responsável por obter o ano.
+    const ano = await getAnoPainelFirebase();
+
+    const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
+        db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get(),
+        db.collection('designacoes').get(),
+        // A consulta ao histórico continua filtrada pelo ano, mas a variável 'ano' agora é local.
+        db.collection('historico').where('ano', '==', ano).get()
+    ]);
+
+    const peopleMap = new Map();
+    pessoasSnapshot.forEach(doc => peopleMap.set(doc.id, { id: doc.id, ...doc.data() }));
+    const designationsMap = new Map();
+    designacoesSnapshot.forEach(doc => designationsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+    const historicoData = [];
+    historicoSnapshot.forEach(doc => historicoData.push({ id: doc.id, ...doc.data() }));
+
+    return { peopleMap, designationsMap, historicoData };
+}
+
+   async function gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRanges, detailedPreviousWeek, detailedNextWeek) {
+    const designacao = allDesignations.get(vaga.designacaoId);
+    
+    // Regra do Privilégio Congregacional (mantida da versão anterior).
+    const privilegiosExigidos = designacao.quemFaz && designacao.quemFaz.length > 0
+        ? designacao.quemFaz
+        : ["Publicador", "Pioneiro", "Pioneiro Regular", "Servo Ministerial", "Ancião"];
+
+    let candidatos = Array.from(peopleMap.values());
+
+    candidatos = candidatos.filter(p => {
+        // Filtros básicos (género, idioma, capacidade, privilégio).
+        const atendeGenero = vaga.filters.genero === 'ambos' || p.genero?.toLowerCase() === vaga.filters.genero;
+        const atendeIdioma = vaga.filters.idiomas.includes(p.idioma);
+        const podeFazerDesignacao = p.designacoesReuniao?.includes(designacao.nome);
+        const temPrivilegiosNecessarios = privilegiosExigidos.some(
+            privilegio => p.privilegiosCongregacao && p.privilegiosCongregacao.includes(privilegio)
+        );
+
+        // REGRA 1: Não pode ter feito ESTA designação na semana passada.
+        const fezEstaDesignacaoSemanaPassada = detailedPreviousWeek.has(p.id) && detailedPreviousWeek.get(p.id).has(vaga.designacaoId);
+        
+        // REGRA 2: Não pode fazer ESTA designação na próxima semana.
+        const faraEstaDesignacaoProximaSemana = detailedNextWeek.has(p.id) && detailedNextWeek.get(p.id).has(vaga.designacaoId);
+
+        return atendeGenero && atendeIdioma && podeFazerDesignacao && temPrivilegiosNecessarios && !fezEstaDesignacaoSemanaPassada && !faraEstaDesignacaoProximaSemana;
+    });
+
+    // O resto da função (cálculo de frequência e ordenação) continua igual.
+    const candidatosComFrequencia = candidatos.map(candidato => {
+        let frequencia = 0;
+        historicoData.forEach(h => {
+            h.designacoes?.forEach(d => {
+                if (d.designacaoId === vaga.designacaoId && Object.values(d.participantes).includes(candidato.id)) {
+                    frequencia++;
+                }
+            });
+        });
+        
+        // Mantemos esta tag como um critério de desempate geral (prefere quem está totalmente livre na próxima semana).
+        const isFromNextWeek = detailedNextWeek.has(candidato.id);
+        
+        return { ...candidato, frequencia, isFromNextWeek };
+    });
+
+    candidatosComFrequencia.sort((a, b) => {
+        if (a.frequencia !== b.frequencia) return a.frequencia - b.frequencia;
+        return a.isFromNextWeek - b.isFromNextWeek;
+    });
+
+    return { vaga, candidatos: candidatosComFrequencia };
+}
+
+      function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignmentsMap, designationsMap, nivelBloqueio) {
+    const designacaoAtual = designationsMap.get(vaga.designacaoId);
+    if (!designacaoAtual) return false;
+
+    // Obtém uma lista de todas as designações que o candidato já tem, de ambas as fontes.
+    const existingDesignationIds = new Set();
+    
+    // Fonte 1: Designações pré-carregadas do histórico (ex: da parte da "Escola").
+    if (preloadedAssignmentsMap.has(candidato.id)) {
+        preloadedAssignmentsMap.get(candidato.id).forEach(id => existingDesignationIds.add(id));
+    }
+
+    // Fonte 2: Designações já feitas nesta execução do foguetão.
+    for (const [vagaId, pessoaId] of Object.entries(atribuicoesAtuais)) {
+        if (pessoaId === candidato.id) {
+            const dId = document.getElementById(vagaId).closest('.active-designation-container').dataset.designacaoId;
+            existingDesignationIds.add(dId);
+        }
+    }
+
+    // Se a pessoa não tem nenhuma designação, ela é válida (do ponto de vista de duplicação).
+    if (existingDesignationIds.size === 0) {
+        return true;
+    }
+
+    // Agora, verifica as regras de bloqueio/repetição para cada designação que a pessoa já tem.
+    for (const existingD_Id of existingDesignationIds) {
+        const designacaoExistente = designationsMap.get(existingD_Id);
+        if (!designacaoExistente) continue; // Pula se a designação não for encontrada.
+
+        // Verifica se a designação atual permite repetir a existente.
+        const repeticaoPermitida = designacaoAtual.repeticao?.includes(existingD_Id) || designacaoExistente.repeticao?.includes(designacaoAtual.id);
+        
+        // Se a repetição é permitida, não precisamos verificar o bloqueio.
+        if (repeticaoPermitida) {
+            continue; // Passa para a próxima designação existente.
+        }
+
+        // Se a repetição não é permitida, verifica as regras de bloqueio.
+        const bloqueioAtual = designacaoAtual.bloqueio?.[existingD_Id];
+        if (bloqueioAtual === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioAtual === 'Moderado')) {
+            return false; // Bloqueio encontrado. Candidato inválido.
+        }
+        const bloqueioOutro = designacaoExistente.bloqueio?.[designacaoAtual.id];
+        if (bloqueioOutro === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioOutro === 'Moderado')) {
+            return false; // Bloqueio encontrado. Candidato inválido.
+        }
+    }
+
+    // Se passou por todas as verificações, o candidato é válido.
+    return true;
+}
 
         function getWeekDateRanges(ano, mes, semana) {
             let firstDayOfMonth = new Date(ano, mes - 1, 1);
@@ -1847,6 +2082,10 @@ function getDayOfWeekNumber(dayOfWeekString) {
             }
         };
 
+
+
+
+        
         const getNextOrderNumber = () => {
             return document.querySelectorAll('#designacoesList .order-button.ordered').length + 1;
         };
@@ -1899,6 +2138,9 @@ function getDayOfWeekNumber(dayOfWeekString) {
             });
         };
 
+
+
+        
         const createQuantitySubmenu = (designacaoId, orderButton) => {
             const submenu = document.createElement('div');
             submenu.className = 'quantity-submenu';
