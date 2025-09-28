@@ -1813,7 +1813,7 @@ function makeTableSortable(table) {
             return count;
         };
 
-      const getDiasSemana = (ano, mes, semanaNumero) => {
+  const getDiasSemana = (ano, mes, semanaNumero) => {
     const primeiroDiaMes = new Date(ano, mes - 1, 1);
     let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
     if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7;
@@ -1827,17 +1827,20 @@ function makeTableSortable(table) {
     const inicioSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7);
     const fimSemanaDate = new Date(ano, mes - 1, primeiroSegundaMes.getDate() + (semanaNumero - 1) * 7 + 6);
 
+    const formatarData = (date) => date.getDate();
+
     const formatarMes = (date) => {
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         return monthNames[date.getMonth()];
     };
 
-    const inicio_dia = inicioSemanaDate.getDate();
-    const fim_dia = fimSemanaDate.getDate();
+    const inicio_dia = formatarData(inicioSemanaDate);
+    const fim_dia = formatarData(fimSemanaDate);
     const inicio_mes = formatarMes(inicioSemanaDate);
     const fim_mes = formatarMes(fimSemanaDate);
 
-    // LÓGICA CORRIGIDA: A string é sempre construída no formato completo.
+    // ALTERAÇÃO PRINCIPAL: A lógica condicional foi removida.
+    // Agora, a string é sempre construída no formato completo, incluindo ambos os meses.
     const diasSemanaString = `${inicio_dia} ${inicio_mes} - ${fim_dia} ${fim_mes}`;
     
     return diasSemanaString;
