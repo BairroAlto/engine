@@ -629,13 +629,17 @@
 /* Ícone de perigo */
 #validation-alert-icon {
     font-size: 36px;
-    color: #e74c3c;
+    color: #e74c3c; /* Vermelho por defeito para erros críticos */
     cursor: pointer;
     background-color: white;
     border-radius: 50%;
     padding: 10px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, color 0.3s ease; /* Adiciona transição de cor */
+}
+
+#validation-alert-icon.warning-only {
+    color: #f39c12; /* Laranja/Amarelo para avisos */
 }
 
 #validation-alert-icon:hover {
@@ -815,6 +819,42 @@
     width: 160px;          /* Reduz a largura do dropdown */
 }
 
+.form-select.warning-selection {
+    border: 2px solid #f39c12; /* Laranja/Amarelo */
+    background-color: #fef9e7;
+}
+
+/* Estilo para o item de aviso na lista do painel */
+#validation-list li.warning-item {
+    color: #8a6d3b; /* Cor de texto mais escura para legibilidade */
+    display: flex;
+    align-items: center;
+}
+
+/* Ícone de aviso amarelo para a lista */
+#validation-list li.warning-item::before {
+    content: "\f071"; /* Ícone de triângulo de aviso do Font Awesome */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    margin-right: 10px;
+    color: #f39c12;
+}
+
+#validation-list li.error-item {
+    color: #c0392b; /* Um vermelho um pouco mais escuro para o texto ser legível */
+    font-weight: bold; /* Dar mais ênfase à mensagem de erro */
+    display: flex;
+    align-items: center;
+}
+
+/* Ícone de erro vermelho para a lista */
+#validation-list li.error-item::before {
+    content: "\f071"; /* Mesmo ícone de triângulo, mas agora vermelho */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    margin-right: 10px;
+    color: #e74c3c; /* Vermelho forte, igual à borda */
+}
 
     </style>
 </head>
@@ -1498,6 +1538,26 @@ const handleGenderSync = (changedSelect) => {
     const instanceContainer = changedSelect.closest('.designacao-instance-container');
     if (!instanceContainer) return;
 
+    // --- INÍCIO DA LÓGICA DO NOVO FILTRO ---
+    // Primeiro, vamos encontrar o seletor do nosso novo filtro
+    const mainContainer = changedSelect.closest('.active-designation-container');
+    const genderMixSelect = mainContainer.querySelector('.gender-mix-select');
+
+    // Verificamos o valor do filtro. Se for 'sim', o trabalho desta função muda.
+    if (genderMixSelect && genderMixSelect.value === 'sim') {
+        // Se a regra é "Sim", devemos garantir que NENHUM filtro de género está ativo.
+        // Iremos percorrer todos os dropdowns e mostrar TODAS as opções.
+        const allSelectsInInstance = instanceContainer.querySelectorAll('.form-select');
+        allSelectsInInstance.forEach(select => {
+            Array.from(select.options).forEach(option => {
+                option.style.display = ''; // Mostra todas as opções
+            });
+        });
+        return; // IMPORTANTE: Pára a execução da função aqui para não aplicar o bloqueio de género.
+    }
+    // --- FIM DA LÓGICA DO NOVO FILTRO ---
+
+    // O código original abaixo só será executado se o filtro for "Não" (o comportamento padrão).
     const allSelectsInInstance = instanceContainer.querySelectorAll('.form-select');
     const selectedPersonId = changedSelect.value;
 
@@ -1600,15 +1660,16 @@ const getRecentPairs = async () => {
 
 // --- Função principal que valida TODAS as seleções na página (COM LOGS) ---
 const validateAllSelections = async () => {
-    // LOG ADICIONADO
     console.log("[VALIDATION] 🚀 Função validateAllSelections iniciada.");
 
     const alertContainer = document.getElementById('validation-alert-container');
     const alertIcon = document.getElementById('validation-alert-icon');
     const validationList = document.getElementById('validation-list');
 
-    // Limpa erros antigos
-    document.querySelectorAll('.form-select.invalid-selection').forEach(el => el.classList.remove('invalid-selection'));
+    // Limpa estilos antigos
+    document.querySelectorAll('.form-select.invalid-selection, .form-select.warning-selection').forEach(el => {
+        el.classList.remove('invalid-selection', 'warning-selection');
+    });
     validationList.innerHTML = '';
     let allViolations = [];
 
@@ -1616,18 +1677,15 @@ const validateAllSelections = async () => {
     const mes = parseInt(document.getElementById('mes').value);
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
 
-    // LOG ADICIONADO
-    console.log(`[VALIDATION] Contexto: Ano=${ano}, Mês=${mes}, Semana=${semanaNumero}`);
-    console.log("[VALIDATION] 📊 A obter dados para as regras...");
-    
     // --- OBTENÇÃO DOS DADOS ---
-    const participantsLastWeek = await getParticipantsLastWeek(ano, mes, semanaNumero);
-    const participantsNextWeek = await getParticipantsNextWeek(ano, mes, semanaNumero);
-    const participantsThisMonth = await getParticipantsThisMonth(ano, mes);
-    const recentPairsMap = await getRecentPairs();
+    const [participantsLastWeek, participantsNextWeek, recentPairsMap, participationStats] = await Promise.all([
+        getParticipantsLastWeek(ano, mes, semanaNumero),
+        getParticipantsNextWeek(ano, mes, semanaNumero),
+        getRecentPairs(),
+        getParticipationStatsForYear(ano)
+    ]);
 
     // --- VERIFICAÇÕES INDIVIDUAIS ---
-    console.log("[VALIDATION] 👤 Verificando designações individuais...");
     const allSelects = document.querySelectorAll('#activeDesignationsContainer .form-select, #leituraBibliaDesignationContainer .form-select');
     const currentSelections = new Map();
 
@@ -1635,123 +1693,119 @@ const validateAllSelections = async () => {
         if (select.value) {
             const personId = select.value;
             const personName = select.options[select.selectedIndex].text;
-            
-            // LOG ADICIONADO
-            console.log(`[VALIDATION] -> Verificando seleção: '${personName}' (ID: ${personId})`);
+            let hasRedError = false;
 
-            // Regra: Dupla designação na mesma semana
             if (currentSelections.has(personId)) {
-                const violationMessage = `${personName} está designado para mais de uma tarefa nesta semana.`;
-                if (!allViolations.includes(violationMessage)) {
-                    allViolations.push(violationMessage);
-                    // LOG ADICIONADO
-                    console.warn(`❗️ VIOLAÇÃO DETETADA: '${personName}' está duplicado na mesma semana.`);
-                }
+                allViolations.push({ message: `${personName} está designado para mais de uma tarefa nesta semana.`, type: 'error' });
                 select.classList.add('invalid-selection');
                 currentSelections.get(personId).selectElement.classList.add('invalid-selection');
+                hasRedError = true;
             } else {
                 currentSelections.set(personId, { selectElement: select, name: personName });
             }
-
-            // Regra: Participou na semana anterior
             if (participantsLastWeek.has(personId)) {
-                const violationMessage = `${personName} participou na semana anterior e não pode ser designado(a).`;
-                if (!allViolations.includes(violationMessage)) {
-                    allViolations.push(violationMessage);
-                    // LOG ADICIONADO
-                    console.warn(`❗️ VIOLAÇÃO DETETADA: '${personName}' participou na semana anterior.`);
-                }
+                allViolations.push({ message: `${personName} participou na semana anterior.`, type: 'error' });
                 select.classList.add('invalid-selection');
+                hasRedError = true;
             }
-            
-            // Regra: Já está designado para a semana seguinte
             if (participantsNextWeek.has(personId)) {
-                const violationMessage = `${personName} já está designado(a) para a semana seguinte.`;
-                if (!allViolations.includes(violationMessage)) {
-                    allViolations.push(violationMessage);
-                    // LOG ADICIONADO
-                    console.warn(`❗️ VIOLAÇÃO DETETADA: '${personName}' já está na semana seguinte.`);
-                }
+                allViolations.push({ message: `${personName} já está designado(a) para a semana seguinte.`, type: 'error' });
                 select.classList.add('invalid-selection');
+                hasRedError = true;
+            }
+
+            if (!hasRedError) {
+                const designacaoId = select.closest('.active-designation-container')?.dataset.designacaoId;
+                if (designacaoId && participationStats.has(designacaoId)) {
+                    const statsForDesignation = participationStats.get(designacaoId);
+                    const personCount = statsForDesignation.counts.get(personId) || 0;
+                    const average = statsForDesignation.average;
+                    if (personCount > average && average > 0) {
+                        const violationMessage = `${personName} já realizou esta designação ${personCount} vez(es) este ano (acima da média de ${average.toFixed(1)}).`;
+                        allViolations.push({ message: violationMessage, type: 'warning' });
+                        select.classList.add('warning-selection');
+                    }
+                }
             }
         }
     });
 
     // --- VERIFICAÇÃO DE PARES ---
-    console.log("[VALIDATION] 👥 Verificando designações de pares...");
-    const designationInstances = document.querySelectorAll('#activeDesignationsContainer .designacao-instance-container, #leituraBibliaDesignationContainer .designacao-instance-container');
-    designationInstances.forEach(instance => {
+    document.querySelectorAll('#activeDesignationsContainer .designacao-instance-container, #leituraBibliaDesignationContainer .designacao-instance-container').forEach(instance => {
         const selectedPeople = [];
         const currentRoles = {};
-        
         instance.querySelectorAll('.form-select').forEach((select, index) => {
             if (select.value) {
                 const personId = select.value;
                 const role = (index === 0) ? 'dirigente' : (index === 1) ? 'morador' : 'ajudante';
                 currentRoles[role] = personId;
-                selectedPeople.push({
-                    id: personId,
-                    name: select.options[select.selectedIndex].text,
-                    element: select
-                });
+                selectedPeople.push({ id: personId, name: select.options[select.selectedIndex].text, element: select });
             }
         });
-
         if (selectedPeople.length >= 2) {
             const pairNames = selectedPeople.map(p => p.name).join(' e ');
-            console.log(`[VALIDATION] -> Analisando par: '${pairNames}'`);
-
             const ids = selectedPeople.map(p => p.id).sort();
             const pairKey = ids.join('_');
-
             const currentRolesEntries = Object.entries(currentRoles).sort((a, b) => a[1].localeCompare(b[1]));
             const currentRolesKey = currentRolesEntries.map(([role, id]) => `${id}:${role}`).join('_');
-
             if (recentPairsMap.has(pairKey)) {
-                console.log(`[VALIDATION] -> Chave do par: '${pairKey}'. Encontrado no histórico.`);
                 const history = recentPairsMap.get(pairKey);
                 const lastDate = new Date(history.lastDate);
-                const currentDate = new Date();
-                
-                console.log(`[VALIDATION] -> Data da última colaboração: ${lastDate.toDateString()}`);
-
                 const lastMonthYear = lastDate.getFullYear() * 12 + lastDate.getMonth();
-                const currentMonthYear = currentDate.getFullYear() * 12 + currentDate.getMonth();
-
+                const currentMonthYear = new Date().getFullYear() * 12 + new Date().getMonth();
                 if (Math.abs(currentMonthYear - lastMonthYear) <= 1) {
-                    allViolations.push(`${pairNames} trabalharam juntos no mês passado ou neste mês. Não podem ser designados em meses consecutivos.`);
+                    allViolations.push({ message: `${pairNames} trabalharam juntos no mês passado ou neste mês.`, type: 'error' });
                     selectedPeople.forEach(p => p.element.classList.add('invalid-selection'));
-                    // LOG ADICIONADO
-                    console.warn(`❗️ VIOLAÇÃO DETETADA: O par '${pairNames}' trabalhou junto no mês passado ou neste mês.`);
-                }
-                else if (history.lastRoles === currentRolesKey) {
-                    allViolations.push(`Aviso: ${pairNames} já fizeram esta designação juntos com os mesmos papéis.`);
-                    selectedPeople.forEach(p => p.element.classList.add('invalid-selection'));
-                    // LOG ADICIONADO
-                    console.info(`💡 AVISO: O par '${pairNames}' já fez esta parte com os mesmos papéis.`);
+                } else if (history.lastRoles === currentRolesKey) {
+                    const hasRedErrorAlready = selectedPeople.some(p => p.element.classList.contains('invalid-selection'));
+                    if (!hasRedErrorAlready) {
+                         allViolations.push({ message: `Aviso: ${pairNames} já fizeram esta parte com os mesmos papéis.`, type: 'warning' });
+                        selectedPeople.forEach(p => p.element.classList.add('warning-selection'));
+                    }
                 }
             }
         }
     });
 
-    // --- Atualizar a UI ---
-    console.log("[VALIDATION] ✅ Verificação concluída.");
-    console.log(`[VALIDATION] -> Total de violações encontradas: ${allViolations.length}`);
+    // --- ATUALIZAR A UI ---
     if (allViolations.length > 0) {
-        const uniqueViolations = [...new Set(allViolations)];
-        console.log("[VALIDATION] -> Lista de Erros:", uniqueViolations);
-        uniqueViolations.forEach(msg => {
+        const hasErrors = allViolations.some(v => v.type === 'error');
+        alertIcon.classList.remove('warning-only');
+        if (!hasErrors) {
+            alertIcon.classList.add('warning-only');
+        }
+
+        const uniqueViolations = Array.from(new Set(allViolations.map(v => v.message)))
+                                     .map(message => allViolations.find(v => v.message === message));
+        
+        // ==========================================================
+        // ============== INÍCIO DA MODIFICAÇÃO AQUI ================
+        // ==========================================================
+        uniqueViolations.forEach(violation => {
             const li = document.createElement('li');
-            li.textContent = msg;
+            li.textContent = violation.message;
+            
+            // Adiciona a classe correta com base no tipo de violação
+            if (violation.type === 'warning') {
+                li.classList.add('warning-item');
+            } else if (violation.type === 'error') {
+                li.classList.add('error-item');
+            }
+            
             validationList.appendChild(li);
         });
+        // ==========================================================
+        // ================ FIM DA MODIFICAÇÃO AQUI =================
+        // ==========================================================
+
         alertContainer.style.display = 'block';
     } else {
         alertContainer.style.display = 'none';
         document.getElementById('validation-panel').classList.remove('active');
     }
-    console.log("[VALIDATION] 🚦 A atualizar a interface do utilizador com os resultados.");
 };
+
+
 
 // Helper para obter a data da reunião (pode precisar de uma versão melhorada)
 function getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao) {
@@ -3312,7 +3366,6 @@ document.addEventListener('click', function(event) {
     designacoesSection.classList.add('active');
     leituraBibliaSection.style.display = 'block';
     iniciarFluxoButton.style.display = 'block';
-    await loadDesignacoes();
     designacoesSection.scrollIntoView({ behavior: 'smooth' });
 });
 
@@ -3582,6 +3635,66 @@ document.addEventListener('click', function(event) {
 };
 
 
+async function getParticipationStatsForYear(ano) {
+    // Se os dados para este ano já estiverem no cache, retorna-os imediatamente
+    if (participationStatsCache.ano === ano && participationStatsCache.data) {
+        return participationStatsCache.data;
+    }
+
+    console.log(`[STATS] Calculando estatísticas de participação para o ano ${ano}...`);
+    const historicoSnapshot = await db.collection('historico')
+                                      .where('ano', '==', ano)
+                                      .where('quando', '==', 'Semana')
+                                      .get();
+
+    // Estrutura: Map<designacaoId, { total: number, participants: Set<personId>, counts: Map<personId, count> }>
+    const stats = new Map();
+
+    historicoSnapshot.forEach(doc => {
+        const historico = doc.data();
+        historico.designacoes?.forEach(desig => {
+            const desigId = desig.designacaoId;
+            if (!desigId) return;
+
+            // Inicializa a estrutura para esta designação se for a primeira vez
+            if (!stats.has(desigId)) {
+                stats.set(desigId, {
+                    total: 0,
+                    participants: new Set(),
+                    counts: new Map()
+                });
+            }
+            const desigStats = stats.get(desigId);
+
+            const allParticipantIds = Object.values(desig.participantes || {});
+            allParticipantIds.forEach(pId => {
+                desigStats.total++;
+                desigStats.participants.add(pId);
+                
+                const currentCount = desigStats.counts.get(pId) || 0;
+                desigStats.counts.set(pId, currentCount + 1);
+            });
+        });
+    });
+
+    // Agora, calcula a média para cada designação
+    const finalData = new Map();
+    for (const [desigId, desigStats] of stats.entries()) {
+        const uniqueParticipantsCount = desigStats.participants.size;
+        const average = uniqueParticipantsCount > 0 ? desigStats.total / uniqueParticipantsCount : 0;
+        
+        finalData.set(desigId, {
+            average: average,
+            counts: desigStats.counts
+        });
+    }
+
+    // Guarda os dados calculados no cache antes de retornar
+    participationStatsCache = { ano: ano, data: finalData };
+    console.log("[STATS] Estatísticas calculadas e guardadas em cache.", finalData);
+    return finalData;
+}
+
 
 // Função "inteligente" para calcular o contexto da semana anterior
 async function getPreviousWeekContext(currentAno, currentMes, currentSemana) {
@@ -3675,7 +3788,6 @@ const getParticipantsThisMonth = async (ano, mes) => {
         if (historicoData.designacoes) {
             historicoData.designacoes.forEach(desig => {
                 if (desig.participantes) {
-                    // *** A CORREÇÃO ESTÁ AQUI ***
                     Object.values(desig.participantes).forEach(personId => participants.add(personId.toString()));
                 }
             });
@@ -4571,7 +4683,7 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
 
 
 
-   const updateActiveDesignationDisplay = async (designacao, order, quantity, instancePreferences = {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences = {}) => {
+     const updateActiveDesignationDisplay = async (designacao, order, quantity, instancePreferences = {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences = {}) => {
     const designacaoId = designacao.id;
 
     // PASSO 1: SALVA O ESTADO ATUAL (OS NOMES SELECIONADOS) ANTES DE FAZER QUALQUER ALTERAÇÃO VISUAL
@@ -4580,14 +4692,16 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
     const isLeituraBiblia = designacao.nome === 'Leitura da Bíblia';
     const containerToUse = isLeituraBiblia ? document.getElementById('leituraBibliaDesignationContainer') : document.getElementById('activeDesignationsContainer');
 
-    if (quantity <= 0) {
-        // Remove todas as instâncias se a quantidade for 0 ou menos
-        for (let instanceIndex = 1; instanceIndex <= 7; instanceIndex++) {
-            const existingDisplay = containerToUse.querySelector(`#active-designation-${designacaoId}-${instanceIndex}`);
-            if (existingDisplay) {
-                existingDisplay.remove();
-            }
+    // Remove os cards que já não são necessários (se a quantidade diminuiu)
+    const existingContainers = containerToUse.querySelectorAll(`.active-designation-container[data-designacao-id="${designacaoId}"]`);
+    existingContainers.forEach(container => {
+        const instanceNum = parseInt(container.id.split('-').pop());
+        if (instanceNum > quantity) {
+            container.remove();
         }
+    });
+
+    if (quantity <= 0) {
         return;
     }
 
@@ -4616,74 +4730,53 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
         designacaoInstanceContainer.style.marginBottom = '20px';
 
         const orderLevel = designacao.ordem || 0;
-        if (orderLevel === 1) {
-            designationDisplayContainer.style.backgroundColor = 'rgba(46, 204, 113, 0.1)';
-        } else if (orderLevel === 2) {
-            designationDisplayContainer.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
-        } else if (orderLevel === 3) {
-            designationDisplayContainer.style.backgroundColor = 'rgba(243, 156, 18, 0.1)';
-        } else if (orderLevel === 4) {
-            designationDisplayContainer.style.backgroundColor = 'rgba(155, 89, 182, 0.1)';
-        } else if (orderLevel === 5) {
-            designationDisplayContainer.style.backgroundColor = 'rgba(231, 76, 60, 0.1)';
-        } else if (orderLevel === 6) {
-            designationDisplayContainer.style.backgroundColor = 'rgba(26, 188, 156, 0.1)';
-        } else if (orderLevel === 7) {
-            designationDisplayContainer.style.backgroundColor = 'rgba(241, 196, 15, 0.1)';
-        } else {
-            designationDisplayContainer.style.backgroundColor = '#f8f9fa';
-        }
+        if (orderLevel === 1) { designationDisplayContainer.style.backgroundColor = 'rgba(46, 204, 113, 0.1)'; } 
+        else if (orderLevel === 2) { designationDisplayContainer.style.backgroundColor = 'rgba(52, 152, 219, 0.1)'; }
+        else if (orderLevel === 3) { designationDisplayContainer.style.backgroundColor = 'rgba(243, 156, 18, 0.1)'; }
+        else if (orderLevel === 4) { designationDisplayContainer.style.backgroundColor = 'rgba(155, 89, 182, 0.1)'; }
+        else if (orderLevel === 5) { designationDisplayContainer.style.backgroundColor = 'rgba(231, 76, 60, 0.1)'; }
+        else if (orderLevel === 6) { designationDisplayContainer.style.backgroundColor = 'rgba(26, 188, 156, 0.1)'; }
+        else if (orderLevel === 7) { designationDisplayContainer.style.backgroundColor = 'rgba(241, 196, 15, 0.1)'; }
+        else { designationDisplayContainer.style.backgroundColor = '#f8f9fa'; }
 
         const title = document.createElement('h5');
         title.textContent = `${designacao.nome || designacaoId} (${designacaoInstance})`;
         title.style.marginBottom = '10px';
         designacaoInstanceContainer.appendChild(title);
 
-        let numeroParticipantesDynamic = 1;
-        const instanceKey = `participantes-${designacaoId}-${designacaoInstance}`;
-        if (temporaryPreferences[instanceKey]) {
-            numeroParticipantesDynamic = parseInt(temporaryPreferences[instanceKey]);
-        } else if (designacao.numeroParticipantes) {
-            numeroParticipantesDynamic = parseInt(designacao.numeroParticipantes);
-        }
+        // --- LÓGICA DE PREFERÊNCIAS (AGORA CENTRALIZADA) ---
+        const instanceKeyPrefix = `${designacaoId}-${designacaoInstance}`;
+        const keyNumParticipantes = `numParticipantes-${instanceKeyPrefix}`;
+        const keyGeneroPref = `generoPreferencia-${instanceKeyPrefix}`;
+        const keyGeneroMix = `generoMix-${instanceKeyPrefix}`;
+
+        let numeroParticipantesDynamic = parseInt(temporaryPreferences[keyNumParticipantes]) || designacao.numeroParticipantes || 1;
+        let generoPreferencia = temporaryPreferences[keyGeneroPref] || (designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'masculino feminino');
+        let generoMix = temporaryPreferences[keyGeneroMix] || 'nao';
 
         const participantRoles = [];
-        if (numeroParticipantesDynamic === 1) {
-            participantRoles.push("Dirigente");
-        } else if (numeroParticipantesDynamic === 2) {
-            participantRoles.push("Dirigente", "Morador");
-        } else if (numeroParticipantesDynamic === 3) {
-            participantRoles.push("Dirigente", "Morador", "Ajudante");
-        }
+        if (numeroParticipantesDynamic === 1) { participantRoles.push("Dirigente"); } 
+        else if (numeroParticipantesDynamic === 2) { participantRoles.push("Dirigente", "Morador"); } 
+        else if (numeroParticipantesDynamic === 3) { participantRoles.push("Dirigente", "Morador", "Ajudante"); }
 
         for (let i = 0; i < numeroParticipantesDynamic; i++) {
             const roleLabel = document.createElement('span');
             roleLabel.textContent = (numeroParticipantesDynamic > 1) ? participantRoles[i] : `Participante`;
-            roleLabel.style.fontSize = '0.9em';
-            roleLabel.style.color = '#777';
-            roleLabel.style.display = 'block';
-            roleLabel.style.marginBottom = '3px';
+            roleLabel.style.fontSize = '0.9em'; roleLabel.style.color = '#777'; roleLabel.style.display = 'block'; roleLabel.style.marginBottom = '3px';
             designacaoInstanceContainer.appendChild(roleLabel);
 
             let participantSelect = document.createElement('select');
             participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
             participantSelect.className = 'form-select';
-            participantSelect.style.marginBottom = '10px';
-            participantSelect.style.width = '100%';
+            participantSelect.style.marginBottom = '10px'; participantSelect.style.width = '100%';
             participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
 
-            // PASSO 2: RESTAURA O ESTADO NO DROPDOWN RECÉM-CRIADO
-            if (participantSelections[designacaoId] &&
-                participantSelections[designacaoId][designacaoInstance] &&
-                participantSelections[designacaoId][designacaoInstance][i]) {
+            if (participantSelections[designacaoId] && participantSelections[designacaoId][designacaoInstance] && participantSelections[designacaoId][designacaoInstance][i]) {
                 participantSelect.value = participantSelections[designacaoId][designacaoInstance][i];
             }
-
-            // PASSO 3: ADICIONA O LISTENER PARA MANTER O ESTADO SEMPRE ATUALIZADO
             participantSelect.addEventListener('change', () => {
                 saveSelectionsForDesignation(designacaoId);
             });
-
             designacaoInstanceContainer.appendChild(participantSelect);
         }
 
@@ -4701,9 +4794,7 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
             <div class="filter-options">
                 <label for="num-participantes-${designacaoInstance}">Número de Participantes</label>
                 <select id="num-participantes-${designacaoInstance}">
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
+                    <option value="1">1</option> <option value="2">2</option> <option value="3">3</option>
                 </select>
             </div>
             <div class="filter-options" style="margin-top: 15px;">
@@ -4714,21 +4805,39 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
                     <option value="feminino">Feminino</option>
                 </select>
             </div>
+            <div class="filter-options" style="margin-top: 15px;">
+                <label for="genero-mix-${designacaoInstance}">Masculino com Feminino</label>
+                <select id="genero-mix-${designacaoInstance}" class="gender-mix-select">
+                    <option value="nao">Não</option> <option value="sim">Sim</option>
+                </select>
+            </div>
         `;
 
+        // Configura e adiciona listeners aos filtros
         const numParticipantesSelect = filterPopup.querySelector(`#num-participantes-${designacaoInstance}`);
         numParticipantesSelect.value = numeroParticipantesDynamic;
         numParticipantesSelect.addEventListener('change', (e) => {
-            temporaryPreferences[instanceKey] = e.target.value;
+            temporaryPreferences[keyNumParticipantes] = e.target.value; // SALVA A PREFERÊNCIA
             updateActiveDesignationDisplay(designacao, order, quantity, instancePreferences, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
         });
         
         const generoPreferenciaSelect = filterPopup.querySelector(`#genero-preferencia-${designacaoInstance}`);
-        generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'masculino feminino';
+        generoPreferenciaSelect.value = generoPreferencia;
         generoPreferenciaSelect.addEventListener('change', (e) => {
+            temporaryPreferences[keyGeneroPref] = e.target.value; // SALVA A PREFERÊNCIA
             const selectedGender = e.target.value;
             loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGender);
             filterPopup.classList.remove('active');
+        });
+        
+        const generoMixSelect = filterPopup.querySelector(`#genero-mix-${designacaoInstance}`);
+        generoMixSelect.value = generoMix;
+        generoMixSelect.addEventListener('change', (e) => {
+            temporaryPreferences[keyGeneroMix] = e.target.value; // SALVA A PREFERÊNCIA
+            const firstParticipantSelect = designationDisplayContainer.querySelector('.form-select');
+            if (firstParticipantSelect) {
+                handleGenderSync(firstParticipantSelect);
+            }
         });
 
         filterIcon.addEventListener('click', (e) => {
@@ -4742,6 +4851,7 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
         designationDisplayContainer.appendChild(filterPopup);
         designationDisplayContainer.appendChild(filterIcon);
 
+        // Ícones de ação (sem alteração de lógica)
         const lockIcon = document.createElement('i');
         lockIcon.className = 'fas fa-lock-open lock-icon';
         lockIcon.title = 'Bloquear/Desbloquear Designação';
@@ -4792,8 +4902,8 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
         });
         designationDisplayContainer.appendChild(labIcon);
         
-        const selectedGenderOnLoad = generoPreferenciaSelect.value;
-        await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, selectedGenderOnLoad);
+        // Carrega as opções de pessoas com base na preferência de género já definida
+        await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, generoPreferencia);
     }
     
     // PASSO 4 (REAPLICAR): Garante que as seleções são mantidas mesmo depois de as opções serem carregadas
@@ -4805,7 +4915,6 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
             selects.forEach((select, i) => {
                 const savedValue = participantSelections[designacaoId][designacaoInstance][i];
                 if (savedValue) {
-                    // Verifica se a opção ainda existe antes de a definir
                     if (select.querySelector(`option[value="${savedValue}"]`)) {
                         select.value = savedValue;
                     }
@@ -4866,6 +4975,7 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
 
             let temporaryPreferences = {}; // Objeto para guardar as preferências temporárias
 let participantSelections = {};
+let participationStatsCache = { ano: null, data: null };
 
             // Initial load of designacoes
             loadDesignacoes();
