@@ -664,24 +664,45 @@ body.popup-open {
 
 
         <!-- POPUP DE PERFIL DO PARTICIPANTE -->
-        <div id="perfilPopup" class="popup-overlay">
-            <div class="popup-content" style="max-width: 90%; width: 1200px;">
-                <div class="popup-header"><h2 class="popup-title">Perfil do Participante</h2><button class="popup-close-button" id="closePerfilPopup">×</button></div>
-                <div class="popup-body">
-                    <div class="form-group" style="position: relative;">
-                        <label for="pesquisaPessoa">Pesquisar Participante:</label>
-                        <input type="text" id="pesquisaPessoa" class="form-control" placeholder="Comece a digitar um nome..." autocomplete="off">
-                        <div id="pesquisaSugestoes" class="search-suggestions"></div>
-                    </div>
-                    <div id="perfilTableContainer" style="overflow-x: auto; max-height: 55vh; display: none;">
-                        <table class="estatisticas-table">
-                            <thead><tr><th>Data</th><th>Designação</th><th>Companheiro(s)</th><th>Meu Papel</th></tr></thead>
-                            <tbody id="perfilTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
+       <div id="perfilPopup" class="popup-overlay">
+    <div class="popup-content" style="max-width: 90%; width: 1200px;">
+        <div class="popup-header">
+            <h2 class="popup-title">Perfil do Participante</h2>
+            <button class="popup-close-button" id="closePerfilPopup">×</button>
+        </div>
+        <div class="popup-body">
+            <!-- Caixa de Pesquisa -->
+            <div class="form-group" style="position: relative;">
+                <label for="pesquisaPessoa">Pesquisar Participante:</label>
+                <input type="text" id="pesquisaPessoa" class="form-control" placeholder="A carregar participantes..." autocomplete="off" disabled>
+                <div id="pesquisaSugestoes" class="search-suggestions"></div>
+            </div>
+
+            <!-- Filtros (inicialmente ocultos) -->
+            <div id="perfilFiltrosContainer" class="estatisticas-filtros-container" style="display: none; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; align-items: flex-end;">
+                <div class="form-group"><label for="perfilFiltroAno">Ano:</label><select id="perfilFiltroAno"></select></div>
+                <div class="form-group"><label for="perfilFiltroMes">Mês:</label><select id="perfilFiltroMes"><option value="">Todos</option><option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select></div>
+                <div class="form-group"><label for="perfilFiltroDesignacao">Designação:</label><select id="perfilFiltroDesignacao"></select></div>
+                <div class="form-group"><label for="perfilFiltroPapel">Meu Papel:</label><select id="perfilFiltroPapel"><option value="">Todos</option><option value="dirigente">Dirigente</option><option value="ajudante1">Ajudante 1</option><option value="ajudante2">Ajudante 2</option><option value="participante">Participante</option></select></div>
+            </div>
+
+            <!-- Indicador de Carregamento -->
+            <div id="perfilLoading" style="text-align: center; padding: 40px; font-size: 18px; display: none;">
+                <i class="fas fa-spinner fa-spin"></i> A carregar histórico...
+            </div>
+            
+            <!-- Tabela de Histórico -->
+            <div id="perfilTableContainer" style="overflow-x: auto; max-height: 55vh; display: none;">
+                <table class="estatisticas-table">
+                    <thead>
+                        <tr><th>Ano</th><th>Data</th><th>Designação</th><th>Companheiro(s)</th><th>Meu Papel</th></tr>
+                    </thead>
+                    <tbody id="perfilTableBody"></tbody>
+                </table>
             </div>
         </div>
+    </div>
+</div>
 
         <!-- POPUP DE ANÁLISE DE PAR/TRIO -->
         <div id="pairAnalysisPopup" class="popup-overlay">
@@ -841,8 +862,79 @@ body.popup-open {
         let temporaryPreferences = {};
         let currentTurboAssignments = new Map();
         let participationStatsCache = { ano: null, data: null };
+        let currentPersonParticipationRecords = [];
+
+
+
+        // --- Elementos da DOM ---
+const perfilPopup = document.getElementById('perfilPopup');
+const closePerfilPopup = document.getElementById('closePerfilPopup');
+const pesquisaInput = document.getElementById('pesquisaPessoa');
+const sugestoesDiv = document.getElementById('pesquisaSugestoes');
+const perfilFiltros = document.getElementById('perfilFiltrosContainer');
+const perfilLoading = document.getElementById('perfilLoading');
+const perfilTableContainer = document.getElementById('perfilTableContainer');
+const perfilTableBody = document.getElementById('perfilTableBody');
+const perfilFiltroAno = document.getElementById('perfilFiltroAno');
+const perfilFiltroMes = document.getElementById('perfilFiltroMes');
+const perfilFiltroDesignacao = document.getElementById('perfilFiltroDesignacao');
+const perfilFiltroPapel = document.getElementById('perfilFiltroPapel');
 
     
+
+// --- Lógica de Abertura/Fecho e Pesquisa ---
+document.getElementById('perfilButton').addEventListener('click', () => {
+    perfilPopup.style.display = 'flex';
+});
+
+closePerfilPopup.addEventListener('click', () => {
+    perfilPopup.style.display = 'none';
+});
+
+pesquisaInput.addEventListener('input', () => {
+    console.log('--------------------');
+    console.log('[DEBUG] Evento "input" disparado no campo de pesquisa.');
+    const query = pesquisaInput.value.toLowerCase();
+    console.log(`[DEBUG] Termo de pesquisa (query): "${query}"`);
+    sugestoesDiv.innerHTML = '';
+
+    // A CONDIÇÃO FOI ALTERADA AQUI
+    if (query.length < 1) { 
+        sugestoesDiv.style.display = 'none';
+        console.log('[DEBUG] Query vazia. Sugestões escondidas.');
+        return;
+    }
+
+    console.log(`[DEBUG] A pesquisar na lista 'allPeople', que contém ${allPeople.length} registos.`);
+    const filteredPeople = allPeople.filter(p => p.nome.toLowerCase().includes(query));
+    console.log(`[DEBUG] Encontrados ${filteredPeople.length} resultados correspondentes.`);
+
+    filteredPeople.forEach(person => {
+        const item = document.createElement('div');
+        item.className = 'suggestion-item';
+        item.textContent = person.nome;
+        item.addEventListener('click', () => {
+            pesquisaInput.value = person.nome;
+            sugestoesDiv.style.display = 'none';
+            loadParticipantProfile(person.id);
+        });
+        sugestoesDiv.appendChild(item);
+    });
+
+    sugestoesDiv.style.display = filteredPeople.length > 0 ? 'block' : 'none';
+    console.log(`[DEBUG] A caixa de sugestões está agora ${filteredPeople.length > 0 ? 'visível' : 'escondida'}.`);
+    console.log('--------------------');
+});
+
+
+
+
+
+
+
+
+
+
 
 // ======================================================================== //
 // ============ INÍCIO: LÓGICA DE VALIDAÇÃO EM TEMPO REAL (TRIÂNGULO) ===== //
@@ -1123,9 +1215,9 @@ const validationPanelClose = document.getElementById('validation-panel-close');
 if(validationIcon && validationPanel && validationPanelClose) {
     validationIcon.addEventListener('click', () => validationPanel.classList.toggle('active'));
     validationPanelClose.addEventListener('click', () => validationPanel.classList.remove('active'));
-    document.addEventListener('click', (event) => {
-        if (!validationPanel.contains(event.target) && !validationIcon.contains(event.target)) {
-            validationPanel.classList.remove('active');
+   document.addEventListener('click', (event) => {
+        if (pesquisaInput && !pesquisaInput.contains(event.target) && sugestoesDiv && !sugestoesDiv.contains(event.target)) {
+            sugestoesDiv.style.display = 'none';
         }
     });
 }
@@ -2047,7 +2139,9 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
 
 
 
-        const initializeSystemData = async () => {
+      const initializeSystemData = async () => {
+            console.log('[DEBUG] initializeSystemData: Iniciando...'); // Log de início
+            const searchInput = document.getElementById('pesquisaPessoa');
             try {
                 const [pessoasSnapshot] = await Promise.all([
                     db.collection('pessoas').orderBy('nomePessoa').get(),
@@ -2059,12 +2153,22 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
                     allPeople.push({ id: doc.id, nome: pessoaData.nomePessoa });
                     allPeopleDataMap.set(doc.id, { nome: pessoaData.nomePessoa, genero: pessoaData.genero });
                 });
-                console.log("Dados do sistema (Pessoas) inicializados.");
-                await initializeDiscursos(); 
+
+                console.log(`[DEBUG] initializeSystemData: ${allPeople.length} pessoas carregadas para a lista 'allPeople'.`); // Log do número de pessoas
+
+                // Ativa o campo de pesquisa e atualiza o placeholder
+                searchInput.disabled = false;
+                searchInput.placeholder = "Comece a digitar um nome...";
+                console.log('[DEBUG] initializeSystemData: Campo de pesquisa ativado.'); // Log de confirmação
+
+                await initializeDiscursos();
             } catch (error) {
                 console.error("Erro ao inicializar dados do sistema:", error);
+                searchInput.placeholder = "Erro ao carregar participantes";
             }
         };
+
+
 
         function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
     if (!ano || !diasSemanaString || !diaSemanaReuniao) {
@@ -2868,36 +2972,135 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
             return records;
         };
 
-        const loadParticipantProfile = async (personId) => {
-            const container = document.getElementById('perfilTableContainer');
-            container.style.display = 'block';
-            container.innerHTML = 'A carregar...';
-            const history = await fetchIndividualHistory(personId);
-            container.innerHTML = '';
-            container.appendChild(buildHistoryTable(history, `Histórico de ${(allPeopleDataMap.get(personId) || {}).nome}`));
-        };
+     const loadParticipantProfile = async (personId) => {
+    // Mostra o indicador de carregamento e esconde a tabela/filtros
+    perfilLoading.style.display = 'block';
+    perfilTableContainer.style.display = 'none';
+    perfilFiltros.style.display = 'none';
+    currentPersonParticipationRecords = []; // Limpa os registos anteriores
+
+    try {
+        // Busca todos os documentos do histórico, ordenados por data
+        const historicoSnapshot = await db.collection('historico').orderBy("dia", "desc").get();
         
-        const fetchPairHistory = async (participantIds) => {
-            const snapshot = await db.collection('historico').orderBy("dia", "desc").get();
-            let records = [];
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                data.designacoes?.forEach(d => {
-                    const allIds = Object.values(d.participantes || {});
-                    if (participantIds.every(id => allIds.includes(id))) {
+        let records = [];
+        let years = new Set();
+        let designacoesPessoais = new Set();
+
+        historicoSnapshot.forEach(doc => {
+            const historico = doc.data();
+            historico.designacoes?.forEach(designacaoHist => {
+
+                // ========================================================================
+                // NOVO: Adicionamos um filtro aqui para verificar a "parte" da designação
+                // ========================================================================
+                const designacaoInfo = allDesignations.get(designacaoHist.designacaoId);
+
+                // Apenas continua se a designação foi encontrada E se a sua 'parte' é 'resto da semana'
+                if (designacaoInfo && designacaoInfo.parte === 'resto da semana') {
+                
+                    const participantes = designacaoHist.participantes || {};
+                    const todosOsIDs = Object.values(participantes);
+                    let meuPapel = '';
+
+                    // Verifica se a pessoa participou nesta designação e qual foi o seu papel
+                    for (const [papel, id] of Object.entries(participantes)) {
+                        if (id === personId) {
+                            meuPapel = papel;
+                            break;
+                        }
+                    }
+
+                    // Se a pessoa foi encontrada, extrai e guarda a informação
+                    if (meuPapel) {
+                        years.add(historico.ano);
+                        const designacaoNome = designacaoInfo.nome || 'Desconhecida'; // Usamos o nome já obtido
+                        designacoesPessoais.add(designacaoNome);
+
+                        // Encontra os nomes dos companheiros
+                        const companheirosNomes = todosOsIDs.filter(id => id !== personId)
+                            .map(id => (allPeopleDataMap.get(id) || {}).nome || 'N/A').join(', ');
+
                         records.push({
-                            dia: data.dia,
-                            designacaoNome: allDesignations.get(d.designacaoId)?.nome || 'Desconhecida',
-                            papeis: d.participantes
+                            ano: historico.ano,
+                            dia: historico.dia,
+                            designacaoNome: designacaoNome,
+                            companheiros: companheirosNomes,
+                            meuPapel: meuPapel.charAt(0).toUpperCase() + meuPapel.slice(1)
                         });
                     }
-                });
+                } // <-- Fim do novo 'if' de filtragem
+                // ========================================================================
+                // FIM DA ALTERAÇÃO
+                // ========================================================================
             });
-            return records;
-        };
+        });
+
+        // Guarda os registos processados na variável global
+         currentPersonParticipationRecords = records;
+        perfilFiltroAno.innerHTML = '<option value="">Todos</option>';
+        Array.from(years).sort((a, b) => b - a).forEach(y => { perfilFiltroAno.innerHTML += `<option value="${y}">${y}</option>`; });
+        perfilFiltroDesignacao.innerHTML = '<option value="">Todas</option>';
+        Array.from(designacoesPessoais).sort().forEach(d => { perfilFiltroDesignacao.innerHTML += `<option value="${d}">${d}</option>`; });
+        perfilLoading.style.display = 'none';
+        perfilFiltros.style.display = 'flex';
+        perfilTableContainer.style.display = 'block';
+        renderProfileTable();
+
+    } catch (error) {
+        console.error("Erro ao carregar perfil do participante:", error);
+        perfilLoading.innerHTML = 'Ocorreu um erro ao carregar o histórico.';
+    }
+};
 
 
+const renderProfileTable = () => {
+    // Limpa o corpo da tabela antes de adicionar novas linhas
+    perfilTableBody.innerHTML = '';
 
+    // Obtém os valores atuais de todos os filtros
+    const ano = perfilFiltroAno.value;
+    const mes = perfilFiltroMes.value;
+    const designacao = perfilFiltroDesignacao.value;
+    const papel = perfilFiltroPapel.value;
+
+    // Filtra a lista de registos que está em cache (currentPersonParticipationRecords)
+    const filteredRecords = currentPersonParticipationRecords.filter(rec => {
+        // Adiciona T12:00:00 para evitar problemas com fuso horário ao comparar datas
+        const recDate = new Date(rec.dia + "T12:00:00"); 
+        
+        // Retorna 'true' apenas se o registo passar em todos os filtros ativos
+        return (!ano || rec.ano.toString() === ano) &&
+               (!mes || (recDate.getMonth() + 1).toString() === mes) &&
+               (!designacao || rec.designacaoNome === designacao) &&
+               (!papel || rec.meuPapel.toLowerCase() === papel);
+    });
+
+    // Se não houver resultados, mostra uma mensagem
+    if (filteredRecords.length === 0) {
+        perfilTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nenhum registo encontrado para os filtros selecionados.</td></tr>';
+        return;
+    }
+
+    // Cria e adiciona uma linha (<tr>) na tabela para cada registo filtrado
+    filteredRecords.forEach(rec => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${rec.ano}</td>
+            <td>${formatDateForDisplay(rec.dia)}</td>
+            <td>${rec.designacaoNome}</td>
+            <td>${rec.companheiros || 'Nenhum'}</td>
+            <td>${rec.meuPapel}</td>
+        `;
+        perfilTableBody.appendChild(tr);
+    });
+};
+
+// --- Adiciona os 'event listeners' aos filtros ---
+// Este código faz com que a função renderProfileTable seja chamada sempre que um filtro é alterado.
+[perfilFiltroAno, perfilFiltroMes, perfilFiltroDesignacao, perfilFiltroPapel].forEach(filtro => {
+    filtro.addEventListener('change', renderProfileTable);
+});
 
 
 
