@@ -1173,38 +1173,54 @@ body.sidebar-collapsed .column:first-child {
 
                     <!-- Aba Espiritual -->
                     <div id="espiritual-tab" class="tab-content">
-                         <div class="display-mode">
+                        <div class="display-mode">
                             <h4>Informações Espirituais</h4>
                             <div class="data-item"><strong>Ativo:</strong> <span id="detail-ativo">-</span></div>
                             <div class="data-item"><strong>Grupo:</strong> <span id="detail-grupo">-</span></div>
                             <div class="data-item"><strong>Privilégios Congregação:</strong> <div id="detail-privilegiosCongregacao" class="array-data">-</div></div>
                             <div class="data-item"><strong>Privilégios Pregação:</strong> <div id="detail-privilegiosPregacao" class="array-data">-</div></div>
                             <div class="data-item"><strong>Privilégios Especiais:</strong> <div id="detail-privilegiosEspeciais" class="array-data">-</div></div>
+                            
+                            <div class="data-item" id="display-congregacao-item" style="display: none;"><strong>Congregação:</strong> <span id="detail-congregacao">-</span></div>
                         </div>
-                         <div class="edit-mode" style="display: none;">
-                             <h4>Editar Informações Espirituais</h4>
-                             <div class="form-group">
-                                 <label class="boolean-checkbox-label">
-                                     <input type="checkbox" id="edit-ativo"> Ativo
-                                 </label>
-                             </div>
-<div class="form-group"> <label for="edit-grupo">Grupo:</label> <select id="edit-grupo"> <option value="">Sem Grupo</option> <option value="1">1</option> <option value="2">2</option> <option value="3">3</option> <option value="4">4</option> <option value="5">5</option> <option value="6">6</option> <option value="7">7</option> <option value="8">8</option> <option value="9">9</option> <option value="10">10</option> <option value="11">11</option> <option value="12">12</option> <option value="13">13</option> <option value="14">14</option> <option value="15">15</option> </select> </div>                             
-                             <h5>Privilégios de Congregação</h5>
-                             <div class="checkbox-group" id="edit-privilegios-congregacao-group">
-                                 <span class="loading-placeholder">Carregando opções...</span>
-                             </div>
-                             
-                             <h5>Privilégios de Pregação</h5>
-                             <div class="checkbox-group" id="edit-privilegios-pregacao-group">
-                                 <span class="loading-placeholder">Carregando opções...</span>
-                             </div>
+                        <div class="edit-mode" style="display: none;">
+                            <h4>Editar Informações Espirituais</h4>
+                            <div class="form-group">
+                                <label class="boolean-checkbox-label">
+                                    <input type="checkbox" id="edit-ativo"> Ativo
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-grupo">Grupo:</label>
+                                <select id="edit-grupo">
+                                    <option value="">Sem Grupo</option>
+                                    <!-- Opções de 1 a 15 -->
+                                    <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option>
+                                </select>
+                            </div>
+                            
+                            <h5>Privilégios de Congregação</h5>
+                            <div class="checkbox-group" id="edit-privilegios-congregacao-group">
+                                <span class="loading-placeholder">Carregando opções...</span>
+                            </div>
+                            
+                            <h5>Privilégios de Pregação</h5>
+                            <div class="checkbox-group" id="edit-privilegios-pregacao-group">
+                                <span class="loading-placeholder">Carregando opções...</span>
+                            </div>
 
-                             <h5>Privilégios Especiais</h5>
-                             <div class="checkbox-group" id="edit-privilegios-especiais-group">
-                                 <span class="loading-placeholder">Carregando opções...</span>
-                             </div>
+                            <h5>Privilégios Especiais</h5>
+                            <div class="checkbox-group" id="edit-privilegios-especiais-group">
+                                <span class="loading-placeholder">Carregando opções...</span>
+                            </div>
+
+                            <div class="form-group" id="congregacao-externa-group" style="display: none;">
+                                <label for="edit-congregacao">Congregação:</label>
+                                <input type="text" id="edit-congregacao">
+                                <div id="congregacao-suggestions" class="suggestions-box"></div>
+                            </div>
                         </div>
-                         <div class="edit-controls">
+                        <div class="edit-controls">
                             <button class="edit-btn" data-tab-target="espiritual-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
                             <button class="save-btn" data-tab-target="espiritual-tab"><i class="fas fa-save"></i> Gravar</button>
                             <button class="cancel-btn" data-tab-target="espiritual-tab"><i class="fas fa-times"></i> Cancelar</button>
@@ -1443,6 +1459,9 @@ body.sidebar-collapsed .column:first-child {
                     </div>
 
                      <div id="no-history" style="display: none; padding: 30px; text-align: center; color: #6c757d;">Nenhum histórico encontrado para esta pessoa.</div>
+                </div>
+            </div>
+        </div>
     </div>
     <!-- Script principal da página -->
     <script>
@@ -1483,8 +1502,9 @@ body.sidebar-collapsed .column:first-child {
         let allPrivilegios = {
             congregacao: ["Ancião", "Servo Ministerial", "Publicador", "Publicador não Batizado"],
             pregacao: ["Pioneiro Regular", "Pioneiro Auxiliar", "Pioneiro Especial", "Missionário"],
-            especiais: ["Servo de Circuito"]
+            especiais: ["Servo de Circuito", "Orador Público"]
         };
+        let allCongregacoes = [];
         let allDesignationDetails = {};
         let dataLoaded = { designacoes: false, horarios: false, designationDetails: false };
         let selectedAusencias = [];
@@ -1498,53 +1518,6 @@ body.sidebar-collapsed .column:first-child {
                     bodyEl.classList.toggle('sidebar-collapsed');
                 }
             });
-        }
-
-         function handlePrivilegeChange(e) {
-            const changedCheckbox = e.target;
-            // Atua apenas quando uma checkbox é marcada (não quando é desmarcada).
-            if (changedCheckbox.type !== 'checkbox' || !changedCheckbox.checked) {
-                return;
-            }
-
-            const checkboxType = changedCheckbox.dataset.type;
-            const checkboxValue = changedCheckbox.value;
-
-            // Regra 1: Privilégios de Congregação são de seleção única (como botões de rádio).
-            if (checkboxType === 'congregacao') {
-                const congregationGroup = document.getElementById('edit-privilegios-congregacao-group');
-                // Desmarca todas as outras checkboxes no mesmo grupo.
-                congregationGroup.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                    if (cb !== changedCheckbox) {
-                        cb.checked = false;
-                    }
-                });
-                
-                // Regra 2: Selecionar um privilégio de congregação desmarca "Servo de Circuito".
-                const servoCircuitoCheckbox = document.querySelector('#edit-privilegios-especiais-group input[value="Servo de Circuito"]');
-                if (servoCircuitoCheckbox) {
-                    servoCircuitoCheckbox.checked = false;
-                }
-            }
-
-            // Regra 3: Privilégios de Pregação também são de seleção única.
-            if (checkboxType === 'pregacao') {
-                const pregacaoGroup = document.getElementById('edit-privilegios-pregacao-group');
-                // Desmarca todas as outras checkboxes no mesmo grupo.
-                pregacaoGroup.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                    if (cb !== changedCheckbox) {
-                        cb.checked = false;
-                    }
-                });
-            }
-
-            // Regra 4: Selecionar "Servo de Circuito" desmarca qualquer privilégio de congregação.
-            if (checkboxType === 'especiais' && checkboxValue === 'Servo de Circuito') {
-                const congregationGroup = document.getElementById('edit-privilegios-congregacao-group');
-                congregationGroup.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                    cb.checked = false;
-                });
-            }
         }
 
         // --- Funções de Sugestão ---
@@ -1686,7 +1659,7 @@ body.sidebar-collapsed .column:first-child {
             return label;
         }
 
-     function createTimeSlotCheckbox(time, dayName, isChecked) {
+        function createTimeSlotCheckbox(time, dayName, isChecked) {
             const label = document.createElement('label');
             label.className = 'horario-item';
             if (isChecked) {
@@ -1706,18 +1679,11 @@ body.sidebar-collapsed .column:first-child {
             label.appendChild(input);
             label.appendChild(span);
 
-            // --- VERSÃO CORRIGIDA E SIMPLIFICADA ---
-            // Removemos a lógica complexa. Agora, simplesmente ouvimos o clique.
             label.addEventListener('click', () => {
-                // O browser já altera o estado 'checked' da checkbox automaticamente.
-                // A nossa única tarefa é sincronizar a classe CSS com o estado da checkbox.
-                // Usamos um pequeno 'setTimeout' para garantir que este código executa
-                // DEPOIS de o browser ter tido tempo de atualizar o estado da checkbox.
                 setTimeout(() => {
                     label.classList.toggle('selected', input.checked);
                 }, 0); 
             });
-            // --- FIM DA CORREÇÃO ---
 
             return label;
         }
@@ -1756,6 +1722,8 @@ body.sidebar-collapsed .column:first-child {
                     acc[p.id] = p.nomePessoa;
                     return acc;
                 }, {});
+                const congregacoes = allPessoasData.map(p => p.congregacao).filter(Boolean);
+                allCongregacoes = [...new Set(congregacoes)];
             });
         }
 
@@ -1840,12 +1808,13 @@ body.sidebar-collapsed .column:first-child {
             document.getElementById('detail-genero').textContent = data.genero || '-';
             document.getElementById('detail-idioma').textContent = data.idioma || '-';
             document.getElementById('detail-personalidade').textContent = data.personalidade || '-';
+            document.getElementById('detail-naCongregacao').textContent = formatBoolean(data.naCongregacao);
             document.getElementById('detail-dataNascimento').textContent = formatDateString(data.dataNascimento);
             document.getElementById('detail-dataBatismo').textContent = formatDateString(data.dataBatismo);
             document.getElementById('detail-email').textContent = data.email || '-';
             document.getElementById('detail-telemovel').textContent = data.telemovel || '-';
             formatArrayForDisplay(data.familia, 'detail-familia');
-            document.getElementById('detail-casadoCom').textContent = data.casadoCom || '-';
+            document.getElementById('detail-casadoCom').textContent = data.casadoCom ? (allPessoasNames[data.casadoCom] || 'ID: ' + data.casadoCom) : '-';
         }
 
         function populateEspiritualTab(data) {
@@ -1854,10 +1823,17 @@ body.sidebar-collapsed .column:first-child {
             formatArrayForDisplay(data.privilegiosCongregacao, 'detail-privilegiosCongregacao');
             formatArrayForDisplay(data.privilegiosPregacao, 'detail-privilegiosPregacao');
             formatArrayForDisplay(data.privilegiosEspeciais, 'detail-privilegiosEspeciais');
+            
+            const congregacaoItem = document.getElementById('display-congregacao-item');
+            if (data.congregacao && (data.privilegiosEspeciais || []).includes('Orador Público')) {
+                document.getElementById('detail-congregacao').textContent = data.congregacao;
+                congregacaoItem.style.display = 'flex';
+            } else {
+                congregacaoItem.style.display = 'none';
+            }
         }
 
-     function populatePregacaoTab(data) {
-            // AGORA, esta função lida com TODOS os campos da sua aba
+        function populatePregacaoTab(data) {
             document.getElementById('detail-fazDesignacoesPregacao').textContent = formatBoolean(data.fazDesignacoesPregacao);
             formatArrayForDisplay(data.designacoesPregacao, 'detail-designacoesPregacao');
             document.getElementById('detail-horariosPregacao').textContent = formatHorarios(data.horariosPregacao);
@@ -1867,22 +1843,14 @@ body.sidebar-collapsed .column:first-child {
         function populateDisponibilidadeTab(data) { document.getElementById('detail-ausencias').textContent = formatAusencias(data.ausencias); }
         
         function populatePermissoesTab(data) {
-            // E esta função agora lida APENAS com os campos da sua aba
             document.getElementById('detail-fazDesignacoesReuniao').textContent = formatBoolean(data.fazDesignacoesReuniao);
             formatArrayForDisplay(data.designacoesReuniao, 'detail-designacoesReuniao');
             document.getElementById('detail-rule').textContent = data.rule || '-';
         }
 
-     function enterEditMode(tabId) {
-            // --- GUARDA DE PROTEÇÃO ---
-            // Verifica se os dados da pessoa e os dados globais de horários estão carregados
-            if (!selectedPersonData || !dataLoaded.horarios) {
+        function enterEditMode(tabId) {
+            if (!selectedPersonData || !dataLoaded.horarios || !dataLoaded.designacoes) {
                 alert("Os dados ainda estão a ser carregados. Por favor, aguarde um momento e tente novamente."); 
-                return; // Impede a execução do resto da função
-            }
-            // A verificação original de 'designacoes' também é importante
-            if (!dataLoaded.designacoes) {
-                alert("As opções de designação ainda não foram carregadas. Tente novamente em breve.");
                 return;
             }
 
@@ -1890,7 +1858,9 @@ body.sidebar-collapsed .column:first-child {
             const tabContent = document.getElementById(tabId); if (!tabContent) return;
             const displayDiv = tabContent.querySelector('.display-mode'); const editDiv = tabContent.querySelector('.edit-mode');
             const editBtn = tabContent.querySelector('.edit-btn'); const saveBtn = tabContent.querySelector('.save-btn'); const cancelBtn = tabContent.querySelector('.cancel-btn');
+            
             populateEditFields(tabId, selectedPersonData);
+            
             if (displayDiv) displayDiv.style.display = 'none'; if (editDiv) editDiv.style.display = 'block';
             if (editBtn) editBtn.style.display = 'none'; if (saveBtn) saveBtn.style.display = 'inline-flex'; if (cancelBtn) cancelBtn.style.display = 'inline-flex';
         }
@@ -1922,10 +1892,52 @@ body.sidebar-collapsed .column:first-child {
             return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
         }
 
- function populateEditFields(tabId, data) {
-            // Log geral para sabermos quando a função é chamada (pode remover depois)
-            console.log(`--- Iniciando populateEditFields para a aba: ${tabId} ---`);
 
+   function handlePrivilegeChange(e) {
+            const changedCheckbox = e.target;
+            if (changedCheckbox.type !== 'checkbox') return;
+
+            const checkboxType = changedCheckbox.dataset.type;
+            const isChecked = changedCheckbox.checked;
+
+            const congGroup = document.getElementById('edit-privilegios-congregacao-group');
+            const espGroup = document.getElementById('edit-privilegios-especiais-group');
+            const pregGroup = document.getElementById('edit-privilegios-pregacao-group');
+
+            // Função para desmarcar um grupo
+            const uncheckGroup = (group) => group.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+
+            if (isChecked) {
+                // Se um de congregação é marcado, desmarca os outros do mesmo grupo e todos os especiais
+                if (checkboxType === 'congregacao') {
+                    congGroup.querySelectorAll('input').forEach(cb => { if(cb !== changedCheckbox) cb.checked = false; });
+                    uncheckGroup(espGroup);
+                }
+                // Se um especial é marcado, desmarca todos os de congregação
+                if (checkboxType === 'especiais') {
+                    uncheckGroup(congGroup);
+                }
+                // Se um de pregação é marcado, desmarca os outros do mesmo grupo
+                if (checkboxType === 'pregacao') {
+                    pregGroup.querySelectorAll('input').forEach(cb => { if(cb !== changedCheckbox) cb.checked = false; });
+                }
+            }
+
+            // Sempre verifica se o campo de congregação deve ser mostrado
+            const oradorPublicoCheckbox = espGroup.querySelector('input[value="Orador Público"]');
+            const congregacaoGroupDiv = document.getElementById('congregacao-externa-group');
+            if (oradorPublicoCheckbox && congregacaoGroupDiv) {
+                congregacaoGroupDiv.style.display = oradorPublicoCheckbox.checked ? 'block' : 'none';
+                if (!oradorPublicoCheckbox.checked) {
+                    document.getElementById('edit-congregacao').value = ''; // Limpa o campo se desmarcado
+                }
+            }
+        }
+
+
+
+
+        function populateEditFields(tabId, data) {
             if (tabId === 'pessoal-tab') {
                 document.getElementById('edit-nomePessoa').value = data.nomePessoa || '';
                 document.getElementById('edit-nomeCompletoPessoa').value = data.nomeCompletoPessoa || '';
@@ -1933,17 +1945,20 @@ body.sidebar-collapsed .column:first-child {
                 document.getElementById('edit-genero').value = data.genero || '';
                 document.getElementById('edit-idioma').value = data.idioma || '';
                 document.getElementById('edit-personalidade').value = data.personalidade || '';
+                document.getElementById('edit-naCongregacao').checked = typeof data.naCongregacao === 'boolean' ? data.naCongregacao : true;
                 document.getElementById('edit-dataNascimento').value = formatDateForInput(data.dataNascimento);
                 document.getElementById('edit-dataBatismo').value = formatDateForInput(data.dataBatismo);
                 document.getElementById('edit-email').value = data.email || '';
                 document.getElementById('edit-telemovel').value = data.telemovel || '';
                 document.getElementById('edit-familia').value = Array.isArray(data.familia) ? data.familia.join(', ') : '';
-                document.getElementById('edit-casadoCom').value = data.casadoCom || '';
+                document.getElementById('edit-casadoCom').value = data.casadoCom ? (allPessoasNames[data.casadoCom] || '') : '';
             } else if (tabId === 'espiritual-tab') {
                 document.getElementById('edit-ativo').checked = typeof data.ativo === 'boolean' ? data.ativo : true;
                 document.getElementById('edit-grupo').value = data.grupo || '';
+                
                 const populatePrivilegeGroup = (groupDivId, privilegeType, currentPrivileges) => {
-                    const groupDiv = document.getElementById(groupDivId); groupDiv.innerHTML = '';
+                    const groupDiv = document.getElementById(groupDivId);
+                    groupDiv.innerHTML = '';
                     allPrivilegios[privilegeType].forEach(priv => {
                         const isChecked = Array.isArray(currentPrivileges) && currentPrivileges.includes(priv);
                         groupDiv.appendChild(createEditCheckbox(priv, `edit-privilegio-${privilegeType}`, isChecked, privilegeType));
@@ -1952,10 +1967,17 @@ body.sidebar-collapsed .column:first-child {
                 populatePrivilegeGroup('edit-privilegios-congregacao-group', 'congregacao', data.privilegiosCongregacao);
                 populatePrivilegeGroup('edit-privilegios-pregacao-group', 'pregacao', data.privilegiosPregacao);
                 populatePrivilegeGroup('edit-privilegios-especiais-group', 'especiais', data.privilegiosEspeciais);
-                 const spiritualEditModeDiv = document.getElementById('espiritual-tab').querySelector('.edit-mode');
+
+                const oradorPublicoChecked = (data.privilegiosEspeciais || []).includes('Orador Público');
+                const congregacaoGroup = document.getElementById('congregacao-externa-group');
+                const congregacaoInput = document.getElementById('edit-congregacao');
+                
+                congregacaoInput.value = data.congregacao || '';
+                congregacaoGroup.style.display = oradorPublicoChecked ? 'block' : 'none';
+
+                const spiritualEditModeDiv = document.getElementById('espiritual-tab').querySelector('.edit-mode');
                 spiritualEditModeDiv.removeEventListener('change', handlePrivilegeChange); 
                 spiritualEditModeDiv.addEventListener('change', handlePrivilegeChange);
-
             } else if (tabId === 'pregacao-tab') {
                 document.getElementById('edit-fazDesignacoesPregacao').checked = data.fazDesignacoesPregacao || false;
                 document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false;
@@ -1968,7 +1990,8 @@ body.sidebar-collapsed .column:first-child {
 
                 const horariosSemanaDiv = document.getElementById('edit-horarios-semana');
                 const horariosFimDeSemanaDiv = document.getElementById('edit-horarios-fim-de-semana');
-                horariosSemanaDiv.innerHTML = '<h5>Semana</h5>'; horariosFimDeSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
+                horariosSemanaDiv.innerHTML = '<h5>Semana</h5>'; 
+                horariosFimDeSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
                 
                 const currentHorarios = data.horariosPregacao || { semana: {}, fimDeSemana: {} };
                 const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
@@ -1976,15 +1999,14 @@ body.sidebar-collapsed .column:first-child {
                 
                 const populateDay = (day, times, container) => {
                     if (times && times.length > 0) {
-                        const dayContainer = document.createElement('div'); dayContainer.className = 'day-container';
-                        const dayTitle = document.createElement('h6'); dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
+                        const dayContainer = document.createElement('div');
+                        dayContainer.className = 'day-container';
+                        const dayTitle = document.createElement('h6');
+                        dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
                         dayContainer.appendChild(dayTitle);
                         
-                        // --- ESTA É A LINHA CORRIGIDA ---
-                        // Em vez de .includes('semana'), usamos uma comparação exata do ID do container.
                         const keyToUse = container.id === 'edit-horarios-semana' ? 'semana' : 'fimDeSemana';
                         const personTimesForThisDay = (currentHorarios[keyToUse] || {})[day] || [];
-                        // --- FIM DA CORREÇÃO ---
 
                         times.sort().forEach(time => {
                             const isChecked = personTimesForThisDay.includes(time);
@@ -2002,27 +2024,31 @@ body.sidebar-collapsed .column:first-child {
                     if (ausencia?.toDate) {
                         const dateObj = ausencia.toDate();
                         return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-                    } return ausencia;
+                    }
+                    return ausencia;
                 }).filter(Boolean);
                 updateAusenciasDisplay();
             } else if (tabId === 'permissoes-tab') {
                 document.getElementById('edit-fazDesignacoesReuniao').checked = data.fazDesignacoesReuniao || false;
                 document.getElementById('edit-rule').value = data.rule || '';
-                const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group'); desigReuniaoGroupDiv.innerHTML = '';
+                const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group');
+                desigReuniaoGroupDiv.innerHTML = '';
                 const currentDesigReuniao = data.designacoesReuniao || [];
                 allDesignacoes.reuniao.forEach(desig => desigReuniaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-reuniao', currentDesigReuniao.includes(desig))));
                 if (allDesignacoes.reuniao.length === 0) desigReuniaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
             }
         }
 
-
-   function saveTabData(tabId, saveButton) {
+        function saveTabData(tabId, saveButton) {
             if (!selectedPersonId) return;
             saveButton.disabled = true; saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gravando...';
             let dataToUpdate = {};
             try {
                 if (tabId === 'pessoal-tab') {
                     const familiaValue = document.getElementById('edit-familia').value.trim();
+                    const spouseName = document.getElementById('edit-casadoCom').value.trim();
+                    const spouse = allPessoasData.find(p => p.nomePessoa === spouseName);
+                    
                     dataToUpdate = {
                         nomePessoa: document.getElementById('edit-nomePessoa').value.trim(),
                         nomeCompletoPessoa: document.getElementById('edit-nomeCompletoPessoa').value.trim(),
@@ -2030,25 +2056,29 @@ body.sidebar-collapsed .column:first-child {
                         genero: document.getElementById('edit-genero').value,
                         idioma: document.getElementById('edit-idioma').value,
                         personalidade: document.getElementById('edit-personalidade').value,
+                        naCongregacao: document.getElementById('edit-naCongregacao').checked,
                         dataNascimento: document.getElementById('edit-dataNascimento').value || null,
                         dataBatismo: document.getElementById('edit-dataBatismo').value || null,
                         email: document.getElementById('edit-email').value.trim(),
                         telemovel: document.getElementById('edit-telemovel').value.trim(),
                         familia: familiaValue ? familiaValue.split(',').map(name => name.trim()).filter(Boolean) : [],
-                        casadoCom: document.getElementById('edit-casadoCom').value.trim() || null
+                        casadoCom: spouse ? spouse.id : null
                     };
                 } else if (tabId === 'espiritual-tab') {
                     const getSelectedPrivileges = (type) => Array.from(document.querySelectorAll(`#edit-privilegios-${type}-group input:checked`)).map(cb => cb.value);
-                    const grupoValue = document.getElementById('edit-grupo').value;
+                    
                     dataToUpdate = {
                         ativo: document.getElementById('edit-ativo').checked,
-                        grupo: grupoValue ? parseInt(grupoValue, 10) : null,
+                        grupo: document.getElementById('edit-grupo').value || null,
                         privilegiosCongregacao: getSelectedPrivileges('congregacao'),
                         privilegiosPregacao: getSelectedPrivileges('pregacao'),
                         privilegiosEspeciais: getSelectedPrivileges('especiais')
                     };
+                    
+                    const oradorPublicoIsSelected = dataToUpdate.privilegiosEspeciais.includes('Orador Público');
+                    dataToUpdate.congregacao = oradorPublicoIsSelected ? document.getElementById('edit-congregacao').value.trim() : null;
+
                 } else if (tabId === 'pregacao-tab') {
-                    // --- GRAVAÇÃO DOS DADOS DE PREGAÇÃO CENTRALIZADA AQUI ---
                     const horariosPregacao = { semana: {}, fimDeSemana: {} };
                     document.querySelectorAll('#edit-horarios-semana .horario-checkbox:checked').forEach(cb => {
                         const day = cb.dataset.day; if (!horariosPregacao.semana[day]) horariosPregacao.semana[day] = []; horariosPregacao.semana[day].push(cb.value);
@@ -2067,7 +2097,6 @@ body.sidebar-collapsed .column:first-child {
                 } else if (tabId === 'disponibilidade-tab') {
                     dataToUpdate = { ausencias: selectedAusencias.sort() };
                 } else if (tabId === 'permissoes-tab') {
-                    // --- GRAVAÇÃO DOS DADOS DE PERMISSÕES (APENAS REUNIÃO) AGORA ESTÁ LIMPA ---
                     const selectedDesigReuniao = Array.from(document.querySelectorAll('#edit-designacoesReuniao-group input:checked')).map(cb => cb.value);
                     dataToUpdate = {
                         fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked, 
@@ -2098,8 +2127,7 @@ body.sidebar-collapsed .column:first-child {
         }
 
 
-// --- INÍCIO DO BLOCO DE FUNÇÕES DO HISTÓRICO ---
-
+        // --- Lógica do Histórico ---
         function createHistoryItemElement(item) {
             const div = document.createElement('div');
             div.classList.add('history-item');
@@ -2140,7 +2168,6 @@ body.sidebar-collapsed .column:first-child {
             document.querySelectorAll('.filter-select').forEach(select => select.innerHTML = '<option value="">Todos</option>');
 
             if (!dataLoaded.designationDetails || !Object.keys(allPessoasNames).length) {
-                console.error("Dependências (designações ou nomes) não carregadas.");
                 showLoading('history', false); 
                 return;
             }
@@ -2374,7 +2401,7 @@ body.sidebar-collapsed .column:first-child {
             return { labels, data };
         }
 
-        // --- Lógica das Abas (Histórico) ---
+        // --- Lógica das Abas ---
         if (historyTabsContainer) {
             historyTabsContainer.addEventListener('click', (e) => {
                 if (e.target.matches('.history-tab-button')) {
@@ -2400,9 +2427,6 @@ body.sidebar-collapsed .column:first-child {
             });
         }
         
-        // --- FIM DO BLOCO DE FUNÇÕES DO HISTÓRICO ---
-
-
         function switchTab(tabId) {
             cancelEditMode(); tabButtons.forEach(btn => btn.classList.remove('active')); tabContents.forEach(content => content.classList.remove('active'));
             const activeButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`); const activeContent = document.getElementById(tabId);
@@ -2416,12 +2440,6 @@ body.sidebar-collapsed .column:first-child {
         cancelButtons.forEach(button => button.addEventListener('click', cancelEditMode));
         saveButtons.forEach(button => button.addEventListener('click', (e) => saveTabData(e.target.closest('button').dataset.tabTarget, e.target.closest('button'))));
         casadoComInput.addEventListener('input', handleSpouseSuggestions);
-        document.addEventListener('click', (e) => {
-            const suggestionsDiv = document.getElementById('casado-com-suggestions');
-            if (suggestionsDiv && !suggestionsDiv.contains(e.target) && e.target !== casadoComInput) {
-                hideSuggestions(suggestionsDiv);
-            }
-        });
         
         addSingleAusenciaBtn.addEventListener('click', () => {
             const dateInput = document.getElementById('ausencia-single-date');
@@ -2456,6 +2474,11 @@ body.sidebar-collapsed .column:first-child {
             loadAllHorarios().catch(err => console.error("Falha ao carregar horários.", err))
         ]).finally(() => {
             console.log("Carregamento inicial de configurações concluído. Carregando pessoas...");
+            document.querySelectorAll('.filter-select').forEach(sel => sel.addEventListener('change', applyFiltersAndRender));
+            document.getElementById('reset-history-filters').addEventListener('click', () => {
+                document.querySelectorAll('.filter-select').forEach(sel => sel.value = '');
+                applyFiltersAndRender();
+            });
             loadPessoasList();
         });
     });
