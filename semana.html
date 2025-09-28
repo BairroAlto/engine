@@ -1567,7 +1567,7 @@ function openCreatePairAnalysisPopup() {
                 renderSchedule();
             }
             
-          function renderSchedule() {
+       function renderSchedule() {
                 scheduleDisplay.classList.add('loading');
                 scheduleContent.innerHTML = '';
                 
@@ -1608,6 +1608,8 @@ function openCreatePairAnalysisPopup() {
                     const weekStringA = groupedByWeek[keyA].originalIndex;
                     const weekStringB = groupedByWeek[keyB].originalIndex;
                     const dayA = parseInt((weekStringA.match(/\d+/) || ['0'])[0], 10);
+                    // ===== A CORREÇÃO ESTÁ AQUI =====
+                    // A variável correta é 'weekStringB', não 'b'.
                     const dayB = parseInt((weekStringB.match(/\d+/) || ['0'])[0], 10);
                     return dayA - dayB;
                 });
@@ -1615,7 +1617,7 @@ function openCreatePairAnalysisPopup() {
                 for (const normalizedKey of sortedWeekKeys) {
                     const group = groupedByWeek[normalizedKey];
                     const weekIndex = group.originalIndex; 
-                    const weekData = group.items; // Array de documentos para a semana        
+                    const weekData = group.items;         
                     const weekElement = document.createElement('div');
                     weekElement.className = 'schedule-week';
                     let headerHTML = `<div class="schedule-header">${weekIndex}`;
@@ -1634,15 +1636,10 @@ function openCreatePairAnalysisPopup() {
                         const eventIcon = { memorial: 'fa-wine-glass', assembleia: 'fa-users', congresso: 'fa-landmark' }[specialEventData.evento.toLowerCase()] || 'fa-star';
                         bodyHTML += `<div class="special-event-message"><i class="fas ${eventIcon}"></i>Semana de ${eventName}</div>`;
                     } else {
-                        // ===== INÍCIO DA CORREÇÃO LÓGICA =====
-                        
-                        // 1. Juntar todas as designações de todos os documentos da semana numa única lista.
-                        //    Guardamos o ID do documento original (docId) para os ícones de edição.
                         const allDesignationsForWeek = weekData.flatMap(doc => 
                             (doc.designacoes || []).map(desig => ({ ...desig, docId: doc.id }))
                         );
 
-                        // 2. Ordenar a lista ÚNICA e COMPLETA com base no campo 'ordem'.
                         const sortedAllDesignations = allDesignationsForWeek.sort((a, b) => {
                             const desigA = designationMap.get(a.designacaoId);
                             const desigB = designationMap.get(b.designacaoId);
@@ -1656,7 +1653,6 @@ function openCreatePairAnalysisPopup() {
                         let lastHeaderId = null;
                         let lastHeaderColor = '#bdc3c7'; 
 
-                        // 3. Percorrer a lista única e corretamente ordenada para renderizar o HTML.
                         sortedAllDesignations.forEach(desig => {
                             const fullDesigData = designationMap.get(desig.designacaoId);
                             if (!fullDesigData) return;
@@ -1672,7 +1668,7 @@ function openCreatePairAnalysisPopup() {
                                     lastHeaderColor = bgColor; 
                                     const headerStyle = `style="background-color: ${bgColor}; color: ${textColor};"`;
                                     bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="header-icon">${headerData.icon || ''}</span><h4>${headerData.nome}</h4></div>`;
-                                }
+                                 }
                                 lastHeaderId = currentHeaderId;
                             }
 
@@ -1682,9 +1678,8 @@ function openCreatePairAnalysisPopup() {
                             
                             if (isEditMode) {
                                 const uniqueSignature = createParticipantSignature(desig.participantes);
-                                // Usamos o `desig.docId` que guardámos anteriormente.
                                 const uniqueId = `${desig.docId}|${desig.designacaoId}|${uniqueSignature}`;
-                                bodyHTML += `<i class="fas fa-pencil-alt edit-icon" data-unique-id="${uniqueId}"></i>`;
+                                bodyHTML += `<i class='fas fa-pencil-alt edit-icon' data-unique-id='${uniqueId}'></i>`;
                             }
 
                             bodyHTML += `</div>`;
@@ -1704,7 +1699,6 @@ function openCreatePairAnalysisPopup() {
                             }
                             bodyHTML += '</li></ul>';
                         });
-                        // ===== FIM DA CORREÇÃO LÓGICA =====
                     }
                     
                     bodyHTML += '</div>';
