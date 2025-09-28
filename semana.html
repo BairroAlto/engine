@@ -526,12 +526,16 @@ closePairAnalysisPopup.addEventListener('click', () => {
             async function loadInitialData() {
                 scheduleDisplay.classList.add('loading');
                 try {
-                    const [historicoSnap, pessoasSnap, designacoesSnap, cabecalhosSnap] = await Promise.all([
+                    // =================== INÍCIO DA ALTERAÇÃO ===================
+                    // Adicionada a consulta ao documento 'configuracoes' na coleção 'painel'
+                    const [historicoSnap, pessoasSnap, designacoesSnap, cabecalhosSnap, painelSnap] = await Promise.all([
                         db.collection('historico').where('quando', 'in', ['Semana', 'Fim de Semana']).where('tipo', '==', 'reuniao').orderBy('timestamp', 'desc').get(),
                         db.collection('pessoas').get(),
                         db.collection('designacoes').get(),
-                        db.collection('cabecalhos').get()
+                        db.collection('cabecalhos').get(),
+                        db.collection('painel').doc('configuracoes').get() // Nova consulta
                     ]);
+                    // =================== FIM DA ALTERAÇÃO ===================
                     
                     pessoasSnap.forEach(doc => {
                         personMap.set(doc.id, doc.data().nomePessoa);
@@ -539,14 +543,23 @@ closePairAnalysisPopup.addEventListener('click', () => {
                     });
 
                     designacoesSnap.forEach(doc => {
-    const data = doc.data();
-    data.id = doc.id; // Adiciona o ID do documento ao próprio objeto de dados
-    designationMap.set(doc.id, data);
-});
+                        const data = doc.data();
+                        data.id = doc.id; // Adiciona o ID do documento ao próprio objeto de dados
+                        designationMap.set(doc.id, data);
+                    });
                     cabecalhosSnap.forEach(doc => headerMap.set(doc.id, doc.data()));
                     allScheduleData = historicoSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     
-                    populateYearFilter();
+                    // =================== INÍCIO DA ALTERAÇÃO ===================
+                    // Determina o ano padrão a ser selecionado
+                    let defaultYear = new Date().getFullYear(); // Usa o ano atual como fallback
+                    if (painelSnap.exists && painelSnap.data().ano) {
+                        defaultYear = painelSnap.data().ano; // Usa o ano do Firebase se existir
+                    }
+                    
+                    populateYearFilter(defaultYear); // Passa o ano para a função que preenche o dropdown
+                    // =================== FIM DA ALTERAÇÃO ===================
+
                     updateMonthFilter();
                     updateWeekFilter();
                 } catch (error) {
@@ -1084,8 +1097,8 @@ function openPairAnalysisPopup() {
             closeAdvancedEditPopup.addEventListener('click', () => advancedEditPopup.classList.remove('active'));
             applyAdvancedChangeBtn.addEventListener('click', applyDesignationChange);
 
-
-            function populateYearFilter() {
+            // =================== INÍCIO DA ALTERAÇÃO ===================
+            function populateYearFilter(defaultYear) { // Aceita o ano padrão como argumento
                 const years = [...new Set(allScheduleData.map(item => item.ano))].sort((a, b) => b - a);
                 yearFilter.innerHTML = ''; 
                 years.forEach(year => { 
@@ -1094,8 +1107,20 @@ function openPairAnalysisPopup() {
                     option.textContent = year; 
                     yearFilter.appendChild(option); 
                 });
-                yearFilter.value = new Date().getFullYear();
+                
+                // Lógica para selecionar o ano padrão
+                // Verifica se o ano vindo do Firebase (defaultYear) existe nas opções do dropdown
+                const yearExists = years.some(y => y == defaultYear);
+
+                if (yearExists) {
+                    // Se o ano existir, seleciona-o
+                    yearFilter.value = defaultYear;
+                } else if (years.length > 0) {
+                    // Caso contrário (ex: não há dados para esse ano), seleciona o mais recente como fallback
+                    yearFilter.value = years[0];
+                }
             }
+            // =================== FIM DA ALTERAÇÃO ===================
 
             function updateMonthFilter() {
                 const selectedYear = parseInt(yearFilter.value);
