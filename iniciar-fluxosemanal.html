@@ -213,6 +213,43 @@ body.popup-open {
     opacity: 1;
 }
 
+/* Estilo para o Título do Pop-up */
+.filter-popup h4 {
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+    font-size: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Estilo para cada grupo (label + dropdown) dentro do pop-up */
+.filter-popup > div {
+    margin-bottom: 15px;
+}
+.filter-popup > div:last-child {
+    margin-bottom: 0;
+}
+
+/* Estilo para as Etiquetas (Labels) dos filtros */
+.filter-popup label {
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Estilo para os Dropdowns (Selects) dentro do pop-up */
+.filter-popup select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #333;
+    background-color: #fff;
+}
+
 
     </style>
 </head>
@@ -470,6 +507,12 @@ body.popup-open {
             document.getElementById('perfilPopup').style.display = 'flex';
         });
 
+        document.body.addEventListener('change', (event) => {
+    if (event.target.classList.contains('form-select')) {
+        handleGenderSync(event.target);
+    }
+});
+
         // Botão de Foguetão (Placeholder)
        document.getElementById('turboButton').addEventListener('click', async (event) => {
             const button = event.currentTarget;
@@ -516,6 +559,7 @@ body.popup-open {
         let allDesignations = new Map();
         let allPeopleDataMap = new Map();
         let allPeople = [];
+        let allDiscursosCache = [];
         let temporaryPreferences = {};
     
         // ===================================================================
@@ -527,6 +571,21 @@ body.popup-open {
         const closePopupButton = document.getElementById('closePopup');
         const createFluxoButton = document.getElementById('createFluxoSemanal');
 
+        const initializeDiscursos = async () => {
+    if (allDiscursosCache.length > 0) return; // Não carregar se o cache já existir
+    try {
+        const snapshot = await db.collection('discursos').orderBy('numero').get();
+        snapshot.forEach(doc => {
+            // Guarda o número como string para facilitar a pesquisa "começa com"
+            const data = doc.data();
+            allDiscursosCache.push({ id: doc.id, ...data, numero: String(data.numero) });
+        });
+        console.log("Cache de discursos inicializado com sucesso.");
+    } catch(error) {
+        console.error("Erro ao inicializar cache de discursos:", error);
+    }
+};
+
         // ETAPA 1: Intercetar o clique no botão "Iniciar Fluxo"
         fluxoSemanalForm.addEventListener('submit', async function(e) {
             e.preventDefault(); // Impede o envio real do formulário
@@ -537,123 +596,112 @@ body.popup-open {
         });
 
         // ETAPA 2: Lógica para o botão final "Confirmar e Criar" dentro do popup
-        createFluxoButton.addEventListener('click', async function() {
-            this.disabled = true;
-            this.textContent = "A Guardar...";
+    createFluxoButton.addEventListener('click', async function() {
+    this.disabled = true;
+    this.textContent = "A Guardar...";
 
-            try {
-                const ano = await getAnoPainelFirebase();
-                const mes = parseInt(document.getElementById('mes').value);
-                const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
-                const tipoEvento = document.getElementById('tipo').value; // Alterado para clareza
-                const idiomas = getSelectedNacionalidades();
-                const sala = document.getElementById('sala').value;
-                const diasSemana = getDiasSemana(ano, mes, semanaNumero);
-                
-                // Construir o objeto de dados principal
-                const historicoData = {
-                    ano: ano,
-                    mes: mes,
-                    semanaNumero: semanaNumero,
-                    semanaindex: `(${diasSemana} ${ano})`,
-                    designacoes: [],
-                    // =======================================================
-                    // =========== INÍCIO DA ALTERAÇÃO SOLICITADA ============
-                    // =======================================================
-                    evento: tipoEvento,   // O valor do dropdown (normal, assembleia, etc.) vai para o campo "evento"
-                    tipo: "reuniao",      // O campo "tipo" agora tem o valor fixo "reuniao"
-                    // =======================================================
-                    // ============= FIM DA ALTERAÇÃO SOLICITADA ==============
-                    // =======================================================
-                    idioma: idiomas,
-                    sala: sala,
-                    quando: "Semana",
-                    parte: "resto da semana", // Identificador da parte da reunião
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                };
+    try {
+        const ano = await getAnoPainelFirebase();
+        const mes = parseInt(document.getElementById('mes').value);
+        const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+        const tipoEvento = document.getElementById('tipo').value;
+        const idiomas = getSelectedNacionalidades();
+        const sala = document.getElementById('sala').value;
+        const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+        
+        const historicoData = {
+            ano: ano, mes: mes, semanaNumero: semanaNumero,
+            semanaindex: `(${diasSemana} ${ano})`, designacoes: [],
+            evento: tipoEvento, tipo: "reuniao", idioma: idiomas, sala: sala,
+            quando: "Semana", parte: "resto da semana",
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
 
-                // Preencher o array de designações
-                document.querySelectorAll('#activeDesignationsContainer .active-designation-container').forEach(container => {
-                    const designacaoId = container.dataset.designacaoId;
-                    const participantes = {};
-                    const participantSelects = container.querySelectorAll('.form-select');
-                    
-                    // Lógica melhorada para atribuir papéis
-                    if (participantSelects.length === 1) {
-                        // Caso para um único participante
-                        if (participantSelects[0].value) {
-                            participantes['participante'] = participantSelects[0].value;
-                        }
-                    } else {
-                        // Caso para múltiplos participantes
-                        if (participantSelects[0] && participantSelects[0].value) {
-                            participantes['dirigente'] = participantSelects[0].value;
-                        }
-                        if (participantSelects[1] && participantSelects[1].value) {
-                            participantes['ajudante1'] = participantSelects[1].value;
-                        }
-                        if (participantSelects[2] && participantSelects[2].value) {
-                            participantes['ajudante2'] = participantSelects[2].value;
-                        }
-                    }
+        document.querySelectorAll('#activeDesignationsContainer .active-designation-container').forEach(container => {
+            const designacaoId = container.dataset.designacaoId;
+            const participantes = {};
+            const participantSelects = container.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)');
+            
+            if (participantSelects.length === 1) {
+                if (participantSelects[0].value) participantes['participante'] = participantSelects[0].value;
+            } else {
+                if (participantSelects[0] && participantSelects[0].value) participantes['dirigente'] = participantSelects[0].value;
+                if (participantSelects[1] && participantSelects[1].value) participantes['ajudante1'] = participantSelects[1].value;
+                if (participantSelects[2] && participantSelects[2].value) participantes['ajudante2'] = participantSelects[2].value;
+            }
 
-                    // Adiciona a designação apenas se houver participantes selecionados
-                    if (Object.keys(participantes).length > 0) {
-                        historicoData.designacoes.push({
-                            designacaoId: designacaoId,
-                            participantes: participantes
-                        });
-                    }
-                });
-                
-                // Guardar na base de dados
-                await db.collection("historico").add(historicoData);
+            const designacaoParaGuardar = { designacaoId: designacaoId, participantes: participantes };
 
-                alert("Fluxo semanal criado com sucesso!");
-                window.location.reload();
-
-            } catch (error) {
-                console.error("Erro ao criar fluxo semanal: ", error);
-                alert("Ocorreu um erro ao guardar. Por favor, tente novamente.");
-                this.disabled = false;
-                this.textContent = "Confirmar e Criar";
+            const designacaoInfo = allDesignations.get(designacaoId);
+            if (designacaoInfo && designacaoInfo.anexadoDiscursos === true) {
+                const searchInput = container.querySelector('.discurso-search-input');
+                if (searchInput && searchInput.dataset.selectedDiscursoId) {
+                    designacaoParaGuardar.discursoId = searchInput.dataset.selectedDiscursoId;
+                }
+            } else {
+                const descricaoInput = container.querySelector('.descricao-input');
+                if (descricaoInput && container.querySelector('.descricao-container').style.display !== 'none' && descricaoInput.value.trim() !== '') {
+                    designacaoParaGuardar.descricao = descricaoInput.value.trim();
+                }
+            }
+            
+            if (Object.keys(participantes).length > 0 || designacaoParaGuardar.descricao || designacaoParaGuardar.discursoId) {
+                historicoData.designacoes.push(designacaoParaGuardar);
             }
         });
+        
+        await db.collection("historico").add(historicoData);
+        alert("Fluxo semanal criado com sucesso!");
+        window.location.reload();
+
+    } catch (error) {
+        console.error("Erro ao criar fluxo semanal: ", error);
+        alert("Ocorreu um erro ao guardar. Por favor, tente novamente.");
+        this.disabled = false;
+        this.textContent = "Confirmar e Criar";
+    }
+});
 
         // Função para gerar o resumo no popup
-        async function generatePopupSummary() {
-            const summaryList = document.getElementById('popupSummaryList');
-            summaryList.innerHTML = ''; // Limpa o conteúdo anterior
+   async function generatePopupSummary() {
+    const summaryList = document.getElementById('popupSummaryList');
+    summaryList.innerHTML = ''; 
 
-            const designacaoContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container');
+    const designacaoContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container');
+    if (designacaoContainers.length === 0) {
+        summaryList.innerHTML = '<li>Nenhuma designação selecionada.</li>';
+        return;
+    }
 
-            if (designacaoContainers.length === 0) {
-                summaryList.innerHTML = '<li>Nenhuma designação selecionada.</li>';
-                return;
-            }
+    for (const container of designacaoContainers) {
+        const designacaoId = container.dataset.designacaoId;
+        const designacao = allDesignations.get(designacaoId);
+        const designacaoNome = designacao ? designacao.nome : 'Designação Desconhecida';
+        
+        const participantSelects = container.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)');
+        const participantNames = Array.from(participantSelects).map(select => {
+            return select.value ? (allPeopleDataMap.get(select.value) || {}).nome : null;
+        }).filter(Boolean);
 
-            for (const container of designacaoContainers) {
-                const designacaoId = container.dataset.designacaoId;
-                const designacao = allDesignations.get(designacaoId);
-                const designacaoNome = designacao ? designacao.nome : 'Designação Desconhecida';
-                
-                const participantSelects = container.querySelectorAll('.form-select');
-                const participantNames = [];
-
-                for (const select of participantSelects) {
-                    if (select.value) {
-                        const personData = allPeopleDataMap.get(select.value);
-                        participantNames.push(personData ? personData.nome : 'Pessoa desconhecida');
-                    }
-                }
-                
-                if (participantNames.length > 0) {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<strong>${designacaoNome}:</strong> ${participantNames.join(', ')}`;
-                    summaryList.appendChild(li);
-                }
+        let descricaoTexto = '';
+        const searchInput = container.querySelector('.discurso-search-input');
+        if (searchInput && searchInput.dataset.selectedDiscursoId) {
+            const discurso = allDiscursosCache.find(d => d.id === searchInput.dataset.selectedDiscursoId);
+            if(discurso) descricaoTexto = `<br><small style="color: #555;"><em>Discurso: ${discurso.numero} - ${discurso.nome}</em></small>`;
+        } else {
+            const descricaoInput = container.querySelector('.descricao-input');
+            if (descricaoInput && container.querySelector('.descricao-container').style.display !== 'none' && descricaoInput.value.trim()) {
+                descricaoTexto = `<br><small style="color: #555;"><em>Tema: ${descricaoInput.value.trim()}</em></small>`;
             }
         }
+        
+        if (participantNames.length > 0 || descricaoTexto) {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${designacaoNome}:</strong> ${participantNames.join(', ') || '<i>(Sem participantes)</i>'}${descricaoTexto}`;
+            summaryList.appendChild(li);
+        }
+    }
+}
         
         // Lógica para fechar o popup
         closePopupButton.addEventListener('click', () => {
@@ -1099,38 +1147,162 @@ const saveSpecialEvent = async () => {
             return Array.from(checkedBoxes).map(cb => cb.value);
         };
         
-        const loadPeopleOptionsIntoSelects = async (designacao, container, genderPreference = 'ambos', idiomas = []) => {
-            try {
-                let query = db.collection('pessoas')
-                    .where('fazDesignacoesReuniao', '==', true);
 
-                if (idiomas.length > 0) {
-                    query = query.where('idioma', 'in', idiomas);
-                }
+const handleGenderSync = (changedSelect) => {
+    // Encontra o container da instância atual (ex: "Demonstração (1)")
+    const instanceContainer = changedSelect.closest('.active-designation-container');
+    if (!instanceContainer) return;
 
-                if (genderPreference === 'masculino') query = query.where('genero', '==', 'Masculino');
-                if (genderPreference === 'feminino') query = query.where('genero', '==', 'Feminino');
-                
-                const snapshot = await query.get();
+    // Procura o novo filtro "Masculino com Feminino" dentro do cartão
+    const genderMixSelect = instanceContainer.querySelector('.gender-mix-select');
 
-                const filteredDocs = snapshot.docs.filter(doc => {
-                    const personData = doc.data();
-                    return personData.designacoesReuniao && personData.designacoesReuniao.includes(designacao.nome);
-                });
-                
-                const peopleOptions = filteredDocs.map(doc => `<option value="${doc.id}">${doc.data().nomePessoa}</option>`).join('');
+    // Se a regra for "Sim", removemos qualquer filtro de género e paramos a função
+    if (genderMixSelect && genderMixSelect.value === 'sim') {
+        const allSelectsInInstance = instanceContainer.querySelectorAll('select.form-select');
+        allSelectsInInstance.forEach(select => {
+            Array.from(select.options).forEach(option => {
+                option.style.display = ''; // Mostra todas as opções
+            });
+        });
+        return; // Pára a execução para não aplicar o bloqueio de género
+    }
 
-                container.querySelectorAll('.form-select').forEach(select => {
-                    const currentValue = select.value;
-                    select.innerHTML = '<option value="">Selecione...</option>' + peopleOptions;
-                    if (currentValue) {
-                       select.value = currentValue;
-                    }
-                });
-            } catch (error) {
-                console.error(`Erro ao carregar pessoas para a designação '${designacao.nome}':`, error);
+    // O código abaixo só é executado se o filtro for "Não"
+    const allSelectsInInstance = instanceContainer.querySelectorAll('select.form-select');
+    const selectedPersonId = changedSelect.value;
+
+    // Se um campo for limpo, remove todos os filtros de género
+    if (!selectedPersonId) {
+        allSelectsInInstance.forEach(select => {
+            Array.from(select.options).forEach(option => {
+                option.style.display = ''; 
+            });
+        });
+        return;
+    }
+
+    const personData = allPeopleDataMap.get(selectedPersonId);
+    if (!personData || !personData.genero) return;
+
+    const requiredGender = personData.genero;
+
+    // Itera sobre todos os dropdowns na mesma designação
+    allSelectsInInstance.forEach(select => {
+        // Valida seleções já feitas
+        if (select !== changedSelect && select.value) {
+            const otherPersonData = allPeopleDataMap.get(select.value);
+            // Se o género for diferente, limpa a seleção
+            if (!otherPersonData || otherPersonData.genero !== requiredGender) {
+                select.value = ''; 
             }
-        };
+        }
+        
+        // Filtra as opções nos outros dropdowns
+        Array.from(select.options).forEach(option => {
+            if (!option.value) { // Mantém sempre a opção "Selecione..."
+                option.style.display = '';
+                return;
+            }
+            const optionPersonData = allPeopleDataMap.get(option.value);
+            if (optionPersonData && optionPersonData.genero === requiredGender) {
+                option.style.display = ''; // Mostra se o género for o mesmo
+            } else {
+                option.style.display = 'none'; // Esconde se o género for diferente
+            }
+        });
+    });
+};
+
+
+   const loadPeopleOptionsIntoSelects = async (designacao, container, genderPreference = 'ambos', idiomas = []) => {
+    try {
+        const ano = await getAnoPainelFirebase();
+        const mes = parseInt(document.getElementById('mes').value);
+        const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+        const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+        const horarios = await getHorariosFromFirebase(ano);
+
+        // Calcula a data exata da reunião para a verificação de ausência
+        const meetingDate = getMeetingDayOfMonth(ano, diasSemana, horarios['dia-semana']);
+
+        // 1. Faz a consulta inicial ao Firebase com os filtros gerais
+        let query = db.collection('pessoas').where('fazDesignacoesReuniao', '==', true);
+        if (idiomas.length > 0) {
+            query = query.where('idioma', 'in', idiomas);
+        }
+        if (genderPreference === 'masculino') query = query.where('genero', '==', 'Masculino');
+        if (genderPreference === 'feminino') query = query.where('genero', '==', 'Feminino');
+        
+        const snapshot = await query.get();
+
+        // 2. Cria uma lista pré-filtrada com as pessoas que cumprem os requisitos básicos
+        const eligiblePeopleList = [];
+        snapshot.docs.forEach(doc => {
+            const p = doc.data();
+            const podeFazer = p.designacoesReuniao && p.designacoesReuniao.includes(designacao.nome);
+            const isAbsent = meetingDate && p.ausencias && p.ausencias.includes(meetingDate);
+            
+            // Adiciona à lista apenas se puder fazer a designação e não estiver ausente
+            if (podeFazer && !isAbsent) {
+                eligiblePeopleList.push({ id: doc.id, data: p });
+            }
+        });
+        
+        // Ordena a lista alfabeticamente uma única vez
+        eligiblePeopleList.sort((a, b) => a.data.nomePessoa.localeCompare(b.data.nomePessoa));
+
+        // 3. Itera sobre cada dropdown (select) dentro do cartão da designação
+        container.querySelectorAll('select.form-select').forEach((participantSelect, participantIndex) => { 
+            const currentValue = participantSelect.value;
+            participantSelect.innerHTML = '<option value="">Selecione...</option>'; // Limpa as opções anteriores
+
+            // 4. Itera sobre a lista de pessoas elegíveis para criar as opções de cada dropdown
+            eligiblePeopleList.forEach(person => {
+                const pessoaData = person.data;
+
+                
+                let podeAssumirEstePapel = false;
+                
+                // Verifica se é a função de "Dirigente" (o primeiro dropdown numa designação com mais de uma pessoa)
+                if (participantIndex === 0 && (designacao.numeroParticipantes || 1) > 1) {
+                    
+                    // REGRA PADRÃO: Pessoas com '+ à vontade' são sempre elegíveis como dirigentes
+                    if (pessoaData.personalidade === '+ à vontade') {
+                        podeAssumirEstePapel = true;
+                    }
+
+                    // NOVA EXCEÇÃO: Se a própria designação permitir, pessoas com '- à vontade' também são elegíveis
+                    if (
+                        Array.isArray(designacao.personalidade) &&
+                        designacao.personalidade.includes('- à vontade') &&
+                        pessoaData.personalidade === '- à vontade'
+                    ) {
+                        podeAssumirEstePapel = true;
+                    }
+
+                } else {
+                    // Para todas as outras funções (Participante, Ajudante 1, Ajudante 2), não há restrição de personalidade
+                    podeAssumirEstePapel = true;
+                }
+            
+
+                if (podeAssumirEstePapel) {
+                    const option = document.createElement('option');
+                    option.value = person.id;
+                    option.textContent = pessoaData.nomePessoa;
+                    participantSelect.appendChild(option);
+                }
+            });
+
+            // Restaura o valor que estava selecionado anteriormente, se ainda for uma opção válida
+            if (currentValue) {
+               participantSelect.value = currentValue;
+            }
+        });
+    } catch (error) {
+        console.error(`Erro ao carregar pessoas para a designação '${designacao.nome}':`, error);
+    }
+};
 
         const initializeSystemData = async () => {
             try {
@@ -1145,10 +1317,52 @@ const saveSpecialEvent = async () => {
                     allPeopleDataMap.set(doc.id, { nome: pessoaData.nomePessoa, genero: pessoaData.genero });
                 });
                 console.log("Dados do sistema (Pessoas) inicializados.");
+                await initializeDiscursos(); 
             } catch (error) {
                 console.error("Erro ao inicializar dados do sistema:", error);
             }
         };
+
+        function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
+    if (!ano || !diasSemanaString || !diaSemanaReuniao) {
+        return null;
+    }
+    const parts = diasSemanaString.split(" - ");
+    if (parts.length < 2) return null;
+    const startDay = parseInt(parts[0]);
+    const endPart = parts[1].split(" ");
+    const endDay = parseInt(endPart[0]);
+    let startMonthStr = parts[0].split(" ")[1] || "";
+    const endMonthStr = endPart.length > 1 ? endPart[1] : startMonthStr;
+    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    let startMonthIndex = monthNames.indexOf(startMonthStr);
+    const endMonthIndex = monthNames.indexOf(endMonthStr);
+    if (startMonthIndex === -1) startMonthIndex = endMonthIndex;
+    if (startMonthIndex === -1) return null;
+
+    const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
+    if (dayOfWeekMeetingNumber === null) return null;
+
+    const startOfWeekDate = new Date(ano, startMonthIndex, startDay);
+    const endOfWeekDate = new Date(ano, endMonthIndex, endDay);
+    let currentDay = new Date(startOfWeekDate);
+
+    while (currentDay <= endOfWeekDate) {
+        if (currentDay.getDay() === dayOfWeekMeetingNumber) {
+            const month = String(currentDay.getMonth() + 1).padStart(2, '0');
+            const day = String(currentDay.getDate()).padStart(2, '0');
+            return `${ano}-${month}-${day}`;
+        }
+        currentDay.setDate(currentDay.getDate() + 1);
+    }
+    return null;
+}
+
+// Garanta que a função getDayOfWeekNumber também existe
+function getDayOfWeekNumber(dayOfWeekString) {
+    const days = { 'domingo': 0, 'segunda-feira': 1, 'terca-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sabado': 6 };
+    return days[dayOfWeekString.toLowerCase()];
+}
 
         async function preencherAutomaticamente() {
             console.log("🚀 Iniciando o preenchimento automático...");
@@ -1417,119 +1631,208 @@ const saveSpecialEvent = async () => {
             if (displayToRemove) displayToRemove.remove();
         };
 
-        const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
-            const containerToUse = document.getElementById('activeDesignationsContainer');
-            const savedSelections = {};
-            let placeholder = null; 
-            const existingCard = document.getElementById(`active-designation-${designacao.id}`);
-            
-            if (existingCard) {
-                existingCard.querySelectorAll('.active-designation-container').forEach((instance, instanceIndex) => {
-                    savedSelections[instanceIndex] = [];
-                    instance.querySelectorAll('.form-select').forEach((select, selectIndex) => {
-                        if (select.value) {
-                            savedSelections[instanceIndex][selectIndex] = select.value;
-                        }
+ const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
+    // ======================= INÍCIO DO LOG DE DEPURAÇÃO =======================
+    // Apenas para depuração, vamos verificar a designação "Necessidades Locais"
+    if (designacao.nome === 'Necessidades Locais') {
+        console.log("==============================================");
+        console.log("[DEBUG] Processando o card:", designacao.nome);
+        console.log("[DEBUG] Objeto 'designacao' completo:", designacao);
+        console.log("[DEBUG] Valor de 'anexadoDiscursos':", designacao.anexadoDiscursos);
+        console.log("[DEBUG] Tipo de 'anexadoDiscursos':", typeof designacao.anexadoDiscursos);
+        console.log("[DEBUG] Verificação (designacao.anexadoDiscursos === true):", designacao.anexadoDiscursos === true);
+    }
+    // ======================= FIM DO LOG DE DEPURAÇÃO =======================
+
+    const containerToUse = document.getElementById('activeDesignationsContainer');
+    const savedSelections = {};
+    let savedDescriptions = {};
+    let placeholder = document.createElement('div');
+    const existingCard = document.getElementById(`active-designation-${designacao.id}`);
+    
+    if (existingCard) {
+        existingCard.querySelectorAll('.active-designation-container').forEach((instance, instanceIndex) => {
+            savedSelections[instanceIndex] = Array.from(instance.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'))
+                .map(select => select.value || null);
+
+            const descInput = instance.querySelector('.descricao-input');
+            const searchInput = instance.querySelector('.discurso-search-input');
+            if (descInput) {
+                savedDescriptions[instanceIndex] = { type: 'text', value: descInput.value };
+            } else if (searchInput) {
+                savedDescriptions[instanceIndex] = { 
+                    type: 'discurso', 
+                    value: searchInput.value, 
+                    id: searchInput.dataset.selectedDiscursoId 
+                };
+            }
+        });
+        placeholder.id = `placeholder-${designacao.id}`;
+        existingCard.parentNode.insertBefore(placeholder, existingCard);
+    }
+
+    removeActiveDesignationDisplay(designacao.id); 
+    
+    if (quantity <= 0) {
+        if(placeholder && placeholder.parentNode) placeholder.remove();
+        return;
+    }
+
+    const mainDisplayContainer = document.createElement('div');
+    mainDisplayContainer.id = `active-designation-${designacao.id}`;
+    
+    for (let i = 1; i <= quantity; i++) {
+        const instanceContainer = document.createElement('div');
+        instanceContainer.className = 'active-designation-container';
+        instanceContainer.style.marginTop = '20px';
+        instanceContainer.style.padding = '15px 15px 45px 15px';
+        instanceContainer.style.borderRadius = '8px';
+        instanceContainer.style.position = 'relative';
+        instanceContainer.dataset.designacaoId = designacao.id;
+        
+        const colors = ['rgba(46, 204, 113, 0.1)', 'rgba(52, 152, 219, 0.1)', 'rgba(243, 156, 18, 0.1)', 'rgba(155, 89, 182, 0.1)', 'rgba(231, 76, 60, 0.1)', 'rgba(192, 57, 43, 0.1)', 'rgba(142, 68, 173, 0.1)'];
+        instanceContainer.style.backgroundColor = colors[(order - 1) % colors.length] || '#f8f9fa';
+        
+        const title = document.createElement('h5');
+        title.textContent = `${designacao.nome}` + (quantity > 1 ? ` (${i})` : '');
+        instanceContainer.appendChild(title);
+        
+        const numParticipantes = temporaryPreferences[`participantes-${designacao.id}-${i}`] || designacao.numeroParticipantes || 1;
+        const roles = numParticipantes == 1 ? ["Participante"] : (numParticipantes == 2 ? ["Dirigente", "Ajudante 1"] : ["Dirigente", "Ajudante 1", "Ajudante 2"]);
+        
+        roles.forEach((role, index) => {
+            instanceContainer.innerHTML += `<label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">${role}</label><select id="participant-${designacao.id}-${i}-${index}" class="form-select"><option value="">Selecione...</option></select>`;
+        });
+
+        const descricaoContainer = document.createElement('div');
+        descricaoContainer.className = 'descricao-container';
+        descricaoContainer.style.display = 'none';
+
+        // A condição crítica está aqui
+        if (designacao.anexadoDiscursos === true || designacao.anexadoDiscursos === 'sim') {
+            // Log para saber qual bloco foi executado
+            if (designacao.nome === 'Necessidades Locais') console.log("[DEBUG] Bloco IF executado: Criando barra de pesquisa.");
+            descricaoContainer.innerHTML = `
+                <label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">Discurso</label>
+                <div class="discurso-search-wrapper" style="position: relative;">
+                    <input type="text" class="form-select discurso-search-input" placeholder="Pesquisar por nº ou tema..." autocomplete="off" data-selected-discurso-id="">
+                    <div class="search-suggestions discurso-suggestions"></div>
+                </div>`;
+        } else {
+            // Log para saber qual bloco foi executado
+             if (designacao.nome === 'Necessidades Locais') console.log("[DEBUG] Bloco ELSE executado: Criando campo de texto normal.");
+            descricaoContainer.innerHTML = `
+                <label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">Descrição/Tema</label>
+                <input type="text" class="form-select descricao-input" placeholder="Insira o tema ou descrição...">`;
+        }
+        instanceContainer.appendChild(descricaoContainer);
+        
+        // ... (resto do código da função continua igual)
+        const filterIcon = document.createElement('i');
+        filterIcon.className = 'fas fa-filter filter-icon';
+        filterIcon.title = 'Filtrar';
+        const filterPopup = document.createElement('div');
+        filterPopup.className = 'filter-popup';
+
+        filterPopup.innerHTML = `
+            <h4>Filtros</h4>
+            <div>
+                <label>Nº de Participantes</label>
+                <select class="num-participantes-select"> <option value="1">1</option> <option value="2">2</option> <option value="3">3</option> </select>
+            </div>
+            <div style="margin-top: 15px;">
+                <label>Preferência de Género</label>
+                <select class="genero-preferencia-select"> <option value="ambos">Masculino/Feminino</option> <option value="masculino">Masculino</option> <option value="feminino">Feminino</option> </select>
+            </div>
+            <div style="margin-top: 15px;">
+                <label>Masculino com Feminino</label>
+                <select class="gender-mix-select"> <option value="nao">Não</option> <option value="sim">Sim</option> </select>
+            </div>
+            <div style="margin-top: 15px;">
+                <label>Descrição/Tema</label>
+                <select class="descricao-tema-select"> <option value="sim">Sim</option> <option value="nao" selected>Não</option> </select>
+            </div>
+        `;
+        instanceContainer.appendChild(filterPopup);
+        instanceContainer.appendChild(filterIcon);
+        
+        const numParticipantesSelect = filterPopup.querySelector('.num-participantes-select');
+        const generoPreferenciaSelect = filterPopup.querySelector('.genero-preferencia-select');
+        const descricaoTemaSelect = filterPopup.querySelector('.descricao-tema-select');
+        numParticipantesSelect.value = temporaryPreferences[`participantes-${designacao.id}-${i}`] || designacao.numeroParticipantes || 1;
+        generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos';
+        descricaoTemaSelect.value = designacao.descricao === 'sim' || designacao.anexadoDiscursos === true ? 'sim' : 'nao';
+        if (descricaoTemaSelect.value === 'sim') { descricaoContainer.style.display = 'block'; }
+        filterIcon.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.filter-popup.active').forEach(p => { if (p !== filterPopup) p.classList.remove('active'); }); filterPopup.classList.toggle('active'); });
+        numParticipantesSelect.addEventListener('change', (e) => { temporaryPreferences[`participantes-${designacao.id}-${i}`] = e.target.value; updateActiveDesignationDisplay(designacao, order, quantity); filterPopup.classList.remove('active'); });
+        generoPreferenciaSelect.addEventListener('change', (e) => { const selectedIdiomas = getSelectedNacionalidades(); loadPeopleOptionsIntoSelects(designacao, instanceContainer, e.target.value, selectedIdiomas); filterPopup.classList.remove('active'); });
+        descricaoTemaSelect.addEventListener('change', (e) => { descricaoContainer.style.display = e.target.value === 'sim' ? 'block' : 'none'; filterPopup.classList.remove('active'); });
+        const lockIcon = document.createElement('i'); lockIcon.className = 'fas fa-lock-open lock-icon'; lockIcon.title = 'Bloquear/Desbloquear'; lockIcon.addEventListener('click', (e) => { const isLocked = instanceContainer.dataset.locked === 'true'; instanceContainer.dataset.locked = !isLocked; e.target.classList.toggle('fa-lock-open', isLocked); e.target.classList.toggle('fa-lock', !isLocked); e.target.classList.toggle('locked', !isLocked); }); instanceContainer.appendChild(lockIcon); const lupaIcon = document.createElement('i'); lupaIcon.className = 'fas fa-search-plus lupa-icon'; lupaIcon.title = 'Analisar Histórico'; lupaIcon.addEventListener('click', () => { const selected = Array.from(instanceContainer.querySelectorAll('.form-select')).map(s => ({ id: s.value, name: s.options[s.selectedIndex].text })).filter(p => p.id); if (selected.length === 1) { loadParticipantProfile(selected[0].id); document.getElementById('perfilPopup').style.display = 'flex'; } else if (selected.length > 1) { openPairAnalysisPopup(selected); } else { alert("Selecione pelo menos um participante."); } }); instanceContainer.appendChild(lupaIcon); const labIcon = document.createElement('i'); labIcon.className = 'fas fa-flask lab-icon'; labIcon.title = 'Laboratório de Combinações'; labIcon.addEventListener('click', () => { alert("Laboratório de Combinações (Funcionalidade Futura)"); }); instanceContainer.appendChild(labIcon);
+        
+        const searchInput = instanceContainer.querySelector('.discurso-search-input');
+        if (searchInput) {
+            const suggestionsContainer = instanceContainer.querySelector('.discurso-suggestions');
+            const performSearch = () => {
+                const query = searchInput.value.toLowerCase();
+                suggestionsContainer.style.display = 'block';
+                const resultados = allDiscursosCache.filter(d => d.numero.startsWith(query) || d.nome.toLowerCase().includes(query)).slice(0, 10);
+                suggestionsContainer.innerHTML = '';
+                if (resultados.length > 0) {
+                    resultados.forEach(discurso => {
+                        const item = document.createElement('div');
+                        item.className = 'suggestion-item';
+                        item.textContent = `${discurso.numero} - ${discurso.nome}`;
+                        item.dataset.id = discurso.id;
+                        item.dataset.fulltext = `${discurso.numero} - ${discurso.nome}`;
+                        suggestionsContainer.appendChild(item);
                     });
-                });
-                placeholder = document.createElement('div');
-                placeholder.id = `placeholder-${designacao.id}`;
-                existingCard.parentNode.insertBefore(placeholder, existingCard);
-            }
-
-            removeActiveDesignationDisplay(designacao.id); 
-            
-            if (quantity <= 0) {
-                 if(placeholder) placeholder.remove();
-                 return;
-            }
-
-            const mainDisplayContainer = document.createElement('div');
-            mainDisplayContainer.id = `active-designation-${designacao.id}`;
-            
-            for (let i = 1; i <= quantity; i++) {
-                const instanceContainer = document.createElement('div');
-                instanceContainer.className = 'active-designation-container';
-                instanceContainer.style.marginTop = '20px';
-                instanceContainer.style.padding = '15px 15px 45px 15px';
-                instanceContainer.style.borderRadius = '8px';
-                instanceContainer.style.position = 'relative';
-                instanceContainer.dataset.designacaoId = designacao.id;
-                
-                const colors = ['rgba(46, 204, 113, 0.1)', 'rgba(52, 152, 219, 0.1)', 'rgba(243, 156, 18, 0.1)', 'rgba(155, 89, 182, 0.1)', 'rgba(231, 76, 60, 0.1)', 'rgba(192, 57, 43, 0.1)', 'rgba(142, 68, 173, 0.1)'];
-                instanceContainer.style.backgroundColor = colors[(order - 1) % colors.length] || '#f8f9fa';
-                
-                const title = document.createElement('h5');
-                title.textContent = `${designacao.nome}` + (quantity > 1 ? ` (${i})` : '');
-                instanceContainer.appendChild(title);
-                
-                const numParticipantes = temporaryPreferences[`participantes-${designacao.id}-${i}`] || designacao.numeroParticipantes || 1;
-                const roles = numParticipantes == 1 ? ["Participante"] : (numParticipantes == 2 ? ["Dirigente", "Ajudante 1"] : ["Dirigente", "Ajudante 1", "Ajudante 2"]);
-                
-                roles.forEach((role, index) => {
-                    instanceContainer.innerHTML += `<label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">${role}</label><select id="participant-${designacao.id}-${i}-${index}" class="form-select"><option value="">Selecione...</option></select>`;
-                });
-                
-                const filterIcon = document.createElement('i');
-                filterIcon.className = 'fas fa-filter filter-icon';
-                filterIcon.title = 'Filtrar';
-                const filterPopup = document.createElement('div');
-                filterPopup.className = 'filter-popup';
-                filterPopup.innerHTML = `<h4>Filtros</h4><div><label>Nº de Participantes</label><select class="num-participantes-select"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div><div style="margin-top: 15px;"><label>Preferência de Género</label><select class="genero-preferencia-select"><option value="ambos">Masculino/Feminino</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option></select></div>`;
-                instanceContainer.appendChild(filterPopup);
-                instanceContainer.appendChild(filterIcon);
-                const numParticipantesSelect = filterPopup.querySelector('.num-participantes-select');
-                const generoPreferenciaSelect = filterPopup.querySelector('.genero-preferencia-select');
-                numParticipantesSelect.value = temporaryPreferences[`participantes-${designacao.id}-${i}`] || designacao.numeroParticipantes || 1;
-                generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos';
-                filterIcon.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.filter-popup.active').forEach(p => { if (p !== filterPopup) p.classList.remove('active'); }); filterPopup.classList.toggle('active'); });
-                numParticipantesSelect.addEventListener('change', (e) => { temporaryPreferences[`participantes-${designacao.id}-${i}`] = e.target.value; updateActiveDesignationDisplay(designacao, order, quantity); filterPopup.classList.remove('active'); });
-                
-                generoPreferenciaSelect.addEventListener('change', (e) => { 
-                    const selectedIdiomas = getSelectedNacionalidades();
-                    loadPeopleOptionsIntoSelects(designacao, instanceContainer, e.target.value, selectedIdiomas); 
-                    filterPopup.classList.remove('active'); 
-                });
-
-                const lockIcon = document.createElement('i');
-                lockIcon.className = 'fas fa-lock-open lock-icon';
-                lockIcon.title = 'Bloquear/Desbloquear';
-                lockIcon.addEventListener('click', (e) => { const isLocked = instanceContainer.dataset.locked === 'true'; instanceContainer.dataset.locked = !isLocked; e.target.classList.toggle('fa-lock-open', isLocked); e.target.classList.toggle('fa-lock', !isLocked); e.target.classList.toggle('locked', !isLocked); });
-                instanceContainer.appendChild(lockIcon);
-                const lupaIcon = document.createElement('i');
-                lupaIcon.className = 'fas fa-search-plus lupa-icon';
-                lupaIcon.title = 'Analisar Histórico';
-                lupaIcon.addEventListener('click', () => { const selected = Array.from(instanceContainer.querySelectorAll('.form-select')).map(s => ({ id: s.value, name: s.options[s.selectedIndex].text })).filter(p => p.id); if (selected.length === 1) { loadParticipantProfile(selected[0].id); document.getElementById('perfilPopup').style.display = 'flex'; } else if (selected.length > 1) { openPairAnalysisPopup(selected); } else { alert("Selecione pelo menos um participante."); } });
-                instanceContainer.appendChild(lupaIcon);
-                const labIcon = document.createElement('i');
-                labIcon.className = 'fas fa-flask lab-icon';
-                labIcon.title = 'Laboratório de Combinações';
-                labIcon.addEventListener('click', () => { alert("Laboratório de Combinações (Funcionalidade Futura)"); });
-                instanceContainer.appendChild(labIcon);
-
-                mainDisplayContainer.appendChild(instanceContainer);
-            }
-            
-            if (placeholder) {
-                placeholder.parentNode.replaceChild(mainDisplayContainer, placeholder);
-            } else {
-                containerToUse.appendChild(mainDisplayContainer);
-            }
-
-            const selectedIdiomas = getSelectedNacionalidades();
-            await loadPeopleOptionsIntoSelects(designacao, mainDisplayContainer, designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos', selectedIdiomas);
-
-            mainDisplayContainer.querySelectorAll('.active-designation-container').forEach((instance, instanceIndex) => {
-                if (savedSelections[instanceIndex]) {
-                    instance.querySelectorAll('.form-select').forEach((select, selectIndex) => {
-                        const savedValue = savedSelections[instanceIndex][selectIndex];
-                        if (savedValue) {
-                            select.value = savedValue;
-                        }
-                    });
+                } else {
+                    suggestionsContainer.innerHTML = '<div class="suggestion-item" style="pointer-events: none;">Nenhum discurso encontrado</div>';
+                }
+            };
+            searchInput.addEventListener('focus', performSearch);
+            searchInput.addEventListener('input', performSearch);
+            searchInput.addEventListener('blur', () => setTimeout(() => { suggestionsContainer.style.display = 'none'; }, 200));
+            suggestionsContainer.addEventListener('mousedown', (e) => {
+                const target = e.target.closest('.suggestion-item');
+                if (target && target.dataset.id) {
+                    searchInput.value = target.dataset.fulltext;
+                    searchInput.dataset.selectedDiscursoId = target.dataset.id;
                 }
             });
-        };
+        }
+        mainDisplayContainer.appendChild(instanceContainer);
+    }
+    
+    if (placeholder && placeholder.parentNode) {
+        placeholder.parentNode.replaceChild(mainDisplayContainer, placeholder);
+    } else {
+        containerToUse.appendChild(mainDisplayContainer);
+    }
+
+    const selectedIdiomas = getSelectedNacionalidades();
+    await loadPeopleOptionsIntoSelects(designacao, mainDisplayContainer, designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos', selectedIdiomas);
+
+    mainDisplayContainer.querySelectorAll('.active-designation-container').forEach((instance, instanceIndex) => {
+        if (savedSelections[instanceIndex]) {
+            instance.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)').forEach((select, selectIndex) => {
+                if(savedSelections[instanceIndex][selectIndex]) select.value = savedSelections[instanceIndex][selectIndex];
+            });
+        }
+        if (savedDescriptions[instanceIndex]) {
+            if (savedDescriptions[instanceIndex].type === 'text') {
+                const descInput = instance.querySelector('.descricao-input');
+                if (descInput) descInput.value = savedDescriptions[instanceIndex].value;
+            } else if (savedDescriptions[instanceIndex].type === 'discurso') {
+                const searchInput = instance.querySelector('.discurso-search-input');
+                if (searchInput) {
+                    searchInput.value = savedDescriptions[instanceIndex].value;
+                    searchInput.dataset.selectedDiscursoId = savedDescriptions[instanceIndex].id;
+                }
+            }
+        }
+    });
+};
         
         const updateOrderButtonClasses = (button, order) => {
             button.className = 'order-button';
