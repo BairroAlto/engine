@@ -2725,15 +2725,15 @@ const initializeSystemData = async () => {
         pessoasSnapshot.forEach(doc => {
             const pessoaData = doc.data();
             allPeople.push({ id: doc.id, nome: pessoaData.nomePessoa });
-            // GUARDA O GÊNERO AQUI
             allPeopleDataMap.set(doc.id, { nome: pessoaData.nomePessoa, genero: pessoaData.genero });
         });
 
         designacoesSnapshot.forEach(doc => {
-            allDesignationsMap.set(doc.id, doc.data().nome);
+            // ALTERAÇÃO AQUI: Guardamos o objeto de dados completo, não apenas o nome.
+            allDesignationsMap.set(doc.id, doc.data());
         });
 
-        console.log("Dados do sistema (Pessoas e Designações) inicializados.");
+        console.log("Dados do sistema (Pessoas e Designações com detalhes) inicializados.");
     } catch (error) {
         console.error("Erro ao inicializar dados do sistema:", error);
     }
@@ -2792,7 +2792,6 @@ const loadParticipantProfile = async (personId) => {
     currentPersonParticipationRecords = []; // Limpa registros anteriores
 
     try {
-        // Obtenção dos dados do histórico (sem alterações aqui)
         const historicoSnapshot = await db.collection('historico').orderBy("dia", "desc").get();
         let records = [];
         let years = new Set();
@@ -2803,49 +2802,58 @@ const loadParticipantProfile = async (personId) => {
             
             if (historico.designacoes && Array.isArray(historico.designacoes)) {
                 historico.designacoes.forEach(designacaoHist => {
-                    const participantes = designacaoHist.participantes;
-                    let meuPapel = '';
-                    let todosOsIDs = [];
+                    
+                    // ========================================================================
+                    // NOVO FILTRO APLICADO AQUI
+                    // ========================================================================
+                    const designacaoInfo = allDesignationsMap.get(designacaoHist.designacaoId);
 
-                    if (participantes && typeof participantes === 'object') {
-                        todosOsIDs = Object.values(participantes);
-                        for (const [papel, id] of Object.entries(participantes)) {
-                            if (id === personId) {
-                                meuPapel = papel;
-                                break;
+                    // Apenas continua se a designação existir E se a sua 'parte' for 'escola'
+                    if (designacaoInfo && designacaoInfo.parte === 'escola') {
+
+                        const participantes = designacaoHist.participantes;
+                        let meuPapel = '';
+                        let todosOsIDs = [];
+
+                        if (participantes && typeof participantes === 'object') {
+                            todosOsIDs = Object.values(participantes);
+                            for (const [papel, id] of Object.entries(participantes)) {
+                                if (id === personId) {
+                                    meuPapel = papel;
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    if (meuPapel) {
-                        years.add(historico.ano); // Coleta todos os anos para o filtro
+                        if (meuPapel) {
+                            years.add(historico.ano);
 
-                        const designacaoNome = allDesignationsMap.get(designacaoHist.designacaoId) || 'Designação Desconhecida';
-                        designacoesDaPessoa.add(designacaoNome);
+                            const designacaoNome = designacaoInfo.nome || 'Designação Desconhecida';
+                            designacoesDaPessoa.add(designacaoNome);
 
-                        // --- INÍCIO DA CORREÇÃO ---
-                        const companheirosIDs = todosOsIDs.filter(id => id !== personId);
-                        // A linha abaixo foi corrigida para aceder à propriedade .nome
-                        const companheirosNomes = companheirosIDs
-                            .map(id => (allPeopleDataMap.get(id) || {}).nome || 'N/A')
-                            .join(', ');
-                        // --- FIM DA CORREÇÃO ---
+                            const companheirosIDs = todosOsIDs.filter(id => id !== personId);
+                            const companheirosNomes = companheirosIDs
+                                .map(id => (allPeopleDataMap.get(id) || {}).nome || 'N/A')
+                                .join(', ');
 
-                        records.push({
-                            ano: historico.ano,
-                            dia: historico.dia,
-                            designacaoNome: designacaoNome,
-                            companheiros: companheirosNomes,
-                            meuPapel: meuPapel.charAt(0).toUpperCase() + meuPapel.slice(1)
-                        });
-                    }
+                            records.push({
+                                ano: historico.ano,
+                                dia: historico.dia,
+                                designacaoNome: designacaoNome,
+                                companheiros: companheirosNomes,
+                                meuPapel: meuPapel.charAt(0).toUpperCase() + meuPapel.slice(1)
+                            });
+                        }
+                    } // Fim do 'if' do filtro
+                    // ========================================================================
+                    // FIM DA ALTERAÇÃO
+                    // ========================================================================
                 });
             }
         });
 
-        currentPersonParticipationRecords = records; // Não é preciso ordenar aqui, já vem do Firestore
+       currentPersonParticipationRecords = records;
 
-        // Popula os filtros (sem alterações aqui)
         perfilFiltroAno.innerHTML = '<option value="">Todos</option>';
         Array.from(years).sort((a, b) => b - a).forEach(year => {
             const option = document.createElement('option');
@@ -2862,7 +2870,6 @@ const loadParticipantProfile = async (personId) => {
             perfilFiltroDesignacao.appendChild(option);
         });
 
-        // Exibe os filtros e a tabela (sem alterações aqui)
         perfilLoading.style.display = 'none';
         perfilFiltros.style.display = 'flex';
         perfilTableContainer.style.display = 'block';
