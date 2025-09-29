@@ -9,47 +9,219 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
-        /* Estilos existentes */
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #2c3e50; }
-        .form-group input[type="text"], .form-group input[type="number"], .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-        .switch-group { display: flex; align-items: center; justify-content: space-between; }
-        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e74c3c; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
-        input:checked + .slider { background-color: #2ecc71; }
-        input:checked + .slider:before { transform: translateX(26px); }
-        .slider.round { border-radius: 34px; }
-        .slider.round:before { border-radius: 50%; }
-        .btn-criar { background-color: #2c3e50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
-        .checkbox-group { display: flex; flex-direction: column; gap: 8px; }
-        .checkbox-item { display: flex; align-items: center; padding: 6px; border-radius: 4px; font-size: 14px; }
-        .checkbox-item input[type="checkbox"] { margin-right: 8px; }
-        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; }
-        .checkbox-item:has(input[value="Ancião"]) { background-color: #bbdefb; }
-        .checkbox-item:has(input[value="Servo Ministerial"]) { background-color: #c8e6c9; }
-        .checkbox-item:has(input[value="Pioneiro Regular"]) { background-color: #fff9c4; }
-        .checkbox-item:has(input[value="Pioneiro Auxiliar"]) { background-color: #ffecb3; }
-        .checkbox-item:has(input[value="Publicador"]) { background-color: #ffcdd2; }
-        .checkbox-item:has(input[value="Publicador não Batizado"]) { background-color: #f8bbd0; }
-        .help-text { font-style: italic; font-size: 0.7em; color: #7f8c8d; font-weight: normal; margin-left: 8px; }
-        .checkbox-group-horizontal { display: flex; gap: 10px; flex-wrap: wrap; }
-        /* Ajuste no nome para ser mais genérico, já que agora serve para radio e checkbox */
-        .option-item-horizontal { display: flex; align-items: center; padding: 8px 16px; border-radius: 20px; background-color: #ecf0f1; border: 1px solid #bdc3c7; cursor: pointer; transition: background-color 0.3s; }
-        .option-item-horizontal:has(input:checked) { background-color: #3498db; color: white; border-color: #2980b9; }
-        .option-item-horizontal input[type="checkbox"], .option-item-horizontal input[type="radio"] { margin-right: 8px; }
+/* =================================================================== */
+/*  1. ESTILOS GERAIS E LAYOUT (Vindos de criar.html)                  */
+/*  Estes são os estilos base para o corpo, sidebar e conteúdo.      */
+/* =================================================================== */
 
-        /* Estilos para as Abas */
-        .tab-nav { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
-        .tab-button { padding: 10px 20px; cursor: pointer; border: none; background-color: transparent; font-size: 16px; color: #7f8c8d; border-bottom: 2px solid transparent; transition: all 0.3s ease; }
-        .tab-button.active { color: #2c3e50; border-bottom: 2px solid #2c3e50; }
-        .tab-pane { display: none; }
-        .tab-pane.active { display: block; }
-        .form-navigation { display: flex; justify-content: space-between; margin-top: 20px; }
-        .btn-nav { background-color: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        .btn-nav.prev { background-color: #95a5a6; }
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
+
+body { 
+    font-family: Arial, sans-serif; 
+    display: flex; 
+    min-height: 100vh; 
+    background-color: #f5f6fa; 
+}
+
+/* --- Sidebar --- */
+.sidebar { 
+    width: 250px; 
+    background-color: #2c3e50; 
+    color: white; 
+    padding-top: 20px; 
+    height: 100vh; 
+    position: fixed; 
+    left: 0; 
+    top: 0; 
+    display: flex; 
+    flex-direction: column; 
+}
+.logo { 
+    text-align: center; 
+    padding-bottom: 20px; 
+    border-bottom: 1px solid #34495e; 
+}
+.logo h2 { 
+    margin: 0; 
+}
+.nav-list { 
+    list-style: none; 
+    padding: 0; 
+}
+.nav-item a { 
+    color: white; 
+    text-decoration: none; 
+    display: flex; 
+    align-items: center; 
+    padding: 15px 20px; 
+    transition: background-color 0.3s; 
+}
+.nav-item a i { 
+    margin-right: 15px; 
+    width: 20px; 
+    text-align: center; 
+}
+.nav-item a:hover { 
+    background-color: #34495e; 
+}
+.nav-item.active a { 
+    background-color: #1abc9c; 
+}
+
+/* --- Conteúdo Principal --- */
+.content { 
+    margin-left: 250px; 
+    padding: 30px; 
+    flex-grow: 1; 
+    width: 100%; /* Ajuste para melhor responsividade */
+}
+h1 { 
+    color: #2c3e50; 
+    margin-bottom: 20px; 
+    margin-top: 20px; 
+    font-size: 28px; 
+    border-bottom: 2px solid #ecf0f1; 
+    padding-bottom: 10px; 
+}
+.content > h1:first-of-type { 
+    margin-top: 0; 
+}
+
+/* =================================================================== */
+/*  2. COMPONENTES DA PÁGINA 'CRIAR & EDITAR' (Cards)                  */
+/* =================================================================== */
+
+.card-container { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); 
+    gap: 20px; 
+}
+
+.item-card {
+    background-color: #ffffff;
+    border: 1px solid #eef2f5;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    text-align: center;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    height: 100%;
+}
+
+.item-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+}
+
+.item-card i { font-size: 28px; color: #34495e; }
+.item-card h3 { font-size: 18px; color: #2c3e50; margin: 0; }
+
+.button-group { display: flex; gap: 10px; width: 100%; margin-top: auto; }
+.card-action-btn { flex-grow: 1; padding: 10px; border-radius: 5px; color: white; text-decoration: none; font-size: 14px; font-weight: bold; text-align: center; transition: opacity 0.3s; }
+.card-action-btn:hover { opacity: 0.9; }
+.btn-criar { background-color: #3498db; }
+.btn-editar { background-color: #f39c12; }
+
+.card-link { text-decoration: none; }
+.gerenciar-card { border-top: 4px solid #9b59b6; }
+.gerenciar-card i { color: #9b59b6; }
+.gerenciar-card .action-text { margin-top: auto; color: #34495e; font-weight: bold; }
+
+/* =================================================================== */
+/*  3. COMPONENTES DA PÁGINA 'CRIAR DESIGNAÇÃO' (Formulário)           */
+/* =================================================================== */
+
+.card { /* Este .card é o container do formulário */
+    background: white; 
+    padding: 20px; 
+    border-radius: 8px; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+    max-width: 600px; 
+    margin: 0 auto; 
+}
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 5px; color: #2c3e50; }
+.form-group input[type="text"], .form-group input[type="number"], .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+
+.switch-group { display: flex; align-items: center; justify-content: space-between; }
+.switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e74c3c; transition: .4s; }
+.slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
+input:checked + .slider { background-color: #2ecc71; }
+input:checked + .slider:before { transform: translateX(26px); }
+.slider.round { border-radius: 34px; }
+.slider.round:before { border-radius: 50%; }
+
+.btn-criar { /* Estilo base para botões 'Criar', pode ser sobrescrito */
+    background-color: #2c3e50; 
+    color: white; 
+    padding: 10px 20px; 
+    border: none; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    width: 100%; 
+    font-size: 16px; 
+    transition: background-color 0.3s; 
+}
+.btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; }
+
+.checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+.checkbox-item { display: flex; align-items: center; padding: 6px; border-radius: 4px; font-size: 14px; }
+.checkbox-item input[type="checkbox"] { margin-right: 8px; }
+.checkbox-item:has(input[value="Ancião"]) { background-color: #bbdefb; }
+.checkbox-item:has(input[value="Servo Ministerial"]) { background-color: #c8e6c9; }
+.checkbox-item:has(input[value="Pioneiro Regular"]) { background-color: #fff9c4; }
+.checkbox-item:has(input[value="Pioneiro Auxiliar"]) { background-color: #ffecb3; }
+.checkbox-item:has(input[value="Publicador"]) { background-color: #ffcdd2; }
+.checkbox-item:has(input[value="Publicador não Batizado"]) { background-color: #f8bbd0; }
+
+.help-text { font-style: italic; font-size: 0.7em; color: #7f8c8d; font-weight: normal; margin-left: 8px; }
+.checkbox-group-horizontal { display: flex; gap: 10px; flex-wrap: wrap; }
+.option-item-horizontal { display: flex; align-items: center; padding: 8px 16px; border-radius: 20px; background-color: #ecf0f1; border: 1px solid #bdc3c7; cursor: pointer; transition: background-color 0.3s; }
+.option-item-horizontal:has(input:checked) { background-color: #3498db; color: white; border-color: #2980b9; }
+.option-item-horizontal input[type="checkbox"], .option-item-horizontal input[type="radio"] { margin-right: 8px; }
+
+.tab-nav { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
+.tab-button { padding: 10px 20px; cursor: pointer; border: none; background-color: transparent; font-size: 16px; color: #7f8c8d; border-bottom: 2px solid transparent; transition: all 0.3s ease; }
+.tab-button.active { color: #2c3e50; border-bottom: 2px solid #2c3e50; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+.form-navigation { display: flex; justify-content: space-between; margin-top: 20px; }
+.btn-nav { background-color: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+.btn-nav.prev { background-color: #95a5a6; }
+
+.popup-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 1000; opacity: 0; transition: opacity 0.3s ease-in-out; }
+.popup-content { background-color: #ffffff; padding: 30px 50px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: center; color: #2c3e50; font-size: 1.1em; }
+
+/* =================================================================== */
+/*  4. RESPONSIVIDADE (Mobile)                                         */
+/*  Esta regra aplica-se a TODAS as páginas.                         */
+/* =================================================================== */
+
+@media (max-width: 768px) { 
+    .sidebar { 
+        width: 70px; 
+    } 
+    .sidebar .logo h2, .sidebar .nav-item a span { 
+        display: none; 
+    } 
+    .content { 
+        margin-left: 70px; 
+        padding: 15px; /* Reduz o padding em telas menores */
+    } 
+}
+
     </style>
 </head>
 <body>
@@ -164,6 +336,11 @@
                 </div>
             </form>
         </div>
+        <div id="custom-popup" class="popup-container">
+    <div class="popup-content">
+        <p>Designação criada! Redirecionando para a página de ordenação...</p>
+    </div>
+</div>
     </main>
 
     <script src="firebase-config.js"></script>
@@ -217,49 +394,62 @@
             await carregarAnexos();
 
             // Submissão do formulário
-            const form = document.getElementById('criar-designacao-form');
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
+           const form = document.getElementById('criar-designacao-form');
+form.addEventListener('submit', async function(e) {
+    e.preventDefault();
 
-                // Validação
-                const quemFazSelecionado = document.querySelector('input[name="quem_faz"]:checked');
-                if (!quemFazSelecionado) {
-                    alert('O campo "Quem faz?" é obrigatório. Por favor, selecione pelo menos uma opção.');
-                    showTab(3);
-                    return;
-                }
-                
-                // JAVASCRIPT ATUALIZADO PARA PEGAR O VALOR DO RADIO BUTTON
-                const personalidadeSelecionada = document.querySelector('input[name="personalidade"]:checked');
+    // Validação
+    const quemFazSelecionado = document.querySelector('input[name="quem_faz"]:checked');
+    if (!quemFazSelecionado) {
+        alert('O campo "Quem faz?" é obrigatório. Por favor, selecione pelo menos uma opção.');
+        showTab(3);
+        return;
+    }
+    
+    const personalidadeSelecionada = document.querySelector('input[name="personalidade"]:checked');
+    const designacao = {
+        nome: document.getElementById('nome-designacao').value,
+        numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
+        feitoPor: document.getElementById('feito-por').value,
+        preferencia: document.getElementById('preferencia').value,
+        personalidade: personalidadeSelecionada ? personalidadeSelecionada.value : "",
+        quando: document.getElementById('quando').value,
+        tipo: document.getElementById('tipo').value,
+        parte: document.getElementById('parte').value,
+        anexo: document.getElementById('anexo').value,
+        descricao: document.getElementById('descricao').value,
+        anexadoDiscursos: document.getElementById('anexado-discursos').value,
+        emoji: document.getElementById('emoji').value,
+        status: document.getElementById('status').checked,
+        quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
+        dataCriacao: new Date()
+    };
 
-                const designacao = {
-                    nome: document.getElementById('nome-designacao').value,
-                    numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
-                    feitoPor: document.getElementById('feito-por').value,
-                    preferencia: document.getElementById('preferencia').value,
-                    // Salva o valor do radio button ou uma string vazia se nada for selecionado
-                    personalidade: personalidadeSelecionada ? personalidadeSelecionada.value : "",
-                    quando: document.getElementById('quando').value,
-                    tipo: document.getElementById('tipo').value,
-                    parte: document.getElementById('parte').value,
-                    anexo: document.getElementById('anexo').value,
-                    descricao: document.getElementById('descricao').value,
-                    anexadoDiscursos: document.getElementById('anexado-discursos').value,
-                    emoji: document.getElementById('emoji').value,
-                    status: document.getElementById('status').checked,
-                    quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
-                    dataCriacao: new Date()
-                };
+    // Função para mostrar o pop-up e redirecionar
+    function showPopupAndRedirect(url) {
+        const popup = document.getElementById('custom-popup');
+        popup.style.display = 'flex'; // Torna o container visível
+        setTimeout(() => {
+            popup.style.opacity = '1'; // Ativa a transição de fade-in
+        }, 10); // Pequeno delay para garantir que o display:flex foi aplicado antes da opacidade
 
-                try {
-                    const newDocRef = await db.collection('designacoes').add(designacao);
-                    alert('Designação criada! Você será redirecionado para definir a ordem.');
-                    window.location.href = `gerenciar-ordem.html?id=${newDocRef.id}`;
-                } catch (error) {
-                    console.error('Erro ao criar designação:', error);
-                    alert('Erro ao salvar a designação.');
-                }
-            });
+        // Agenda o redirecionamento para depois de 1 segundo
+        setTimeout(() => {
+            window.location.href = url;
+        }, 1000); // 1000 milissegundos = 1 segundo
+    }
+
+    try {
+        const newDocRef = await db.collection('designacoes').add(designacao);
+        
+        // Chama a função que mostra o pop-up e depois redireciona
+        showPopupAndRedirect(`gerenciar-ordem.html?id=${newDocRef.id}`);
+
+    } catch (error) {
+        console.error('Erro ao criar designação:', error);
+        alert('Erro ao salvar a designação.');
+    }
+});
         });
     </script>
 </body>
