@@ -309,7 +309,11 @@
                     <i class="fas fa-filter"></i>
                 </button>
 
-             
+              <!-- INÍCIO: BOTÃO DE LIXO ADICIONADO -->
+                <button id="delete-designation-btn" class="action-button" title="Apagar Designação" style="background-color: #e74c3c;">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                <!-- FIM: BOTÃO DE LIXO ADICIONADO -->
                 
                 <button class="btn-submit" id="saveDesignationChanges" style="margin-left: auto;">Guardar Alterações</button>
             </div>
@@ -358,6 +362,30 @@
 <!-- =================================================================== -->
 <!-- ============= FIM: POPUP DE EDIÇÃO DO CABEÇALHO DA SEMANA ======= -->
 <!-- =================================================================== -->
+
+<!-- =================================================================== -->
+    <!-- ============= INÍCIO: POPUP DE CONFIRMAÇÃO DE ELIMINAÇÃO ======= -->
+    <!-- =================================================================== -->
+    <div id="deleteConfirmationPopup" class="popup-overlay">
+        <div class="popup-content" style="max-width: 400px;">
+            <div class="popup-header">
+                <h2 class="popup-title">Confirmar Eliminação</h2>
+                <button class="popup-close-button" id="closeDeleteConfirmation">×</button>
+            </div>
+            <div class="popup-body">
+                <p id="delete-confirmation-message">Tem a certeza que deseja apagar esta designação permanentemente?</p>
+            </div>
+            <div class="popup-actions" style="justify-content: flex-end; gap: 10px;">
+                 <button id="cancel-delete-btn" class="action-button" style="background-color: #95a5a6;">Não</button>
+                 <button id="confirm-delete-btn" class="action-button" style="background-color: #e74c3c;">Sim, Apagar</button>
+            </div>
+        </div>
+    </div>
+    <!-- =================================================================== -->
+    <!-- ============= FIM: POPUP DE CONFIRMAÇÃO DE ELIMINAÇÃO ========= -->
+    <!-- =================================================================== -->
+
+
 <!-- ===== INÍCIO: NOVO POPUP DE FILTRO AVANÇADO ===== -->
     <div id="advancedEditPopup" class="popup-overlay">
         <div class="popup-content" style="max-width: 500px;">
@@ -500,6 +528,102 @@
             const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
           
             
+
+
+
+  // Abre o popup de confirmação quando o botão de lixo é clicado
+            deleteDesignationBtn.addEventListener('click', () => {
+                deleteConfirmationPopup.classList.add('active');
+            });
+
+            // Função para fechar o popup de confirmação
+            const closeDeletePopup = () => deleteConfirmationPopup.classList.remove('active');
+            
+            closeDeleteConfirmation.addEventListener('click', closeDeletePopup);
+            cancelDeleteBtn.addEventListener('click', closeDeletePopup);
+
+            // Função principal que executa a eliminação
+           async function deleteCurrentDesignation() {
+                // Verifica se há dados de edição válidos (sem alterações)
+                if (!currentEditData || !currentEditData.historicoDocRefId) {
+                    openModal("Erro", "Não foi possível identificar a designação a ser apagada.");
+                    return;
+                }
+
+                // Encontra o documento de histórico completo nos dados locais (sem alterações)
+                const historicoDocToUpdate = allScheduleData.find(d => d.id === currentEditData.historicoDocRefId);
+
+                if (!historicoDocToUpdate) {
+                    openModal("Erro", "Documento de histórico não encontrado.");
+                    return;
+                }
+
+                try {
+                    // Desativa os botões para evitar cliques duplos
+                    confirmDeleteBtn.disabled = true;
+                    confirmDeleteBtn.textContent = 'A Processar...';
+
+                    // ==========================================================
+                    // INÍCIO: LÓGICA DE BACKUP PARA A COLEÇÃO 'cemiterio'
+                    // ==========================================================
+                    
+                    // 1. Prepara o objeto de backup com os dados originais e metadados adicionais
+                    const backupData = {
+                        ...historicoDocToUpdate, // Copia todos os campos do documento original
+                        motivoEliminacao: `Apagada a designação "${designationMap.get(currentEditData.trueOriginalDesignationId)?.nome || 'ID desconhecido'}"`,
+                        timestampEliminacao: firebase.firestore.FieldValue.serverTimestamp(), // Adiciona um carimbo de data/hora do servidor
+                        documentoOriginalId: historicoDocToUpdate.id // Guarda uma referência ao ID original
+                    };
+                    
+                    // Remove o campo 'id' que é adicionado localmente para não o gravar no Firestore
+                    delete backupData.id;
+
+                    // 2. Guarda a cópia de segurança na coleção 'cemiterio'
+                    console.log("A guardar cópia de segurança no 'cemiterio'...");
+                    await db.collection('cemiterio').add(backupData);
+                    console.log("Cópia de segurança guardada com sucesso.");
+                    
+                    // ==========================================================
+                    // FIM: LÓGICA DE BACKUP
+                    // ==========================================================
+
+                    // 3. Continua com a lógica original para apagar a designação do documento principal
+                    const originalSignature = currentEditData.trueOriginalSignature;
+                    const originalDesignationId = currentEditData.trueOriginalDesignationId;
+
+                    const newDesignations = (historicoDocToUpdate.designacoes || []).filter(d => {
+                        const isMatch = d.designacaoId === originalDesignationId && createParticipantSignature(d.participantes) === originalSignature;
+                        return !isMatch; // Retorna true para manter, false para remover
+                    });
+                    
+                    // 4. Atualiza o documento original no Firebase com a lista de designações filtrada
+                    await db.collection('historico').doc(currentEditData.historicoDocRefId).update({
+                        designacoes: newDesignations
+                    });
+
+                    // 5. Fecha os popups e atualiza a interface (sem alterações)
+                    closeDeletePopup();
+                    closeEditPopup.click();
+                    await loadInitialData();
+                    renderSchedule();
+
+                } catch (error) {
+                    console.error("Erro durante o processo de eliminação:", error);
+                    // Se ocorrer um erro (seja no backup ou na atualização), a operação é cancelada
+                    openModal("Erro na Operação", "Ocorreu um erro e a designação não foi apagada. Verifique a consola.");
+                } finally {
+                    // Reativa o botão no final, quer tenha sucesso ou falhe (sem alterações)
+                    confirmDeleteBtn.disabled = false;
+                    confirmDeleteBtn.textContent = 'Sim, Apagar';
+                }
+            }
+
+
+
+            // Liga a função de apagar ao botão "Sim"
+            confirmDeleteBtn.addEventListener('click', deleteCurrentDesignation);
+
+
             
             // Modais e Popups
             const modalOverlay = document.getElementById('action-modal-overlay');
@@ -2590,18 +2714,43 @@ async function validatePopupSelections(historicoDoc, fullDesigData) {
 
         // OUVINTE DELEGADO PARA ÍCONES DINÂMICOS
         // Este continua a ser um "super-ouvinte", mas agora com menos responsabilidades.
-        document.addEventListener('click', function(event) {
+       document.addEventListener('click', async function(event) { // ALTERADO: Adicionado 'async'
             // Alvo 1: Lápis de edição de uma designação
             const editDesignationIcon = event.target.closest('.edit-icon[data-unique-id]');
             if (editDesignationIcon) {
                 const uniqueId = editDesignationIcon.dataset.uniqueId;
                 if (uniqueId) {
-                    openEditDesignationPopup(uniqueId);
+                    
+                    // ===== INÍCIO DA NOVA LÓGICA DE CARREGAMENTO =====
+                    
+                    // Garante que não há cliques duplos enquanto carrega
+                    if (editDesignationIcon.classList.contains('fa-spinner')) {
+                        return; 
+                    }
+
+                    try {
+                        // 1. Troca o ícone para o de carregamento
+                        editDesignationIcon.classList.remove('fa-pencil-alt');
+                        editDesignationIcon.classList.add('fa-spinner', 'fa-spin');
+                        
+                        // 2. Espera que o popup termine de ser preparado (a parte que demora)
+                        await openEditDesignationPopup(uniqueId);
+
+                    } catch (error) {
+                        console.error("Erro ao abrir o popup de edição:", error);
+                    } finally {
+                        // 3. Garante que o ícone volta sempre ao normal, aconteça o que acontecer
+                        editDesignationIcon.classList.remove('fa-spinner', 'fa-spin');
+                        editDesignationIcon.classList.add('fa-pencil-alt');
+                    }
+                    // ===== FIM DA NOVA LÓGICA DE CARREGAMENTO =====
+                    
                 }
                 return; // Encerra a função se encontrou o alvo
             }
 
             // Alvo 2: Lápis de edição do cabeçalho da semana
+            // Nota: Esta função é síncrona (instantânea), por isso não precisa do ícone de carregamento
             const editWeekHeaderIcon = event.target.closest('.edit-icon[data-historico-id]');
             if (editWeekHeaderIcon) {
                 const historicoId = editWeekHeaderIcon.dataset.historicoId;
