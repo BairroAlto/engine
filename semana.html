@@ -286,17 +286,39 @@
                 </div>
                 <div id="editPopupParticipants"></div>
             </div>
-           <div class="popup-actions">
-                <button id="pair-analysis-button" class="action-button" style="display: none; background-color: #7f8c8d; margin-right: auto;"></button>
+         <div class="popup-actions">
+                <button id="pair-analysis-button" class="action-button" style="display: none; background-color: #7f8c8d;"></button>
                 
-                <!-- NOVO BOTÃO DE FILTRO AVANÇADO -->
                 <button id="advanced-edit-btn" class="action-button" title="Alterar Designação" style="background-color: #95a5a6; margin-left: 10px;">
                     <i class="fas fa-filter"></i>
                 </button>
-            <button class="btn-submit" id="saveDesignationChanges">Guardar Alterações</button>
+
+                <!-- NOVO BOTÃO DE APAGAR -->
+                <button id="delete-designation-btn" class="action-button" title="Apagar Designação" style="background-color: #e74c3c; margin-left: 10px;">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
                 
-                
+                <button class="btn-submit" id="saveDesignationChanges" style="margin-left: auto;">Guardar Alterações</button>
             </div>
+
+<!-- ===== INÍCIO: POPUP DE CONFIRMAÇÃO DE APAGAR ===== -->
+    <div id="deleteConfirmationPopup" class="popup-overlay">
+        <div class="popup-content" style="max-width: 400px;">
+            <div class="popup-header">
+                <h2 class="popup-title">Confirmar Eliminação</h2>
+                <button class="popup-close-button" id="closeDeleteConfirmation">×</button>
+            </div>
+            <div class="popup-body">
+                <p>Deseja apagar mesmo esta designação? Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="popup-actions" style="justify-content: flex-end; gap: 10px;">
+                <button id="cancel-delete-btn" class="action-button" style="background-color: #7f8c8d;">Não</button>
+                <button id="confirm-delete-btn" class="btn-submit" style="background-color: #e74c3c;">Sim, Apagar</button>
+            </div>
+        </div>
+    </div>
+    <!-- ===== FIM: POPUP DE CONFIRMAÇÃO DE APAGAR ===== -->
+
         </div>
     </div>
 
@@ -402,24 +424,40 @@
                 </div>
             </div>
         </div>
- <div class="popup-actions">
-    <!-- Layout final com botões de ajuda agrupados à esquerda -->
-    <button id="global-suggester-btn" class="action-button" 
-            style="display: none; background-color: #3498db;" 
-            title="Sugerir uma equipa completa">
-        <i class="fas fa-users" style="margin-right: 8px;"></i>Sugerir Combinação
-    </button>
-    
-    <!-- A margem foi movida para este botão para empurrar o botão "Criar" para a direita -->
-    <button id="create-pair-analysis-button" class="action-button" 
-            style="display: none; background-color: #7f8c8d; margin-right: auto;" 
-            title="Ver histórico do par"></button>
-    
-    <button class="btn-submit" id="saveNewDesignationBtn" disabled>Criar Designação</button>
+         <div class="popup-actions">
+            <button id="global-suggester-btn" class="action-button" 
+                    style="display: none; background-color: #3498db;" 
+                    title="Sugerir uma equipa completa">
+                <i class="fas fa-users" style="margin-right: 8px;"></i>Sugerir Combinação
+            </button>
+            <button id="create-pair-analysis-button" class="action-button" 
+                    style="display: none; background-color: #7f8c8d; margin-right: auto;" 
+                    title="Ver histórico do par"></button>
+            <button class="btn-submit" id="saveNewDesignationBtn" disabled>Criar Designação</button>
+        </div>
+    </div>
 </div>
 
+    <!-- ===== INÍCIO: POPUP DE CONFIRMAÇÃO DE APAGAR ===== -->
+    <div id="deleteConfirmationPopup" class="popup-overlay">
+        <div class="popup-content" style="max-width: 400px;">
+            <div class="popup-header">
+                <h2 class="popup-title">Confirmar Eliminação</h2>
+                <button class="popup-close-button" id="closeDeleteConfirmation">×</button>
+            </div>
+            <div class="popup-body">
+                <p>Deseja apagar mesmo esta designação? Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="popup-actions" style="justify-content: flex-end; gap: 10px;">
+                <button id="cancel-delete-btn" class="action-button" style="background-color: #7f8c8d;">Não</button>
+                <button id="confirm-delete-btn" class="btn-submit" style="background-color: #e74c3c;">Sim, Apagar</button>
+            </div>
+        </div>
+    </div>
+    <!-- ===== FIM: POPUP DE CONFIRMAÇÃO DE APAGAR ===== -->
 
     <!-- ===== FIM: HTML DE TODOS OS POPUPS AVANÇADOS ===== -->
+
 
 
     <script>
@@ -480,8 +518,32 @@ const createStep2 = document.getElementById('create-step-2');
             const closeAdvancedEditPopup = document.getElementById('closeAdvancedEditPopup');
             const applyAdvancedChangeBtn = document.getElementById('applyAdvancedChangeBtn');
             const advancedDesignationSelect = document.getElementById('advancedDesignationSelect');
+const discourseMap = new Map();
+         const deleteDesignationBtn = document.getElementById('delete-designation-btn');
+            const deleteConfirmationPopup = document.getElementById('deleteConfirmationPopup');
+            const closeDeleteConfirmation = document.getElementById('closeDeleteConfirmation');
+            const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 
+
+
+// Listeners para o fluxo de apagar designação
+            deleteDesignationBtn.addEventListener('click', () => {
+                deleteConfirmationPopup.classList.add('active');
+            });
+
+            closeDeleteConfirmation.addEventListener('click', () => {
+                deleteConfirmationPopup.classList.remove('active');
+            });
             
+            cancelDeleteBtn.addEventListener('click', () => {
+                deleteConfirmationPopup.classList.remove('active');
+            });
+
+            confirmDeleteBtn.addEventListener('click', handleDeleteDesignation);
+
+
+
             // Modais e Popups
             const modalOverlay = document.getElementById('action-modal-overlay');
             const modalTitle = document.getElementById('modal-title');
@@ -523,20 +585,31 @@ closePairAnalysisPopup.addEventListener('click', () => {
                 modalOverlay.classList.remove('active');
             }
 
-            async function loadInitialData() {
-                scheduleDisplay.classList.add('loading');
-                try {
-                    // =================== INÍCIO DA ALTERAÇÃO ===================
-                    // Adicionada a consulta ao documento 'configuracoes' na coleção 'painel'
-                    const [historicoSnap, pessoasSnap, designacoesSnap, cabecalhosSnap, painelSnap] = await Promise.all([
-                        db.collection('historico').where('quando', 'in', ['Semana', 'Fim de Semana']).where('tipo', '==', 'reuniao').orderBy('timestamp', 'desc').get(),
-                        db.collection('pessoas').get(),
-                        db.collection('designacoes').get(),
-                        db.collection('cabecalhos').get(),
-                        db.collection('painel').doc('configuracoes').get() // Nova consulta
-                    ]);
+        async function loadInitialData() {
+            scheduleDisplay.classList.add('loading');
+            try {
+                const [historicoSnap, pessoasSnap, designacoesSnap, cabecalhosSnap, discursosSnap, painelSnap] = await Promise.all([
+db.collection('historico').where('quando', '==', 'Semana').where('tipo', '==', 'reuniao').orderBy('timestamp', 'desc').get(),
+                    db.collection('pessoas').get(),
+                    db.collection('designacoes').get(),
+                    db.collection('cabecalhos').get(),
+                    db.collection('discursos').get(),
+                    db.collection('painel').doc('configuracoes').get()
+                ]);
+
+                  // ======================= LOG 1: INÍCIO =======================
+                console.log("--- DADOS BRUTOS DO 'historico' ---");
+                historicoSnap.docs.forEach(doc => {
+                    console.log(`ID: ${doc.id}, Quando: ${doc.data().quando}, Semana: ${doc.data().semanaindex}`);
+                });
+                console.log("------------------------------------");
+                // ======================= LOG 1: FIM =========================
                     // =================== FIM DA ALTERAÇÃO ===================
                     
+                       discursosSnap.forEach(doc => {
+        discourseMap.set(doc.id, doc.data());
+    });
+
                     pessoasSnap.forEach(doc => {
                         personMap.set(doc.id, doc.data().nomePessoa);
                         allPeopleDataMap.set(doc.id, doc.data()); // Cache all person data for rules
@@ -689,97 +762,118 @@ async function openCreateDesignationPopup() {
 
 // Função 2: Renderiza os filtros e dropdowns de participantes (reutiliza muita lógica)
 async function renderCreateStep2(designationId) {
-    console.log(`Renderizando Passo 2 para a designação: ${designationId}`);
+                console.log(`Renderizando Passo 2 para a designação: ${designationId}`);
 
-    const fullDesigData = designationMap.get(designationId);
-    if (!fullDesigData) return;
+                const fullDesigData = designationMap.get(designationId);
+                if (!fullDesigData) return;
 
-    const filtersContainer = document.getElementById('createPopupFilters');
-    if (!filtersContainer.hasChildNodes()) {
-        filtersContainer.innerHTML = `
-            <div class="filter-group" style="flex: 1;"><label>Nº de Participantes</label><select id="createNumParticipantes" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
-            <div class="filter-group" style="flex: 1;"><label>Idioma</label><select id="createIdioma" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
-            <div class="filter-group" style="flex: 1;"><label>Género</label><select id="createGeneroPreferencia" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
-            <div class="filter-group" style="flex: 1;"><label>Permitir Par Misto</label><select id="createGeneroMix" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
-        `;
-        document.getElementById('createNumParticipantes').innerHTML = '<option value="1">1</option><option value="2">2</option><option value="3">3</option>';
-        document.getElementById('createGeneroPreferencia').innerHTML = '<option value="masculino feminino">Qualquer Género</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option>';
-        document.getElementById('createGeneroMix').innerHTML = '<option value="nao">Não</option><option value="sim">Sim</option>';
-        const idiomaSelect = document.getElementById('createIdioma');
-        idiomaSelect.innerHTML = '<option value="todos">Todos</option>';
-        allLanguagesCache.forEach(lang => idiomaSelect.add(new Option(lang, lang)));
-    }
+                const filtersContainer = document.getElementById('createPopupFilters');
+                if (!filtersContainer.hasChildNodes()) {
+                    filtersContainer.innerHTML = `
+                        <div class="filter-group" style="flex: 1;"><label>Nº de Participantes</label><select id="createNumParticipantes" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+                        <div class="filter-group" style="flex: 1;"><label>Idioma</label><select id="createIdioma" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+                        <div class="filter-group" style="flex: 1;"><label>Género</label><select id="createGeneroPreferencia" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+                        <div class="filter-group" style="flex: 1;"><label>Permitir Par Misto</label><select id="createGeneroMix" class="form-select" style="padding: 8px; font-size: 14px;"></select></div>
+                    `;
+                    document.getElementById('createNumParticipantes').innerHTML = '<option value="1">1</option><option value="2">2</option><option value="3">3</option>';
+                    document.getElementById('createGeneroPreferencia').innerHTML = '<option value="masculino feminino">Qualquer Género</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option>';
+                    document.getElementById('createGeneroMix').innerHTML = '<option value="nao">Não</option><option value="sim">Sim</option>';
+                    const idiomaSelect = document.getElementById('createIdioma');
+                    idiomaSelect.innerHTML = '<option value="todos">Todos</option>';
+                    allLanguagesCache.forEach(lang => idiomaSelect.add(new Option(lang, lang)));
+                }
 
-    const numParticipantesSelect = document.getElementById('createNumParticipantes');
-    const idiomaSelect = document.getElementById('createIdioma');
-    const generoPreferenciaSelect = document.getElementById('createGeneroPreferencia');
+                const numParticipantesSelect = document.getElementById('createNumParticipantes');
+                if (numParticipantesSelect.dataset.initialized !== 'true') {
+                    numParticipantesSelect.value = fullDesigData.numeroParticipantes || 1;
+                    numParticipantesSelect.dataset.initialized = 'true';
+                }
+                const numParticipantes = parseInt(numParticipantesSelect.value);
+                
+                const globalSuggesterBtn = document.getElementById('global-suggester-btn');
+                const popupContent = document.getElementById('createDesignationPopup').querySelector('.popup-content');
+                if (numParticipantes > 1) {
+                    globalSuggesterBtn.style.display = 'block';
+                    popupContent.classList.add('team-suggester-mode');
+                } else {
+                    globalSuggesterBtn.style.display = 'none';
+                    popupContent.classList.remove('team-suggester-mode');
+                }
+                
+                const createPopupParticipantsContainer = document.getElementById('createPopupParticipants');
+                const existingSelects = createPopupParticipantsContainer.querySelectorAll('select.form-select');
+                const savedValues = Array.from(existingSelects).map(select => select.value);
 
-    if (numParticipantesSelect.dataset.initialized !== 'true') {
-        numParticipantesSelect.value = fullDesigData.numeroParticipantes || 1;
-        numParticipantesSelect.dataset.initialized = 'true';
-    }
+                const participantRoles = [];
+                if (numParticipantes === 1) participantRoles.push({ key: 'participante', label: "Participante" });
+                else if (numParticipantes === 2) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" });
+                else if (numParticipantes >= 3) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" }, { key: 'ajudante', label: "Ajudante" });
 
-    const numParticipantes = parseInt(numParticipantesSelect.value);
-    const globalSuggesterBtn = document.getElementById('global-suggester-btn');
-    const popupContent = document.getElementById('createDesignationPopup').querySelector('.popup-content');
-    
-    if (numParticipantes > 1) {
-        globalSuggesterBtn.style.display = 'block';
-        popupContent.classList.add('team-suggester-mode');
-    } else {
-        globalSuggesterBtn.style.display = 'none';
-        popupContent.classList.remove('team-suggester-mode');
-    }
-    
-    const createPopupParticipantsContainer = document.getElementById('createPopupParticipants');
-    const existingSelects = createPopupParticipantsContainer.querySelectorAll('.form-select');
-    const savedValues = Array.from(existingSelects).map(select => select.value);
+                let finalHTML = ''; // Usamos esta variável para construir o HTML
+                participantRoles.forEach((role, i) => {
+                    finalHTML += `<div class="form-group"><label>${role.label}</label><div class="participant-row"><select class="form-select" data-role-key="${role.key}" data-role-index="${i}"></select><i class="fas fa-rocket rocket-suggester" title="Sugerir participante válido"></i></div></div>`;
+                });
+                
+                // ====================================================================
+                // INÍCIO DA NOVA LÓGICA PARA A DESCRIÇÃO NO POPUP DE CRIAÇÃO
+                // ====================================================================
+                if (fullDesigData.anexadoDiscursos === true || fullDesigData.anexadoDiscursos === 'sim') {
+                    finalHTML += `
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label>Discurso</label>
+                            <div class="discurso-search-wrapper" style="position: relative;">
+                                <input type="text" id="createDiscourseSearch" class="form-select discourse-search-input" 
+                                       placeholder="Pesquisar por nº ou tema..." autocomplete="off" 
+                                       data-selected-discurso-id="">
+                                <div class="search-suggestions discurso-suggestions"></div>
+                            </div>
+                        </div>`;
+                } else if (fullDesigData.descricao === 'sim') {
+                    finalHTML += `
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label>Tema/Descrição</label>
+                            <input type="text" id="createDescriptionInput" class="form-select" 
+                                   placeholder="Insira o tema ou descrição...">
+                        </div>`;
+                }
+                // ====================================================================
+                // FIM DA NOVA LÓGICA
+                // ====================================================================
+                
+                createPopupParticipantsContainer.innerHTML = finalHTML;
+                setupDiscourseSearchLogic('createDiscourseSearch'); // Ativa a pesquisa para o novo campo
 
-    const participantRoles = [];
-    if (numParticipantes === 1) participantRoles.push({ key: 'participante', label: "Participante" });
-    else if (numParticipantes === 2) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" });
-    else if (numParticipantes >= 3) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" }, { key: 'ajudante', label: "Ajudante" });
+                const selectedWeekDoc = allScheduleData.find(d => d.semanaindex === weekFilter.value);
+                if (!selectedWeekDoc) return;
+                
+                const allSelects = createPopupParticipantsContainer.querySelectorAll('select.form-select');
+                for (const [index, select] of allSelects.entries()) {
+                    await populateSingleEditDropdown(select, selectedWeekDoc, fullDesigData, document.getElementById('createGeneroPreferencia').value, document.getElementById('createIdioma').value);
+                    if (savedValues[index] && select.querySelector(`option[value="${savedValues[index]}"]`)) {
+                        select.value = savedValues[index];
+                    }
+                    select.addEventListener('change', () => {
+                        handleGenderSync(select);
+                        validateCreatePopupSelections();
+                    });
+                }
+                
+                const individualRockets = createPopupParticipantsContainer.querySelectorAll('.rocket-suggester');
+                individualRockets.forEach(rocket => {
+                    rocket.addEventListener('click', async (event) => {
+                        const selectElement = event.target.previousElementSibling;
+                        await findNextForCreate(selectElement);
+                    });
+                });
 
-    let dropdownsHTML = '';
-    participantRoles.forEach((role, i) => {
-        dropdownsHTML += `<div class="form-group"><label>${role.label}</label><div class="participant-row"><select class="form-select" data-role-key="${role.key}" data-role-index="${i}"></select><i class="fas fa-rocket rocket-suggester" title="Sugerir participante válido"></i></div></div>`;
-    });
-    createPopupParticipantsContainer.innerHTML = dropdownsHTML;
-
-    const selectedWeekDoc = allScheduleData.find(d => d.semanaindex === weekFilter.value);
-    if (!selectedWeekDoc) return;
-    
-    const allSelects = createPopupParticipantsContainer.querySelectorAll('.form-select');
-    for (const [index, select] of allSelects.entries()) {
-        await populateSingleEditDropdown(select, selectedWeekDoc, fullDesigData, generoPreferenciaSelect.value, idiomaSelect.value);
-        if (savedValues[index] && select.querySelector(`option[value="${savedValues[index]}"]`)) {
-            select.value = savedValues[index];
-        }
-        
-        // ===== INTEGRAÇÃO FINAL =====
-        // Adiciona o event listener que chama a validação sempre que um participante muda
-        select.addEventListener('change', () => {
-            handleGenderSync(select);
-            validateCreatePopupSelections(); // Chama a nossa nova função de validação!
-        });
-    }
-    
-    const individualRockets = createPopupParticipantsContainer.querySelectorAll('.rocket-suggester');
-    individualRockets.forEach(rocket => {
-        rocket.addEventListener('click', async (event) => {
-            const selectElement = event.target.previousElementSibling;
-            await findNextForCreate(selectElement);
-        });
-    });
-
-    if (allSelects.length > 0) { 
-        handleGenderSync(allSelects[0]); 
-        await validateCreatePopupSelections(); // Validação inicial
-    }
-    
-    createStep2.style.display = 'block';
-    saveNewDesignationBtn.disabled = false;
-}
+                if (allSelects.length > 0) { 
+                    handleGenderSync(allSelects[0]); 
+                    await validateCreatePopupSelections();
+                }
+                
+                createStep2.style.display = 'block';
+                saveNewDesignationBtn.disabled = false;
+            }
 
 
 
@@ -813,7 +907,121 @@ async function findNextForCreate(selectElement, historicoDoc, fullDesigData) {
 
 
 
+function setupDiscourseSearchLogic(inputId) {
+                const searchInput = document.getElementById(inputId);
+                if (!searchInput) return; // Se o campo não existe, não faz nada
 
+                const suggestionsContainer = searchInput.nextElementSibling;
+                if (!suggestionsContainer) return;
+
+                const performSearch = () => {
+                    const query = searchInput.value.toLowerCase();
+                    suggestionsContainer.style.display = 'block';
+                    suggestionsContainer.innerHTML = '';
+                    
+                    if (!query) {
+                        suggestionsContainer.style.display = 'none';
+                        searchInput.dataset.selectedDiscursoId = '';
+                        return;
+                    }
+
+                    // Assumindo que você tem um 'discourseMap' carregado nesta página também
+                    const allDiscourses = Array.from(discourseMap.entries());
+                    const resultados = allDiscourses.filter(([id, data]) => 
+                        String(data.numero).startsWith(query) || data.nome.toLowerCase().includes(query)
+                    ).slice(0, 10);
+
+                    if (resultados.length > 0) {
+                        resultados.forEach(([id, data]) => {
+                            const item = document.createElement('div');
+                            item.className = 'suggestion-item';
+                            item.textContent = `${data.numero} - ${data.nome}`;
+                            item.dataset.id = id;
+                            item.dataset.fulltext = `${data.numero} - ${data.nome}`;
+                            suggestionsContainer.appendChild(item);
+                        });
+                    } else {
+                        suggestionsContainer.innerHTML = '<div class="suggestion-item" style="pointer-events: none;">Nenhum discurso encontrado</div>';
+                    }
+                };
+
+                searchInput.addEventListener('focus', performSearch);
+                searchInput.addEventListener('input', performSearch);
+                document.addEventListener('click', (event) => {
+                    if (!searchInput.contains(event.target)) {
+                       suggestionsContainer.style.display = 'none';
+                    }
+                });
+
+                suggestionsContainer.addEventListener('mousedown', (e) => {
+                    const target = e.target.closest('.suggestion-item');
+                    if (target && target.dataset.id) {
+                        searchInput.value = target.dataset.fulltext;
+                        searchInput.dataset.selectedDiscursoId = target.dataset.id;
+                        setTimeout(() => { suggestionsContainer.style.display = 'none'; }, 100);
+                    }
+                });
+            }
+
+
+
+
+
+           async function handleDeleteDesignation() {
+                if (!currentEditData || !currentEditData.historicoDocRefId || !currentEditData.trueOriginalDesignationId) {
+                    openModal("Erro", "Não foi possível identificar a designação a ser apagada.");
+                    return;
+                }
+
+                const confirmBtn = document.getElementById('confirm-delete-btn');
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'A apagar...';
+
+                try {
+                    // Passo 1: Encontrar o documento e a designação a ser apagada
+                    const historicoDoc = allScheduleData.find(d => d.id === currentEditData.historicoDocRefId);
+                    if (!historicoDoc) throw new Error("Documento de histórico não encontrado no cache local.");
+
+                    const designationToDelete = (historicoDoc.designacoes || []).find(d =>
+                        d.designacaoId === currentEditData.trueOriginalDesignationId &&
+                        createParticipantSignature(d.participantes) === currentEditData.trueOriginalSignature
+                    );
+                    if (!designationToDelete) throw new Error("Designação específica não encontrada para apagar.");
+
+                    // Passo 2: Criar o registo de backup para o "cemiterio"
+                    const backupData = {
+                        documentoOriginal: { ...historicoDoc }, // Cópia completa do documento
+                        designacaoApagada: { ...designationToDelete }, // Cópia da designação
+                        dataEliminacao: firebase.firestore.FieldValue.serverTimestamp(),
+                        motivo: "Eliminação manual da designação."
+                    };
+                    await db.collection('cemiterio').add(backupData);
+
+                    // Passo 3: Criar a nova lista de designações sem a que foi apagada
+                    const newDesignationsArray = historicoDoc.designacoes.filter(d => d !== designationToDelete);
+
+                    // Passo 4: Atualizar o documento original no Firestore
+                    await db.collection('historico').doc(historicoDoc.id).update({
+                        designacoes: newDesignationsArray
+                    });
+                    
+                    // Passo 5: Fechar todos os popups e atualizar a UI
+                    deleteConfirmationPopup.classList.remove('active');
+                    closeEditPopup.click(); // Simula o clique no botão de fechar do popup de edição
+                    
+                    openModal("Sucesso", "A designação foi apagada com sucesso.");
+
+                    await loadInitialData(); // Recarrega os dados do zero
+                    renderSchedule(); // Renderiza a escala atualizada
+
+                } catch (error) {
+                    console.error("Erro ao apagar a designação:", error);
+                    openModal("Erro Crítico", "Ocorreu um erro ao apagar a designação. Verifique a consola para mais detalhes.");
+                } finally {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Sim, Apagar';
+                }
+            }
 
 
 function getCombinations(arrays) {
@@ -1143,76 +1351,84 @@ function openPairAnalysisPopup() {
 
 
 async function saveNewDesignation() {
-    // 1. Obter referências aos elementos do popup
-    const createDesignationSelect = document.getElementById('createDesignationSelect');
-    const createPopupParticipantsContainer = document.getElementById('createPopupParticipants');
-    const participantSelects = createPopupParticipantsContainer.querySelectorAll('.form-select');
+                const createDesignationSelect = document.getElementById('createDesignationSelect');
+                const createPopupParticipantsContainer = document.getElementById('createPopupParticipants');
+                const participantSelects = createPopupParticipantsContainer.querySelectorAll('select.form-select');
 
-    const selectedDesignationId = createDesignationSelect.value;
-    const newParticipants = {};
-    let allParticipantsSelected = true;
+                const selectedDesignationId = createDesignationSelect.value;
+                const newParticipants = {};
+                let allParticipantsSelected = true;
 
-    // 2. Coletar os participantes selecionados e seus papéis
-    participantSelects.forEach(select => {
-        const role = select.dataset.roleKey;
-        const personId = select.value;
-        if (personId) {
-            newParticipants[role] = personId;
-        } else {
-            allParticipantsSelected = false; // Marca se algum campo ficou vazio
-        }
-    });
+                participantSelects.forEach(select => {
+                    const role = select.dataset.roleKey;
+                    const personId = select.value;
+                    if (personId) {
+                        newParticipants[role] = personId;
+                    } else {
+                        allParticipantsSelected = false;
+                    }
+                });
 
-    // 3. Validação simples para garantir que todos os campos foram preenchidos
-    if (!selectedDesignationId || !allParticipantsSelected) {
-        openModal("Erro de Validação", "Por favor, selecione uma designação e preencha todos os campos de participante.");
-        return;
-    }
+                if (!selectedDesignationId || !allParticipantsSelected) {
+                    openModal("Erro de Validação", "Por favor, selecione uma designação e preencha todos os campos de participante.");
+                    return;
+                }
 
-    // 4. Encontrar o documento de histórico correto para a semana selecionada
-    const selectedWeekValue = weekFilter.value;
-    const historicoDocToUpdate = allScheduleData.find(d => d.semanaindex === selectedWeekValue);
+                const selectedWeekValue = weekFilter.value;
+                const historicoDocToUpdate = allScheduleData.find(d => d.semanaindex === selectedWeekValue);
 
-    if (!historicoDocToUpdate) {
-        openModal("Erro", "Não foi possível encontrar o documento da semana para salvar a designação.");
-        return;
-    }
+                if (!historicoDocToUpdate) {
+                    openModal("Erro", "Não foi possível encontrar o documento da semana para salvar a designação.");
+                    return;
+                }
 
-    // 5. Criar o novo objeto de designação
-    const newDesignationObject = {
-        designacaoId: selectedDesignationId,
-        participantes: newParticipants
-    };
+                const newDesignationObject = {
+                    designacaoId: selectedDesignationId,
+                    participantes: newParticipants
+                };
+                
+                // ====================================================================
+                // INÍCIO DA NOVA LÓGICA PARA LER E GUARDAR A DESCRIÇÃO
+                // ====================================================================
+                const discourseInput = document.getElementById('createDiscourseSearch');
+                const descriptionInput = document.getElementById('createDescriptionInput');
 
-    // 6. Adicionar a nova designação à lista existente
-    // Garante que o campo 'designacoes' existe e é um array
-    if (!historicoDocToUpdate.designacoes) {
-        historicoDocToUpdate.designacoes = [];
-    }
-    historicoDocToUpdate.designacoes.push(newDesignationObject);
+                if (discourseInput && discourseInput.dataset.selectedDiscursoId) {
+                    newDesignationObject.descricao = discourseInput.dataset.selectedDiscursoId;
+                } else if (descriptionInput && descriptionInput.value.trim()) {
+                    newDesignationObject.descricao = descriptionInput.value.trim();
+                }
+                // ====================================================================
+                // FIM DA NOVA LÓGICA
+                // ====================================================================
 
-    // 7. Salvar os dados atualizados no Firebase
-    try {
-        saveNewDesignationBtn.disabled = true; // Desativa o botão para evitar cliques duplos
-        saveNewDesignationBtn.textContent = 'A Guardar...';
+                if (!historicoDocToUpdate.designacoes) {
+                    historicoDocToUpdate.designacoes = [];
+                }
+                historicoDocToUpdate.designacoes.push(newDesignationObject);
 
-        await db.collection('historico').doc(historicoDocToUpdate.id).update({
-            designacoes: historicoDocToUpdate.designacoes
-        });
+                try {
+                    saveNewDesignationBtn.disabled = true;
+                    saveNewDesignationBtn.textContent = 'A Guardar...';
 
-        // 8. Fechar o popup e atualizar a tela
-        closeCreatePopup.click();
-        renderSchedule(); // Recarrega a visualização da escala
+                    await db.collection('historico').doc(historicoDocToUpdate.id).update({
+                        designacoes: historicoDocToUpdate.designacoes
+                    });
 
-    } catch (error) {
-        console.error("Erro ao criar a nova designação:", error);
-        openModal("Erro de Gravação", "Não foi possível guardar a nova designação. Tente novamente.");
-    } finally {
-        // Garante que o botão volte ao normal, mesmo em caso de erro
-        saveNewDesignationBtn.disabled = false;
-        saveNewDesignationBtn.textContent = 'Criar Designação';
-    }
-}
+                    closeCreatePopup.click();
+                    await loadInitialData();
+                    renderSchedule();
+
+                } catch (error) {
+                    console.error("Erro ao criar a nova designação:", error);
+                    openModal("Erro de Gravação", "Não foi possível guardar a nova designação. Tente novamente.");
+                } finally {
+                    saveNewDesignationBtn.disabled = false;
+                    saveNewDesignationBtn.textContent = 'Criar Designação';
+                }
+            }
+
+
 
 
 async function findNextAvailableParticipant(selectElement, historicoDoc, fullDesigData) {
@@ -1592,7 +1808,7 @@ function openCreatePairAnalysisPopup() {
                 renderSchedule();
             }
             
-       function renderSchedule() {
+      function renderSchedule() {
                 scheduleDisplay.classList.add('loading');
                 scheduleContent.innerHTML = '';
                 
@@ -1633,8 +1849,6 @@ function openCreatePairAnalysisPopup() {
                     const weekStringA = groupedByWeek[keyA].originalIndex;
                     const weekStringB = groupedByWeek[keyB].originalIndex;
                     const dayA = parseInt((weekStringA.match(/\d+/) || ['0'])[0], 10);
-                    // ===== A CORREÇÃO ESTÁ AQUI =====
-                    // A variável correta é 'weekStringB', não 'b'.
                     const dayB = parseInt((weekStringB.match(/\d+/) || ['0'])[0], 10);
                     return dayA - dayB;
                 });
@@ -1715,11 +1929,26 @@ function openCreatePairAnalysisPopup() {
                                 const sortedParticipants = Object.entries(desig.participantes).sort((a, b) => {
                                     return roleOrder.indexOf(a[0]) - roleOrder.indexOf(b[0]);
                                 });
+                                
+                                // ==========================================================
+                                // INÍCIO DA ALTERAÇÃO PARA REMOVER A ETIQUETA "PARTICIPANTE"
+                                // ==========================================================
                                 for (const [role, personId] of sortedParticipants) {
                                     const personName = personMap.get(personId) || 'N/A';
-                                    const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
-                                    bodyHTML += `<li><em>${formattedRole}:</em> ${personName}</li>`;
+                                    
+                                    // Se o papel for 'participante', mostra só o nome
+                                    if (role === 'participante') {
+                                        bodyHTML += `<li>${personName}</li>`;
+                                    } else {
+                                        // Para todos os outros papéis, mantém a etiqueta
+                                        const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
+                                        bodyHTML += `<li><em>${formattedRole}:</em> ${personName}</li>`;
+                                    }
                                 }
+                                // ==========================================================
+                                // FIM DA ALTERAÇÃO
+                                // ==========================================================
+
                                 bodyHTML += '</ul>';
                             }
                             bodyHTML += '</li></ul>';
@@ -1789,57 +2018,65 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
             // ===================================================================
             
             // --- Lógica de Sincronização de Género ---
-       const handleGenderSync = (changedSelect) => {
-    const instanceContainer = changedSelect.closest('.popup-body');
-    if (!instanceContainer) return;
+    const handleGenderSync = (changedSelect) => {
+                const instanceContainer = changedSelect.closest('.popup-body');
+                if (!instanceContainer) return;
 
-    const genderMixSelect = instanceContainer.querySelector('[id$="GeneroMix"]'); 
+                const genderMixSelect = instanceContainer.querySelector('[id$="GeneroMix"]'); 
 
-    if (genderMixSelect && genderMixSelect.value === 'sim') {
-        const allSelectsInInstance = instanceContainer.querySelectorAll('.form-select');
-        allSelectsInInstance.forEach(select => {
-            Array.from(select.options).forEach(option => option.style.display = '');
-        });
-        return;
-    }
+                if (genderMixSelect && genderMixSelect.value === 'sim') {
+                    // CORREÇÃO: Procura por 'select.form-select' para ignorar os inputs
+                    const allSelectsInInstance = instanceContainer.querySelectorAll('select.form-select'); 
+                    allSelectsInInstance.forEach(select => {
+                        if(select.options) Array.from(select.options).forEach(option => option.style.display = '');
+                    });
+                    return;
+                }
 
-    const participantsContainer = instanceContainer.querySelector('[id$="PopupParticipants"]');
-    if (!participantsContainer) return;
+                const participantsContainer = instanceContainer.querySelector('[id$="PopupParticipants"]');
+                if (!participantsContainer) return;
 
-    const allSelectsInInstance = participantsContainer.querySelectorAll('.form-select');
-    const selectedPersonId = changedSelect.value;
+                // =================================================================================
+                // CORREÇÃO PRINCIPAL AQUI: Mudamos de '.form-select' para 'select.form-select'
+                // Isto garante que APENAS os dropdowns (<select>) são apanhados pelo seletor.
+                const allSelectsInInstance = participantsContainer.querySelectorAll('select.form-select');
+                // =================================================================================
+                
+                const selectedPersonId = changedSelect.value;
 
-    if (!selectedPersonId) {
-        allSelectsInInstance.forEach(select => {
-            Array.from(select.options).forEach(option => option.style.display = '');
-        });
-        allSelectsInInstance.forEach(select => { if (select.value) handleGenderSync(select); });
-        return;
-    }
+                if (!selectedPersonId) {
+                    allSelectsInInstance.forEach(select => {
+                        if (select.options) Array.from(select.options).forEach(option => option.style.display = '');
+                    });
+                    allSelectsInInstance.forEach(select => { if (select.value) handleGenderSync(select); });
+                    return;
+                }
 
-    const personData = allPeopleDataMap.get(selectedPersonId);
-    if (!personData || !personData.genero) return;
-    const requiredGender = personData.genero;
+                const personData = allPeopleDataMap.get(selectedPersonId);
+                if (!personData || !personData.genero) return;
+                const requiredGender = personData.genero;
 
-    allSelectsInInstance.forEach(select => {
-        if (select !== changedSelect && select.value) {
-            const otherPersonData = allPeopleDataMap.get(select.value);
-            if (!otherPersonData || otherPersonData.genero !== requiredGender) select.value = '';
-        }
-        Array.from(select.options).forEach(option => {
-            if (!option.value) {
-                option.style.display = '';
-                return;
-            }
-            const optionPersonData = allPeopleDataMap.get(option.value);
-            if (optionPersonData && optionPersonData.genero === requiredGender) {
-                option.style.display = '';
-            } else {
-                option.style.display = 'none';
-            }
-        });
-    });
-};
+                allSelectsInInstance.forEach(select => {
+                    if (select !== changedSelect && select.value) {
+                        const otherPersonData = allPeopleDataMap.get(select.value);
+                        if (!otherPersonData || otherPersonData.genero !== requiredGender) select.value = '';
+                    }
+                    if (select.options) {
+                        Array.from(select.options).forEach(option => {
+                            if (!option.value) {
+                                option.style.display = '';
+                                return;
+                            }
+                            const optionPersonData = allPeopleDataMap.get(option.value);
+                            if (optionPersonData && optionPersonData.genero === requiredGender) {
+                                option.style.display = '';
+                            } else {
+                                option.style.display = 'none';
+                            }
+                        });
+                    }
+                });
+            };
             
 
             const editWeekHeaderPopup = document.getElementById('editWeekHeaderPopup');
@@ -2356,26 +2593,52 @@ async function validatePopupSelections(historicoDoc, fullDesigData) {
 
 
             // Evento de clique no lápis de edição
-              scheduleContent.addEventListener('click', function(event) {
+             scheduleContent.addEventListener('click', async function(event) { // ALTERADO: Adicionado 'async'
                 // Mantém a lógica para editar o CABEÇALHO da semana
                 if (event.target && event.target.matches('.edit-icon[data-historico-id]')) {
                     const historicoId = event.target.dataset.historicoId;
                     openWeekHeaderEditPopup(historicoId);
-                    return; // Interrompe para não processar o mesmo clique duas vezes
+                    return; 
                 }
 
-                // ===== INÍCIO DA CORREÇÃO =====
                 // Lógica atualizada para editar uma DESIGNAÇÃO
                 if (event.target && event.target.classList.contains('edit-icon')) {
-                    // Lê o novo atributo 'data-unique-id'
                     const uniqueId = event.target.dataset.uniqueId;
                     
-                    // Se o ID único existir, chama a função de edição
                     if (uniqueId) {
-                        openEditDesignationPopup(uniqueId);
+                        // ===== INÍCIO DA NOVA LÓGICA DE CARREGAMENTO =====
+                        const clickedIcon = event.target;
+                        
+                        // Garante que não há cliques duplos enquanto carrega
+                        if (clickedIcon.classList.contains('fa-spinner')) {
+                            return; 
+                        }
+
+                        try {
+                            // 1. Troca o ícone para o de carregamento
+                            clickedIcon.classList.remove('fa-pencil-alt');
+                            clickedIcon.classList.add('fa-spinner', 'fa-spin');
+                            
+                            // 2. Espera que o popup termine de ser preparado (a parte que demora)
+                            await openEditDesignationPopup(uniqueId);
+
+                        } catch (error) {
+                            console.error("Erro ao abrir o popup de edição:", error);
+                            // Pode adicionar um modal de erro aqui se desejar
+                        } finally {
+                            // 3. Garante que o ícone volta sempre ao normal
+                            clickedIcon.classList.remove('fa-spinner', 'fa-spin');
+                            clickedIcon.classList.add('fa-pencil-alt');
+                        }
+                        // ===== FIM DA NOVA LÓGICA DE CARREGAMENTO =====
                     }
                 }
             });
+
+
+
+
+
 
             // Handlers para fechar e guardar do novo popup
             closeEditPopup.addEventListener('click', () => {
@@ -2443,6 +2706,22 @@ async function validatePopupSelections(historicoDoc, fullDesigData) {
         }
     }
 });
+
+// Listeners para o fluxo de apagar designação
+            deleteDesignationBtn.addEventListener('click', () => {
+                deleteConfirmationPopup.classList.add('active');
+            });
+
+            closeDeleteConfirmation.addEventListener('click', () => {
+                deleteConfirmationPopup.classList.remove('active');
+            });
+            
+            cancelDeleteBtn.addEventListener('click', () => {
+                deleteConfirmationPopup.classList.remove('active');
+            });
+
+            confirmDeleteBtn.addEventListener('click', handleDeleteDesignation);
+
 
             // Painel de Validação
             const validationIcon = document.getElementById('validation-alert-icon');
