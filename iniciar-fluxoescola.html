@@ -778,7 +778,7 @@
 /* = CSS CORRETIVO PARA O POPUP "LABORATÓRIO DE COMBINAÇÕES" = */
 /* =================================================================== */
 
-/* 1. Transforma o corpo do popup do laboratório num container flexível */
+/* 1. Transforma o corpo do popup num container flexível */
 .lab-popup .popup-body {
     display: flex;
     flex-direction: column;
@@ -801,70 +801,42 @@
 }
 
 
-/* Alvo: Apenas os filtros dentro do popup de estatísticas */
-#estatisticasPopup .estatisticas-filtros-container {
-    gap: 15px; /* Reduz o espaçamento entre os filtros */
-}
+/* ===================================================== */
+/* === O CÓDIGO ABAIXO JÁ DEVE EXISTIR, MAS CONFIRME === */
+/* ===================================================== */
 
-/* Alvo: As etiquetas (labels) dos filtros */
-#estatisticasPopup .estatisticas-filtros-container label {
-    font-size: 13px; /* Reduz o tamanho do texto da etiqueta */
-    margin-bottom: 5px; /* Reduz o espaço abaixo da etiqueta */
-}
-
-/* Alvo: Os dropdowns (selects) dos filtros */
-#estatisticasPopup .estatisticas-filtros-container select {
-    font-size: 13px;       /* Reduz o tamanho do texto dentro do dropdown */
-    padding: 6px 10px;     /* Reduz a altura do dropdown (preenchimento interno) */
-    width: 160px;          /* Reduz a largura do dropdown */
-}
-
-.form-select.warning-selection {
-    border: 2px solid #f39c12; /* Laranja/Amarelo */
-    background-color: #fef9e7;
-}
-
-/* Estilo para o item de aviso na lista do painel */
-#validation-list li.warning-item {
-    color: #8a6d3b; /* Cor de texto mais escura para legibilidade */
+/* Garante que o popup principal tem uma altura máxima e usa flexbox */
+#labPopup .popup-content {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    max-height: 90vh; /* O popup nunca terá mais de 90% da altura do ecrã */
 }
 
-/* Ícone de aviso amarelo para a lista */
-#validation-list li.warning-item::before {
-    content: "\f071"; /* Ícone de triângulo de aviso do Font Awesome */
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-    margin-right: 10px;
-    color: #f39c12;
+/* Garante que o cabeçalho não encolhe */
+#labPopup .popup-header {
+    flex-shrink: 0;
 }
 
-#validation-list li.error-item {
-    color: #c0392b; /* Um vermelho um pouco mais escuro para o texto ser legível */
-    font-weight: bold; /* Dar mais ênfase à mensagem de erro */
-    display: flex;
-    align-items: center;
+/* Estilo para o botão "Carregar Mais" (já deve ter) */
+.lab-popup #loadMoreSuggestionsBtn {
+    background-color: #3498db;
+    margin-top: 15px;
+    flex-shrink: 0;
 }
 
-/* Ícone de erro vermelho para a lista */
-#validation-list li.error-item::before {
-    content: "\f071"; /* Mesmo ícone de triângulo, mas agora vermelho */
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-    margin-right: 10px;
-    color: #e74c3c; /* Vermelho forte, igual à borda */
+/* Estilo para os cadeados (já deve ter) */
+.lab-popup .lab-lock-icon {
+    margin-left: 10px;
+    cursor: pointer;
+    color: #7f8c8d;
+    font-size: 16px;
+    transition: color 0.3s ease, transform 0.2s ease;
 }
-
-.estatisticas-table thead th {
-    cursor: pointer; /* Indica que o cabeçalho é clicável */
-    position: relative;
-    user-select: none; /* Previne a seleção de texto ao clicar rapidamente */
+.lab-popup .lab-lock-icon:hover {
+    transform: scale(1.2);
 }
-
-.estatisticas-table thead th .sort-indicator {
-    margin-left: 5px;
-    font-size: 0.8em;
+.lab-popup .lab-lock-icon.locked {
+    color: #e67e22;
 }
     </style>
 </head>
@@ -2022,6 +1994,7 @@ closeEstatisticasPopup.addEventListener('click', () => {
 });
 
 
+
 function makeTableSortable(table) {
     const header = table.querySelector('thead');
     if (!header) return;
@@ -2665,6 +2638,18 @@ const geralTable = tableContainer.querySelector('.estatisticas-table');
     }
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
 // --- FIM: NOVA LÓGICA DO POPUP DE ESTATÍSTICAS COM ABAS ---
 
 
@@ -2980,6 +2965,271 @@ document.addEventListener('click', function(event) {
 // ======================================================================== //
 
 
+async function generateLabSuggestions(designationContainer, originalSelects, clonedSelects, suggestionsContainer) {
+    suggestionsContainer.innerHTML = '<h3><i class="fas fa-lightbulb"></i> Sugestões</h3><p><i class="fas fa-spinner fa-spin"></i> A gerar sugestões...</p>';
+
+    try {
+        const ano = await getAnoPainelFirebase();
+        const designacaoId = designationContainer.dataset.designacaoId;
+        const designacaoData = (await db.collection('designacoes').doc(designacaoId).get()).data();
+        
+        // --- 1. PREPARAÇÃO: OBTER DADOS E FILTROS INICIAIS (Lógica existente) ---
+        const assignedPeopleThisWeek = new Set(Array.from(document.querySelectorAll('.form-select')).filter(s => s.value).map(s => s.value));
+        originalSelects.forEach(s => { if (s.value) assignedPeopleThisWeek.delete(s.value); });
+        
+        const lockedIcon = clonedSelects[0].parentNode.querySelector('.lab-lock-icon[data-locked="true"]');
+
+        // --- 2. NOVA LÓGICA DE PONTUAÇÃO: MAPA DE COLABORAÇÕES DE PARES ---
+        // Fazemos isto uma única vez, independentemente de haver cadeado ou não.
+        const pairCollaborationCount = new Map();
+        const historicoSnapshot = await db.collection('historico').where('ano', '==', ano).get();
+        
+        historicoSnapshot.forEach(doc => {
+            doc.data().designacoes?.forEach(d => {
+                const participantes = Object.values(d.participantes || {});
+                if (participantes.length >= 2) {
+                    // Gera todas as combinações de pares dentro desta designação
+                    for (let i = 0; i < participantes.length; i++) {
+                        for (let j = i + 1; j < participantes.length; j++) {
+                            const pairKey = [participantes[i], participantes[j]].sort().join('_');
+                            const currentCount = pairCollaborationCount.get(pairKey) || 0;
+                            pairCollaborationCount.set(pairKey, currentCount + 1);
+                        }
+                    }
+                }
+            });
+        });
+        console.log(`[LAB] Mapa de colaborações criado com ${pairCollaborationCount.size} pares.`);
+
+        let rankedPairs = [];
+
+        // --- 3. GERAÇÃO DE SUGESTÕES (com a nova pontuação) ---
+        if (lockedIcon) {
+            // Lógica para quando um participante está bloqueado
+            const lockedIndex = parseInt(lockedIcon.dataset.selectIndex);
+            const fixedPersonId = clonedSelects[lockedIndex].value;
+            
+            if (!fixedPersonId) {
+                 suggestionsContainer.innerHTML = '<h3><i class="fas fa-lightbulb"></i> Sugestões</h3><p>Por favor, selecione uma pessoa no campo que deseja bloquear.</p>';
+                 return;
+            }
+
+            const fixedPersonData = allPeopleDataMap.get(fixedPersonId);
+            const targetSelectIndex = lockedIndex === 0 ? 1 : 0;
+            const targetSelect = originalSelects[targetSelectIndex];
+
+            // Filtra os candidatos elegíveis (respeitando as regras)
+            let candidates = getEligiblePeopleForDropdown(targetSelect)
+                .filter(id => id !== fixedPersonId && !assignedPeopleThisWeek.has(id) && (allPeopleDataMap.get(id)?.genero === fixedPersonData.genero));
+            
+            // Atribui a pontuação de colaboração a cada candidato
+            rankedPairs = candidates.map(candidateId => {
+                const pairKey = [fixedPersonId, candidateId].sort().join('_');
+                const score = pairCollaborationCount.get(pairKey) || 0;
+                const pair = [];
+                pair[lockedIndex] = fixedPersonId;
+                pair[targetSelectIndex] = candidateId;
+                return { pair: pair, totalScore: score };
+            }).sort((a, b) => a.totalScore - b.totalScore); // Ordena pela pontuação de colaboração
+
+        } else {
+            // Lógica normal: encontrar os melhores pares
+            const eligibleDirigentes = getEligiblePeopleForDropdown(originalSelects[0]).filter(id => !assignedPeopleThisWeek.has(id));
+            const eligibleMoradores = getEligiblePeopleForDropdown(originalSelects[1]).filter(id => !assignedPeopleThisWeek.has(id));
+            
+            let possiblePairs = [];
+            for (const dId of eligibleDirigentes) {
+                for (const mId of eligibleMoradores) {
+                    if (dId !== mId) {
+                        const dData = allPeopleDataMap.get(dId);
+                        const mData = allPeopleDataMap.get(mId);
+                        if (dData && mData && dData.genero === mData.genero) {
+                            possiblePairs.push([dId, mId]);
+                        }
+                    }
+                }
+            }
+            
+            // Atribui a pontuação a cada par possível e ordena
+            rankedPairs = possiblePairs.map(pair => {
+                const pairKey = [pair[0], pair[1]].sort().join('_');
+                const score = pairCollaborationCount.get(pairKey) || 0;
+                return { pair, totalScore: score };
+            }).sort((a, b) => a.totalScore - b.totalScore);
+        }
+
+        // --- 4. RENDERIZAÇÃO (Lógica de lotes existente, com texto melhorado) ---
+        suggestionsContainer.innerHTML = '<h3><i class="fas fa-lightbulb"></i> Sugestões</h3>';
+        const listContainer = document.createElement('div');
+        suggestionsContainer.appendChild(listContainer);
+
+        if (rankedPairs.length === 0) {
+            listContainer.innerHTML = '<p>Nenhuma sugestão válida foi encontrada com os filtros atuais.</p>';
+            return;
+        }
+
+        let currentlyDisplayed = 0;
+        const itemsPerLoad = 6;
+
+        const renderNextBatch = () => {
+            const nextBatch = rankedPairs.slice(currentlyDisplayed, currentlyDisplayed + itemsPerLoad);
+            nextBatch.forEach(rankedPair => {
+                const [dirigenteId, moradorId] = rankedPair.pair;
+                const dName = (allPeopleDataMap.get(dirigenteId) || {}).nome || 'N/A';
+                const mName = (allPeopleDataMap.get(moradorId) || {}).nome || 'N/A';
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'suggestion-item';
+                // **MELHORIA DE TEXTO APLICADA AQUI**
+                suggestionItem.innerHTML = `
+                    <strong>Dirigente:</strong> ${dName} <br> 
+                    <strong>Morador:</strong> ${mName}
+                    <div class="suggestion-justification">Colaborações anteriores: ${rankedPair.totalScore}</div>
+                `;
+                suggestionItem.dataset.dirigente = dirigenteId;
+                suggestionItem.dataset.morador = moradorId;
+                listContainer.appendChild(suggestionItem);
+            });
+            currentlyDisplayed += nextBatch.length;
+            const existingBtn = suggestionsContainer.querySelector('#loadMoreSuggestionsBtn');
+            if (existingBtn) existingBtn.remove();
+            if (currentlyDisplayed < rankedPairs.length) {
+                const loadMoreBtn = document.createElement('button');
+                loadMoreBtn.id = 'loadMoreSuggestionsBtn';
+                loadMoreBtn.textContent = `Carregar Mais (${rankedPairs.length - currentlyDisplayed} restantes)`;
+                loadMoreBtn.className = 'btn-submit';
+                loadMoreBtn.onclick = renderNextBatch;
+                suggestionsContainer.appendChild(loadMoreBtn);
+            }
+        };
+        renderNextBatch();
+
+    } catch (error) {
+        console.error("[LAB] Erro ao gerar sugestões:", error);
+        suggestionsContainer.innerHTML = `<h3><i class="fas fa-lightbulb"></i> Sugestões</h3><p style="color: red;">Ocorreu um erro ao gerar sugestões. Verifique a consola.</p>`;
+    }
+}
+
+
+
+// =================================================================== //
+// ============ INÍCIO: LÓGICA DO POPUP "LABORATÓRIO DE COMBINAÇÕES" ==== //
+// =================================================================== //
+
+async function openLabPopup(designationContainer) {
+    const labPopup = document.getElementById('labPopup');
+    const selectionContainer = document.getElementById('labSelectionContainer');
+    const suggestionsContainer = document.getElementById('labSuggestionsContainer');
+    const applyBtn = document.getElementById('applyLabChanges');
+    const closeBtn = document.getElementById('closeLabPopup');
+
+    selectionContainer.innerHTML = '<h3><i class="fas fa-user-check"></i> Seleção Atual</h3>';
+    labPopup.style.display = 'flex';
+    document.body.classList.add('popup-open');
+
+    // --- 1. CLONAR E PREPARAR A UI DA "SELEÇÃO ATUAL" ---
+    const currentInstance = designationContainer.querySelector('.designacao-instance-container');
+    const originalSelects = currentInstance.querySelectorAll('select');
+    const clonedInstance = currentInstance.cloneNode(true);
+    selectionContainer.appendChild(clonedInstance);
+
+    const clonedSelects = clonedInstance.querySelectorAll('select');
+    originalSelects.forEach((select, index) => {
+        if (clonedSelects[index]) {
+            clonedSelects[index].value = select.value;
+        }
+    });
+
+    // Adiciona os cadeados e desativa os dropdowns
+    clonedSelects.forEach((select, index) => {
+        select.disabled = true;
+        select.style.backgroundColor = '#eee';
+        
+        const lockIcon = document.createElement('i');
+        lockIcon.className = 'fas fa-lock-open lab-lock-icon';
+        lockIcon.dataset.locked = 'false';
+        lockIcon.dataset.selectIndex = index;
+        
+        select.parentNode.insertBefore(lockIcon, select.nextSibling);
+
+        lockIcon.addEventListener('click', () => {
+            const isLocked = lockIcon.dataset.locked === 'true';
+            
+            if (!isLocked) {
+                clonedInstance.querySelectorAll('.lab-lock-icon').forEach(icon => {
+                    icon.dataset.locked = 'false';
+                    icon.classList.remove('fa-lock', 'locked');
+                    icon.classList.add('fa-lock-open');
+                });
+            }
+
+            lockIcon.dataset.locked = isLocked ? 'false' : 'true';
+            lockIcon.classList.toggle('fa-lock-open', isLocked);
+            lockIcon.classList.toggle('fa-lock', !isLocked);
+            lockIcon.classList.toggle('locked', !isLocked);
+
+            generateLabSuggestions(designationContainer, originalSelects, clonedSelects, suggestionsContainer);
+        });
+    });
+
+    // --- 2. GERAR AS SUGESTÕES INICIAIS ---
+    await generateLabSuggestions(designationContainer, originalSelects, clonedSelects, suggestionsContainer);
+
+    // --- 3. LÓGICA DOS BOTÕES E SELEÇÃO DE SUGESTÕES ---
+    let selectedSuggestion = null;
+
+    suggestionsContainer.addEventListener('click', (event) => {
+        const suggestionItem = event.target.closest('.suggestion-item');
+        if (suggestionItem) {
+            suggestionsContainer.querySelectorAll('.suggestion-item').forEach(i => i.style.backgroundColor = 'transparent');
+            suggestionItem.style.backgroundColor = '#e0f7fa';
+            selectedSuggestion = suggestionItem;
+
+            // Preenche os dropdowns da esquerda com a sugestão
+            const dirigenteId = suggestionItem.dataset.dirigente;
+            const moradorId = suggestionItem.dataset.morador;
+            
+            if (clonedSelects[0]) {
+                clonedSelects[0].value = dirigenteId;
+            }
+            if (clonedSelects[1]) {
+                clonedSelects[1].value = moradorId;
+            }
+            
+            // --- LINHA ADICIONADA: FAZ SCROLL PARA O TOPO DA SELEÇÃO ATUAL ---
+            selectionContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+
+    applyBtn.onclick = () => {
+        if (selectedSuggestion) {
+            const dirigenteId = selectedSuggestion.dataset.dirigente;
+            const moradorId = selectedSuggestion.dataset.morador;
+            if (dirigenteId && moradorId) {
+                originalSelects[0].value = dirigenteId;
+                originalSelects[1].value = moradorId;
+                originalSelects[0].dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            closePopup();
+        } else {
+            alert("Por favor, selecione uma sugestão para aplicar.");
+        }
+    };
+
+    const closePopup = () => {
+        labPopup.style.display = 'none';
+        document.body.classList.remove('popup-open');
+        applyBtn.onclick = null;
+    };
+    
+    closeBtn.onclick = closePopup;
+}
+
+
+
+
+// =================================================================== //
+// ============ FIM: LÓGICA DO POPUP "LABORATÓRIO" (CORRIGIDA) ======== //
+// =================================================================== //
 
             
             // Load nacionalidades from Firebase
@@ -3006,13 +3256,13 @@ document.addEventListener('click', function(event) {
                 });
             };
 
-             // CHAME A NOVA FUNÇÃO AQUI:
-    loadAllDesignationsMap();
-    loadAllPeopleMap();
-    initializeSystemData();
+        // CHAME A NOVA FUNÇÃO AQUI:
+loadAllDesignationsMap();
+loadAllPeopleMap();
+initializeSystemData();
 
-            // Call loadNacionalidades when page loads
-            loadNacionalidades();
+// Call loadNacionalidades when page loads
+loadNacionalidades();
 
 
             const reIndexOrderNumbers = () => {
@@ -3514,9 +3764,8 @@ document.addEventListener('click', function(event) {
 
 
             // Call updateWeekDisplay initially and when month changes
-            updateWeekDisplay();
-            document.getElementById('mes').addEventListener('change', updateWeekDisplay);
-
+     
+     
 
 
 
@@ -3546,81 +3795,77 @@ document.addEventListener('click', function(event) {
 
 
             // --- Função rankPeopleByDesignationCount - IMPLEMENTAÇÃO COMPLETA (já existente - manter) ---
-            const rankPeopleByDesignationCount = async (eligiblePeopleIds, designationName, ano, returnScore = false) => {
-    const historicoRef = db.collection('historico');
-    const historicoQuery = historicoRef
-        .where("ano", "==", ano)
-        .where("quando", "==", "Semana");
+     const rankPeopleByDesignationCount = async (eligiblePeopleIds, designationName, ano, returnScore = false) => {
+    try {
+        const historicoRef = db.collection('historico');
+        const historicoQuery = historicoRef.where("ano", "==", ano).where("quando", "==", "Semana");
 
-    const historicoSnapshot = await historicoQuery.get();
-    const designationCounts = {};
+        const historicoSnapshot = await historicoQuery.get();
+        const designationCounts = {};
 
-    eligiblePeopleIds.forEach(personId => {
-        designationCounts[personId] = { total: 0, specific: 0 };
-    });
+        eligiblePeopleIds.forEach(personId => {
+            designationCounts[personId] = { total: 0, specific: 0 };
+        });
 
-    historicoSnapshot.forEach(doc => {
-        const historicoData = doc.data();
-        historicoData.designacoes.forEach(designacaoHistorico => {
-            if (designacaoHistorico.participantes) {
-                let listaDeParticipantes = [];
-                if (Array.isArray(designacaoHistorico.participantes)) {
-                    listaDeParticipantes = designacaoHistorico.participantes;
-                } else if (typeof designacaoHistorico.participantes === 'object') {
-                    listaDeParticipantes = Object.values(designacaoHistorico.participantes);
-                }
-
-                listaDeParticipantes.forEach(participanteId => {
-                    if (eligiblePeopleIds.includes(participanteId)) {
-                        if (!designationCounts[participanteId]) {
-                            designationCounts[participanteId] = { total: 0, specific: 0 };
-                        }
+        historicoSnapshot.forEach(doc => {
+            const historicoData = doc.data();
+            historicoData.designacoes?.forEach(designacaoHistorico => {
+                const participantes = Object.values(designacaoHistorico.participantes || {});
+                participantes.forEach(participanteId => {
+                    if (designationCounts[participanteId]) {
                         designationCounts[participanteId].total++;
-                        
                         const designacaoIdNoHistorico = designacaoHistorico.designacaoId || designacaoHistorico.designacao;
                         if (designacaoIdNoHistorico === getDesignationIdByName(designationName)) {
                             designationCounts[participanteId].specific++;
                         }
                     }
                 });
-            }
+            });
         });
-    });
 
-    function getDesignationIdByName(name) {
-        const el = Array.from(document.querySelectorAll('#designacoesList .designacao-item label > span'))
-                      .find(span => span.textContent === name);
-        return el ? el.closest('.designacao-item').dataset.designacaoId : null;
-    }
-
-    const rankedPeopleArray = eligiblePeopleIds.map(personId => ({
-        personId: personId,
-        totalDesignations: designationCounts[personId].total,
-        specificDesignations: designationCounts[personId].specific
-    }));
-
-    rankedPeopleArray.sort((a, b) => {
-        if (a.totalDesignations !== b.totalDesignations) {
-            return a.totalDesignations - b.totalDesignations;
+        function getDesignationIdByName(name) {
+            const el = Array.from(document.querySelectorAll('#designacoesList .designacao-item label > span'))
+                          .find(span => span.textContent === name);
+            return el ? el.closest('.designacao-item').dataset.designacaoId : null;
         }
-        return a.specificDesignations - b.specificDesignations;
-    });
 
-    // =================================================================
-    // =========== INÍCIO DA CORREÇÃO AQUI =============================
-    // =================================================================
-    if (returnScore) {
-        // Agora, em vez de retornar apenas UMA pontuação, retornamos o ARRAY COMPLETO
-        // de objetos classificados. A função chamadora pode então usar .slice().
-        return rankedPeopleArray;
+        const rankedPeopleArray = eligiblePeopleIds.map(personId => {
+            // Se, por alguma razão, a contagem não existir, assume uma pontuação infinita (muito má)
+            if (!designationCounts[personId]) {
+                console.warn(`[RANK] Aviso: Não foi encontrada contagem para o ID ${personId}. A atribuir pontuação máxima.`);
+                return {
+                    personId: personId,
+                    totalDesignations: Infinity,
+                    specificDesignations: Infinity
+                };
+            }
+            return {
+                personId: personId,
+                totalDesignations: designationCounts[personId].total,
+                specificDesignations: designationCounts[personId].specific
+            };
+        });
+
+        rankedPeopleArray.sort((a, b) => {
+            if (a.totalDesignations !== b.totalDesignations) {
+                return a.totalDesignations - b.totalDesignations;
+            }
+            return a.specificDesignations - b.specificDesignations;
+        });
+
+        if (returnScore) {
+            return rankedPeopleArray;
+        }
+
+        return rankedPeopleArray.map(item => item.personId);
+
+    } catch (error) {
+        console.error("[RANK] Erro crítico dentro de rankPeopleByDesignationCount:", error);
+        return [];
     }
-    // =================================================================
-    // ============ FIM DA CORREÇÃO AQUI ===============================
-    // =================================================================
-
-    // O comportamento padrão (quando returnScore é false) continua o mesmo.
-    return rankedPeopleArray.map(item => item.personId);
 };
+
+
 
 
 
@@ -5064,7 +5309,26 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
 
 
 
+async function initializePage() {
+    try {
+        // A MÁGICA ACONTECE AQUI: `await` força o código a esperar que
+        // o display da semana seja completamente atualizado antes de continuar.
+        await updateWeekDisplay(); 
+        
+        // Só depois de o display estar pronto é que carregamos as designações
+        loadDesignacoes(); 
+    
+    } catch (error) {
+        console.error("Erro durante a inicialização da página:", error);
+        document.getElementById('weekDisplay').textContent = "Erro ao carregar dados da semana.";
+    }
+}
 
+// Adiciona o listener para a mudança de mês
+document.getElementById('mes').addEventListener('change', updateWeekDisplay);
+
+// Inicia todo o processo
+initializePage();
 
 
 
@@ -5115,7 +5379,7 @@ let participantSelections = {};
 let participationStatsCache = { ano: null, data: null };
 
             // Initial load of designacoes
-            loadDesignacoes();
+
         });
     </script>
 
