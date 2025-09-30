@@ -1636,30 +1636,6 @@ let allYearsCache = [];
 let allLanguagesCache = [];
 
 
-function refrescarFiltrosDePessoas() {
-    console.log('%c[FILTRO] A função refrescarFiltrosDePessoas() foi chamada.', 'color: orange; font-weight: bold;');
-
-    // 1. Obtém a lista de idiomas/grupos selecionados atualmente
-    const selectedIdiomas = getSelectedNacionalidades();
-    console.log(' -> Grupos/Idiomas selecionados:', selectedIdiomas);
-
-    // 2. Itera por cada "card" de designação visível na página
-    document.querySelectorAll('.active-designation-container').forEach(card => {
-        const designacaoId = card.dataset.designacaoId;
-        const designacao = allDesignations.get(designacaoId);
-
-        if (designacao) {
-            // 3. Lê outras preferências do card, como a de género
-            const genderSelect = card.querySelector('.genero-preferencia-select');
-            const genderPreference = genderSelect ? genderSelect.value : 'ambos';
-            
-            // 4. Chama a função que vai ao Firebase buscar a lista de pessoas JÁ FILTRADA
-            console.log(`  -> Atualizando designação "${designacao.nome}" com os filtros...`);
-            loadPeopleOptionsIntoSelects(designacao, card, genderPreference, selectedIdiomas);
-        }
-    });
-    console.log('--- Fim da atualização dos filtros ---');
-}
 
 // Função para abrir o popup e configurar os listeners
 function openEstatisticasPopup() {
@@ -2201,13 +2177,33 @@ function makeTableSortable(table) {
 };
 
 function getDayOfWeekNumber(dayOfWeekString) {
+    // Mapa de dias com chaves já normalizadas (sem acentos) para ser mais robusto
     const daysOfWeek = {
-        'domingo': 0, 'segunda': 1, 'terça': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sábado': 6,
-        'domingo-feira': 0, 'segunda-feira': 1, 'terça-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sábado-feira': 6
+        'domingo': 0, 'segunda': 1, 'terca': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sabado': 6,
+        'domingo-feira': 0, 'segunda-feira': 1, 'terca-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sabado-feira': 6
     };
-    const normalizedDayOfWeekString = dayOfWeekString.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Normalize and remove accents
-    return daysOfWeek[normalizedDayOfWeekString] !== undefined ? daysOfWeek[normalizedDayOfWeekString] : null;
+
+    if (!dayOfWeekString || typeof dayOfWeekString !== 'string') {
+        return null; // Retorna nulo se a entrada não for válida
+    }
+
+    // Trata a string de entrada: remove espaços, acentos e converte para minúsculas
+    const normalizedDayOfWeekString = dayOfWeekString
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u00e0-\u00e5]/g, 'a') // Normaliza acentos de 'a'
+        .replace(/[\u00e8-\u00eb]/g, 'e') // Normaliza acentos de 'e'
+        .replace(/[\u00ec-\u00ef]/g, 'i') // Normaliza acentos de 'i'
+        .replace(/[\u00f2-\u00f6]/g, 'o') // Normaliza acentos de 'o'
+        .replace(/[\u00f9-\u00fc]/g, 'u') // Normaliza acentos de 'u'
+        .replace(/[\u00e7]/g, 'c')       // Normaliza 'ç'
+        .toLowerCase();
+
+    const result = daysOfWeek[normalizedDayOfWeekString];
+
+    return result !== undefined ? result : null;
 }
+
 
 // --- Helper function to get meeting day of month ---
 function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
@@ -2468,39 +2464,51 @@ const loadAllDesignationsIntoCache = async () => {
 
 
 
-        function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
+    function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
     if (!ano || !diasSemanaString || !diaSemanaReuniao) {
         return null;
     }
-    const parts = diasSemanaString.split(" - ");
-    if (parts.length < 2) return null;
-    const startDay = parseInt(parts[0]);
-    const endPart = parts[1].split(" ");
-    const endDay = parseInt(endPart[0]);
-    let startMonthStr = parts[0].split(" ")[1] || "";
-    const endMonthStr = endPart.length > 1 ? endPart[1] : startMonthStr;
-    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    let startMonthIndex = monthNames.indexOf(startMonthStr);
-    const endMonthIndex = monthNames.indexOf(endMonthStr);
-    if (startMonthIndex === -1) startMonthIndex = endMonthIndex;
-    if (startMonthIndex === -1) return null;
+    try {
+        const parts = diasSemanaString.split(" - ");
+        if (parts.length < 2) return null;
 
-    const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
-    if (dayOfWeekMeetingNumber === null) return null;
+        const startParts = parts[0].split(" ");
+        const startDay = parseInt(startParts[0]);
+        let startMonthStr = startParts.length > 1 ? startParts[1] : null;
 
-    const startOfWeekDate = new Date(ano, startMonthIndex, startDay);
-    const endOfWeekDate = new Date(ano, endMonthIndex, endDay);
-    let currentDay = new Date(startOfWeekDate);
-
-    while (currentDay <= endOfWeekDate) {
-        if (currentDay.getDay() === dayOfWeekMeetingNumber) {
-            const month = String(currentDay.getMonth() + 1).padStart(2, '0');
-            const day = String(currentDay.getDate()).padStart(2, '0');
-            return `${ano}-${month}-${day}`;
+        const endParts = parts[1].split(" ");
+        const endDay = parseInt(endParts[0]);
+        const endMonthStr = endParts.length > 1 ? endParts[1] : null;
+        
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        if (!startMonthStr) {
+            startMonthStr = endMonthStr;
         }
-        currentDay.setDate(currentDay.getDate() + 1);
+
+        const startMonthIndex = monthNames.indexOf(startMonthStr);
+        const endMonthIndex = monthNames.indexOf(endMonthStr);
+        if (startMonthIndex === -1 || endMonthIndex === -1) return null;
+
+        const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
+        if (dayOfWeekMeetingNumber === null) return null;
+
+        const startOfWeekDate = new Date(ano, startMonthIndex, startDay);
+        const endOfWeekDate = new Date(ano, endMonthIndex, endDay);
+        let currentDay = new Date(startOfWeekDate); // Usar new Date() para não modificar a original
+
+        while (currentDay <= endOfWeekDate) {
+            if (currentDay.getDay() === dayOfWeekMeetingNumber) {
+                const month = String(currentDay.getMonth() + 1).padStart(2, '0');
+                const day = String(currentDay.getDate()).padStart(2, '0');
+                return `${ano}-${month}-${day}`;
+            }
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+        return null; // Retorna null se não encontrar o dia no ciclo
+    } catch (error) {
+        console.error("[getMeetingDayOfMonth] Ocorreu uma exceção ao calcular a data:", error);
+        return null;
     }
-    return null;
 }
 
 function getDetailedParticipantsInRange(start, end, historicoData) {
@@ -2529,11 +2537,7 @@ function shuffleArray(array) {
     }
 }
 
-// Garanta que a função getDayOfWeekNumber também existe
-function getDayOfWeekNumber(dayOfWeekString) {
-    const days = { 'domingo': 0, 'segunda-feira': 1, 'terca-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sabado': 6 };
-    return days[dayOfWeekString.toLowerCase()];
-}
+
 
  async function preencherAutomaticamente(exclusionSet = new Set()) {
     console.log("🚀 Iniciando o preenchimento automático...");
