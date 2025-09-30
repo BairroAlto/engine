@@ -1636,6 +1636,30 @@ let allYearsCache = [];
 let allLanguagesCache = [];
 
 
+function refrescarFiltrosDePessoas() {
+    console.log('%c[FILTRO] A função refrescarFiltrosDePessoas() foi chamada.', 'color: orange; font-weight: bold;');
+
+    // 1. Obtém a lista de idiomas/grupos selecionados atualmente
+    const selectedIdiomas = getSelectedNacionalidades();
+    console.log(' -> Grupos/Idiomas selecionados:', selectedIdiomas);
+
+    // 2. Itera por cada "card" de designação visível na página
+    document.querySelectorAll('.active-designation-container').forEach(card => {
+        const designacaoId = card.dataset.designacaoId;
+        const designacao = allDesignations.get(designacaoId);
+
+        if (designacao) {
+            // 3. Lê outras preferências do card, como a de género
+            const genderSelect = card.querySelector('.genero-preferencia-select');
+            const genderPreference = genderSelect ? genderSelect.value : 'ambos';
+            
+            // 4. Chama a função que vai ao Firebase buscar a lista de pessoas JÁ FILTRADA
+            console.log(`  -> Atualizando designação "${designacao.nome}" com os filtros...`);
+            loadPeopleOptionsIntoSelects(designacao, card, genderPreference, selectedIdiomas);
+        }
+    });
+    console.log('--- Fim da atualização dos filtros ---');
+}
 
 // Função para abrir o popup e configurar os listeners
 function openEstatisticasPopup() {
@@ -2177,33 +2201,18 @@ function makeTableSortable(table) {
 };
 
 function getDayOfWeekNumber(dayOfWeekString) {
-    // Mapa de dias com chaves já normalizadas (sem acentos) para ser mais robusto
+    // Mapa completo com e sem "-feira" para robustez.
     const daysOfWeek = {
-        'domingo': 0, 'segunda': 1, 'terca': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sabado': 6,
-        'domingo-feira': 0, 'segunda-feira': 1, 'terca-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sabado-feira': 6
+        'domingo': 0, 'segunda': 1, 'terça': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sábado': 6,
+        'domingo-feira': 0, 'segunda-feira': 1, 'terça-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sábado-feira': 6
     };
-
-    if (!dayOfWeekString || typeof dayOfWeekString !== 'string') {
-        return null; // Retorna nulo se a entrada não for válida
-    }
-
-    // Trata a string de entrada: remove espaços, acentos e converte para minúsculas
-    const normalizedDayOfWeekString = dayOfWeekString
-        .trim()
-        .normalize("NFD")
-        .replace(/[\u00e0-\u00e5]/g, 'a') // Normaliza acentos de 'a'
-        .replace(/[\u00e8-\u00eb]/g, 'e') // Normaliza acentos de 'e'
-        .replace(/[\u00ec-\u00ef]/g, 'i') // Normaliza acentos de 'i'
-        .replace(/[\u00f2-\u00f6]/g, 'o') // Normaliza acentos de 'o'
-        .replace(/[\u00f9-\u00fc]/g, 'u') // Normaliza acentos de 'u'
-        .replace(/[\u00e7]/g, 'c')       // Normaliza 'ç'
-        .toLowerCase();
-
-    const result = daysOfWeek[normalizedDayOfWeekString];
-
-    return result !== undefined ? result : null;
+    
+    // Apenas converte para minúsculas, garantindo que "Sábado" e "sábado" funcionem.
+    const normalizedDayOfWeekString = dayOfWeekString.toLowerCase();
+    
+    // Retorna o número ou null se não encontrar.
+    return daysOfWeek[normalizedDayOfWeekString] !== undefined ? daysOfWeek[normalizedDayOfWeekString] : null;
 }
-
 
 // --- Helper function to get meeting day of month ---
 function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
