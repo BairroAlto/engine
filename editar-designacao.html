@@ -54,7 +54,36 @@
         .checkbox-group-horizontal { display: flex; gap: 10px; flex-wrap: wrap; }
         .option-item-horizontal { display: flex; align-items: center; padding: 8px 16px; border-radius: 20px; background-color: #ecf0f1; border: 1px solid #bdc3c7; cursor: pointer; transition: background-color 0.3s; }
         .option-item-horizontal:has(input:checked) { background-color: #3498db; color: white; border-color: #2980b9; }
-        .option-item-horizontal input[type="radio"] { margin-right: 8px; }
+        .option-item-horizontal input[type="radio"] { display: none; }
+
+        /* --- NOVO ESTILO PARA A SEÇÃO DE HORÁRIOS --- */
+        #horarios-anexo-section {
+            background-color: #f2f5f7;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+        #horarios-anexo-section h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        #horarios-anexo-section .horarios-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        #horarios-anexo-section .horarios-group h5 {
+            width: 100%;
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
     </style>
 </head>
 <body>
@@ -92,6 +121,16 @@
                 <div class="form-group"><label for="quando">Quando?</label><select id="quando" required><option value="Semana">Semana</option><option value="Fim de Semana">Fim de Semana</option><option value="Semana e Fim de Semana">Semana e Fim de Semana</option></select></div>
                 <div class="form-group"><label for="tipo">Tipo</label><select id="tipo" required><option value="reuniao">Reunião</option><option value="pregacao">Pregação</option></select></div>
                 <div class="form-group"><label for="parte">Parte</label><select id="parte" required><option value="escola">Escola</option><option value="resto da semana">Resto da Semana</option><option value="fim de semana">Fim de Semana</option><option value="tecnicas">Técnicas</option><option value="pregacao">Pregação</option><option value="dirigencia saida">Dirigência Saída</option></select></div>
+                
+                <!-- INÍCIO DA NOVA SEÇÃO DE HORÁRIOS ANEXADOS -->
+                <div id="horarios-anexo-section" style="display: none;">
+                    <h4>Escolha aqui um horário para anexar ao Dirigente <span class="help-text">(Opcional)</span></h4>
+                    <div class="horarios-container" id="horarios-container">
+                        <!-- Os horários serão inseridos aqui pelo JavaScript -->
+                    </div>
+                </div>
+                <!-- FIM DA NOVA SEÇÃO -->
+
                 <div class="form-group"><label for="anexo">Anexo <span class="help-text">(Anexar a um Cabeçalho para aparecer na Escala)</span></label><select id="anexo"><option value="">Carregando Anexos...</option></select></div>
                 
                 <div class="form-group">
@@ -130,16 +169,19 @@
             const listaReuniaoDiv = document.getElementById('lista-reuniao');
             const listaPregacaoDiv = document.getElementById('lista-pregacao');
 
+            // --- Seletores para a nova funcionalidade ---
+            const parteSelect = document.getElementById('parte');
+            const horariosSection = document.getElementById('horarios-anexo-section');
+            let horariosCarregados = false; // Flag para carregar os horários apenas uma vez
+
             let idAtualEmEdicao = null;
 
             const descricaoSelect = document.getElementById('descricao');
             const anexadoDiscursosGroup = document.getElementById('anexado-discursos-group');
 
             descricaoSelect.addEventListener('change', function() {
-                if (this.value === 'sim') {
-                    anexadoDiscursosGroup.style.display = 'block';
-                } else {
-                    anexadoDiscursosGroup.style.display = 'none';
+                anexadoDiscursosGroup.style.display = (this.value === 'sim') ? 'block' : 'none';
+                if (this.value !== 'sim') {
                     document.getElementById('anexado-discursos').value = 'nao';
                 }
             });
@@ -158,16 +200,71 @@
                     });
                 } catch (error) { console.error("Erro ao carregar anexos: ", error); }
             }
+            
+            // --- FUNÇÕES PARA A NOVA SEÇÃO DE HORÁRIOS ---
+            function capitalize(string) { return string.charAt(0).toUpperCase() + string.slice(1); }
+
+            async function carregarHorariosPregacao(horarioSalvo = null) {
+                if (horariosCarregados) { // Se já carregou, apenas atualiza a seleção
+                     document.querySelectorAll('input[name="horario_anexado"]').forEach(radio => {
+                        radio.checked = (radio.value === horarioSalvo);
+                    });
+                    return;
+                }
+                const container = document.getElementById('horarios-container');
+                container.innerHTML = '';
+                try {
+                    const snapshot = await db.collection('horarios').where('tipo', '==', 'pregacao').get();
+                    if (snapshot.empty) { container.textContent = 'Nenhum horário de pregação encontrado.'; return; }
+                    let semanaHTML = '<div class="horarios-group" style="width: 100%;"><h5>-- Durante a Semana</h5>';
+                    let fimDeSemanaHTML = '<div class="horarios-group" style="width: 100%;"><h5>-- Durante Fim de Semana</h5>';
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data['dias-semana-horarios']) {
+                            for (const dia in data['dias-semana-horarios']) {
+                                data['dias-semana-horarios'][dia].forEach(hora => {
+                                    const valor = `${capitalize(dia)} ${hora}`;
+                                    const checked = valor === horarioSalvo ? 'checked' : '';
+                                    semanaHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}" ${checked}>${valor}</label>`;
+                                });
+                            }
+                        }
+                        if (data['dias-fimdesemana-horarios']) {
+                            for (const dia in data['dias-fimdesemana-horarios']) {
+                                let diaFormatado = dia === 'sabado' ? 'Sábado' : capitalize(dia);
+                                data['dias-fimdesemana-horarios'][dia].forEach(hora => {
+                                    const valor = `${diaFormatado} ${hora}`;
+                                    const checked = valor === horarioSalvo ? 'checked' : '';
+                                    fimDeSemanaHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}" ${checked}>${valor}</label>`;
+                                });
+                            }
+                        }
+                    });
+                    semanaHTML += '</div>';
+                    fimDeSemanaHTML += '</div>';
+                    container.innerHTML = semanaHTML + fimDeSemanaHTML;
+                    horariosCarregados = true;
+                } catch (error) { console.error("Erro ao carregar horários: ", error); container.textContent = 'Erro ao carregar horários.'; }
+            }
+
+            parteSelect.addEventListener('change', function() {
+                if (this.value === 'dirigencia saida') {
+                    horariosSection.style.display = 'block';
+                    carregarHorariosPregacao(); // Carrega os horários sem pré-seleção
+                } else {
+                    horariosSection.style.display = 'none';
+                }
+            });
+
+            // --- FIM DAS FUNÇÕES DA NOVA SEÇÃO ---
 
             async function renderizarListas() {
                 listaReuniaoDiv.innerHTML = 'Carregando...';
                 listaPregacaoDiv.innerHTML = 'Carregando...';
                 try {
                     const snapshot = await db.collection('designacoes').orderBy('nome').get();
-                    
                     listaReuniaoDiv.innerHTML = '';
                     listaPregacaoDiv.innerHTML = '';
-
                     if (snapshot.empty) {
                         listaReuniaoDiv.innerHTML = 'Nenhuma designação encontrada.';
                         listaPregacaoDiv.innerHTML = 'Nenhuma designação encontrada.';
@@ -175,22 +272,9 @@
                     }
                     snapshot.forEach(doc => {
                         const data = doc.data();
-                        const itemHtml = `
-                            <div class="designation-item" data-id="${doc.id}">
-                                <span class="designation-status">
-                                    <i class="fas ${data.status ? 'fa-check' : 'fa-times'}"></i>
-                                </span>
-                                <span class="designation-name">${data.nome}</span>
-                                <button class="edit-btn inline">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                            </div>
-                        `;
-                        if (data.tipo === 'reuniao') {
-                            listaReuniaoDiv.innerHTML += itemHtml;
-                        } else if (data.tipo === 'pregacao') {
-                            listaPregacaoDiv.innerHTML += itemHtml;
-                        }
+                        const itemHtml = `<div class="designation-item" data-id="${doc.id}"><span class="designation-status"><i class="fas ${data.status ? 'fa-check' : 'fa-times'}"></i></span><span class="designation-name">${data.nome}</span><button class="edit-btn inline"><i class="fas fa-edit"></i></button></div>`;
+                        if (data.tipo === 'reuniao') { listaReuniaoDiv.innerHTML += itemHtml; } 
+                        else if (data.tipo === 'pregacao') { listaPregacaoDiv.innerHTML += itemHtml; }
                     });
                 } catch (error) {
                     console.error("Erro ao carregar designações: ", error);
@@ -204,6 +288,7 @@
                     const doc = await db.collection('designacoes').doc(id).get();
                     if (doc.exists) {
                         const data = doc.data();
+                        // Preenchimento dos campos existentes
                         document.getElementById('nome-designacao').value = data.nome || '';
                         document.getElementById('numero-participantes').value = data.numeroParticipantes || '1';
                         document.getElementById('feito-por').value = data.feitoPor || 'Masculino';
@@ -215,28 +300,23 @@
                         document.getElementById('descricao').value = data.descricao || 'nao';
                         document.getElementById('status').checked = data.status;
                         document.getElementById('emoji').value = data.emoji || '';
-
                         document.getElementById('anexado-discursos').value = data.anexadoDiscursos || 'nao';
-                        if (data.descricao === 'sim') {
-                            anexadoDiscursosGroup.style.display = 'block';
-                        } else {
-                            anexadoDiscursosGroup.style.display = 'none';
-                        }
+                        anexadoDiscursosGroup.style.display = (data.descricao === 'sim') ? 'block' : 'none';
 
                         document.querySelectorAll('input[name="quem_faz"]').forEach(cb => cb.checked = false);
-                        if (data.quemFaz && Array.isArray(data.quemFaz)) {
-                            data.quemFaz.forEach(privilegio => {
-                                const checkbox = document.querySelector(`input[name="quem_faz"][value="${privilegio}"]`);
-                                if (checkbox) checkbox.checked = true;
-                            });
-                        }
-
+                        if (data.quemFaz && Array.isArray(data.quemFaz)) { data.quemFaz.forEach(p => { const cb = document.querySelector(`input[name="quem_faz"][value="${p}"]`); if (cb) cb.checked = true; }); }
                         document.querySelectorAll('input[name="personalidade"]').forEach(radio => radio.checked = false);
-                        if (data.personalidade) {
-                            const radioBtn = document.querySelector(`input[name="personalidade"][value="${data.personalidade}"]`);
-                            if (radioBtn) radioBtn.checked = true;
-                        }
+                        if (data.personalidade) { const rb = document.querySelector(`input[name="personalidade"][value="${data.personalidade}"]`); if (rb) rb.checked = true; }
                         
+                        // --- LÓGICA PARA EXIBIR E PREENCHER A SEÇÃO DE HORÁRIOS ---
+                        if (data.parte === 'dirigencia saida') {
+                            horariosSection.style.display = 'block';
+                            await carregarHorariosPregacao(data.horarioAnexado || null);
+                        } else {
+                            horariosSection.style.display = 'none';
+                        }
+                        // --- FIM DA LÓGICA ---
+
                         idAtualEmEdicao = id;
                         editFormCard.style.display = 'block';
                         editFormCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -249,28 +329,16 @@
 
             mainContent.addEventListener('click', function(e) {
                 const editButton = e.target.closest('.edit-btn.inline');
-                if (editButton) {
-                    const itemDiv = e.target.closest('.designation-item');
-                    const designacaoId = itemDiv.dataset.id;
-                    if (designacaoId) {
-                        carregarDadosFormulario(designacaoId);
-                    }
-                }
+                if (editButton) { carregarDadosFormulario(e.target.closest('.designation-item').dataset.id); }
             });
 
             editForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                if (!idAtualEmEdicao) {
-                    alert("Nenhuma designação selecionada para edição.");
-                    return;
-                }
-
-                if (!document.querySelector('input[name="quem_faz"]:checked')) {
-                    alert('O campo "Quem faz?" é obrigatório. Por favor, selecione pelo menos uma opção.');
-                    return;
-                }
+                if (!idAtualEmEdicao) return;
+                if (!document.querySelector('input[name="quem_faz"]:checked')) { alert('O campo "Quem faz?" é obrigatório.'); return; }
 
                 const personalidadeSelecionada = document.querySelector('input[name="personalidade"]:checked');
+                const horarioAnexadoSelecionado = document.querySelector('input[name="horario_anexado"]:checked');
 
                 const designacaoAtualizada = {
                     nome: document.getElementById('nome-designacao').value,
@@ -281,6 +349,8 @@
                     quando: document.getElementById('quando').value,
                     tipo: document.getElementById('tipo').value,
                     parte: document.getElementById('parte').value,
+                    // --- SALVANDO O HORÁRIO ANEXADO ---
+                    horarioAnexado: horarioAnexadoSelecionado ? horarioAnexadoSelecionado.value : "",
                     anexo: document.getElementById('anexo').value,
                     descricao: document.getElementById('descricao').value,
                     anexadoDiscursos: document.getElementById('anexado-discursos').value,
