@@ -1602,7 +1602,6 @@ document.body.addEventListener('change', (event) => {
 
 // --- FUNÇÃO AUXILIAR MODIFICADA para obter pares, papéis e datas ---
 const getRecentPairs = async () => {
-    // Aumentamos a janela para 12 meses para ter um histórico mais robusto
     const RECENT_MONTHS_WINDOW = 12;
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - RECENT_MONTHS_WINDOW);
@@ -1634,8 +1633,6 @@ const getRecentPairs = async () => {
             });
         }
     });
-    // LOG ADICIONADO
-    console.log("[VALIDATION] -> DADOS (Pares Recentes):", recentPairsMap);
     return recentPairsMap;
 };
 
@@ -2969,18 +2966,25 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
     suggestionsContainer.innerHTML = '<h3><i class="fas fa-lightbulb"></i> Sugestões</h3><p><i class="fas fa-spinner fa-spin"></i> A gerar sugestões...</p>';
 
     try {
+        const mes = parseInt(document.getElementById('mes').value);
+        const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
         const ano = await getAnoPainelFirebase();
         const designacaoId = designationContainer.dataset.designacaoId;
         const designacaoData = (await db.collection('designacoes').doc(designacaoId).get()).data();
         
-        // --- 1. PREPARAÇÃO: OBTER DADOS E FILTROS INICIAIS (Lógica existente) ---
+        // <<< NOVO INÍCIO: Buscar a lista de participantes a serem excluídos >>>
+        // Usamos Promise.all para buscar os dados das semanas anterior e seguinte em paralelo
+        const [participantsLastWeek, participantsNextWeek] = await Promise.all([
+            getParticipantsLastWeek(ano, mes, semanaNumero),
+            getParticipantsNextWeek(ano, mes, semanaNumero)
+        ]);
+        // <<< NOVO FIM: Fim da busca de participantes >>>
+        
         const assignedPeopleThisWeek = new Set(Array.from(document.querySelectorAll('.form-select')).filter(s => s.value).map(s => s.value));
         originalSelects.forEach(s => { if (s.value) assignedPeopleThisWeek.delete(s.value); });
         
         const lockedIcon = clonedSelects[0].parentNode.querySelector('.lab-lock-icon[data-locked="true"]');
 
-        // --- 2. NOVA LÓGICA DE PONTUAÇÃO: MAPA DE COLABORAÇÕES DE PARES ---
-        // Fazemos isto uma única vez, independentemente de haver cadeado ou não.
         const pairCollaborationCount = new Map();
         const historicoSnapshot = await db.collection('historico').where('ano', '==', ano).get();
         
@@ -2988,7 +2992,6 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
             doc.data().designacoes?.forEach(d => {
                 const participantes = Object.values(d.participantes || {});
                 if (participantes.length >= 2) {
-                    // Gera todas as combinações de pares dentro desta designação
                     for (let i = 0; i < participantes.length; i++) {
                         for (let j = i + 1; j < participantes.length; j++) {
                             const pairKey = [participantes[i], participantes[j]].sort().join('_');
@@ -2999,13 +3002,10 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
                 }
             });
         });
-        console.log(`[LAB] Mapa de colaborações criado com ${pairCollaborationCount.size} pares.`);
 
         let rankedPairs = [];
 
-        // --- 3. GERAÇÃO DE SUGESTÕES (com a nova pontuação) ---
         if (lockedIcon) {
-            // Lógica para quando um participante está bloqueado
             const lockedIndex = parseInt(lockedIcon.dataset.selectIndex);
             const fixedPersonId = clonedSelects[lockedIndex].value;
             
@@ -3018,11 +3018,17 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
             const targetSelectIndex = lockedIndex === 0 ? 1 : 0;
             const targetSelect = originalSelects[targetSelectIndex];
 
-            // Filtra os candidatos elegíveis (respeitando as regras)
+            // <<< NOVO INÍCIO: Aplicar o filtro extra aos candidatos >>>
             let candidates = getEligiblePeopleForDropdown(targetSelect)
-                .filter(id => id !== fixedPersonId && !assignedPeopleThisWeek.has(id) && (allPeopleDataMap.get(id)?.genero === fixedPersonData.genero));
+                .filter(id =>
+                    id !== fixedPersonId &&
+                    !assignedPeopleThisWeek.has(id) &&
+                    !participantsLastWeek.has(id) && // Exclui quem participou na semana passada
+                    !participantsNextWeek.has(id) && // Exclui quem participará na próxima semana
+                    (allPeopleDataMap.get(id)?.genero === fixedPersonData.genero)
+                );
+            // <<< NOVO FIM: Fim do filtro extra >>>
             
-            // Atribui a pontuação de colaboração a cada candidato
             rankedPairs = candidates.map(candidateId => {
                 const pairKey = [fixedPersonId, candidateId].sort().join('_');
                 const score = pairCollaborationCount.get(pairKey) || 0;
@@ -3030,12 +3036,24 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
                 pair[lockedIndex] = fixedPersonId;
                 pair[targetSelectIndex] = candidateId;
                 return { pair: pair, totalScore: score };
-            }).sort((a, b) => a.totalScore - b.totalScore); // Ordena pela pontuação de colaboração
+            }).sort((a, b) => a.totalScore - b.totalScore);
 
         } else {
-            // Lógica normal: encontrar os melhores pares
-            const eligibleDirigentes = getEligiblePeopleForDropdown(originalSelects[0]).filter(id => !assignedPeopleThisWeek.has(id));
-            const eligibleMoradores = getEligiblePeopleForDropdown(originalSelects[1]).filter(id => !assignedPeopleThisWeek.has(id));
+            // <<< NOVO INÍCIO: Aplicar o filtro extra às listas de elegíveis >>>
+            const eligibleDirigentes = getEligiblePeopleForDropdown(originalSelects[0])
+                .filter(id => 
+                    !assignedPeopleThisWeek.has(id) &&
+                    !participantsLastWeek.has(id) && // Exclui quem participou na semana passada
+                    !participantsNextWeek.has(id)    // Exclui quem participará na próxima semana
+                );
+
+            const eligibleMoradores = getEligiblePeopleForDropdown(originalSelects[1])
+                .filter(id =>
+                    !assignedPeopleThisWeek.has(id) &&
+                    !participantsLastWeek.has(id) && // Exclui quem participou na semana passada
+                    !participantsNextWeek.has(id)    // Exclui quem participará na próxima semana
+                );
+            // <<< NOVO FIM: Fim do filtro extra >>>
             
             let possiblePairs = [];
             for (const dId of eligibleDirigentes) {
@@ -3050,7 +3068,6 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
                 }
             }
             
-            // Atribui a pontuação a cada par possível e ordena
             rankedPairs = possiblePairs.map(pair => {
                 const pairKey = [pair[0], pair[1]].sort().join('_');
                 const score = pairCollaborationCount.get(pairKey) || 0;
@@ -3058,13 +3075,12 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
             }).sort((a, b) => a.totalScore - b.totalScore);
         }
 
-        // --- 4. RENDERIZAÇÃO (Lógica de lotes existente, com texto melhorado) ---
         suggestionsContainer.innerHTML = '<h3><i class="fas fa-lightbulb"></i> Sugestões</h3>';
         const listContainer = document.createElement('div');
         suggestionsContainer.appendChild(listContainer);
 
         if (rankedPairs.length === 0) {
-            listContainer.innerHTML = '<p>Nenhuma sugestão válida foi encontrada com os filtros atuais.</p>';
+            listContainer.innerHTML = '<p>Nenhuma sugestão válida foi encontrada. (Possivelmente todos os candidatos elegíveis participaram na semana anterior/seguinte).</p>';
             return;
         }
 
@@ -3079,7 +3095,6 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
                 const mName = (allPeopleDataMap.get(moradorId) || {}).nome || 'N/A';
                 const suggestionItem = document.createElement('div');
                 suggestionItem.className = 'suggestion-item';
-                // **MELHORIA DE TEXTO APLICADA AQUI**
                 suggestionItem.innerHTML = `
                     <strong>Dirigente:</strong> ${dName} <br> 
                     <strong>Morador:</strong> ${mName}
@@ -3108,6 +3123,14 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
         suggestionsContainer.innerHTML = `<h3><i class="fas fa-lightbulb"></i> Sugestões</h3><p style="color: red;">Ocorreu um erro ao gerar sugestões. Verifique a consola.</p>`;
     }
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -3419,26 +3442,26 @@ loadNacionalidades();
 };
 
 
-            const getAnoPainelFirebase = async () => {
-                const painelAnoRef = db.collection('painel').doc('ano');
-                const doc = await painelAnoRef.get();
-                if (doc.exists) {
-                    return doc.data().ano;
-                } else {
-                    return new Date().getFullYear();
-                }
-            };
+         const getAnoPainelFirebase = async () => {
+    const painelAnoRef = db.collection('painel').doc('ano');
+    const doc = await painelAnoRef.get();
+    if (doc.exists) {
+        return doc.data().ano;
+    } else {
+        return new Date().getFullYear();
+    }
+};
 
-            const countHistoricoSemanas = async (ano, mes) => {
-                const historicoRef = db.collection('historico');
-                const querySnapshot = await historicoRef
-                    .where("ano", "==", ano)
-                    .where("mes", "==", parseInt(mes))
-                    .where("quando", "==", "Semana") // <-- ALTERAÇÃO AQUI
-                    .where("parte", "==", "escola")
-                    .get();
-                return querySnapshot.size;
-            };
+       const countHistoricoSemanas = async (ano, mes) => {
+    const historicoRef = db.collection('historico');
+    const querySnapshot = await historicoRef
+        .where("ano", "==", ano)
+        .where("mes", "==", parseInt(mes))
+        .where("quando", "==", "Semana") 
+        .where("parte", "==", "escola")
+        .get();
+    return querySnapshot.size;
+};
 
           const getDiasSemana = (ano, mes, semanaNumero) => { // FUNÇÃO 1 CORRIGIDA
     const primeiroDiaMes = new Date(ano, mes - 1, 1);
@@ -3777,13 +3800,11 @@ loadNacionalidades();
 
 
             // --- Nova Função: getEligiblePeopleForDropdown (já existente - manter) ---
-            const getEligiblePeopleForDropdown = (dropdown) => {
+     const getEligiblePeopleForDropdown = (dropdown) => {
     const peopleIds = [];
     const options = dropdown.querySelectorAll('option');
     
     options.forEach(option => {
-        // A CONDIÇÃO MAIS IMPORTANTE ESTÁ AQUI:
-        // Só considera a opção se ela tiver um valor E se não estiver escondida (style.display !== 'none')
         if (option.value && option.style.display !== 'none') {
             peopleIds.push(option.value);
         }
@@ -4117,41 +4138,6 @@ async function getNextWeekContext(currentAno, currentMes, currentSemana) {
     }
 }
 
-
-
-
-
-// Função auxiliar para obter os participantes da semana anterior
-const getParticipantsLastWeek = async (ano, mes, semanaNumero) => {
-    try {
-        const prevWeek = await getPreviousWeekContext(ano, mes, semanaNumero);
-        
-        console.log(`[VALIDATION] -> A procurar semana anterior com contexto: Ano=${prevWeek.ano}, Mês=${prevWeek.mes}, Semana=${prevWeek.semana}`);
-
-        const q = db.collection('historico')
-            // A MUDANÇA ESTÁ AQUI: Usamos o operador 'in' para apanhar tanto o número como o texto.
-            .where("ano", "in", [prevWeek.ano, String(prevWeek.ano)]) 
-            .where("mes", "==", prevWeek.mes)
-            .where("semanaNumero", "==", prevWeek.semana);
-
-        const snapshot = await q.get();
-        const participants = new Set();
-        
-        if (!snapshot.empty) {
-            snapshot.docs[0].data().designacoes.forEach(desig => {
-                if (desig.participantes) {
-                    Object.values(desig.participantes).forEach(personId => participants.add(personId.toString()));
-                }
-            });
-        }
-        console.log(`[VALIDATION] -> DADOS (Semana Anterior):`, participants);
-        return participants;
-
-    } catch (error) {
-        console.error("Erro em getParticipantsLastWeek (versão robusta):", error);
-        return new Set();
-    }
-};
 
 
 // Função auxiliar para obter os participantes deste mês (até agora)
@@ -4578,6 +4564,7 @@ function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
                     .where('tipo', '==', 'reuniao')
                     .where('quando', '==', 'Semana')
                     .where('parte', '==', 'escola')
+                    .where('status', '==', true)
                      .orderBy('ordem');
                 const snapshot = await query.get();
                 const designacoesList = document.getElementById('designacoesList');
@@ -4892,18 +4879,18 @@ function buildHistoryTable(records, titleText) {
 // ============  NOVA FUNÇÃO: OBTER PARTICIPANTES DA SEMANA SEGUINTE ====== //
 // ======================================================================== //
 
-const getParticipantsNextWeek = async (ano, mes, semanaNumero) => {
+// Função auxiliar para obter os participantes da semana anterior (MODIFICADA)
+const getParticipantsLastWeek = async (ano, mes, semanaNumero) => {
     try {
-        const nextWeek = await getNextWeekContext(ano, mes, semanaNumero);
-
-        console.log(`[VALIDATION] -> A procurar próxima semana com contexto: Ano=${nextWeek.ano}, Mês=${nextWeek.mes}, Semana=${nextWeek.semana}`);
+        const prevWeek = await getPreviousWeekContext(ano, mes, semanaNumero);
+        
+        console.log(`[VALIDATION] -> A procurar semana anterior com contexto: Ano=${prevWeek.ano}, Mês=${prevWeek.mes}, Semana=${prevWeek.semana}`);
 
         const q = db.collection('historico')
-            // A MUDANÇA ESTÁ AQUI: Usamos o operador 'in' para apanhar tanto o número como o texto.
-            .where("ano", "in", [nextWeek.ano, String(nextWeek.ano)])
-            .where("mes", "==", nextWeek.mes)
-            .where("semanaNumero", "==", nextWeek.semana)
-            .where("quando", "==", "Semana");
+            .where("ano", "in", [prevWeek.ano, String(prevWeek.ano)]) 
+            .where("mes", "==", prevWeek.mes)
+            .where("semanaNumero", "==", prevWeek.semana)
+            .where("parte", "==", "escola");
 
         const snapshot = await q.get();
         const participants = new Set();
@@ -4915,7 +4902,40 @@ const getParticipantsNextWeek = async (ano, mes, semanaNumero) => {
                 }
             });
         }
-        console.log(`[VALIDATION] -> DADOS (Semana Seguinte):`, participants);
+        console.log(`[VALIDATION] -> DADOS (Semana Anterior - Escola):`, participants);
+        return participants;
+
+    } catch (error) {
+        console.error("Erro em getParticipantsLastWeek (versão robusta):", error);
+        return new Set();
+    }
+};
+
+
+// Função para obter os participantes da semana seguinte (MODIFICADA)
+const getParticipantsNextWeek = async (ano, mes, semanaNumero) => {
+    try {
+        const nextWeek = await getNextWeekContext(ano, mes, semanaNumero);
+
+        console.log(`[VALIDATION] -> A procurar próxima semana com contexto: Ano=${nextWeek.ano}, Mês=${nextWeek.mes}, Semana=${nextWeek.semana}`);
+
+        const q = db.collection('historico')
+            .where("ano", "in", [nextWeek.ano, String(nextWeek.ano)])
+            .where("mes", "==", nextWeek.mes)
+            .where("semanaNumero", "==", nextWeek.semana)
+            .where("parte", "==", "escola");
+
+        const snapshot = await q.get();
+        const participants = new Set();
+        
+        if (!snapshot.empty) {
+            snapshot.docs[0].data().designacoes.forEach(desig => {
+                if (desig.participantes) {
+                    Object.values(desig.participantes).forEach(personId => participants.add(personId.toString()));
+                }
+            });
+        }
+        console.log(`[VALIDATION] -> DADOS (Semana Seguinte - Escola):`, participants);
         return participants;
 
     } catch (error) {
