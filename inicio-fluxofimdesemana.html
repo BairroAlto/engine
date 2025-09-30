@@ -1259,13 +1259,20 @@ if(validationIcon && validationPanel && validationPanelClose) {
         const idiomas = getSelectedNacionalidades();
         const sala = document.getElementById('sala').value;
         const diasSemana = getDiasSemana(ano, mes, semanaNumero);
-        
+        const horariosData = await getHorariosFromFirebase(ano);
+        const horaFimDeSemana = horariosData['hora-fimdesemana'];
+        const diaFimDeSemanaString = horariosData['dia-fimdesemana'];
+        const meetingDayOfMonth = getMeetingDayOfMonth(ano, diasSemana, diaFimDeSemanaString);
+
         const historicoData = {
             ano: ano, mes: mes, semanaNumero: semanaNumero,
             semanaindex: `(${diasSemana} ${ano})`, designacoes: [],
             evento: tipoEvento, tipo: "reuniao", idioma: idiomas, sala: sala,
             quando: "Fim de Semana",
+            oque: "reuniao",
             parte: "fim de semana",
+             dia: meetingDayOfMonth,
+            hora: horaFimDeSemana,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -1407,40 +1414,36 @@ async function openPairAnalysisPopup(participants) {
     const tabsContainer = document.getElementById('pairAnalysisTabsContainer');
     const contentContainer = document.getElementById('pairAnalysisContentContainer');
 
-    title.textContent = `Análise de: ${participants.map(p => p.name).join(' & ')}`;
-    popup.style.display = 'flex';
-    tabsContainer.innerHTML = 'A carregar...';
+    tabsContainer.innerHTML = '<p>A carregar...</p>';
     contentContainer.innerHTML = '';
+    const participantNames = participants.map(p => p.name).join(' & ');
+    title.textContent = `Análise de: ${participantNames}`;
+    popup.style.display = 'flex';
 
-    // Busca o histórico de colaboração do grupo
-    const pairHistory = await fetchPairHistory(participants.map(p => p.id));
+    const participantIds = participants.map(p => p.id);
+    const pairHistory = await fetchPairHistory(participantIds);
 
-    // Limpa e cria a estrutura de abas
     tabsContainer.innerHTML = '';
     contentContainer.innerHTML = '';
 
-    // Aba 1: Histórico do Par
     const historyTab = createTab('Histórico do Par', 'content-history', true);
     const historyContent = createTabContent('content-history', true);
-    historyContent.appendChild(buildHistoryTable(pairHistory, "Histórico de Colaboração", true)); // true indica que é análise de par
+    historyContent.appendChild(buildHistoryTable(pairHistory, "Histórico de Colaboração", true));
     tabsContainer.appendChild(historyTab);
     contentContainer.appendChild(historyContent);
-    
-    // Abas 2, 3...: Perfis Individuais
+
     participants.forEach((participant, index) => {
-        const tab = createTab(participant.name, `content-p${index}`);
-        const content = createTabContent(`content-p${index}`);
-        content.innerHTML = `<p>A carregar perfil de ${participant.name}...</p>`;
-        
+        const tabId = `content-p${index}`;
+        const tab = createTab(participant.name, tabId, false);
+        const content = createTabContent(tabId, false);
+        content.innerHTML = `<p style="padding: 20px; text-align: center;"><i class="fas fa-spinner fa-spin"></i> A carregar perfil de ${participant.name}...</p>`;
         tabsContainer.appendChild(tab);
         contentContainer.appendChild(content);
 
-        // Carrega o conteúdo da aba individual apenas quando clicada
         tab.addEventListener('click', async () => {
             if (content.dataset.loaded !== 'true') {
                 const individualHistory = await fetchIndividualHistory(participant.id);
                 content.innerHTML = '';
-                // false indica que não é análise de par, para mostrar "Companheiros"
                 content.appendChild(buildHistoryTable(individualHistory, `Histórico Completo de ${participant.name}`, false));
                 content.dataset.loaded = 'true';
             }
@@ -1449,6 +1452,9 @@ async function openPairAnalysisPopup(participants) {
 
     setupTabClickListeners();
 }
+
+
+
 
 /**
  * Busca no histórico as designações onde TODOS os participantes especificados estiveram juntos.
@@ -1463,11 +1469,9 @@ async function fetchPairHistory(participantIds) {
         const historico = doc.data();
         historico.designacoes?.forEach(designacaoHist => {
             const designacaoInfo = allDesignations.get(designacaoHist.designacaoId);
-            // Filtro para incluir apenas designações de Fim de Semana
-            if (designacaoInfo && designacaoInfo.parte === 'fim de semana') {
+            if (designacaoInfo && (designacaoInfo.parte || '').toLowerCase() === 'fim de semana') {
                 const allParticipantIdsInDesig = Object.values(designacaoHist.participantes || {});
                 const allMembersPresent = participantIds.every(id => allParticipantIdsInDesig.includes(id));
-                
                 if (allMembersPresent) {
                     records.push({
                         dia: historico.dia,
@@ -1480,6 +1484,25 @@ async function fetchPairHistory(participantIds) {
     });
     return records;
 }
+
+
+function createTab(text, targetId, isActive) {
+    const button = document.createElement('button');
+    button.className = 'tab-button' + (isActive ? ' active' : '');
+    button.textContent = text;
+    button.dataset.target = `#${targetId}`;
+    return button;
+}
+
+function createTabContent(id, isActive) {
+    const div = document.createElement('div');
+    div.className = 'tab-content' + (isActive ? ' active' : '');
+    div.id = id;
+    return div;
+}
+
+
+
 
 /**
  * Busca o histórico completo de um único participante.
@@ -1568,15 +1591,25 @@ function createTabContent(id, isActive = false) {
 
 /** Configura os eventos de clique para alternar entre as abas. */
 function setupTabClickListeners() {
-    const tabs = document.querySelectorAll('.analysis-popup .tab-button');
-    const contents = document.querySelectorAll('.analysis-popup .tab-content');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            contents.forEach(c => c.classList.remove('active'));
-            tab.classList.add('active');
-            document.querySelector(tab.dataset.target).classList.add('active');
-        });
+    const tabsContainer = document.querySelector('.analysis-popup .tabs');
+    if (!tabsContainer) return;
+
+    const newTabsContainer = tabsContainer.cloneNode(true);
+    tabsContainer.parentNode.replaceChild(newTabsContainer, tabsContainer);
+
+    newTabsContainer.addEventListener('click', (event) => {
+        const clickedTab = event.target.closest('.tab-button');
+        if (!clickedTab) return;
+
+        newTabsContainer.querySelectorAll('.tab-button').forEach(t => t.classList.remove('active'));
+        const contentContainer = document.querySelector('#pairAnalysisContentContainer');
+        contentContainer.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        clickedTab.classList.add('active');
+        const targetContent = contentContainer.querySelector(clickedTab.dataset.target);
+        if (targetContent) {
+            targetContent.classList.add('active');
+        }
     });
 }
 // ===================================================================
@@ -2111,6 +2144,7 @@ function makeTableSortable(table) {
         // =========== O RESTO DO SEU CÓDIGO ORIGINAL CONTINUA AQUI ============
         // ===================================================================
 
+        
         const getAnoPainelFirebase = async () => {
             const doc = await db.collection('painel').doc('ano').get();
             return doc.exists ? doc.data().ano : new Date().getFullYear();
@@ -2165,6 +2199,59 @@ function makeTableSortable(table) {
     
     return diasSemanaString;
 };
+
+function getDayOfWeekNumber(dayOfWeekString) {
+    const daysOfWeek = {
+        'domingo': 0, 'segunda': 1, 'terça': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sábado': 6,
+        'domingo-feira': 0, 'segunda-feira': 1, 'terça-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sábado-feira': 6
+    };
+    const normalizedDayOfWeekString = dayOfWeekString.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Normalize and remove accents
+    return daysOfWeek[normalizedDayOfWeekString] !== undefined ? daysOfWeek[normalizedDayOfWeekString] : null;
+}
+
+// --- Helper function to get meeting day of month ---
+function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
+    if (!diasSemanaString || !diaSemanaReuniao || !ano) {
+        console.error("[getMeetingDayOfMonth] Erro: Faltam parâmetros essenciais (ano, diasSemanaString, ou diaSemanaReuniao).");
+        return null;
+    }
+    try {
+        const parts = diasSemanaString.split(" - ");
+        if (parts.length < 2) return null;
+        const startParts = parts[0].split(" ");
+        const startDay = parseInt(startParts[0]);
+        let startMonthStr = startParts.length > 1 ? startParts[1] : null;
+        const endParts = parts[1].split(" ");
+        const endDay = parseInt(endParts[0]);
+        const endMonthStr = endParts[1];
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        if (!startMonthStr) {
+            startMonthStr = endMonthStr;
+        }
+        const startMonthIndex = monthNames.indexOf(startMonthStr);
+        const endMonthIndex = monthNames.indexOf(endMonthStr);
+        if (startMonthIndex === -1 || endMonthIndex === -1) return null;
+        const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
+        if (dayOfWeekMeetingNumber === null) return null;
+        const startOfWeekDate = new Date(ano, startMonthIndex, startDay);
+        const endOfWeekDate = new Date(ano, endMonthIndex, endDay);
+        let currentDay = startOfWeekDate;
+        while (currentDay <= endOfWeekDate) {
+            if (currentDay.getDay() === dayOfWeekMeetingNumber) {
+                const month = String(currentDay.getMonth() + 1).padStart(2, '0');
+                const day = String(currentDay.getDate()).padStart(2, '0');
+                return `${ano}-${month}-${day}`;
+            }
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+        return null;
+    } catch (error) {
+        console.error("[getMeetingDayOfMonth] Ocorreu uma exceção ao calcular a data:", error);
+        return null;
+    }
+}
+
+
 
         const getHorariosFromFirebase = async (ano) => {
             const querySnapshot = await db.collection('horarios').where('ano', '==', ano).limit(1).get();
@@ -2327,33 +2414,57 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
 
 
 
+const loadAllDesignationsIntoCache = async () => {
+    console.log('%c[CACHE] Iniciando o carregamento de todas as designações...', 'color: purple; font-weight: bold;');
+    try {
+        const snapshot = await db.collection('designacoes').get();
+        allDesignations.clear(); // Limpa o cache para garantir dados frescos
+        snapshot.forEach(doc => {
+            allDesignations.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+        console.log(`%c[CACHE] SUCESSO: ${allDesignations.size} designações foram carregadas para o cache.`, 'color: green;');
+    } catch (error) {
+        console.error('[CACHE] ERRO CRÍTICO ao carregar designações para o cache:', error);
+    }
+};
 
-      const initializeSystemData = async () => {
-            console.log('[DEBUG] initializeSystemData: Iniciando...');
-            const searchInput = document.getElementById('pesquisaPessoa');
-            try {
-                const [pessoasSnapshot] = await Promise.all([
-                    db.collection('pessoas').orderBy('nomePessoa').get(),
-                ]);
-                allPeople = [];
-                allPeopleDataMap.clear();
-                pessoasSnapshot.forEach(doc => {
-                    const pessoaData = doc.data();
-                    allPeople.push({ id: doc.id, nome: pessoaData.nomePessoa });
-                    allPeopleDataMap.set(doc.id, { nome: pessoaData.nomePessoa, genero: pessoaData.genero });
-                });
 
-                console.log(`[DEBUG] initializeSystemData: ${allPeople.length} pessoas carregadas para a lista 'allPeople'.`);
-                searchInput.disabled = false;
-                searchInput.placeholder = "Comece a digitar um nome...";
-                console.log('[DEBUG] initializeSystemData: Campo de pesquisa ativado.');
+    const initializeSystemData = async () => {
+    console.log('%c[INIT] Iniciando initializeSystemData...', 'color: orange; font-weight: bold;');
+    const searchInput = document.getElementById('pesquisaPessoa');
+    try {
+        // ETAPA 1: Carregar designações para o cache ANTES de qualquer outra coisa
+        await loadAllDesignationsIntoCache();
 
-                await initializeDiscursos();
-            } catch (error) {
-                console.error("Erro ao inicializar dados do sistema:", error);
-                searchInput.placeholder = "Erro ao carregar participantes";
-            }
-        };
+        // ETAPA 2: Carregar a lista de pessoas
+        console.log('[INIT] Buscando a lista de pessoas...');
+        const [pessoasSnapshot] = await Promise.all([
+            db.collection('pessoas').orderBy('nomePessoa').get(),
+        ]);
+        allPeople = [];
+        allPeopleDataMap.clear();
+        pessoasSnapshot.forEach(doc => {
+            const pessoaData = doc.data();
+            allPeople.push({ id: doc.id, nome: pessoaData.nomePessoa });
+            allPeopleDataMap.set(doc.id, { nome: pessoaData.nomePessoa, genero: pessoaData.genero });
+        });
+        console.log(`[INIT] ${allPeople.length} pessoas carregadas.`);
+        
+        searchInput.disabled = false;
+        searchInput.placeholder = "Comece a digitar um nome...";
+        console.log('[INIT] Campo de pesquisa de perfil ativado.');
+
+        // ETAPA 3: Carregar outros dados necessários, como discursos
+        console.log('[INIT] Inicializando discursos...');
+        await initializeDiscursos();
+        
+        console.log('%c[INIT] SUCESSO: Sistema inicializado.', 'color: green;');
+
+    } catch (error) {
+        console.error("[INIT] ERRO CRÍTICO ao inicializar dados do sistema:", error);
+        searchInput.placeholder = "Erro ao carregar participantes";
+    }
+};
 
 
 
@@ -2741,50 +2852,47 @@ async function inicializarPagina() {
             });
         };
 
-        const loadDesignacoes = async () => {
-            const snapshot = await db.collection('designacoes')
-                .where('tipo', '==', 'reuniao')
-                .where('quando', '==', 'Fim de Semana') // ALTERADO
-                .where('parte', '==', 'fim de semana') // ALTERADO
-                .orderBy("ordem")
-                .get();
-            
-            const list = document.getElementById('designacoesList');
-            list.innerHTML = '';
-            
-            if (snapshot.empty) {
-                list.innerHTML = '<p>Nenhuma designação encontrada.</p>';
-                return;
-            }
+       const loadDesignacoes = async () => {
+    const list = document.getElementById('designacoesList');
+    list.innerHTML = '';
 
-            const designacoesParaAtivar = [];
-            snapshot.forEach(doc => {
-                const designacao = { id: doc.id, ...doc.data() };
-                allDesignations.set(doc.id, designacao);
-                designacoesParaAtivar.push(designacao);
+    // Filtra as designações já carregadas em cache
+    const weekendDesignations = Array.from(allDesignations.values())
+        .filter(d => d.tipo === 'reuniao' && d.quando === 'Fim de Semana' && d.parte === 'fim de semana')
+        .sort((a, b) => a.ordem - b.ordem);
 
-                const div = document.createElement('div');
-                div.className = 'designacao-item';
-                div.dataset.designacaoId = designacao.id;
-                div.dataset.firestoreOrder = designacao.ordem;
-                
-                div.innerHTML = `<label><button type="button" class="order-button" data-order="0" data-quantity="1"></button><span>${designacao.nome}</span></label>`;
-                list.appendChild(div);
-            });
+    if (weekendDesignations.length === 0) {
+        list.innerHTML = '<p>Nenhuma designação encontrada.</p>';
+        return;
+    }
 
-            for (const [index, designacao] of designacoesParaAtivar.entries()) {
-                const order = index + 1;
-                const quantity = 1;
-                
-                const button = list.querySelector(`.designacao-item[data-designacao-id="${designacao.id}"] .order-button`);
-                button.dataset.order = order;
-                button.dataset.quantity = quantity;
-                button.textContent = quantity;
-                updateOrderButtonClasses(button, order);
-                await updateActiveDesignationDisplay(designacao, order, quantity);
-            }
-            reIndexOrderNumbers();
-        };
+    const designacoesParaAtivar = [];
+    weekendDesignations.forEach(designacao => {
+        designacoesParaAtivar.push(designacao);
+
+        const div = document.createElement('div');
+        div.className = 'designacao-item';
+        div.dataset.designacaoId = designacao.id;
+        div.dataset.firestoreOrder = designacao.ordem;
+        
+        div.innerHTML = `<label><button type="button" class="order-button" data-order="0" data-quantity="1"></button><span>${designacao.nome}</span></label>`;
+        list.appendChild(div);
+    });
+    
+    // O resto da sua função continua igual...
+    for (const [index, designacao] of designacoesParaAtivar.entries()) {
+        const order = index + 1;
+        const quantity = 1;
+        
+        const button = list.querySelector(`.designacao-item[data-designacao-id="${designacao.id}"] .order-button`);
+        button.dataset.order = order;
+        button.dataset.quantity = quantity;
+        button.textContent = quantity;
+        updateOrderButtonClasses(button, order);
+        await updateActiveDesignationDisplay(designacao, order, quantity);
+    }
+    reIndexOrderNumbers();
+};
 
         const removeActiveDesignationDisplay = (designacaoId) => {
             const displayToRemove = document.getElementById(`active-designation-${designacaoId}`);
@@ -2792,18 +2900,6 @@ async function inicializarPagina() {
         };
 
 const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
-    // ======================= INÍCIO DO LOG DE DEPURAÇÃO =======================
-    // Apenas para depuração, vamos verificar a designação "Necessidades Locais"
-    if (designacao.nome === 'Necessidades Locais') {
-        console.log("==============================================");
-        console.log("[DEBUG] Processando o card:", designacao.nome);
-        console.log("[DEBUG] Objeto 'designacao' completo:", designacao);
-        console.log("[DEBUG] Valor de 'anexadoDiscursos':", designacao.anexadoDiscursos);
-        console.log("[DEBUG] Tipo de 'anexadoDiscursos':", typeof designacao.anexadoDiscursos);
-        console.log("[DEBUG] Verificação (designacao.anexadoDiscursos === true):", designacao.anexadoDiscursos === true);
-    }
-    // ======================= FIM DO LOG DE DEPURAÇÃO =======================
-
     const containerToUse = document.getElementById('activeDesignationsContainer');
     const savedSelections = {};
     let savedDescriptions = {};
@@ -2869,7 +2965,6 @@ const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
         descricaoContainer.style.display = 'none';
 
         if (designacao.anexadoDiscursos === true || designacao.anexadoDiscursos === 'sim') {
-            if (designacao.nome === 'Necessidades Locais') console.log("[DEBUG] Bloco IF executado: Criando barra de pesquisa.");
             descricaoContainer.innerHTML = `
                 <label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">Discurso</label>
                 <div class="discurso-search-wrapper" style="position: relative;">
@@ -2877,7 +2972,6 @@ const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
                     <div class="search-suggestions discurso-suggestions"></div>
                 </div>`;
         } else {
-             if (designacao.nome === 'Necessidades Locais') console.log("[DEBUG] Bloco ELSE executado: Criando campo de texto normal.");
             descricaoContainer.innerHTML = `
                 <label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">Descrição/Tema</label>
                 <input type="text" class="form-select descricao-input" placeholder="Insira o tema ou descrição...">`;
@@ -2912,6 +3006,8 @@ const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
         instanceContainer.appendChild(filterPopup);
         instanceContainer.appendChild(filterIcon);
         
+
+
         const numParticipantesSelect = filterPopup.querySelector('.num-participantes-select');
         const generoPreferenciaSelect = filterPopup.querySelector('.genero-preferencia-select');
         const descricaoTemaSelect = filterPopup.querySelector('.descricao-tema-select');
@@ -2934,83 +3030,41 @@ const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
             e.target.classList.toggle('fa-lock', !isLocked); 
             e.target.classList.toggle('locked', !isLocked); 
         }); 
-        instanceContainer.appendChild(lockIcon); 
-        
-        const lupaIcon = document.createElement('i'); 
+        instanceContainer.appendChild(lockIcon);
+
+
+
+      const lupaIcon = document.createElement('i'); 
         lupaIcon.className = 'fas fa-search-plus lupa-icon'; 
         lupaIcon.title = 'Analisar Histórico'; 
+        lupaIcon.addEventListener('click', () => {
+            const selectedParticipants = Array.from(instanceContainer.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'))
+                .map(select => {
+                    if (select.selectedIndex > -1 && select.value) {
+                        return { 
+                            id: select.value, 
+                            name: select.options[select.selectedIndex].text 
+                        };
+                    }
+                    return null;
+                })
+                .filter(p => p !== null);
 
-        // =========================================================================================
-        // ======================== START: THIS IS THE NEW DEBUG EVENT LISTENER ========================
-        // =========================================================================================
-      lupaIcon.addEventListener('click', () => {
-            console.group('%c LUPA ICON CLICKED! Running Bulletproof Debugger...', 'color: green; font-weight: bold;');
-            
-            const selector = 'select.form-select:not(.descricao-input):not(.discurso-search-input)';
-            console.log(`1. Using selector: "${selector}"`);
-            const elementsFound = instanceContainer.querySelectorAll(selector);
-            console.log(`2. Found ${elementsFound.length} elements to check:`, elementsFound);
-
-            const selected = []; // Start with an empty array
-
-            elementsFound.forEach((s, index) => {
-                console.log(`--> Checking element #${index}:`, s);
-
-                // This is the bulletproof part. We check every step.
-                if (!s) {
-                    console.warn(`   - Element #${index} is null or undefined. Skipping.`);
-                    return; // 'return' here is like 'continue' in a forEach loop
-                }
-                
-                if (typeof s.options === 'undefined') {
-                    console.error(`   - FATAL FOR THIS ELEMENT: Element #${index} does NOT have an '.options' property. It is likely not a <select> element. Skipping.`, s);
-                    return; 
-                }
-
-                if (typeof s.selectedIndex === 'undefined') {
-                    console.error(`   - FATAL FOR THIS ELEMENT: Element #${index} does NOT have a '.selectedIndex' property. Skipping.`, s);
-                    return;
-                }
-                
-                if (s.selectedIndex < 0) {
-                    console.log(`   - INFO: Element #${index} has nothing selected (selectedIndex is ${s.selectedIndex}). Skipping.`);
-                    return;
-                }
-                
-                const selectedOption = s.options[s.selectedIndex];
-                if (!selectedOption) {
-                    console.error(`   - FATAL FOR THIS ELEMENT: Could not get the selected option at index ${s.selectedIndex}. Skipping.`, s);
-                    return;
-                }
-
-                // If we get here, it is safe to extract the data
-                const data = { id: selectedOption.value, name: selectedOption.text };
-                console.log(`   - SUCCESS: Extracted data for element #${index}:`, data);
-                
-                // Only add it to the final list if it has an ID
-                if (data.id) {
-                    selected.push(data);
-                } else {
-                    console.log('   - INFO: Data had no ID, so it was not added to the final list.');
-                }
-            });
-
-            console.log('3. Final list of selected participants:', selected);
-            console.groupEnd();
-
-            if (selected.length === 1) {
-                loadParticipantProfile(selected[0].id);
+            if (selectedParticipants.length === 1) {
+                const participant = selectedParticipants[0];
+                document.getElementById('pesquisaPessoa').value = participant.name;
+                loadParticipantProfile(participant.id);
                 document.getElementById('perfilPopup').style.display = 'flex';
-            } else if (selected.length > 1) {
-                openPairAnalysisPopup(selected);
+            } else if (selectedParticipants.length > 1) {
+                openPairAnalysisPopup(selectedParticipants);
             } else {
-                alert("Selecione pelo menos um participante.");
+                alert("Por favor, selecione pelo menos um participante para analisar.");
             }
         });
-        // =========================================================================================
-        // ========================= END: THIS IS THE BULLETPROOF DEBUG CODE =========================
-        // =========================================================================================
         instanceContainer.appendChild(lupaIcon);
+        // =========================================================================
+        // ======================== FIM DO CÓDIGO CORRIGIDO ========================
+        // =========================================================================
         
         const labIcon = document.createElement('i'); 
         labIcon.className = 'fas fa-flask lab-icon'; 
@@ -3203,30 +3257,41 @@ const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
 
 
 
-     const loadParticipantProfile = async (personId) => {
+  const loadParticipantProfile = async (personId) => {
+    console.log(`%c[PERFIL FINAL] Iniciando loadParticipantProfile para ID: ${personId}`, 'color: blue; font-weight: bold;');
+    
     perfilLoading.style.display = 'block';
     perfilTableContainer.style.display = 'none';
     perfilFiltros.style.display = 'none';
     currentPersonParticipationRecords = [];
 
+    console.log(`[PERFIL FINAL] Verificando dependência: allDesignations contém ${allDesignations.size} registos.`);
+    if (allDesignations.size === 0) {
+        console.warn('[PERFIL FINAL] ALERTA: O mapa `allDesignations` está vazio.');
+    }
+
     try {
-        const historicoSnapshot = await db.collection('historico').orderBy("dia", "desc").get();
+       const historicoSnapshot = await db.collection('historico')
+                                          .where('quando', '==', 'Fim de Semana') 
+                                          .orderBy("dia", "desc")
+                                          .get();
         
+        console.log(`[PERFIL FINAL] Firebase retornou ${historicoSnapshot.size} documentos da coleção 'historico' (filtrados por 'Fim de Semana').`);
+
         let records = [];
         let years = new Set();
         let designacoesPessoais = new Set();
 
         historicoSnapshot.forEach(doc => {
             const historico = doc.data();
+            
+            // Agora que filtramos na origem, todos os documentos aqui devem ter o campo 'designacoes'
             historico.designacoes?.forEach(designacaoHist => {
-
                 const designacaoInfo = allDesignations.get(designacaoHist.designacaoId);
 
-                // ALTERADO: Filtra para designações de 'fim de semana'
-                if (designacaoInfo && designacaoInfo.parte === 'fim de semana') { 
-                
+                // A verificação de 'parte' ainda é uma boa prática, caso haja outros tipos de eventos de FDS
+                if (designacaoInfo && designacaoInfo.parte === 'fim de semana') {
                     const participantes = designacaoHist.participantes || {};
-                    const todosOsIDs = Object.values(participantes);
                     let meuPapel = '';
 
                     for (const [papel, id] of Object.entries(participantes)) {
@@ -3235,12 +3300,13 @@ const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
                             break;
                         }
                     }
-
+                    
                     if (meuPapel) {
                         years.add(historico.ano);
                         const designacaoNome = designacaoInfo.nome || 'Desconhecida';
                         designacoesPessoais.add(designacaoNome);
 
+                        const todosOsIDs = Object.values(participantes);
                         const companheirosNomes = todosOsIDs.filter(id => id !== personId)
                             .map(id => (allPeopleDataMap.get(id) || {}).nome || 'N/A').join(', ');
 
@@ -3256,21 +3322,40 @@ const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
             });
         });
 
-         currentPersonParticipationRecords = records;
+
+
+
+
+
+       currentPersonParticipationRecords = records;
+
+        console.log(`%c[PERFIL FINAL] Final da busca. Dados para os dropdowns:`, 'color: blue; font-weight: bold;');
+        console.log(` -> Anos encontrados:`, Array.from(years));
+        console.log(` -> Designações encontradas:`, Array.from(designacoesPessoais));
+
+        if (years.size === 0) {
+             console.warn('[PERFIL FINAL] Nenhum histórico de Fim de Semana encontrado para este participante.');
+        }
+
         perfilFiltroAno.innerHTML = '<option value="">Todos</option>';
         Array.from(years).sort((a, b) => b - a).forEach(y => { perfilFiltroAno.innerHTML += `<option value="${y}">${y}</option>`; });
         perfilFiltroDesignacao.innerHTML = '<option value="">Todas</option>';
         Array.from(designacoesPessoais).sort().forEach(d => { perfilFiltroDesignacao.innerHTML += `<option value="${d}">${d}</option>`; });
+        
         perfilLoading.style.display = 'none';
         perfilFiltros.style.display = 'flex';
         perfilTableContainer.style.display = 'block';
         renderProfileTable();
 
     } catch (error) {
-        console.error("Erro ao carregar perfil do participante:", error);
+        console.error("Erro CRÍTICO ao carregar perfil do participante:", error);
         perfilLoading.innerHTML = 'Ocorreu um erro ao carregar o histórico.';
     }
 };
+
+
+
+
 
 
 const renderProfileTable = () => {
@@ -3307,6 +3392,7 @@ const renderProfileTable = () => {
         perfilTableBody.appendChild(tr);
     });
 };
+
 
 [perfilFiltroAno, perfilFiltroMes, perfilFiltroDesignacao, perfilFiltroPapel].forEach(filtro => {
     filtro.addEventListener('change', renderProfileTable);
