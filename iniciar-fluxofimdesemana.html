@@ -2871,7 +2871,7 @@ async function inicializarPagina() {
 
     // Filtra as designações já carregadas em cache
     const weekendDesignations = Array.from(allDesignations.values())
-        .filter(d => d.tipo === 'reuniao' && d.quando === 'Fim de Semana' && d.parte === 'fim de semana')
+        .filter(d => d.tipo === 'reuniao' && d.quando === 'Fim de Semana' && d.parte === 'fim de semana' && d.status === true)
         .sort((a, b) => a.ordem - b.ordem);
 
     if (weekendDesignations.length === 0) {
