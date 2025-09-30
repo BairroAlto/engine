@@ -229,7 +229,7 @@
                 <div class="filter-group"><label for="filter-ano">Ano</label><select id="filter-ano"></select></div>
                 <div class="filter-group"><label for="filter-mes">Mês</label><select id="filter-mes"></select></div>
                 <div class="filter-group"><label for="filter-semana">Semana</label><select id="filter-semana"></select></div>
-                <div class="filter-group"><label for="filter-parte">Parte</label><select id="filter-parte"><option value="todas">Todas as Partes</option><option value="escola">Escola</option><option value="resto da semana">Vida e Ministério</option></select></div>
+                <div class="filter-group"><label for="filter-parte">Parte</label><select id="filter-parte"><option value="todas">Todas as Partes</option><option value="escola">Escola</option><option value="resto da semana">Vida e Ministério</option><option value="tecnicas">Técnicas</option></select></div>
                 <div class="filter-group"><label for="filter-sala">Sala</label><select id="filter-sala"><option value="todas">Todas as Salas</option><option value="salao-principal">Salão Principal</option><option value="segunda-sala">Segunda Sala</option><option value="terceira-sala">Terceira Sala</option></select></div>
                 <div class="action-buttons-container">
                     <button id="edit-button" class="action-button">Editar</button>
@@ -588,14 +588,14 @@ closePairAnalysisPopup.addEventListener('click', () => {
         async function loadInitialData() {
             scheduleDisplay.classList.add('loading');
             try {
-                const [historicoSnap, pessoasSnap, designacoesSnap, cabecalhosSnap, discursosSnap, painelSnap] = await Promise.all([
-db.collection('historico').where('quando', '==', 'Semana').where('tipo', '==', 'reuniao').orderBy('timestamp', 'desc').get(),
-                    db.collection('pessoas').get(),
-                    db.collection('designacoes').get(),
-                    db.collection('cabecalhos').get(),
-                    db.collection('discursos').get(),
-                    db.collection('painel').doc('configuracoes').get()
-                ]);
+            const [historicoSnap, pessoasSnap, designacoesSnap, cabecalhosSnap, discursosSnap, painelSnap] = await Promise.all([
+    db.collection('historico').where('quando', 'in', ['Semana', 'Semana e Fim de Semana']).where('tipo', '==', 'reuniao').orderBy('timestamp', 'desc').get(),
+    db.collection('pessoas').get(),
+    db.collection('designacoes').get(),
+    db.collection('cabecalhos').get(),
+    db.collection('discursos').get(),
+    db.collection('painel').doc('configuracoes').get()
+]);
 
                   // ======================= LOG 1: INÍCIO =======================
                 console.log("--- DADOS BRUTOS DO 'historico' ---");
@@ -715,13 +715,45 @@ async function openCreateDesignationPopup() {
         nacSnap.forEach(doc => allLanguagesCache.push(doc.data().nome));
     }
 
-    const availableDesignations = Array.from(designationMap.values())
-        .filter(d => d.quando === 'Semana' && d.tipo === 'reuniao')
-        .sort((a, b) => (a.ordem || 999) - (b.ordem || 999));
+    const designationGroups = [
+        { 
+            label: "Escola", 
+            criteria: { quando: 'Semana', tipo: 'reuniao', parte: 'escola' } 
+        },
+        { 
+            label: "Vida e Ministério", 
+            criteria: { quando: 'Semana', tipo: 'reuniao', parte: 'resto da semana' } 
+        },
+        { 
+            label: "Técnicas", 
+            criteria: { quando: 'Semana e Fim de Semana', tipo: 'reuniao', parte: 'tecnicas' } 
+        }
+    ];
 
+    const createDesignationSelect = document.getElementById('createDesignationSelect');
     createDesignationSelect.innerHTML = '<option value="">Escolha uma designação...</option>';
-    availableDesignations.forEach(desig => {
-        createDesignationSelect.add(new Option(desig.nome, desig.id));
+    const allDesignations = Array.from(designationMap.values());
+
+    designationGroups.forEach(group => {
+        const filteredAndSorted = allDesignations
+            .filter(d => 
+                d.quando === group.criteria.quando &&
+                d.tipo === group.criteria.tipo &&
+                d.parte === group.criteria.parte &&
+                d.status === true // <-- NOVA CONDIÇÃO ADICIONADA AQUI
+            )
+            .sort((a, b) => (a.ordem || 999) - (b.ordem || 999));
+
+        if (filteredAndSorted.length > 0) {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = group.label;
+
+            filteredAndSorted.forEach(desig => {
+                optgroup.appendChild(new Option(desig.nome, desig.id));
+            });
+
+            createDesignationSelect.appendChild(optgroup);
+        }
     });
 
     createDesignationSelect.onchange = () => {
@@ -747,9 +779,7 @@ async function openCreateDesignationPopup() {
         filtersContainer.dataset.eventsAttached = 'true';
     }
     
-    // ===== CORREÇÃO CRÍTICA: Ligar o botão do foguetão de equipa =====
     setupGlobalSuggesterButton();
-    // ================================================================
     
     createDesignationPopup.classList.add('active');
     document.body.classList.add('popup-open');
@@ -1808,159 +1838,173 @@ function openCreatePairAnalysisPopup() {
                 renderSchedule();
             }
             
-      function renderSchedule() {
-                scheduleDisplay.classList.add('loading');
-                scheduleContent.innerHTML = '';
-                
-                editButton.classList.toggle('active-edit', isEditMode);
-                editButton.textContent = isEditMode ? 'Concluir' : 'Editar';
+    function renderSchedule() {
+    scheduleDisplay.classList.add('loading');
+    scheduleContent.innerHTML = '';
+    
+    editButton.classList.toggle('active-edit', isEditMode);
+    editButton.textContent = isEditMode ? 'Concluir' : 'Editar';
 
-                const selectedYear = parseInt(yearFilter.value);
-                const selectedMonth = monthFilter.value === 'todos' ? null : parseInt(monthFilter.value);
-                const selectedWeek = weekFilter.value;
-                const selectedPart = partFilter.value;
-                const selectedRoom = roomFilter.value;
+    const selectedYear = parseInt(yearFilter.value);
+    const selectedMonth = monthFilter.value === 'todos' ? null : parseInt(monthFilter.value);
+    const selectedWeek = weekFilter.value;
+    const selectedPart = partFilter.value;
+    const selectedRoom = roomFilter.value;
 
-                let timeFilteredData = allScheduleData.filter(item => 
-                    item.ano === selectedYear &&
-                    (!selectedMonth || item.mes === selectedMonth) &&
-                    (selectedWeek === 'todas' || item.semanaindex === selectedWeek) &&
-                    (selectedRoom === 'todas' || item.sala === selectedRoom)
-                );
+    let timeFilteredData = allScheduleData.filter(item => 
+        item.ano === selectedYear &&
+        (!selectedMonth || item.mes === selectedMonth) &&
+        (selectedWeek === 'todas' || item.semanaindex === selectedWeek) &&
+        (selectedRoom === 'todas' || item.sala === selectedRoom)
+    );
 
-                const normalizeKey = (key) => key ? key.replace(/\s+/g, '').replace(/-/g, '') : '';
-                const groupedByWeek = timeFilteredData.reduce((acc, item) => {
-                    const key = normalizeKey(item.semanaindex); 
-                    if (!key) return acc;
-                    if (!acc[key]) {
-                        acc[key] = { originalIndex: item.semanaindex, items: [] };
-                    }
-                    acc[key].items.push(item);
-                    return acc;
-                }, {});
+    const normalizeKey = (key) => key ? key.replace(/\s+/g, '').replace(/-/g, '') : '';
+    const groupedByWeek = timeFilteredData.reduce((acc, item) => {
+        const key = normalizeKey(item.semanaindex); 
+        if (!key) return acc;
+        if (!acc[key]) {
+            acc[key] = { originalIndex: item.semanaindex, items: [] };
+        }
+        acc[key].items.push(item);
+        return acc;
+    }, {});
 
-                if (Object.keys(groupedByWeek).length === 0) {
-                    scheduleContent.innerHTML = '<p>Nenhuma escala encontrada para os filtros selecionados.</p>';
-                    scheduleDisplay.classList.remove('loading');
-                    return;
-                }
+    if (Object.keys(groupedByWeek).length === 0) {
+        scheduleContent.innerHTML = '<p>Nenhuma escala encontrada para os filtros selecionados.</p>';
+        scheduleDisplay.classList.remove('loading');
+        return;
+    }
 
-                const sortedWeekKeys = Object.keys(groupedByWeek).sort((keyA, keyB) => {
-                    const weekStringA = groupedByWeek[keyA].originalIndex;
-                    const weekStringB = groupedByWeek[keyB].originalIndex;
-                    const dayA = parseInt((weekStringA.match(/\d+/) || ['0'])[0], 10);
-                    const dayB = parseInt((weekStringB.match(/\d+/) || ['0'])[0], 10);
-                    return dayA - dayB;
-                });
+    const sortedWeekKeys = Object.keys(groupedByWeek).sort((keyA, keyB) => {
+        const weekStringA = groupedByWeek[keyA].originalIndex;
+        const weekStringB = groupedByWeek[keyB].originalIndex;
+        const dayA = parseInt((weekStringA.match(/\d+/) || ['0'])[0], 10);
+        const dayB = parseInt((weekStringB.match(/\d+/) || ['0'])[0], 10);
+        return dayA - dayB;
+    });
 
-                for (const normalizedKey of sortedWeekKeys) {
-                    const group = groupedByWeek[normalizedKey];
-                    const weekIndex = group.originalIndex; 
-                    const weekData = group.items;         
-                    const weekElement = document.createElement('div');
-                    weekElement.className = 'schedule-week';
-                    let headerHTML = `<div class="schedule-header">${weekIndex}`;
-                    if (isEditMode && weekData.length > 0) {
-                        headerHTML += `<i class="fas fa-pencil-alt edit-icon" 
-                                      style="margin-left: 15px; padding: 5px;" 
-                                      data-historico-id="${weekData[0].id}" 
-                                      title="Editar detalhes da semana"></i>`;
-                    }
-                    headerHTML += `</div>`;
-                    let bodyHTML = '<div class="schedule-body">';
-                    
-                    const specialEventData = weekData.find(item => item.evento);
-                    if (specialEventData && ['memorial', 'assembleia', 'congresso'].includes(specialEventData.evento.toLowerCase())) {
-                        const eventName = specialEventData.evento.charAt(0).toUpperCase() + specialEventData.evento.slice(1);
-                        const eventIcon = { memorial: 'fa-wine-glass', assembleia: 'fa-users', congresso: 'fa-landmark' }[specialEventData.evento.toLowerCase()] || 'fa-star';
-                        bodyHTML += `<div class="special-event-message"><i class="fas ${eventIcon}"></i>Semana de ${eventName}</div>`;
-                    } else {
-                        const allDesignationsForWeek = weekData.flatMap(doc => 
-                            (doc.designacoes || []).map(desig => ({ ...desig, docId: doc.id }))
-                        );
+    for (const normalizedKey of sortedWeekKeys) {
+        const group = groupedByWeek[normalizedKey];
+        const weekIndex = group.originalIndex; 
+        const weekData = group.items;         
+        const weekElement = document.createElement('div');
+        weekElement.className = 'schedule-week';
+        let headerHTML = `<div class="schedule-header">${weekIndex}`;
+        if (isEditMode && weekData.length > 0) {
+            headerHTML += `<i class="fas fa-pencil-alt edit-icon" 
+                                  style="margin-left: 15px; padding: 5px;" 
+                                  data-historico-id="${weekData[0].id}" 
+                                  title="Editar detalhes da semana"></i>`;
+        }
+        headerHTML += `</div>`;
+        let bodyHTML = '<div class="schedule-body">';
+        
+        const specialEventData = weekData.find(item => item.evento);
+        if (specialEventData && ['memorial', 'assembleia', 'congresso'].includes(specialEventData.evento.toLowerCase())) {
+            const eventName = specialEventData.evento.charAt(0).toUpperCase() + specialEventData.evento.slice(1);
+            const eventIcon = { memorial: 'fa-wine-glass', assembleia: 'fa-users', congresso: 'fa-landmark' }[specialEventData.evento.toLowerCase()] || 'fa-star';
+            bodyHTML += `<div class="special-event-message"><i class="fas ${eventIcon}"></i>Semana de ${eventName}</div>`;
+        } else {
+            const allDesignationsForWeek = weekData.flatMap(doc => 
+                (doc.designacoes || []).map(desig => ({ ...desig, docId: doc.id }))
+            );
 
-                        const sortedAllDesignations = allDesignationsForWeek.sort((a, b) => {
-                            const desigA = designationMap.get(a.designacaoId);
-                            const desigB = designationMap.get(b.designacaoId);
-                            return (desigA?.ordem || 999) - (desigB?.ordem || 999);
-                        });
+            const sortedAllDesignations = allDesignationsForWeek.sort((a, b) => {
+                const desigA = designationMap.get(a.designacaoId);
+                const desigB = designationMap.get(b.designacaoId);
+                return (desigA?.ordem || 999) - (desigB?.ordem || 999);
+            });
 
-                        if (sortedAllDesignations.length === 0) {
-                             bodyHTML += '<p style="text-align:center; color:#777; padding: 20px;">Nenhuma designação para esta semana.</p>';
-                        }
-
-                        let lastHeaderId = null;
-                        let lastHeaderColor = '#bdc3c7'; 
-
-                        sortedAllDesignations.forEach(desig => {
-                            const fullDesigData = designationMap.get(desig.designacaoId);
-                            if (!fullDesigData) return;
-                            if (selectedPart !== 'todas' && fullDesigData.parte !== selectedPart) return;
-                            
-                            const desigName = fullDesigData.nome;
-                            const currentHeaderId = fullDesigData.anexo;
-                            if (currentHeaderId && currentHeaderId !== lastHeaderId) {
-                                const headerData = headerMap.get(currentHeaderId);
-                                if (headerData) {
-                                    const bgColor = headerData.cor || '#ecf0f1';
-                                    const textColor = getContrastColor(bgColor);
-                                    lastHeaderColor = bgColor; 
-                                    const headerStyle = `style="background-color: ${bgColor}; color: ${textColor};"`;
-                                    bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="header-icon">${headerData.icon || ''}</span><h4>${headerData.nome}</h4></div>`;
-                                 }
-                                lastHeaderId = currentHeaderId;
-                            }
-
-                            const itemStyle = `style="border-left-color: ${lastHeaderColor};"`;
-                            bodyHTML += `<ul class="designation-list"><li class="designation-item" ${itemStyle}>`;
-                            bodyHTML += `<div class="designation-title-container"><strong>${desigName}</strong>`;
-                            
-                            if (isEditMode) {
-                                const uniqueSignature = createParticipantSignature(desig.participantes);
-                                const uniqueId = `${desig.docId}|${desig.designacaoId}|${uniqueSignature}`;
-                                bodyHTML += `<i class='fas fa-pencil-alt edit-icon' data-unique-id='${uniqueId}'></i>`;
-                            }
-
-                            bodyHTML += `</div>`;
-                            
-                            if (desig.participantes && Object.keys(desig.participantes).length > 0) {
-                                bodyHTML += '<ul class="participant-list">';
-                                const roleOrder = ['dirigente', 'morador', 'participante', 'ajudante'];
-                                const sortedParticipants = Object.entries(desig.participantes).sort((a, b) => {
-                                    return roleOrder.indexOf(a[0]) - roleOrder.indexOf(b[0]);
-                                });
-                                
-                                // ==========================================================
-                                // INÍCIO DA ALTERAÇÃO PARA REMOVER A ETIQUETA "PARTICIPANTE"
-                                // ==========================================================
-                                for (const [role, personId] of sortedParticipants) {
-                                    const personName = personMap.get(personId) || 'N/A';
-                                    
-                                    // Se o papel for 'participante', mostra só o nome
-                                    if (role === 'participante') {
-                                        bodyHTML += `<li>${personName}</li>`;
-                                    } else {
-                                        // Para todos os outros papéis, mantém a etiqueta
-                                        const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
-                                        bodyHTML += `<li><em>${formattedRole}:</em> ${personName}</li>`;
-                                    }
-                                }
-                                // ==========================================================
-                                // FIM DA ALTERAÇÃO
-                                // ==========================================================
-
-                                bodyHTML += '</ul>';
-                            }
-                            bodyHTML += '</li></ul>';
-                        });
-                    }
-                    
-                    bodyHTML += '</div>';
-                    weekElement.innerHTML = headerHTML + bodyHTML;
-                    scheduleContent.appendChild(weekElement);
-                }
-                scheduleDisplay.classList.remove('loading');
+            if (sortedAllDesignations.length === 0) {
+                 bodyHTML += '<p style="text-align:center; color:#777; padding: 20px;">Nenhuma designação para esta semana.</p>';
             }
+
+            let lastHeaderId = null;
+            let lastHeaderColor = '#bdc3c7'; 
+
+            sortedAllDesignations.forEach(desig => {
+                const fullDesigData = designationMap.get(desig.designacaoId);
+                if (!fullDesigData) return;
+                if (selectedPart !== 'todas' && fullDesigData.parte !== selectedPart) return;
+                
+                const desigName = fullDesigData.nome;
+                const currentHeaderId = fullDesigData.anexo;
+                if (currentHeaderId && currentHeaderId !== lastHeaderId) {
+                    const headerData = headerMap.get(currentHeaderId);
+                    if (headerData) {
+                        const bgColor = headerData.cor || '#ecf0f1';
+                        const textColor = getContrastColor(bgColor);
+                        lastHeaderColor = bgColor; 
+                        const headerStyle = `style="background-color: ${bgColor}; color: ${textColor};"`;
+                        bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="header-icon">${headerData.icon || ''}</span><h4>${headerData.nome}</h4></div>`;
+                     }
+                    lastHeaderId = currentHeaderId;
+                }
+
+                const itemStyle = `style="border-left-color: ${lastHeaderColor};"`;
+                bodyHTML += `<ul class="designation-list"><li class="designation-item" ${itemStyle}>`;
+                bodyHTML += `<div class="designation-title-container"><strong>${desigName}</strong>`;
+                
+                if (isEditMode) {
+                    const uniqueSignature = createParticipantSignature(desig.participantes);
+                    const uniqueId = `${desig.docId}|${desig.designacaoId}|${uniqueSignature}`;
+                    bodyHTML += `<i class='fas fa-pencil-alt edit-icon' data-unique-id='${uniqueId}'></i>`;
+                }
+
+                bodyHTML += `</div>`;
+                
+                if (desig.participantes && Object.keys(desig.participantes).length > 0) {
+                    bodyHTML += '<ul class="participant-list">';
+                    
+                    let sortedParticipants;
+
+                    if (fullDesigData.parte === 'tecnicas') {
+                        const techRoleOrder = ['dirigente', 'ajudante', 'ajudante1', 'ajudante2', 'ajudante3']; 
+                        sortedParticipants = Object.entries(desig.participantes).sort((a, b) => {
+                            const indexA = techRoleOrder.indexOf(a[0]);
+                            const indexB = techRoleOrder.indexOf(b[0]);
+                            return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+                        });
+                    } else {
+                        const roleOrder = ['dirigente', 'morador', 'participante', 'ajudante'];
+                        sortedParticipants = Object.entries(desig.participantes).sort((a, b) => {
+                            return roleOrder.indexOf(a[0]) - roleOrder.indexOf(b[0]);
+                        });
+                    }
+
+                     for (const [role, personId] of sortedParticipants) {
+        const personName = personMap.get(personId) || 'N/A';
+        
+        // Se a parte for 'tecnicas', mostra apenas o nome, sem a etiqueta
+        if (fullDesigData.parte === 'tecnicas') {
+            bodyHTML += `<li>${personName}</li>`;
+        } 
+        // Para todas as outras partes, mantém o comportamento original com etiquetas
+        else {
+            if (role === 'participante') {
+                bodyHTML += `<li>${personName}</li>`;
+            } else {
+                const cleanRole = role.replace(/\d+$/, '');
+                const formattedRole = cleanRole.charAt(0).toUpperCase() + cleanRole.slice(1);
+                bodyHTML += `<li><em>${formattedRole}:</em> ${personName}</li>`;
+            }
+        }
+    }
+
+    bodyHTML += '</ul>';
+}
+                
+                bodyHTML += '</li></ul>';
+            });
+        }
+        
+        bodyHTML += '</div>';
+        weekElement.innerHTML = headerHTML + bodyHTML;
+        scheduleContent.appendChild(weekElement);
+    }
+    scheduleDisplay.classList.remove('loading');
+}
+                    
             
 
 
@@ -2384,18 +2428,26 @@ async function openEditDesignationPopup(uniqueId) {
 
 
             
-    async function generateEditPopupUI(historicoDoc, fullDesigData) {
+   async function generateEditPopupUI(historicoDoc, fullDesigData) {
     editPopupParticipantsContainer.innerHTML = '<div class="loading-spinner" style="display: block; position: relative; top: auto; left: auto; transform: none;"><i class="fas fa-spinner fa-spin"></i></div>';
     const numParticipantes = parseInt(document.getElementById('editNumParticipantes').value);
     const idiomaPreferencia = document.getElementById('editIdioma').value;
     const generoPreferencia = document.getElementById('editGeneroPreferencia').value;
-    const participantsToDisplay = currentEditData.originalDesignation.participantes || {};
-
 
     const participantRoles = [];
-    if (numParticipantes === 1) participantRoles.push({ key: 'participante', label: "Participante" });
-    else if (numParticipantes === 2) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" });
-    else if (numParticipantes >= 3) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" }, { key: 'ajudante', label: "Ajudante" });
+
+    // LÓGICA CONDICIONAL PARA AS ETIQUETAS DO POPUP
+    if (fullDesigData.parte === 'tecnicas') {
+        // Para "Técnicas", cria etiquetas genéricas: Participante 1, Participante 2, etc.
+        for (let i = 1; i <= numParticipantes; i++) {
+            participantRoles.push({ key: `participante${i}`, label: `Participante ${i}` });
+        }
+    } else {
+        // Mantém a lógica original para todas as outras partes
+        if (numParticipantes === 1) participantRoles.push({ key: 'participante', label: "Participante" });
+        else if (numParticipantes === 2) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" });
+        else if (numParticipantes >= 3) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" }, { key: 'ajudante', label: "Ajudante" });
+    }
 
     let dropdownsHTML = '';
     participantRoles.forEach((role, i) => {
@@ -2406,20 +2458,31 @@ async function openEditDesignationPopup(uniqueId) {
                     <select class="form-select" data-role-key="${role.key}" data-role-index="${i}"></select>
                     <i class="fas fa-rocket rocket-suggester" title="Sugerir próximo participante válido"></i>
                 </div>
-            </div>
-            
-        `;
+            </div>`;
     });
     editPopupParticipantsContainer.innerHTML = dropdownsHTML;
+    
+    // LÓGICA CORRIGIDA PARA CARREGAR OS PARTICIPANTES
+    const originalParticipants = currentEditData.originalDesignation.participantes || {};
+    let orderedParticipantIds = [];
+
+    if (fullDesigData.parte === 'tecnicas') {
+        // Para "Técnicas", ordena os participantes pela sua função (dirigente, ajudante1, etc.)
+        const techRoleOrder = ['dirigente', 'ajudante', 'ajudante1', 'ajudante2', 'ajudante3'];
+        orderedParticipantIds = Object.keys(originalParticipants)
+            .sort((a, b) => techRoleOrder.indexOf(a) - techRoleOrder.indexOf(b))
+            .map(key => originalParticipants[key]);
+    } else {
+        // Para outras partes, podemos confiar nos nomes das roles
+        orderedParticipantIds = participantRoles.map(role => originalParticipants[role.key]);
+    }
 
     const allSelects = editPopupParticipantsContainer.querySelectorAll('.form-select');
-    for (const select of allSelects) {
+    for (const [index, select] of allSelects.entries()) {
         await populateSingleEditDropdown(select, historicoDoc, fullDesigData, generoPreferencia, idiomaPreferencia);
         
-        // Lógica de restauração simplificada e robusta
-        const roleKey = select.dataset.roleKey;
-        const personIdToSet = participantsToDisplay[roleKey];
-        
+        // Atribui o participante correto ao dropdown, independentemente da etiqueta
+        const personIdToSet = orderedParticipantIds[index];
         if (personIdToSet && select.querySelector(`option[value="${personIdToSet}"]`)) {
             select.value = personIdToSet;
         }
@@ -2649,25 +2712,42 @@ async function validatePopupSelections(historicoDoc, fullDesigData) {
                 resetEditState();
             });
 
-     saveDesignationChangesBtn.addEventListener('click', async () => {
-    // 1. Coleta os novos participantes selecionados no popup
+    saveDesignationChangesBtn.addEventListener('click', async () => {
+    const fullDesigData = designationMap.get(currentEditData.originalDesignation.designacaoId);
+    if (!fullDesigData) {
+        openModal("Erro", "Não foi possível identificar os detalhes da designação para salvar.");
+        return;
+    }
+
     const newParticipants = {};
-    editPopupParticipantsContainer.querySelectorAll('.form-select').forEach(select => {
-        if (select.value) newParticipants[select.dataset.roleKey] = select.value;
-    });
+    const selects = editPopupParticipantsContainer.querySelectorAll('.form-select');
     
-    // 2. Encontra o documento de histórico correto nos dados locais para preparar a atualização
+    // LÓGICA CONDICIONAL PARA MAPEAMENTO AO SALVAR
+    if (fullDesigData.parte === 'tecnicas') {
+        // Para "Técnicas", mapeia os participantes de volta para as roles corretas
+        const targetKeys = ['dirigente', 'ajudante1', 'ajudante2', 'ajudante3'];
+        selects.forEach((select, index) => {
+            if (select.value) {
+                const targetKey = targetKeys[index];
+                if(targetKey) newParticipants[targetKey] = select.value;
+            }
+        });
+    } else {
+        // Mantém a lógica original para as outras partes
+        selects.forEach(select => {
+            if (select.value) newParticipants[select.dataset.roleKey] = select.value;
+        });
+    }
+    
     const historicoDocToUpdate = allScheduleData.find(d => d.id === currentEditData.historicoDocRefId);
 
     if (historicoDocToUpdate) {
-        // 3. Encontra a designação exata a ser modificada dentro do documento, usando o estado original intocável
         const desigToUpdate = historicoDocToUpdate.designacoes.find(d => 
             d.designacaoId === currentEditData.trueOriginalDesignationId &&
             createParticipantSignature(d.participantes) === currentEditData.trueOriginalSignature
         );
 
         if (desigToUpdate) {
-            // 4. Atualiza os dados da designação com os novos valores
             desigToUpdate.designacaoId = currentEditData.originalDesignation.designacaoId;
             desigToUpdate.participantes = newParticipants;
         } else {
@@ -2679,27 +2759,18 @@ async function validatePopupSelections(historicoDoc, fullDesigData) {
             saveDesignationChangesBtn.textContent = 'A Guardar...';
             saveDesignationChangesBtn.disabled = true;
 
-            // 5. Salva o documento inteiro com a designação modificada no Firebase
             await db.collection('historico').doc(currentEditData.historicoDocRefId).update({
                 designacoes: historicoDocToUpdate.designacoes
             });
 
-            // 6. Fecha o popup
             closeEditPopup.click();
-            
-            // 7. A CORREÇÃO CRÍTICA:
-            // Primeiro, recarrega TODOS os dados do Firebase para garantir que o cache local (allScheduleData) está 100% atualizado.
             await loadInitialData();
-            
-            // DEPOIS, chama explicitamente a função para redesenhar a escala.
-            // Isto garante que os ícones de lápis e os seus índices correspondam aos novos dados.
             renderSchedule(); 
 
         } catch (error) {
             console.error("Erro ao atualizar o documento:", error);
             openModal("Erro de Gravação", "Não foi possível guardar as alterações. Por favor, tente novamente.");
         } finally {
-            // 8. Garante que o botão volte ao normal e o estado de edição seja limpo
             saveDesignationChangesBtn.textContent = 'Guardar Alterações';
             saveDesignationChangesBtn.disabled = false;
             resetEditState();
