@@ -244,8 +244,7 @@
             document.getElementById('editYearBtn').addEventListener('click', () => { window.location.href = `editar-ano.html`; });
             document.getElementById('editSpecialEventsBtn').addEventListener('click', () => { window.location.href = 'editar-evento.html'; });
             document.getElementById('editScheduleBtn').addEventListener('click', () => { if (currentYear) window.location.href = `editar-horario-reuniao.html?year=${currentYear}`; });
-            document.getElementById('editPreachingScheduleBtn').addEventListener('click', () => { if (currentYear) window.location.href = `editar-horario-pregacao.html?year=${currentYear}`; });
-        }
+document.getElementById('editPreachingScheduleBtn').addEventListener('click', () => { window.location.href = 'editar-horario-pregacao.html'; });        }
 
         // --- Event Listener para iniciar tudo ---
         document.addEventListener('DOMContentLoaded', initializeDashboard);
