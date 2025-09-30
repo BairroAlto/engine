@@ -1265,52 +1265,97 @@ if(validationIcon && validationPanel && validationPanelClose) {
         });
 
         // ETAPA 2: Lógica para o botão final "Confirmar e Criar" dentro do popup
-    createFluxoButton.addEventListener('click', async function() {
+  createFluxoButton.addEventListener('click', async function() {
+    console.log("%c[DEBUG] Início do processo de gravação do fluxo.", "color: blue; font-weight: bold;");
     this.disabled = true;
     this.textContent = "A Guardar...";
 
     try {
+        // --- ETAPA 1: Recolha de dados iniciais ---
         const ano = await getAnoPainelFirebase();
         const mes = parseInt(document.getElementById('mes').value);
         const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
         const tipoEvento = document.getElementById('tipo').value;
         const idiomas = getSelectedNacionalidades();
         const sala = document.getElementById('sala').value;
-        const diasSemana = getDiasSemana(ano, mes, semanaNumero);
-        const horariosData = await getHorariosFromFirebase(ano);
-        const horaSemana = horariosData['hora-semana'];
 
+        console.log(`[DEBUG] Dados Iniciais: ano=${ano}, mes=${mes}, semanaNumero=${semanaNumero}, tipoEvento=${tipoEvento}`);
+
+        // --- ETAPA 2: Obter o dia da reunião ---
+        const horariosData = await getHorariosFromFirebase(ano);
+        if (!horariosData || !horariosData['dia-semana'] || !horariosData['hora-semana']) {
+            console.error("[DEBUG] FALHA CRÍTICA: Não foi possível obter os horários, o 'dia-semana' ou a 'hora-semana' a partir do Firebase. Objeto recebido:", horariosData);
+            alert("Erro: A configuração de horários (dia e hora da reunião) não foi encontrada no sistema para este ano.");
+            this.disabled = false;
+            this.textContent = "Confirmar e Criar";
+            return;
+        }
+        const horaSemana = horariosData['hora-semana'];
+        console.log(`[DEBUG] Horários (do Firebase): dia="${horariosData['dia-semana']}", hora="${horaSemana}"`);
+
+        // --- ETAPA 3: Calcular o intervalo da semana (string) ---
+        const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+        if (!diasSemana) {
+            console.error("[DEBUG] FALHA CRÍTICA: A função getDiasSemana retornou null ou undefined.");
+            alert("Erro: Não foi possível calcular o intervalo de dias para a semana selecionada.");
+            this.disabled = false;
+            this.textContent = "Confirmar e Criar";
+            return;
+        }
+        console.log(`[DEBUG] Intervalo da Semana (string): "${diasSemana}"`);
+
+        // --- ETAPA 4: Calcular a data final (o campo 'dia') ---
         let meetingDayOfMonth;
 
-        // 2. Adicionar a lógica especial para "Visita do Servo"
+        // Lógica especial para "Visita do Servo" para obter a data diretamente do evento
         if (tipoEvento === 'visita-servo') {
+            console.log("[DEBUG] Tipo de evento é 'visita-servo'. A tentar obter data do evento...");
             const eventosRef = db.collection('eventos');
             const q = eventosRef.where('nome', '==', 'Visita do Servo').where('ano', '==', ano);
             const snapshot = await q.get();
 
             if (!snapshot.empty) {
                 const eventData = snapshot.docs[0].data();
-                meetingDayOfMonth = eventData.data; // Usa a data do evento
+                meetingDayOfMonth = eventData.data; // Usa a data exata do evento
+                console.log(`[DEBUG] Data do evento 'Visita do Servo' encontrada: ${meetingDayOfMonth}`);
             } else {
-                // Se não encontrar o evento, calcula a data como fallback
-                const diaSemanaReuniaoString = horariosData['dia-semana'];
-                meetingDayOfMonth = getMeetingDayOfMonth(ano, diasSemana, diaSemanaReuniaoString);
+                console.warn("[DEBUG] Evento 'Visita do Servo' não encontrado. A usar o cálculo de data padrão como fallback.");
             }
-        } else {
-            // 3. Para todos os outros casos, calcula a data normalmente
+        }
+        
+        // Se a data não foi definida pelo evento especial, calcula-a normalmente
+        if (!meetingDayOfMonth) {
             const diaSemanaReuniaoString = horariosData['dia-semana'];
+            console.log(`[DEBUG] A chamar getMeetingDayOfMonth com: ano=${ano}, diasSemana="${diasSemana}", diaSemanaReuniaoString="${diaSemanaReuniaoString}"`);
             meetingDayOfMonth = getMeetingDayOfMonth(ano, diasSemana, diaSemanaReuniaoString);
         }
-        // --- FIM DA MODIFICAÇÃO ---
-        
+
+        if (meetingDayOfMonth === null) {
+            console.error(`%c[DEBUG] FALHA CRÍTICA: O campo 'dia' foi calculado como NULL. A gravação será interrompida.`, "color: red; font-size: 14px; font-weight: bold;");
+            alert("Erro crítico: A data da reunião não pôde ser calculada. Verifique as configurações de dia da semana e o mês selecionado.");
+            this.disabled = false;
+            this.textContent = "Confirmar e Criar";
+            return;
+        } else {
+            console.log(`%c[DEBUG] SUCESSO: O campo 'dia' foi calculado como: ${meetingDayOfMonth}`, "color: green; font-weight: bold;");
+        }
+
+        // --- ETAPA 5: Montar o objeto final para o Firestore ---
         const historicoData = {
-            ano: ano, mes: mes, semanaNumero: semanaNumero,
-            semanaindex: `(${diasSemana} ${ano})`, designacoes: [],
-            evento: tipoEvento, tipo: "reuniao", idioma: idiomas, sala: sala,
-            quando: "Semana", parte: "resto da semana",
+            ano: ano,
+            mes: mes,
+            semanaNumero: semanaNumero,
+            semanaindex: `(${diasSemana} ${ano})`,
+            designacoes: [],
+            evento: tipoEvento,
+            tipo: "reuniao",
+            idioma: idiomas,
+            sala: sala,
+            quando: "Semana",
+            parte: "resto da semana",
             oque: "reuniao",
-            dia: meetingDayOfMonth,
-            hora: horaSemana, 
+            dia: meetingDayOfMonth, // O valor calculado
+            hora: horaSemana,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -1318,7 +1363,7 @@ if(validationIcon && validationPanel && validationPanelClose) {
             const designacaoId = container.dataset.designacaoId;
             const participantes = {};
             const participantSelects = container.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)');
-            
+
             if (participantSelects.length === 1) {
                 if (participantSelects[0].value) participantes['participante'] = participantSelects[0].value;
             } else {
@@ -1341,23 +1386,31 @@ if(validationIcon && validationPanel && validationPanelClose) {
                     designacaoParaGuardar.descricao = descricaoInput.value.trim();
                 }
             }
-            
+
             if (Object.keys(participantes).length > 0 || designacaoParaGuardar.descricao || designacaoParaGuardar.discursoId) {
                 historicoData.designacoes.push(designacaoParaGuardar);
             }
         });
-        
+
+        console.log("[DEBUG] Objeto final completo a ser guardado no Firestore:", historicoData);
+
+        // --- ETAPA 6: Gravar os dados ---
         await db.collection("historico").add(historicoData);
         alert("Fluxo semanal criado com sucesso!");
         window.location.reload();
 
     } catch (error) {
-        console.error("Erro ao criar fluxo semanal: ", error);
-        alert("Ocorreu um erro ao guardar. Por favor, tente novamente.");
+        console.error("Erro GERAL e inesperado ao criar fluxo semanal: ", error);
+        alert("Ocorreu um erro ao guardar. Por favor, tente novamente e verifique a consola de erros.");
         this.disabled = false;
         this.textContent = "Confirmar e Criar";
     }
 });
+
+
+
+
+
 
         // Função para gerar o resumo no popup
    async function generatePopupSummary() {
@@ -1966,56 +2019,92 @@ function makeTableSortable(table) {
     return diasSemanaString;
 };
 
-function getDayOfWeekNumber(dayOfWeekString) {
-    const daysOfWeek = {
-        'domingo': 0, 'segunda': 1, 'terça': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sábado': 6,
-        'domingo-feira': 0, 'segunda-feira': 1, 'terça-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sábado-feira': 6
-    };
-    const normalizedDayOfWeekString = dayOfWeekString.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Normalize and remove accents
-    return daysOfWeek[normalizedDayOfWeekString] !== undefined ? daysOfWeek[normalizedDayOfWeekString] : null;
-}
 
-// --- Helper function to get meeting day of month ---
+
 function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
-    if (!diasSemanaString || !diaSemanaReuniao || !ano) {
-        console.error("[getMeetingDayOfMonth] Erro: Faltam parâmetros essenciais (ano, diasSemanaString, ou diaSemanaReuniao).");
+    // Adicionei "V3" para termos a certeza absoluta de que é esta versão que está a correr
+    console.log(`  [getMeetingDayOfMonth V3] A executar com: ano=${ano}, diasSemanaString="${diasSemanaString}", diaSemanaReuniao="${diaSemanaReuniao}"`);
+
+    if (!ano || !diasSemanaString || !diaSemanaReuniao) {
+        console.error(`    [getMeetingDayOfMonth V3] ERRO: Um ou mais parâmetros de entrada estão vazios!`);
         return null;
     }
+
     try {
         const parts = diasSemanaString.split(" - ");
-        if (parts.length < 2) return null;
-        const startParts = parts[0].split(" ");
-        const startDay = parseInt(startParts[0]);
-        let startMonthStr = startParts.length > 1 ? startParts[1] : null;
-        const endParts = parts[1].split(" ");
-        const endDay = parseInt(endParts[0]);
-        const endMonthStr = endParts[1];
-        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        if (!startMonthStr) {
-            startMonthStr = endMonthStr;
+        if (parts.length < 2) {
+            console.error(`    [getMeetingDayOfMonth V3] ERRO: A string de dias da semana "${diasSemanaString}" não tem o formato esperado 'DD MÊS - DD MÊS'.`);
+            return null;
         }
+
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        
+        const startParts = parts[0].split(" ");
+        const endParts = parts[1].split(" ");
+
+        const startDay = parseInt(startParts[0]);
+        const startMonthStr = startParts.length > 1 ? startParts[1] : null;
         const startMonthIndex = monthNames.indexOf(startMonthStr);
+        
+        const endDay = parseInt(endParts[0]);
+        const endMonthStr = endParts.length > 1 ? endParts[1] : null;
         const endMonthIndex = monthNames.indexOf(endMonthStr);
-        if (startMonthIndex === -1 || endMonthIndex === -1) return null;
+
+        if (startMonthIndex === -1 || endMonthIndex === -1) {
+            console.error(`    [getMeetingDayOfMonth V3] ERRO: Não foi possível encontrar o índice do mês a partir das strings "${startMonthStr}" ou "${endMonthStr}".`);
+            return null;
+        }
+
+        let startYear = ano;
+        let endYear = ano;
+        if (startMonthIndex > endMonthIndex) { // Lida com semanas que atravessam o final do ano (ex: Dezembro -> Janeiro)
+            endYear = ano + 1;
+        }
+        
+        const startOfWeekDate = new Date(startYear, startMonthIndex, startDay);
+        const endOfWeekDate = new Date(endYear, endMonthIndex, endDay);
+        
+        startOfWeekDate.setHours(0, 0, 0, 0);
+        endOfWeekDate.setHours(0, 0, 0, 0);
+
+        console.log(`    [getMeetingDayOfMonth V3] Intervalo de datas a verificar: DE ${startOfWeekDate.toISOString()} ATÉ ${endOfWeekDate.toISOString()}`);
+
         const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
-        if (dayOfWeekMeetingNumber === null) return null;
-        const startOfWeekDate = new Date(ano, startMonthIndex, startDay);
-        const endOfWeekDate = new Date(ano, endMonthIndex, endDay);
-        let currentDay = startOfWeekDate;
+        if (dayOfWeekMeetingNumber === null) {
+            console.error(`    [getMeetingDayOfMonth V3] ERRO: getDayOfWeekNumber retornou null para "${diaSemanaReuniao}".`);
+            return null;
+        }
+        console.log(`    [getMeetingDayOfMonth V3] Dia da semana numérico procurado: ${dayOfWeekMeetingNumber}`);
+
+        let currentDay = new Date(startOfWeekDate);
+
         while (currentDay <= endOfWeekDate) {
+            console.log(`      [getMeetingDayOfMonth V3] A verificar: ${currentDay.toISOString().split('T')[0]}, Dia da semana: ${currentDay.getDay()}`);
+            
             if (currentDay.getDay() === dayOfWeekMeetingNumber) {
+                const finalAno = currentDay.getFullYear();
                 const month = String(currentDay.getMonth() + 1).padStart(2, '0');
                 const day = String(currentDay.getDate()).padStart(2, '0');
-                return `${ano}-${month}-${day}`;
+                const finalDate = `${finalAno}-${month}-${day}`;
+                
+                console.log(`%c    [getMeetingDayOfMonth V3] SUCESSO! Encontrado o dia correspondente. Retornando: "${finalDate}"`, "color: green;");
+                return finalDate;
             }
             currentDay.setDate(currentDay.getDate() + 1);
         }
+        
+        console.error(`%c    [getMeetingDayOfMonth V3] FALHA: O loop terminou sem encontrar um dia da semana correspondente no intervalo.`, "color: red;");
         return null;
+
     } catch (error) {
-        console.error("[getMeetingDayOfMonth] Ocorreu uma exceção ao calcular a data:", error);
+        console.error("[getMeetingDayOfMonth V3] Uma exceção (erro inesperado) ocorreu durante o cálculo:", error);
         return null;
     }
 }
+
+
+
+
 
 
         const getHorariosFromFirebase = async (ano) => {
@@ -2252,40 +2341,13 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
 
 
 
-        function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
-    if (!ano || !diasSemanaString || !diaSemanaReuniao) {
-        return null;
-    }
-    const parts = diasSemanaString.split(" - ");
-    if (parts.length < 2) return null;
-    const startDay = parseInt(parts[0]);
-    const endPart = parts[1].split(" ");
-    const endDay = parseInt(endPart[0]);
-    let startMonthStr = parts[0].split(" ")[1] || "";
-    const endMonthStr = endPart.length > 1 ? endPart[1] : startMonthStr;
-    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    let startMonthIndex = monthNames.indexOf(startMonthStr);
-    const endMonthIndex = monthNames.indexOf(endMonthStr);
-    if (startMonthIndex === -1) startMonthIndex = endMonthIndex;
-    if (startMonthIndex === -1) return null;
+  
 
-    const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
-    if (dayOfWeekMeetingNumber === null) return null;
 
-    const startOfWeekDate = new Date(ano, startMonthIndex, startDay);
-    const endOfWeekDate = new Date(ano, endMonthIndex, endDay);
-    let currentDay = new Date(startOfWeekDate);
 
-    while (currentDay <= endOfWeekDate) {
-        if (currentDay.getDay() === dayOfWeekMeetingNumber) {
-            const month = String(currentDay.getMonth() + 1).padStart(2, '0');
-            const day = String(currentDay.getDate()).padStart(2, '0');
-            return `${ano}-${month}-${day}`;
-        }
-        currentDay.setDate(currentDay.getDate() + 1);
-    }
-    return null;
-}
+
+
+
 
 function getDetailedParticipantsInRange(start, end, historicoData) {
     const participantsMap = new Map();
@@ -2313,11 +2375,44 @@ function shuffleArray(array) {
     }
 }
 
-// Garanta que a função getDayOfWeekNumber também existe
+
+
+
 function getDayOfWeekNumber(dayOfWeekString) {
-    const days = { 'domingo': 0, 'segunda-feira': 1, 'terca-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sabado': 6 };
-    return days[dayOfWeekString.toLowerCase()];
+    // Adicionei V2 para termos a certeza absoluta que é esta que está a ser executada
+    console.log(`      [getDayOfWeekNumber V2] A executar com: dayOfWeekString="${dayOfWeekString}"`);
+
+    // Mapa de dias com chaves já normalizadas (sem acentos)
+    const daysOfWeek = {
+        'domingo': 0, 'segunda': 1, 'terca': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sabado': 6,
+        'domingo-feira': 0, 'segunda-feira': 1, 'terca-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sabado-feira': 6
+    };
+
+    if (!dayOfWeekString || typeof dayOfWeekString !== 'string') {
+        console.warn(`        [getDayOfWeekNumber V2] AVISO: A string de entrada está vazia ou não é uma string.`);
+        return null;
+    }
+
+    // ETAPA 1: Remove espaços, normaliza e converte para minúsculas
+    const normalizedDayOfWeekString = dayOfWeekString
+        .trim() // Remove espaços no início e no fim
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+
+    // ETAPA 2: Procura a string tratada no mapa
+    const result = daysOfWeek[normalizedDayOfWeekString];
+
+    if (result !== undefined) {
+        console.log(`%c      [getDayOfWeekNumber V2] String tratada: "${normalizedDayOfWeekString}". Retornando o valor: ${result}`, "color: blue;");
+        return result;
+    } else {
+        console.error(`      [getDayOfWeekNumber V2] ERRO: A string tratada "${normalizedDayOfWeekString}" não foi encontrada no mapa 'daysOfWeek'.`);
+        return null; // Retorna null em caso de falha
+    }
 }
+
+
 
  async function preencherAutomaticamente(exclusionSet = new Set()) {
     console.log("🚀 Iniciando o preenchimento automático (v9 - Correção Final)...");
@@ -3532,7 +3627,8 @@ function setupTabClickListeners() {
             });
         });
 
-        updateWeekDisplay();
+      updateWeekDisplay(); 
+      document.getElementById('mes').addEventListener('change', updateWeekDisplay);
         loadNacionalidades();
         initializeSystemData();
         
