@@ -759,7 +759,7 @@ body.popup-open {
 
   
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+   document.addEventListener('DOMContentLoaded', function() {
          // Botão de Perfil (Funcional)
         document.getElementById('perfilButton').addEventListener('click', () => {
             document.getElementById('perfilPopup').style.display = 'flex';
@@ -1277,12 +1277,40 @@ if(validationIcon && validationPanel && validationPanelClose) {
         const idiomas = getSelectedNacionalidades();
         const sala = document.getElementById('sala').value;
         const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+        const horariosData = await getHorariosFromFirebase(ano);
+        const horaSemana = horariosData['hora-semana'];
+
+        let meetingDayOfMonth;
+
+        // 2. Adicionar a lógica especial para "Visita do Servo"
+        if (tipoEvento === 'visita-servo') {
+            const eventosRef = db.collection('eventos');
+            const q = eventosRef.where('nome', '==', 'Visita do Servo').where('ano', '==', ano);
+            const snapshot = await q.get();
+
+            if (!snapshot.empty) {
+                const eventData = snapshot.docs[0].data();
+                meetingDayOfMonth = eventData.data; // Usa a data do evento
+            } else {
+                // Se não encontrar o evento, calcula a data como fallback
+                const diaSemanaReuniaoString = horariosData['dia-semana'];
+                meetingDayOfMonth = getMeetingDayOfMonth(ano, diasSemana, diaSemanaReuniaoString);
+            }
+        } else {
+            // 3. Para todos os outros casos, calcula a data normalmente
+            const diaSemanaReuniaoString = horariosData['dia-semana'];
+            meetingDayOfMonth = getMeetingDayOfMonth(ano, diasSemana, diaSemanaReuniaoString);
+        }
+        // --- FIM DA MODIFICAÇÃO ---
         
         const historicoData = {
             ano: ano, mes: mes, semanaNumero: semanaNumero,
             semanaindex: `(${diasSemana} ${ano})`, designacoes: [],
             evento: tipoEvento, tipo: "reuniao", idioma: idiomas, sala: sala,
             quando: "Semana", parte: "resto da semana",
+            oque: "reuniao",
+            dia: meetingDayOfMonth,
+            hora: horaSemana, 
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -1938,6 +1966,58 @@ function makeTableSortable(table) {
     return diasSemanaString;
 };
 
+function getDayOfWeekNumber(dayOfWeekString) {
+    const daysOfWeek = {
+        'domingo': 0, 'segunda': 1, 'terça': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sábado': 6,
+        'domingo-feira': 0, 'segunda-feira': 1, 'terça-feira': 2, 'quarta-feira': 3, 'quinta-feira': 4, 'sexta-feira': 5, 'sábado-feira': 6
+    };
+    const normalizedDayOfWeekString = dayOfWeekString.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Normalize and remove accents
+    return daysOfWeek[normalizedDayOfWeekString] !== undefined ? daysOfWeek[normalizedDayOfWeekString] : null;
+}
+
+// --- Helper function to get meeting day of month ---
+function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
+    if (!diasSemanaString || !diaSemanaReuniao || !ano) {
+        console.error("[getMeetingDayOfMonth] Erro: Faltam parâmetros essenciais (ano, diasSemanaString, ou diaSemanaReuniao).");
+        return null;
+    }
+    try {
+        const parts = diasSemanaString.split(" - ");
+        if (parts.length < 2) return null;
+        const startParts = parts[0].split(" ");
+        const startDay = parseInt(startParts[0]);
+        let startMonthStr = startParts.length > 1 ? startParts[1] : null;
+        const endParts = parts[1].split(" ");
+        const endDay = parseInt(endParts[0]);
+        const endMonthStr = endParts[1];
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        if (!startMonthStr) {
+            startMonthStr = endMonthStr;
+        }
+        const startMonthIndex = monthNames.indexOf(startMonthStr);
+        const endMonthIndex = monthNames.indexOf(endMonthStr);
+        if (startMonthIndex === -1 || endMonthIndex === -1) return null;
+        const dayOfWeekMeetingNumber = getDayOfWeekNumber(diaSemanaReuniao);
+        if (dayOfWeekMeetingNumber === null) return null;
+        const startOfWeekDate = new Date(ano, startMonthIndex, startDay);
+        const endOfWeekDate = new Date(ano, endMonthIndex, endDay);
+        let currentDay = startOfWeekDate;
+        while (currentDay <= endOfWeekDate) {
+            if (currentDay.getDay() === dayOfWeekMeetingNumber) {
+                const month = String(currentDay.getMonth() + 1).padStart(2, '0');
+                const day = String(currentDay.getDate()).padStart(2, '0');
+                return `${ano}-${month}-${day}`;
+            }
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+        return null;
+    } catch (error) {
+        console.error("[getMeetingDayOfMonth] Ocorreu uma exceção ao calcular a data:", error);
+        return null;
+    }
+}
+
+
         const getHorariosFromFirebase = async (ano) => {
             const querySnapshot = await db.collection('horarios').where('ano', '==', ano).limit(1).get();
             if (!querySnapshot.empty) return querySnapshot.docs[0].data();
@@ -2022,6 +2102,8 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
         const mes = parseInt(document.getElementById('mes').value);
         const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
         const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+        const horariosData = await getHorariosFromFirebase(ano);
+        const horaSemana = horariosData['hora-semana'];
         const horarios = await getHorariosFromFirebase(ano);
         const meetingDate = getMeetingDayOfMonth(ano, diasSemana, horarios['dia-semana']);
 
@@ -2748,7 +2830,49 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
         numParticipantesSelect.addEventListener('change', (e) => { temporaryPreferences[`participantes-${designacao.id}-${i}`] = e.target.value; updateActiveDesignationDisplay(designacao, order, quantity); filterPopup.classList.remove('active'); });
         generoPreferenciaSelect.addEventListener('change', (e) => { const selectedIdiomas = getSelectedNacionalidades(); loadPeopleOptionsIntoSelects(designacao, instanceContainer, e.target.value, selectedIdiomas); filterPopup.classList.remove('active'); });
         descricaoTemaSelect.addEventListener('change', (e) => { descricaoContainer.style.display = e.target.value === 'sim' ? 'block' : 'none'; filterPopup.classList.remove('active'); });
-        const lockIcon = document.createElement('i'); lockIcon.className = 'fas fa-lock-open lock-icon'; lockIcon.title = 'Bloquear/Desbloquear'; lockIcon.addEventListener('click', (e) => { const isLocked = instanceContainer.dataset.locked === 'true'; instanceContainer.dataset.locked = !isLocked; e.target.classList.toggle('fa-lock-open', isLocked); e.target.classList.toggle('fa-lock', !isLocked); e.target.classList.toggle('locked', !isLocked); }); instanceContainer.appendChild(lockIcon); const lupaIcon = document.createElement('i'); lupaIcon.className = 'fas fa-search-plus lupa-icon'; lupaIcon.title = 'Analisar Histórico'; lupaIcon.addEventListener('click', () => { const selected = Array.from(instanceContainer.querySelectorAll('.form-select')).map(s => ({ id: s.value, name: s.options[s.selectedIndex].text })).filter(p => p.id); if (selected.length === 1) { loadParticipantProfile(selected[0].id); document.getElementById('perfilPopup').style.display = 'flex'; } else if (selected.length > 1) { openPairAnalysisPopup(selected); } else { alert("Selecione pelo menos um participante."); } }); instanceContainer.appendChild(lupaIcon); const labIcon = document.createElement('i'); labIcon.className = 'fas fa-flask lab-icon'; labIcon.title = 'Laboratório de Combinações'; labIcon.addEventListener('click', () => { alert("Laboratório de Combinações (Funcionalidade Futura)"); }); instanceContainer.appendChild(labIcon);
+        const lockIcon = document.createElement('i'); lockIcon.className = 'fas fa-lock-open lock-icon'; lockIcon.title = 'Bloquear/Desbloquear'; lockIcon.addEventListener('click', (e) => { const isLocked = instanceContainer.dataset.locked === 'true'; instanceContainer.dataset.locked = !isLocked; e.target.classList.toggle('fa-lock-open', isLocked); e.target.classList.toggle('fa-lock', !isLocked); e.target.classList.toggle('locked', !isLocked); }); instanceContainer.appendChild(lockIcon); 
+        
+const lupaIcon = document.createElement('i');
+lupaIcon.className = 'fas fa-search-plus lupa-icon';
+lupaIcon.title = 'Analisar Histórico';
+lupaIcon.addEventListener('click', () => {
+    const selectedParticipants = Array.from(instanceContainer.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'))
+        .map(select => {
+            if (select.selectedIndex > -1 && select.value) {
+                return { 
+                    id: select.value, 
+                    name: select.options[select.selectedIndex].text 
+                };
+            }
+            return null;
+        })
+        .filter(p => p !== null);
+
+    if (selectedParticipants.length === 1) {
+        // A MÁGICA ACONTECE AQUI:
+        const participant = selectedParticipants[0];
+
+        // 1. Preenche o campo de pesquisa com o nome do participante.
+        document.getElementById('pesquisaPessoa').value = participant.name;
+        
+        // 2. Carrega o histórico desse participante.
+        loadParticipantProfile(participant.id);
+        
+        // 3. Mostra o popup.
+        document.getElementById('perfilPopup').style.display = 'flex';
+
+    } else if (selectedParticipants.length > 1) {
+        openPairAnalysisPopup(selectedParticipants);
+    } else {
+        alert("Por favor, selecione pelo menos um participante para analisar.");
+    }
+});
+instanceContainer.appendChild(lupaIcon);  
+        
+        
+        
+        
+        const labIcon = document.createElement('i'); labIcon.className = 'fas fa-flask lab-icon'; labIcon.title = 'Laboratório de Combinações'; labIcon.addEventListener('click', () => { alert("Laboratório de Combinações (Funcionalidade Futura)"); }); instanceContainer.appendChild(labIcon);
         
         const searchInput = instanceContainer.querySelector('.discurso-search-input');
         if (searchInput) {
@@ -3103,24 +3227,149 @@ const renderProfileTable = () => {
 });
 
 
+// ===================================================================
+// ====== INÍCIO: CÓDIGO CORRIGIDO PARA ANÁLISE DE PARES ========
+// ===================================================================
 
-        const openPairAnalysisPopup = async (participants) => {
-            const popup = document.getElementById('pairAnalysisPopup');
-            const title = document.getElementById('pairAnalysisTitle');
-            const tabsContainer = document.getElementById('pairAnalysisTabsContainer');
-            const contentContainer = document.getElementById('pairAnalysisContentContainer');
-            
-            title.textContent = `Análise de: ${participants.map(p => p.name).join(' & ')}`;
-            popup.style.display = 'flex';
-            tabsContainer.innerHTML = '';
-            contentContainer.innerHTML = '';
+/**
+ * SUBSTITUI A FUNÇÃO ANTIGA:
+ * Abre o popup de análise com múltiplas abas: uma para o histórico
+ * conjunto e uma para o histórico individual de cada participante.
+ */
+async function openPairAnalysisPopup(participants) {
+    const popup = document.getElementById('pairAnalysisPopup');
+    const title = document.getElementById('pairAnalysisTitle');
+    const tabsContainer = document.getElementById('pairAnalysisTabsContainer');
+    const contentContainer = document.getElementById('pairAnalysisContentContainer');
 
-            const pairHistory = await fetchPairHistory(participants.map(p => p.id));
-            
-            tabsContainer.innerHTML = `<button class="tab-button active" data-target="#content-history">Histórico do Par</button>`;
-            contentContainer.innerHTML = `<div id="content-history" class="tab-content active"></div>`;
-            document.getElementById('content-history').appendChild(buildHistoryTable(pairHistory, "Colaborações Anteriores", true));
-        };
+    // Limpa o conteúdo anterior e prepara o título
+    tabsContainer.innerHTML = '<p>A carregar...</p>';
+    contentContainer.innerHTML = '';
+    const participantNames = participants.map(p => p.name).join(' & ');
+    title.textContent = `Análise de: ${participantNames}`;
+    popup.style.display = 'flex';
+
+    const participantIds = participants.map(p => p.id);
+
+    // Busca o histórico do par
+    const pairHistory = await fetchPairHistory(participantIds);
+
+    // Limpa novamente para construir a nova interface
+    tabsContainer.innerHTML = '';
+    contentContainer.innerHTML = '';
+
+    // --- Cria a Aba 1: Histórico do Par (Conjunto) ---
+    const historyTab = createTab('Histórico do Par', 'content-history', true);
+    const historyContent = createTabContent('content-history', true);
+    historyContent.appendChild(buildHistoryTable(pairHistory, "Histórico de Colaboração", true));
+    tabsContainer.appendChild(historyTab);
+    contentContainer.appendChild(historyContent);
+
+    // --- Cria as Abas Individuais (uma para cada participante) ---
+    participants.forEach((participant, index) => {
+        const tabId = `content-p${index}`;
+        const tab = createTab(participant.name, tabId, false);
+        const content = createTabContent(tabId, false);
+        content.innerHTML = `<p style="padding: 20px; text-align: center;"><i class="fas fa-spinner fa-spin"></i> A carregar perfil de ${participant.name}...</p>`;
+
+        tabsContainer.appendChild(tab);
+        contentContainer.appendChild(content);
+
+        // Adiciona um listener para carregar os dados apenas quando a aba for clicada
+        tab.addEventListener('click', async () => {
+            if (content.dataset.loaded !== 'true') {
+                // Chama a função fetchIndividualHistory que já existe no seu ficheiro
+                const individualHistory = await fetchIndividualHistory(participant.id);
+                content.innerHTML = '';
+                content.appendChild(buildHistoryTable(individualHistory, `Histórico Completo de ${participant.name}`, false));
+                content.dataset.loaded = 'true';
+            }
+        });
+    });
+
+    // Ativa a lógica de cliques para as abas recém-criadas
+    setupTabClickListeners();
+}
+
+/**
+ * FUNÇÃO EM FALTA (ADICIONAR):
+ * Busca no histórico as vezes em que um grupo específico de pessoas
+ * trabalhou junto na mesma designação.
+ */
+async function fetchPairHistory(participantIds) {
+    const historicoSnapshot = await db.collection('historico').orderBy("dia", "desc").get();
+    const records = [];
+    historicoSnapshot.forEach(doc => {
+        const historico = doc.data();
+        historico.designacoes?.forEach(designacao => {
+            const allParticipantIdsInDesig = Object.values(designacao.participantes || {});
+            const allMembersPresent = participantIds.every(id => allParticipantIdsInDesig.includes(id));
+            if (allMembersPresent) {
+                records.push({
+                    dia: historico.dia,
+                    designacaoNome: allDesignations.get(designacao.designacaoId)?.nome || 'Desconhecida',
+                    papeis: designacao.participantes
+                });
+            }
+        });
+    });
+    return records;
+}
+
+/**
+ * FUNÇÃO EM FALTA (ADICIONAR):
+ * Função de ajuda para criar um botão de aba.
+ */
+function createTab(text, targetId, isActive) {
+    const button = document.createElement('button');
+    button.className = 'tab-button' + (isActive ? ' active' : '');
+    button.textContent = text;
+    button.dataset.target = `#${targetId}`;
+    return button;
+}
+
+/**
+ * FUNÇÃO EM FALTA (ADICIONAR):
+ * Função de ajuda para criar o container de conteúdo de uma aba.
+ */
+function createTabContent(id, isActive) {
+    const div = document.createElement('div');
+    div.className = 'tab-content' + (isActive ? ' active' : '');
+    div.id = id;
+    return div;
+}
+
+/**
+ * FUNÇÃO EM FALTA (ADICIONAR):
+ * Função de ajuda que adiciona os eventos de clique para alternar entre as abas.
+ */
+function setupTabClickListeners() {
+    const tabsContainer = document.querySelector('.analysis-popup .tabs');
+    if (!tabsContainer) return;
+
+    // Remove listener antigo para evitar duplicação
+    const newTabsContainer = tabsContainer.cloneNode(true);
+    tabsContainer.parentNode.replaceChild(newTabsContainer, tabsContainer);
+
+    newTabsContainer.addEventListener('click', (event) => {
+        const clickedTab = event.target.closest('.tab-button');
+        if (!clickedTab) return;
+
+        newTabsContainer.querySelectorAll('.tab-button').forEach(t => t.classList.remove('active'));
+        const contentContainer = document.querySelector('#pairAnalysisContentContainer');
+        contentContainer.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        clickedTab.classList.add('active');
+        const targetContent = contentContainer.querySelector(clickedTab.dataset.target);
+        if (targetContent) {
+            targetContent.classList.add('active');
+        }
+    });
+}
+
+// ===================================================================
+// ====== FIM: CÓDIGO DE SUBSTITUIÇÃO PARA ANÁLISE DE PARES ========
+// ===================================================================
 
         document.getElementById('closePerfilPopup').addEventListener('click', () => document.getElementById('perfilPopup').style.display = 'none');
         document.getElementById('closePairAnalysisPopup').addEventListener('click', () => document.getElementById('pairAnalysisPopup').style.display = 'none');
