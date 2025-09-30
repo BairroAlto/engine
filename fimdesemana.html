@@ -246,7 +246,14 @@
                 <div class="filter-group"><label for="filter-ano">Ano</label><select id="filter-ano"></select></div>
                 <div class="filter-group"><label for="filter-mes">Mês</label><select id="filter-mes"></select></div>
                 <div class="filter-group"><label for="filter-semana">Semana</label><select id="filter-semana"></select></div>
+                <div class="filter-group">
+                    <label for="filter-parte">Parte</label>
+                    <select id="filter-parte">
+                        <option value="todas">Todas as Partes</option>
+                    </select>
+                </div>
                 <div class="filter-group"><label for="filter-sala">Sala</label><select id="filter-sala"><option value="todas">Todas as Salas</option><option value="salao-principal">Salão Principal</option><option value="segunda-sala">Segunda Sala</option><option value="terceira-sala">Terceira Sala</option></select></div>
+               
                 <div class="action-buttons-container">
                     <button id="edit-button" class="action-button">Editar</button>
                     <button id="create-button" class="action-button">Criar</button>
@@ -507,6 +514,7 @@
             const monthFilter = document.getElementById('filter-mes');
             const weekFilter = document.getElementById('filter-semana');
             const roomFilter = document.getElementById('filter-sala');
+            const parteFilter = document.getElementById('filter-parte');
             const editButton = document.getElementById('edit-button');
             const createButton = document.getElementById('create-button');
             const scheduleDisplay = document.getElementById('schedule-display');
@@ -668,12 +676,14 @@
                 modalOverlay.classList.remove('active');
             }
 
-        async function loadInitialData() {
+      async function loadInitialData() {
                 scheduleDisplay.classList.add('loading');
                 try {
                     // Adicionamos a consulta a 'discursos' e a 'painel'
                     const [historicoSnap, pessoasSnap, designacoesSnap, cabecalhosSnap, discursosSnap, painelSnap] = await Promise.all([
-                        db.collection('historico').where('quando', '==', 'Fim de Semana').where('tipo', '==', 'reuniao').orderBy('timestamp', 'desc').get(),
+                        // ===== INÍCIO DA ALTERAÇÃO =====
+                        db.collection('historico').where('quando', 'in', ['Fim de Semana', 'Semana e Fim de Semana']).where('tipo', '==', 'reuniao').orderBy('timestamp', 'desc').get(),
+                        // ===== FIM DA ALTERAÇÃO =====
                         db.collection('pessoas').get(),
                         db.collection('designacoes').get(),
                         db.collection('cabecalhos').get(),
@@ -709,6 +719,9 @@
                     populateYearFilter(defaultYear);
                     updateMonthFilter();
                     updateWeekFilter();
+                    // ===== NOVA FUNÇÃO CHAMADA PARA POPULAR O FILTRO =====
+                    populateParteFilter();
+
                 } catch (error) {
                     console.error("Erro ao carregar dados iniciais:", error);
                     scheduleContent.innerHTML = `<p style="color: red;">Ocorreu um erro ao carregar os dados. Tente novamente mais tarde.</p>`;
@@ -778,56 +791,88 @@ async function updateAccountabilityButton() {
 
 
 async function openCreateDesignationPopup() {
-    console.log("1. Abrindo o popup de criação...");
-    createStep2.style.display = 'none';
-    saveNewDesignationBtn.disabled = true;
-    document.getElementById('createPopupParticipants').innerHTML = '';
-    document.getElementById('createPopupFilters').innerHTML = '';
-
-    if (allLanguagesCache.length === 0) {
-        const nacSnap = await db.collection('nacionalidades').orderBy('nome').get();
-        nacSnap.forEach(doc => allLanguagesCache.push(doc.data().nome));
-    }
-
-    const availableDesignations = Array.from(designationMap.values())
-        .filter(d => d.quando === 'Fim de Semana' && d.tipo === 'reuniao')
-        .sort((a, b) => (a.ordem || 999) - (b.ordem || 999));
-
-    createDesignationSelect.innerHTML = '<option value="">Escolha uma designação...</option>';
-    availableDesignations.forEach(desig => {
-        createDesignationSelect.add(new Option(desig.nome, desig.id));
-    });
-
-    createDesignationSelect.onchange = () => {
-        const selectedId = createDesignationSelect.value;
-        if (selectedId) {
-            const numSelect = document.getElementById('createNumParticipantes');
-            if (numSelect) numSelect.dataset.initialized = 'false';
-            renderCreateStep2(selectedId);
-        } else {
+            console.log("1. Abrindo o popup de criação...");
             createStep2.style.display = 'none';
             saveNewDesignationBtn.disabled = true;
-        }
-    };
+            document.getElementById('createPopupParticipants').innerHTML = '';
+            document.getElementById('createPopupFilters').innerHTML = '';
 
-    const filtersContainer = document.getElementById('createPopupFilters');
-    if (!filtersContainer.dataset.eventsAttached) {
-        filtersContainer.addEventListener('change', (event) => {
-            if (event.target.matches('.form-select')) {
-                const selectedId = createDesignationSelect.value;
-                if (selectedId) renderCreateStep2(selectedId);
+            if (allLanguagesCache.length === 0) {
+                const nacSnap = await db.collection('nacionalidades').orderBy('nome').get();
+                nacSnap.forEach(doc => allLanguagesCache.push(doc.data().nome));
             }
-        });
-        filtersContainer.dataset.eventsAttached = 'true';
-    }
-    
-    // ===== CORREÇÃO CRÍTICA: Ligar o botão do foguetão de equipa =====
-    setupGlobalSuggesterButton();
-    // ================================================================
-    
-    createDesignationPopup.classList.add('active');
-    document.body.classList.add('popup-open');
-}
+
+            // ==========================================================
+            // INÍCIO DA LÓGICA ALTERADA PARA INCLUIR O FILTRO DE STATUS
+            // ==========================================================
+            
+            // 1. Filtra o primeiro grupo: Designações de Fim de Semana (apenas com status === true)
+            const fimDeSemanaDesignations = Array.from(designationMap.values())
+                // ===== ALTERAÇÃO AQUI =====
+                .filter(d => d.quando === 'Fim de Semana' && d.tipo === 'reuniao' && d.status === true)
+                .sort((a, b) => (a.ordem || 999) - (b.ordem || 999));
+
+            // 2. Filtra o segundo grupo: Designações de Técnicas (apenas com status === true)
+            const tecnicasDesignations = Array.from(designationMap.values())
+                // ===== ALTERAÇÃO AQUI =====
+                .filter(d => d.quando === 'Semana e Fim de Semana' && d.tipo === 'reuniao' && d.parte === 'tecnicas' && d.status === true)
+                .sort((a, b) => (a.ordem || 999) - (b.ordem || 999));
+
+            // ==========================================================
+            // FIM DA LÓGICA ALTERADA
+            // ==========================================================
+
+            // 3. Limpa o dropdown e adiciona a opção padrão
+            createDesignationSelect.innerHTML = '<option value="">Escolha uma designação...</option>';
+            
+            // 4. Cria e popula o primeiro grupo (<optgroup>) se houver designações
+            if (fimDeSemanaDesignations.length > 0) {
+                const groupFimDeSemana = document.createElement('optgroup');
+                groupFimDeSemana.label = 'Partes Fim de Semana';
+                fimDeSemanaDesignations.forEach(desig => {
+                    groupFimDeSemana.appendChild(new Option(desig.nome, desig.id));
+                });
+                createDesignationSelect.appendChild(groupFimDeSemana);
+            }
+
+            // 5. Cria e popula o segundo grupo (<optgroup>) se houver designações
+            if (tecnicasDesignations.length > 0) {
+                const groupTecnicas = document.createElement('optgroup');
+                groupTecnicas.label = 'Partes Técnicas';
+                tecnicasDesignations.forEach(desig => {
+                    groupTecnicas.appendChild(new Option(desig.nome, desig.id));
+                });
+                createDesignationSelect.appendChild(groupTecnicas);
+            }
+            
+            createDesignationSelect.onchange = () => {
+                const selectedId = createDesignationSelect.value;
+                if (selectedId) {
+                    const numSelect = document.getElementById('createNumParticipantes');
+                    if (numSelect) numSelect.dataset.initialized = 'false';
+                    renderCreateStep2(selectedId);
+                } else {
+                    createStep2.style.display = 'none';
+                    saveNewDesignationBtn.disabled = true;
+                }
+            };
+
+            const filtersContainer = document.getElementById('createPopupFilters');
+            if (!filtersContainer.dataset.eventsAttached) {
+                filtersContainer.addEventListener('change', (event) => {
+                    if (event.target.matches('.form-select')) {
+                        const selectedId = createDesignationSelect.value;
+                        if (selectedId) renderCreateStep2(selectedId);
+                    }
+                });
+                filtersContainer.dataset.eventsAttached = 'true';
+            }
+            
+            setupGlobalSuggesterButton();
+            
+            createDesignationPopup.classList.add('active');
+            document.body.classList.add('popup-open');
+        }
 
 // Função 2: Renderiza os filtros e dropdowns de participantes (reutiliza muita lógica)
 async function renderCreateStep2(designationId) {
@@ -948,6 +993,32 @@ async function renderCreateStep2(designationId) {
                 saveNewDesignationBtn.disabled = false;
             }
 
+
+
+           function populateParteFilter() {
+    const partes = new Set();
+    for (const desig of designationMap.values()) {
+        
+        // CONDIÇÃO ADICIONADA:
+        // A designação tem que ser do tipo 'reuniao'
+        // E a sua 'parte' tem que ser 'fim de semana' OU 'tecnicas'
+        if (desig.tipo === 'reuniao' && (desig.parte === 'fim de semana' || desig.parte === 'tecnicas')) {
+            partes.add(desig.parte);
+        }
+    }
+    
+    // Limpa opções antigas exceto a primeira ("Todas as Partes")
+    while (parteFilter.options.length > 1) {
+        parteFilter.remove(1);
+    }
+
+                // Adiciona as novas partes encontradas
+                const sortedPartes = Array.from(partes).sort();
+    sortedPartes.forEach(parte => {
+        const option = new Option(parte.charAt(0).toUpperCase() + parte.slice(1), parte);
+        parteFilter.add(option);
+    });
+}
 function setupGlobalSuggesterButton() {
     const globalSuggesterBtn = document.getElementById('global-suggester-btn');
     if (globalSuggesterBtn && !globalSuggesterBtn.dataset.listenerAttached) {
@@ -1821,7 +1892,7 @@ function openCreatePairAnalysisPopup() {
                 renderSchedule();
             }
             
-    function renderSchedule() {
+ function renderSchedule() {
                 scheduleDisplay.classList.add('loading');
                 scheduleContent.innerHTML = '';
                 
@@ -1832,6 +1903,7 @@ function openCreatePairAnalysisPopup() {
                 const selectedMonth = monthFilter.value === 'todos' ? null : parseInt(monthFilter.value);
                 const selectedWeek = weekFilter.value;
                 const selectedRoom = roomFilter.value;
+                const selectedParte = parteFilter.value;
 
                 let timeFilteredData = allScheduleData.filter(item => 
                     item.ano === selectedYear &&
@@ -1839,6 +1911,18 @@ function openCreatePairAnalysisPopup() {
                     (selectedWeek === 'todas' || item.semanaindex === selectedWeek) &&
                     (selectedRoom === 'todas' || item.sala === selectedRoom)
                 );
+                
+                if (selectedParte !== 'todas') {
+                    timeFilteredData = timeFilteredData.filter(item => {
+                        if (!item.designacoes || item.designacoes.length === 0) {
+                            return false;
+                        }
+                        return item.designacoes.some(desig => {
+                            const fullDesigData = designationMap.get(desig.designacaoId);
+                            return fullDesigData && fullDesigData.parte === selectedParte;
+                        });
+                    });
+                }
 
                 const normalizeKey = (key) => key ? key.replace(/\s+/g, '').replace(/-/g, '') : '';
                 const groupedByWeek = timeFilteredData.reduce((acc, item) => {
@@ -1936,22 +2020,38 @@ function openCreatePairAnalysisPopup() {
                             
                             if (desig.participantes && Object.keys(desig.participantes).length > 0) {
                                 bodyHTML += '<ul class="participant-list">';
-                                const roleOrder = ['dirigente', 'morador', 'participante', 'ajudante'];
-                                const sortedParticipants = Object.entries(desig.participantes).sort((a, b) => {
-                                    return roleOrder.indexOf(a[0]) - roleOrder.indexOf(b[0]);
-                                });
 
+                                let roleOrder;
+                                if (fullDesigData && fullDesigData.parte === 'tecnicas') {
+                                    roleOrder = ['dirigente', 'morador', 'ajudante', 'participante'];
+                                } else {
+                                    roleOrder = ['dirigente', 'morador', 'participante', 'ajudante'];
+                                }
+
+                                const sortedParticipants = Object.entries(desig.participantes).sort((a, b) => {
+                                    const getBaseRole = (role) => role.replace(/[0-9]/g, '');
+                                    const baseRoleA = getBaseRole(a[0]);
+                                    const baseRoleB = getBaseRole(b[0]);
+                                    const indexA = roleOrder.indexOf(baseRoleA);
+                                    const indexB = roleOrder.indexOf(baseRoleB);
+                                    if (indexA !== indexB) {
+                                        return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+                                    }
+                                    return a[0].localeCompare(b[0]);
+                                });
+                                
                                 // ==========================================================
-                                // INÍCIO DA ALTERAÇÃO PARA REMOVER A ETIQUETA "PARTICIPANTE"
+                                // INÍCIO DA ALTERAÇÃO PARA REMOVER AS ETIQUETAS
                                 // ==========================================================
                                 for (const [role, personId] of sortedParticipants) {
                                     const personName = personMap.get(personId) || 'N/A';
                                     
-                                    // Se o papel for 'participante', mostra só o nome
-                                    if (role === 'participante') {
+                                    // Se a designação for da parte "tecnicas" OU o papel for "participante",
+                                    // mostra apenas o nome, sem a etiqueta do papel.
+                                    if ((fullDesigData && fullDesigData.parte === 'tecnicas') || role === 'participante') {
                                         bodyHTML += `<li>${personName}</li>`;
                                     } else {
-                                        // Para todos os outros papéis, mantém a etiqueta
+                                        // Para todas as outras designações, continua a mostrar a etiqueta.
                                         const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
                                         bodyHTML += `<li><em>${formattedRole}:</em> ${personName}</li>`;
                                     }
@@ -1959,7 +2059,7 @@ function openCreatePairAnalysisPopup() {
                                 // ==========================================================
                                 // FIM DA ALTERAÇÃO
                                 // ==========================================================
-
+                                
                                 if (desig.descricao) {
                                     const discourseData = discourseMap.get(desig.descricao);
                                     const themeText = discourseData ? discourseData.nome : desig.descricao;
@@ -2028,6 +2128,7 @@ document.getElementById('create-pair-analysis-button').addEventListener('click',
             monthFilter.addEventListener('change', () => { updateWeekFilter(); });
             weekFilter.addEventListener('change', () => { if (isEditMode) isEditMode = false; renderSchedule(); });
             roomFilter.addEventListener('change', renderSchedule); 
+            parteFilter.addEventListener('change', renderSchedule);
             
             // ===================================================================
             // INÍCIO: CÓDIGO AVANÇADO (LÓGICA DE EDIÇÃO E VALIDAÇÃO)
@@ -2402,28 +2503,53 @@ async function openEditDesignationPopup(uniqueId) {
 
 
             // FUNÇÃO 2 (A que constrói a UI)
-            async function generateEditPopupUI(historicoDoc, fullDesigData) {
+       async function generateEditPopupUI(historicoDoc, fullDesigData) {
                 console.group("[DEBUG] Iniciando generateEditPopupUI()");
                 console.log(" -> Exibindo o spinner de carregamento...");
                 editPopupParticipantsContainer.innerHTML = '<div class="loading-spinner" style="display: block; position: relative; top: auto; left: auto; transform: none;"><i class="fas fa-spinner fa-spin"></i></div>';
                 
-                const numParticipantes = parseInt(document.getElementById('editNumParticipantes').value);
                 const idiomaPreferencia = document.getElementById('editIdioma').value;
                 const generoPreferencia = document.getElementById('editGeneroPreferencia').value;
                 const participantsToDisplay = currentEditData.originalDesignation.participantes || {};
                 
-                console.log(` -> A gerar UI para ${numParticipantes} participante(s).`);
+                // ==========================================================
+                // INÍCIO DA LÓGICA CORRIGIDA
+                // ==========================================================
                 
-                // ... (código de construção do HTML continua o mesmo)
-                const participantRoles = [];
-                if (numParticipantes === 1) participantRoles.push({ key: 'participante', label: "Participante" });
-                else if (numParticipantes === 2) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" });
-                else if (numParticipantes >= 3) participantRoles.push({ key: 'dirigente', label: "Dirigente" }, { key: 'morador', label: "Morador" }, { key: 'ajudante', label: "Ajudante" });
-
+                // Em vez de adivinhar os papéis pelo número de participantes, vamos ler os papéis reais dos dados.
                 let finalHTML = '';
-                participantRoles.forEach((role, i) => {
-                    finalHTML += `<div class="form-group"><label>${role.label}</label><div class="participant-row"><select class="form-select" data-role-key="${role.key}" data-role-index="${i}"></select><i class="fas fa-rocket rocket-suggester" title="Sugerir próximo participante válido"></i></div></div>`;
+                const roleOrder = ['dirigente', 'morador', 'ajudante', 'participante']; // Ordem base para sort
+
+                const sortedRoleKeys = Object.keys(participantsToDisplay).sort((a, b) => {
+                    const getBaseRole = (role) => role.replace(/[0-9]/g, ''); // "ajudante1" -> "ajudante"
+                    const baseRoleA = getBaseRole(a[0]);
+                    const baseRoleB = getBaseRole(b[0]);
+                    const indexA = roleOrder.indexOf(baseRoleA);
+                    const indexB = roleOrder.indexOf(baseRoleB);
+                    if (indexA !== indexB) {
+                        return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+                    }
+                    return a[0].localeCompare(b[0]);
                 });
+
+                // Verifica se esta é uma designação da parte "tecnicas"
+                const isTecnicas = fullDesigData && fullDesigData.parte === 'tecnicas';
+
+                // Cria um dropdown para cada papel real encontrado nos dados
+                sortedRoleKeys.forEach((roleKey, index) => {
+                    // Decide qual etiqueta mostrar: "Participante X" para tecnicas, ou o nome do papel para as outras.
+                    const label = isTecnicas
+                        ? `Participante ${index + 1}`
+                        : roleKey.charAt(0).toUpperCase() + roleKey.slice(1);
+
+                    // O data-role-key continua a ser o original (ex: "dirigente", "ajudante1") para que os dados sejam guardados corretamente
+                    finalHTML += `<div class="form-group"><label>${label}</label><div class="participant-row"><select class="form-select" data-role-key="${roleKey}" data-role-index="${index}"></select><i class="fas fa-rocket rocket-suggester" title="Sugerir próximo participante válido"></i></div></div>`;
+                });
+
+                // ==========================================================
+                // FIM DA LÓGICA CORRIGIDA
+                // ==========================================================
+                
                 const currentDescription = currentEditData.originalDesignation.descricao || '';
                 if (fullDesigData.anexadoDiscursos === true || fullDesigData.anexadoDiscursos === 'sim') {
                     const discourseInfo = discourseMap.get(currentDescription);
@@ -2443,7 +2569,8 @@ async function openEditDesignationPopup(uniqueId) {
                     await populateSingleEditDropdown(select, historicoDoc, fullDesigData, generoPreferencia, idiomaPreferencia);
                     
                     const roleKey = select.dataset.roleKey;
-                    const personIdToSet = participantsToDisplay[roleKey];
+                    // Esta linha agora funciona porque o roleKey (ex: "ajudante1") existe em participantsToDisplay
+                    const personIdToSet = participantsToDisplay[roleKey]; 
                     if (personIdToSet && select.querySelector(`option[value="${personIdToSet}"]`)) {
                         select.value = personIdToSet;
                     }
