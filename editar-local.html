@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Locais - Sistema de Escala</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        main.content { color: #2c3e50; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 700px; margin: 40px auto 0 auto; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #2c3e50; font-weight: bold; }
+        .form-group input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .btn-salvar { background-color: #2980b9; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
+        .btn-salvar:hover { background-color: #3498db; }
+        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; }
+        
+        /* Estilos para a lista de locais */
+        .list-container { max-width: 700px; margin: 0 auto; }
+        .panel-card { background-color: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
+        .panel-card h2 { color: #2c3e50; margin-top: 0; margin-bottom: 15px; font-size: 20px; }
+        .local-list { margin-top: 15px; }
+        .local-item { display: flex; align-items: center; padding: 12px 10px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 8px; justify-content: space-between; }
+        .local-info { display: flex; flex-direction: column; text-align: left; flex-grow: 1; margin-left: 15px; }
+        .local-name { font-weight: bold; color: #34495e; }
+        .local-tag {
+            font-size: 0.9em;
+            padding: 3px 8px;
+            border-radius: 12px; /* Deixa a tag mais arredondada */
+            display: inline-block;
+            margin-top: 4px;
+            font-weight: bold;
+            line-height: 1.2;
+        }
+        .edit-btn.inline { background: none; border: none; color: #3498db; cursor: pointer; font-size: 19px; padding: 5px; }
+        .edit-btn.inline:hover { color: #2980b9; }
+    </style>
+</head>
+<body>
+    
+   <div id="sidebar-placeholder"></div>
+
+    <main class="content">
+        <a href="criar.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <h1>Editar Locais</h1>
+        
+        <div class="list-container">
+            <div class="panel-card">
+                <h2>Locais Cadastrados</h2>
+                <div id="lista-locais" class="local-list">Carregando locais...</div>
+            </div>
+        </div>
+        
+        <div class="card" id="edit-form-card" style="display: none;">
+            <form id="editar-local-form">
+                <div class="form-group">
+                    <label for="nome-local">Nome do Local</label>
+                    <input type="text" id="nome-local" required>
+                </div>
+                <div class="form-group">
+                    <label for="tag-local">Tag</label>
+                    <input list="tags-list" id="tag-local" placeholder="Selecione ou digite uma nova tag">
+                    <datalist id="tags-list"></datalist>
+                </div>
+                <button type="submit" class="btn-salvar">Salvar Alterações</button>
+            </form>
+        </div>
+    </main>
+
+    <script src="firebase-config.js"></script>
+    <script src="main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (typeof db === 'undefined') {
+                alert("Erro de configuração do banco de dados.");
+                return;
+            }
+
+            const mainContent = document.querySelector('.content');
+            const editFormCard = document.getElementById('edit-form-card');
+            const editForm = document.getElementById('editar-local-form');
+            const listaLocaisDiv = document.getElementById('lista-locais');
+            const tagsDatalist = document.getElementById('tags-list');
+            
+            let idAtualEmEdicao = null;
+            
+            // --- INÍCIO DA LÓGICA DE CORES PARA TAGS ---
+            const tagColorMap = {};
+            const colorPalette = [
+                { bg: '#e8eaf6', text: '#3f51b5' }, // Indigo
+                { bg: '#e0f2f1', text: '#00796b' }, // Teal
+                { bg: '#fce4ec', text: '#d81b60' }, // Pink
+                { bg: '#fff3e0', text: '#ef6c00' }, // Orange
+                { bg: '#e3f2fd', text: '#1976d2' }, // Blue
+                { bg: '#f9fbe7', text: '#afb42b' }, // Lime
+                { bg: '#ede7f6', text: '#5e35b1' }, // Deep Purple
+                { bg: '#efebe9', text: '#6d4c41' }  // Brown
+            ];
+            let nextColorIndex = 0;
+            // --- FIM DA LÓGICA DE CORES ---
+
+            async function carregarTags() {
+                try {
+                    const snapshot = await db.collection('locais').get();
+                    const tags = new Set();
+                    snapshot.forEach(doc => { if (doc.data().tag) { tags.add(doc.data().tag); } });
+                    tagsDatalist.innerHTML = '';
+                    tags.forEach(tag => {
+                        const option = document.createElement('option');
+                        option.value = tag;
+                        tagsDatalist.appendChild(option);
+                    });
+                } catch (error) { console.error("Erro ao carregar tags: ", error); }
+            }
+
+            async function renderizarLocais() {
+                listaLocaisDiv.innerHTML = 'Carregando...';
+                try {
+                    const snapshot = await db.collection('locais').orderBy('nome').get();
+                    listaLocaisDiv.innerHTML = '';
+                    
+                    if (snapshot.empty) {
+                        listaLocaisDiv.innerHTML = 'Nenhum local cadastrado.';
+                        return;
+                    }
+                    
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        let tagHtml = '';
+
+                        // --- LÓGICA PARA APLICAR A COR NA TAG ---
+                        if (data.tag) {
+                            if (!tagColorMap[data.tag]) { // Se a tag ainda não tem cor
+                                tagColorMap[data.tag] = colorPalette[nextColorIndex % colorPalette.length];
+                                nextColorIndex++;
+                            }
+                            const colorPair = tagColorMap[data.tag];
+                            tagHtml = `<span class="local-tag" style="background-color: ${colorPair.bg}; color: ${colorPair.text};">${data.tag}</span>`;
+                        }
+                        // --- FIM DA LÓGICA DE COR ---
+
+                        const itemHtml = `
+                            <div class="local-item" data-id="${doc.id}">
+                                <i class="fas fa-map-marker-alt" style="color: #3498db;"></i>
+                                <div class="local-info">
+                                    <span class="local-name">${data.nome}</span>
+                                    ${tagHtml}
+                                </div>
+                                <button class="edit-btn inline"><i class="fas fa-edit"></i></button>
+                            </div>`;
+                        listaLocaisDiv.innerHTML += itemHtml;
+                    });
+                } catch (error) {
+                    console.error("Erro ao carregar locais: ", error);
+                    listaLocaisDiv.innerHTML = 'Erro ao carregar locais.';
+                }
+            }
+
+            async function carregarDadosFormulario(id) {
+                try {
+                    const doc = await db.collection('locais').doc(id).get();
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('nome-local').value = data.nome || '';
+                        document.getElementById('tag-local').value = data.tag || '';
+                        
+                        idAtualEmEdicao = id;
+                        editFormCard.style.display = 'block';
+                        editFormCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                } catch (error) { console.error("Erro ao buscar dados do local:", error); }
+            }
+            
+            await carregarTags();
+            await renderizarLocais();
+
+            mainContent.addEventListener('click', function(e) {
+                const editButton = e.target.closest('.edit-btn.inline');
+                if (editButton) {
+                    const localItemId = e.target.closest('.local-item').dataset.id;
+                    carregarDadosFormulario(localItemId);
+                }
+            });
+
+            editForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                if (!idAtualEmEdicao) return;
+
+                const localAtualizado = {
+                    nome: document.getElementById('nome-local').value.trim(),
+                    tag: document.getElementById('tag-local').value.trim(),
+                    dataModificacao: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                try {
+                    await db.collection('locais').doc(idAtualEmEdicao).update(localAtualizado);
+                    alert('Local atualizado com sucesso!');
+                    editForm.reset();
+                    editFormCard.style.display = 'none';
+                    idAtualEmEdicao = null;
+                    await renderizarLocais(); // Renderiza de novo para mostrar a tag atualizada com a cor certa
+                    await carregarTags();
+                } catch (error) {
+                    console.error("Erro ao atualizar local:", error);
+                    alert("Ocorreu um erro ao salvar as alterações.");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
