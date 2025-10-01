@@ -838,6 +838,17 @@
 .lab-popup .lab-lock-icon.locked {
     color: #e67e22;
 }
+.week-info {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.week-info.warning-state {
+    background-color: #fbeae5;
+    border-color: #e74c3c;
+    color: #c0392b;
+    font-weight: bold;
+}
+
     </style>
 </head>
 <body>
@@ -3452,16 +3463,28 @@ loadNacionalidades();
     }
 };
 
-       const countHistoricoSemanas = async (ano, mes) => {
-    const historicoRef = db.collection('historico');
-    const querySnapshot = await historicoRef
+     async function countHistoricoSemanas(ano, mes, sala) {
+    let q = db.collection('historico')
         .where("ano", "==", ano)
         .where("mes", "==", parseInt(mes))
-        .where("quando", "==", "Semana") 
-        .where("parte", "==", "escola")
-        .get();
-    return querySnapshot.size;
-};
+        .where("quando", "==", "Semana")
+        .where("parte", "==", "escola"); // Mantém o filtro de "escola" para esta página
+
+    // Adiciona o filtro pela sala, se uma for fornecida
+    if (sala) {
+        q = q.where("sala", "==", sala);
+    }
+
+    const querySnapshot = await q.get();
+    
+    // Usa um Set para contar os números de semana únicos e evitar duplicações
+    const semanasUnicas = new Set();
+    querySnapshot.forEach(doc => {
+        semanasUnicas.add(doc.data().semanaNumero);
+    });
+
+    return semanasUnicas.size;
+}
 
           const getDiasSemana = (ano, mes, semanaNumero) => { // FUNÇÃO 1 CORRIGIDA
     const primeiroDiaMes = new Date(ano, mes - 1, 1);
@@ -3520,52 +3543,36 @@ loadNacionalidades();
 
 
 
-          const updateWeekDisplay = async () => {
-    // Get references to DOM elements once for efficiency
+        async function updateWeekDisplay() {
     const weekDisplay = document.getElementById('weekDisplay');
     const nextButton = document.getElementById('btnSeguinte');
-
-    // Get date and week information
     const mesSelecionado = document.getElementById('mes').value;
     const anoFirebase = await getAnoPainelFirebase();
-    const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado) + 1;
+    
+    // 1. Lê a sala selecionada
+    const sala = document.getElementById('sala').value;
+    
+    // 2. Pega a referência do container para aplicar o estilo
+    const weekInfoContainer = weekDisplay.parentElement;
+
+    // 3. Passa a 'sala' para a função de contagem
+    const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado, sala) + 1;
     const totalSemanas = await getTotalSemanasNoMes(anoFirebase, mesSelecionado);
 
-    // -- NOVA LÓGICA DE VALIDAÇÃO --
-    // Verifica se o número da próxima semana excede o total de semanas do mês.
-    // A condição `totalSemanas > 0` é uma segurança para meses sem histórico.
     if (totalSemanas > 0 && semanaNumero > totalSemanas) {
-        // Se exceder, exibe a mensagem de aviso
-        weekDisplay.innerHTML = "Mude o Mês, já não há mais semanas neste mês";
-        weekDisplay.style.color = '#e74c3c'; // Um vermelho forte para alerta
-        weekDisplay.style.fontWeight = 'bold';
-
-        // Desativa o botão "Seguinte" para impedir que o utilizador avance
+        weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
         nextButton.disabled = true;
-        nextButton.style.backgroundColor = '#bdc3c7'; // Cor cinza para indicar desativado
-        nextButton.style.cursor = 'not-allowed';
-
+        // 4. Usa a classe CSS para o aviso
+        weekInfoContainer.classList.add('warning-state');
     } else {
-        // Se a semana for válida, executa a lógica original
         const diasSemana = getDiasSemana(anoFirebase, mesSelecionado, semanaNumero);
-
-        // Atualiza o input escondido
         document.getElementById('semanaNumero').value = semanaNumero;
-
-        // Exibe as informações da semana
-        const weekDisplayText = `${semanaNumero}ª semana de ${totalSemanas} semanas <br>(${diasSemana})`;
-        weekDisplay.innerHTML = weekDisplayText;
-        
-        // Restaura o estilo normal do texto
-        weekDisplay.style.color = '#2c3e50';
-        weekDisplay.style.fontWeight = 'normal';
-
-        // Garante que o botão "Seguinte" está ativo e com o estilo correto
+        weekDisplay.innerHTML = `${semanaNumero}ª semana de ${totalSemanas} semanas <br>(${diasSemana})`;
         nextButton.disabled = false;
-        nextButton.style.backgroundColor = '#2ecc71'; // Cor original verde
-        nextButton.style.cursor = 'pointer';
+        // 5. Remove a classe de aviso
+        weekInfoContainer.classList.remove('warning-state');
     }
-};
+}
 
 
 
@@ -5346,6 +5353,8 @@ async function initializePage() {
 
 // Adiciona o listener para a mudança de mês
 document.getElementById('mes').addEventListener('change', updateWeekDisplay);
+document.getElementById('sala').addEventListener('change', updateWeekDisplay);
+
 
 // Inicia todo o processo
 initializePage();
