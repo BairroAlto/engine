@@ -768,71 +768,76 @@ body.popup-open {
             document.getElementById('perfilPopup').style.display = 'flex';
         });
 
-       document.body.addEventListener('change', (event) => {
-    if (event.target.classList.contains('form-select')) {
-        // LOG 1: Mostra qual elemento exato disparou o evento de mudança.
-        console.log(`[EVENTO] Evento 'change' detetado no elemento:`, event.target);
+   document.body.addEventListener('change', (event) => {
+    // NOVO LOG: Mostra qual elemento exato disparou o evento de mudança.
+    console.log(`%c[EVENTO] Evento 'change' foi disparado!`, 'color: #8e44ad; font-weight: bold;');
+    console.log('[EVENTO] Elemento que causou o evento:', event.target);
 
-        // Chamadas para as funções originais
+    if (event.target.classList.contains('form-select')) {
+        console.log('[EVENTO] O elemento é um "form-select". A iniciar as funções de sincronização e validação...');
+        // Chamada para a função com logs
         handleGenderSync(event.target);
         validateAllSelections();
+    } else {
+        console.log('[EVENTO] O elemento não é um "form-select". Nenhuma ação de sincronização será tomada.');
     }
 });
 
         // Botão de Foguetão (Placeholder)
-   document.getElementById('turboButton').addEventListener('click', async (event) => {
-            const button = event.currentTarget;
+ document.getElementById('turboButton').addEventListener('click', async (event) => {
+    console.groupCollapsed("🚀 CLIQUE NO FOGUETÃO DETETADO 🚀");
+    console.log("Iniciando processo de preenchimento automático...");
 
-            if (button.disabled) return;
-            button.disabled = true;
+    const button = event.currentTarget;
+    if (button.disabled) {
+        console.warn("AVISO: Botão clicado enquanto estava desativado.");
+        console.groupEnd();
+        return;
+    }
+    button.disabled = true;
+    button.classList.add('is-flying');
 
-            button.classList.add('is-flying');
+    try {
+        const exclusionSet = new Set(currentTurboAssignments.values());
+        console.log("A procurar combinações, excluindo:", exclusionSet);
 
-            try {
-                // Obter a lista de pessoas atualmente atribuídas pelo foguetão
-                const exclusionSet = new Set(currentTurboAssignments.values());
+        let newAssignments = await preencherAutomaticamente(exclusionSet);
+
+        if (Object.keys(newAssignments).length === 0) {
+            console.warn("Nenhuma combinação nova encontrada. A reiniciar o ciclo.");
+            currentTurboAssignments.clear();
+            newAssignments = await preencherAutomaticamente(new Set());
+        }
+
+        console.log("✅ Combinações encontradas:", newAssignments);
+        
+        for (const [elementId, pessoaId] of Object.entries(newAssignments)) {
+            const selectElement = document.getElementById(elementId);
+            if (selectElement) {
+                console.log(`%c[AÇÃO FOGUETÃO] A definir o valor de #${elementId} para '${pessoaId}'`, 'color: #3498db;');
+                selectElement.value = pessoaId;
                 
-                // Tenta encontrar uma nova combinação excluindo as pessoas atuais
-                let newAssignments = await preencherAutomaticamente(exclusionSet);
-
-                // Se não encontrou novas combinações, reinicia o ciclo
-                if (Object.keys(newAssignments).length === 0) {
-                    console.log("Não foram encontradas mais combinações. A reiniciar o ciclo.");
-                    currentTurboAssignments.clear(); // Limpa o estado
-                    newAssignments = await preencherAutomaticamente(new Set()); // Tenta novamente do zero
-                }
-                
-                // Aplica os resultados encontrados na interface
-                for (const [elementId, pessoaId] of Object.entries(newAssignments)) {
-                    const selectElement = document.getElementById(elementId);
-                    if (selectElement) {
-                        selectElement.value = pessoaId;
-                    }
-                }
-                
-                // Guarda o novo estado
-                currentTurboAssignments = new Map(Object.entries(newAssignments));
-
-            } catch (error) {
-                console.error("Ocorreu um erro crítico no preenchimento automático:", error);
-                alert("Ocorreu um erro durante o preenchimento automático. Verifique a consola para mais detalhes.");
-            } finally {
-                // A mesma lógica de animação de antes
-                const ROTATION_TIME = 200;
-                const FLIGHT_TIME = 500;
-
-                button.classList.remove('is-flying');
-                button.classList.add('is-returning');
-
-                setTimeout(() => {
-                    button.classList.remove('is-returning');
-                }, ROTATION_TIME);
-
-                setTimeout(() => {
-                    button.disabled = false;
-                }, ROTATION_TIME + FLIGHT_TIME);
+                console.log(`%c[GATILHO] Disparando evento 'change' em #${elementId} para notificar o sistema...`, 'color: #e67e22; font-weight: bold;');
+                selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                console.log("[GATILHO] Evento disparado.");
             }
-        });
+        }
+        
+        currentTurboAssignments = new Map(Object.entries(newAssignments));
+
+    } catch (error) {
+        console.error("❌ ERRO CRÍTICO no preenchimento automático:", error);
+    } finally {
+        const ROTATION_TIME = 200;
+        const FLIGHT_TIME = 500;
+        button.classList.remove('is-flying');
+        button.classList.add('is-returning');
+        setTimeout(() => button.classList.remove('is-returning'), ROTATION_TIME);
+        setTimeout(() => button.disabled = false, ROTATION_TIME + FLIGHT_TIME);
+        console.log("🚀 Processo do foguetão concluído.");
+        console.groupEnd();
+    }
+});
         
   
 
@@ -1232,8 +1237,21 @@ const validateAllSelections = async () => {
 
 // Gatilho para quando um dropdown é alterado
 document.body.addEventListener('change', (event) => {
+    // Apenas reage a elementos que são dropdowns
     if (event.target.classList.contains('form-select')) {
+        console.groupCollapsed(`👂 Evento 'change' CAPTURADO no elemento: #${event.target.id}`);
+        console.log("Elemento que disparou o evento:", event.target);
+        console.log(`Valor atual do elemento: "${event.target.value}"`);
+
+        console.log("A iniciar a cadeia de reações...");
+        console.log("1. A chamar handleGenderSync...");
+        handleGenderSync(event.target);
+
+        console.log("2. A chamar validateAllSelections...");
         validateAllSelections();
+        
+        console.log("👂 Fim da cadeia de reações para este evento.");
+        console.groupEnd();
     }
 });
 
@@ -1548,6 +1566,30 @@ function loadTabData(tabName) {
     }
     contentArea.dataset.loaded = 'true';
 }
+
+
+function setValueWithLogging(element, newValue, reason) {
+    if (!element) return; // Segurança
+
+    const timestamp = new Date().toLocaleTimeString('pt-BR', { hour12: false }) + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
+    const oldValue = element.value;
+
+    // Só regista se o valor realmente mudar
+    if (oldValue !== newValue) {
+        // Usa vermelho se o campo for limpo, verde se receber um novo valor
+        const color = newValue ? 'green' : '#E53935'; 
+        const action = oldValue ? `ALTERADO de '${oldValue}' para '${newValue}'` : `DEFINIDO para '${newValue}' (era vazio)`;
+        
+        console.log(
+            `%c[VALOR ALTERADO] @ ${timestamp} | Elemento: #${element.id} | Ação: ${action} | Motivo: ${reason}`,
+            `color: ${color}; font-weight: bold; border: 1px solid ${color}; padding: 2px 5px; border-radius: 3px;`
+        );
+    }
+    
+    // A atribuição real do valor
+    element.value = newValue;
+}
+
 
 // Configura o evento de clique para todas as abas
 function setupTabListeners() {
@@ -2141,36 +2183,19 @@ function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
         
 
 const handleGenderSync = (changedSelect) => {
-    // Encontra o container da instância atual (ex: "Demonstração (1)")
+    if (!changedSelect.id.startsWith('participant-')) {
+        return; 
+    }
+
     const instanceContainer = changedSelect.closest('.active-designation-container');
     if (!instanceContainer) return;
 
-    // Procura o novo filtro "Masculino com Feminino" dentro do cartão
-    const genderMixSelect = instanceContainer.querySelector('.gender-mix-select');
-
-    // Se a regra for "Sim", removemos qualquer filtro de género e paramos a função
-    if (genderMixSelect && genderMixSelect.value === 'sim') {
-        // ALTERAÇÃO CRÍTICA AQUI: O seletor agora exclui os menus de dia e local
-        const allSelectsInInstance = instanceContainer.querySelectorAll('select.form-select:not(.dia-select):not(.local-select)');
-        allSelectsInInstance.forEach(select => {
-            Array.from(select.options).forEach(option => {
-                option.style.display = ''; // Mostra todas as opções
-            });
-        });
-        return; // Pára a execução para não aplicar o bloqueio de género
-    }
-
-    // O código abaixo só é executado se o filtro for "Não"
-    // ALTERAÇÃO CRÍTICA AQUI: O seletor agora exclui os menus de dia e local
     const allSelectsInInstance = instanceContainer.querySelectorAll('select.form-select:not(.dia-select):not(.local-select)');
     const selectedPersonId = changedSelect.value;
 
-    // Se um campo for limpo, remove todos os filtros de género
     if (!selectedPersonId) {
         allSelectsInInstance.forEach(select => {
-            Array.from(select.options).forEach(option => {
-                option.style.display = ''; 
-            });
+            Array.from(select.options).forEach(option => { option.style.display = ''; });
         });
         return;
     }
@@ -2179,33 +2204,25 @@ const handleGenderSync = (changedSelect) => {
     if (!personData || !personData.genero) return;
 
     const requiredGender = personData.genero;
-
-    // Itera sobre todos os dropdowns na mesma designação
     allSelectsInInstance.forEach(select => {
-        // Valida seleções já feitas
         if (select !== changedSelect && select.value) {
             const otherPersonData = allPeopleDataMap.get(select.value);
-            // Se o género for diferente, limpa a seleção
             if (!otherPersonData || otherPersonData.genero !== requiredGender) {
-                select.value = ''; 
+                // ANTES: select.value = '';
+                // AGORA: Usamos o nosso logger!
+                setValueWithLogging(select, '', 'Falha na sincronização de género');
             }
         }
-        
-        // Filtra as opções nos outros dropdowns
         Array.from(select.options).forEach(option => {
-            if (!option.value) { // Mantém sempre a opção "Selecione..."
-                option.style.display = '';
-                return;
-            }
+            if (!option.value) return;
             const optionPersonData = allPeopleDataMap.get(option.value);
-            if (optionPersonData && optionPersonData.genero === requiredGender) {
-                option.style.display = ''; // Mostra se o género for o mesmo
-            } else {
-                option.style.display = 'none'; // Esconde se o género for diferente
-            }
+            option.style.display = (optionPersonData && optionPersonData.genero === requiredGender) ? '' : 'none';
         });
     });
 };
+
+
+
 
 
 const loadPeopleOptionsIntoSelects = async (designacao, container, genderPreference = 'ambos', idiomas = []) => {
@@ -2426,7 +2443,7 @@ function getDayOfWeekNumber(dayOfWeekString) {
 
 
 
- async function preencherAutomaticamente(exclusionSet = new Set()) {
+async function preencherAutomaticamente(exclusionSet = new Set()) {
     console.log("🚀 Iniciando o preenchimento automático (v9 - Correção Final)...");
     const ano = await getAnoPainelFirebase(); 
     const mes = parseInt(document.getElementById('mes').value);
@@ -2457,7 +2474,11 @@ function getDayOfWeekNumber(dayOfWeekString) {
     
     const vagas = [];
     document.querySelectorAll('.active-designation-container:not([data-locked="true"])').forEach(card => {
-        card.querySelectorAll('select.form-select').forEach(select => {
+        // ===============================================================
+        // AQUI ESTÁ A CORREÇÃO CRUCIAL!
+        // O seletor agora exclui explicitamente os campos de dia e local.
+        card.querySelectorAll('select.form-select:not(.dia-select):not(.local-select)').forEach(select => {
+        // ===============================================================
             vagas.push({
                 elementId: select.id,
                 designacaoId: card.dataset.designacaoId,
@@ -2594,7 +2615,7 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
     candidatos = candidatos.filter(p => {
         const atendeGenero = vaga.filters.genero === 'ambos' || p.genero?.toLowerCase() === vaga.filters.genero;
         const atendeIdioma = vaga.filters.idiomas.includes(p.idioma);
-        const podeFazerDesignacao = p.designacoesReuniao?.includes(designacao.nome);
+        const podeFazerDesignacao = p.designacoesPregacao?.includes(designacao.nome);
         const temPrivilegiosNecessarios = privilegiosExigidos.some(
             privilegio => p.privilegiosCongregacao && p.privilegiosCongregacao.includes(privilegio)
         );
