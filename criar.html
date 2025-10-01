@@ -107,15 +107,19 @@
     <main class="content">
         <h1>Criar & Editar</h1>
         <div class="card-container">
-            <!-- Cards de Criar & Editar (inalterados) -->
+            <!-- Cards de Criar & Editar -->
             <div class="item-card"><i class="fas fa-tasks"></i><h3>Designação</h3><div class="button-group"><a href="criar-designacao.html" class="card-action-btn btn-criar">Criar</a><a href="editar-designacao.html" class="card-action-btn btn-editar">Editar</a></div></div>
             <div class="item-card"><i class="fas fa-user-plus"></i><h3>Pessoa</h3><div class="button-group"><a href="criar-pessoa.html" class="card-action-btn btn-criar">Criar</a><a href="editar-pessoa.html" class="card-action-btn btn-editar">Editar</a></div></div>
             <div class="item-card"><i class="fas fa-calendar-alt"></i><h3>Horário de Reunião</h3><div class="button-group"><a href="criar-horario-reuniao.html" class="card-action-btn btn-criar">Criar</a><a href="editar-horario-reuniao.html" class="card-action-btn btn-editar">Editar</a></div></div>
-<div class="item-card"> <i class="fas fa-bullhorn"></i> <h3>Horário de Pregação</h3> <div class="button-group"> <a href="criar-horario-pregacao.html" class="card-action-btn btn-criar">Criar</a> <a href="editar-horario-pregacao.html" class="card-action-btn btn-editar">Editar</a> </div> </div>            <div class="item-card"><i class="fas fa-flag"></i><h3>Nacionalidade</h3><div class="button-group"><a href="criar-nacionalidade.html" class="card-action-btn btn-criar">Criar</a><a href="editar-nacionalidade.html" class="card-action-btn btn-editar">Editar</a></div></div>
+            <div class="item-card"><i class="fas fa-bullhorn"></i><h3>Horário de Pregação</h3><div class="button-group"><a href="criar-horario-pregacao.html" class="card-action-btn btn-criar">Criar</a><a href="editar-horario-pregacao.html" class="card-action-btn btn-editar">Editar</a></div></div>
+            <div class="item-card"><i class="fas fa-heading"></i><h3>Cabeçalhos</h3><div class="button-group"><a href="criar-anexo.html" class="card-action-btn btn-criar">Criar</a><a href="editar-anexo.html" class="card-action-btn btn-editar">Editar</a></div></div>
+            <div class="item-card"><i class="fas fa-flag"></i><h3>Nacionalidade</h3><div class="button-group"><a href="criar-nacionalidade.html" class="card-action-btn btn-criar">Criar</a><a href="editar-nacionalidade.html" class="card-action-btn btn-editar">Editar</a></div></div>
             <div class="item-card"><i class="fas fa-star"></i><h3>Evento Especial</h3><div class="button-group"><a href="criar-evento.html" class="card-action-btn btn-criar">Criar</a><a href="editar-evento.html" class="card-action-btn btn-editar">Editar</a></div></div>
+            <!-- +++ CARD DE LOCAIS RESTAURADO AQUI +++ -->
+            <div class="item-card"><i class="fas fa-map-marker-alt"></i><h3>Locais</h3><div class="button-group"><a href="criar-locais.html" class="card-action-btn btn-criar">Criar</a><a href="editar-locais.html" class="card-action-btn btn-editar">Editar</a></div></div>
         </div>
 
-        <!-- +++ SEÇÃO GERENCIAR COM HTML E CLASSES ATUALIZADAS +++ -->
+        <!-- SEÇÃO GERENCIAR -->
         <h1>Gerenciar</h1>
         <div class="card-container">
             <!-- Card Gerenciar Permissões -->
@@ -145,7 +149,6 @@
                 </div>
             </a>
             
-            <!-- +++ NOVO CARD ADICIONADO AQUI +++ -->
             <!-- Card Gerenciar Discursos -->
             <a href="gerenciar-discursos.html" class="card-link">
                 <div class="item-card gerenciar-card">
@@ -159,7 +162,7 @@
 
     <script>
         // Script Firebase (inalterado)
-       const firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
             authDomain: "escalas-6e0f9.firebaseapp.com",
             projectId: "escalas-6e0f9",
@@ -169,45 +172,6 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-
-        /**
-         * Esta função busca o ano atual no Firebase e atualiza os links
-         * de edição que dependem dele.
-         */
-        async function atualizarLinksDeEdicao() {
-            try {
-                // Seleciona o link que precisa ser atualizado
-                const preachingEditLink = document.getElementById('editPreachingLink');
-                const meetingEditLink = document.getElementById('editMeetingLink'); // Exemplo se precisar para outros
-
-                // Busca o documento que armazena o ano atual
-                const doc = await db.collection('painel').doc('ano').get();
-
-                if (doc.exists && doc.data().ano) {
-                    const anoAtual = doc.data().ano;
-                    
-                    // Constrói o URL correto com o ano e o define no atributo href
-                    preachingEditLink.href = `editar-horario-pregacao.html?year=${anoAtual}`;
-                    
-                    // Você pode fazer o mesmo para outros links, como o de Horário de Reunião
-                    // Ex: meetingEditLink.href = `editar-horario-reuniao.html?year=${anoAtual}`;
-
-                } else {
-                    // Caso o ano não esteja definido no Firebase, o link pode levar a uma página de erro ou ficar desabilitado
-                    console.warn('Ano atual não definido no Firebase. O botão de edição pode não funcionar.');
-                    preachingEditLink.href = 'iniciar.html'; // Ou para uma página que instrui a configurar o ano
-                    preachingEditLink.textContent = 'Configurar Ano';
-                }
-            } catch (error) {
-                console.error("Erro ao atualizar os links de edição:", error);
-                // Mantém o link desativado em caso de erro
-                document.getElementById('editPreachingLink').style.pointerEvents = 'none';
-                document.getElementById('editPreachingLink').style.backgroundColor = '#bdc3c7';
-            }
-        }
-
-        // Garante que o DOM está carregado antes de executar o script
-        document.addEventListener('DOMContentLoaded', atualizarLinksDeEdicao);
     </script>
 </body>
 </html>
