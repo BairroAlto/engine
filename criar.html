@@ -42,7 +42,7 @@
             gap: 15px;
             text-align: center;
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-            height: 100%; /* Garante que todos os cards tenham a mesma altura */
+            height: 100%;
         }
         
         .item-card:hover {
@@ -60,30 +60,54 @@
         .btn-criar { background-color: #3498db; }
         .btn-editar { background-color: #f39c12; }
 
-        /* --- NOVOS ESTILOS PARA HARMONIZAR A SEÇÃO "GERENCIAR" --- */
-        
-        /* Remove o sublinhado do link que envolve o card de gerenciar */
+        /* --- ESTILOS PARA HARMONIZAR A SEÇÃO "GERENCIAR" --- */
         .card-link {
             text-decoration: none;
         }
 
-        /* Card de Gerenciar com acento de cor */
         .gerenciar-card {
             border-top: 4px solid #9b59b6;
         }
 
-        /* Ícone roxo para o card de gerenciar */
         .gerenciar-card i {
             color: #9b59b6;
         }
 
-        /* Texto de ação para o card de gerenciar */
         .gerenciar-card .action-text {
             margin-top: auto;
             color: #34495e;
             font-weight: bold;
         }
         
+        /* --- NOVOS ESTILOS PARA REDUZIR A SEÇÃO "GERENCIAR" --- */
+
+        /* Define uma largura mínima menor para os cards dentro do container de gerenciamento */
+        .gerenciar-container {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px; /* Reduz levemente o espaçamento entre os cards */
+        }
+
+        /* Ajusta o card de gerenciar para ser mais compacto */
+        .gerenciar-container .gerenciar-card {
+            padding: 15px; /* Reduz o preenchimento */
+            gap: 8px;      /* Reduz o espaço entre os itens internos */
+        }
+        
+        /* Reduz o tamanho do ícone */
+        .gerenciar-container .gerenciar-card i {
+            font-size: 20px;
+        }
+
+        /* Reduz o tamanho do título */
+        .gerenciar-container .gerenciar-card h3 {
+            font-size: 15px;
+        }
+        
+        /* Reduz o texto de ação */
+        .gerenciar-container .gerenciar-card .action-text {
+            font-size: 13px;
+        }
+
         @media (max-width: 768px) { .sidebar { width: 70px; } .sidebar .logo h2, .sidebar .nav-item a span { display: none; } .content { margin-left: 70px; } }
     </style>
 </head>
@@ -115,13 +139,13 @@
             <div class="item-card"><i class="fas fa-heading"></i><h3>Cabeçalhos</h3><div class="button-group"><a href="criar-anexo.html" class="card-action-btn btn-criar">Criar</a><a href="editar-anexo.html" class="card-action-btn btn-editar">Editar</a></div></div>
             <div class="item-card"><i class="fas fa-flag"></i><h3>Nacionalidade</h3><div class="button-group"><a href="criar-nacionalidade.html" class="card-action-btn btn-criar">Criar</a><a href="editar-nacionalidade.html" class="card-action-btn btn-editar">Editar</a></div></div>
             <div class="item-card"><i class="fas fa-star"></i><h3>Evento Especial</h3><div class="button-group"><a href="criar-evento.html" class="card-action-btn btn-criar">Criar</a><a href="editar-evento.html" class="card-action-btn btn-editar">Editar</a></div></div>
-            <!-- +++ CARD DE LOCAIS RESTAURADO AQUI +++ -->
             <div class="item-card"><i class="fas fa-map-marker-alt"></i><h3>Locais</h3><div class="button-group"><a href="criar-locais.html" class="card-action-btn btn-criar">Criar</a><a href="editar-locais.html" class="card-action-btn btn-editar">Editar</a></div></div>
         </div>
 
         <!-- SEÇÃO GERENCIAR -->
         <h1>Gerenciar</h1>
-        <div class="card-container">
+        <!-- Adicionada a classe "gerenciar-container" para aplicar os estilos de redução -->
+        <div class="card-container gerenciar-container">
             <!-- Card Gerenciar Permissões -->
             <a href="gerenciar-permissoes.html" class="card-link">
                 <div class="item-card gerenciar-card">
