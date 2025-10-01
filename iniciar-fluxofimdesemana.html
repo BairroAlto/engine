@@ -450,6 +450,17 @@ body.popup-open {
     border-left: 4px solid #f39c12; 
 }
 
+.week-info {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.week-info.warning-state {
+    background-color: #fbeae5;
+    border-color: #e74c3c;
+    color: #c0392b;
+    font-weight: bold;
+}
+
     </style>
 </head>
 
@@ -2150,15 +2161,27 @@ function makeTableSortable(table) {
             return doc.exists ? doc.data().ano : new Date().getFullYear();
         };
 
-        const countHistoricoFimDeSemana = async (ano, mes) => { // RENOMEADO
-            const q = await db.collection('historico')
-                .where("ano", "==", ano)
-                .where("mes", "==", parseInt(mes))
-                .where("quando", "==", "Fim de Semana")      // ALTERADO
-                .where("parte", "==", "fim de semana")       // ALTERADO
-                .get();
-            return q.size;
-        };
+       async function countHistoricoFimDeSemana(ano, mes, sala) {
+    let q = db.collection('historico')
+        .where("ano", "==", ano)
+        .where("mes", "==", parseInt(mes))
+        .where("quando", "==", "Fim de Semana");
+
+    // Adiciona o filtro pela sala selecionada
+    if (sala) {
+        q = q.where("sala", "==", sala);
+    }
+
+    const querySnapshot = await q.get();
+    
+    // Usa um Set para garantir que contaremos os números de semana únicos
+    const semanasUnicas = new Set();
+    querySnapshot.forEach(doc => {
+        semanasUnicas.add(doc.data().semanaNumero);
+    });
+
+    return semanasUnicas.size;
+}
 
         const getTotalSemanasNoMes = (ano, mes) => {
             let count = 0, day = new Date(ano, mes - 1, 1);
@@ -2820,40 +2843,29 @@ async function inicializarPagina() {
 }
 
 
-     const updateWeekDisplay = async () => {
-    // Log para saber quando a função é executada
-    console.log('%c[DEBUG] A função updateWeekDisplay() foi chamada.', 'color: blue; font-weight: bold;');
-
+   async function updateWeekDisplay() {
     const weekDisplay = document.getElementById('weekDisplay');
     const btn = document.getElementById('btnSeguinte');
     const mes = document.getElementById('mes').value;
     const ano = await getAnoPainelFirebase();
+    const sala = document.getElementById('sala').value;
+    const weekInfoContainer = weekDisplay.parentElement;
 
-    // Log para ver quais valores estão a ser usados para o cálculo
-    console.log(` -> Mês lido do dropdown: ${mes}`);
-    console.log(` -> Ano lido do Firebase: ${ano}`);
-
-    const semana = await countHistoricoFimDeSemana(ano, mes) + 1;
+    // Chama a nova função de contagem, passando a sala
+    const semana = await countHistoricoFimDeSemana(ano, mes, sala) + 1;
     const totalSemanas = getTotalSemanasNoMes(ano, mes);
 
-    // Log para ver os resultados do cálculo
-    console.log(` -> Fim de semanas já guardados para este mês: ${semana - 1}`);
-    console.log(` -> Total de fins de semana neste mês: ${totalSemanas}`);
-
     if (semana > totalSemanas && totalSemanas > 0) {
-        weekDisplay.innerHTML = "Mês completo. Por favor, selecione outro mês.";
+        weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
         btn.disabled = true;
-        // Log do resultado final
-        console.log(' -> RESULTADO: Mês completo. Botão "Seguinte" desativado.');
+        weekInfoContainer.classList.add('warning-state'); // Ativa o aviso visual
     } else {
         document.getElementById('semanaNumero').value = semana;
         weekDisplay.innerHTML = `${semana}º fim de semana de ${totalSemanas} <br>(${getDiasSemana(ano, mes, semana)})`;
         btn.disabled = false;
-        // Log do resultado final
-        console.log(` -> RESULTADO: Exibindo semana ${semana} de ${totalSemanas}. Botão "Seguinte" ativado.`);
+        weekInfoContainer.classList.remove('warning-state'); // Desativa o aviso visual
     }
-    console.log('--- Fim da execução de updateWeekDisplay() ---');
-};
+}
 
         const loadNacionalidades = async () => {
             const snapshot = await db.collection('nacionalidades').get();
@@ -3565,12 +3577,14 @@ const renderProfileTable = () => {
             
             document.getElementById('mes').value = new Date().getMonth() + 1;
             console.log(`Mês predefinido para: ${document.getElementById('mes').value}`);
+            
 
             await updateWeekDisplay();
         }
 
         // Adiciona o "ouvinte" para o dropdown do Mês para reagir a mudanças
         document.getElementById('mes').addEventListener('change', () => {
+            document.getElementById('sala').addEventListener('change', updateWeekDisplay);
             console.log('%c[EVENTO] O dropdown "Mês" foi alterado. A chamar updateWeekDisplay()...', 'color: green; font-weight: bold;');
             updateWeekDisplay();
         });
