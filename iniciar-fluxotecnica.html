@@ -450,6 +450,18 @@ body.popup-open {
     border-left: 4px solid #f39c12; 
 }
 
+
+.week-info {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.week-info.warning-state {
+    background-color: #fbeae5;
+    border-color: #e74c3c;
+    color: #c0392b;
+    font-weight: bold;
+}
+
     </style>
 </head>
 
@@ -1984,15 +1996,29 @@ function makeTableSortable(table) {
             return doc.exists ? doc.data().ano : new Date().getFullYear();
         };
 
-        const countHistoricoSemanas = async (ano, mes) => {
-            const q = await db.collection('historico')
-                .where("ano", "==", ano)
-                .where("mes", "==", parseInt(mes))
-                 .where("quando", "==", "Semana e Fim de Semana") 
-                .where("parte", "==", "tecnicas") 
-                .get();
-            return q.size;
-        };
+       async function countHistoricoSemanas(ano, mes, sala) {
+    let q = db.collection('historico')
+        .where("ano", "==", ano)
+        .where("mes", "==", parseInt(mes))
+        // Condições específicas desta página (preservadas)
+        .where("quando", "==", "Semana e Fim de Semana")
+        .where("parte", "==", "tecnicas");
+
+    // Lógica da sala (adicionada)
+    if (sala) {
+        q = q.where("sala", "==", sala);
+    }
+
+    const querySnapshot = await q.get();
+    
+    // Usa um Set para garantir que contamos os números de semana únicos
+    const semanasUnicas = new Set();
+    querySnapshot.forEach(doc => {
+        semanasUnicas.add(doc.data().semanaNumero);
+    });
+
+    return semanasUnicas.size;
+}
 
         const getTotalSemanasNoMes = (ano, mes) => {
             let count = 0, day = new Date(ano, mes - 1, 1);
@@ -2728,23 +2754,29 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
             return { current, previous, next };
         }
 
-        const updateWeekDisplay = async () => {
-            const weekDisplay = document.getElementById('weekDisplay');
-            const btn = document.getElementById('btnSeguinte');
-            const mes = document.getElementById('mes').value;
-            const ano = await getAnoPainelFirebase();
-            const semana = await countHistoricoSemanas(ano, mes) + 1;
-            const totalSemanas = getTotalSemanasNoMes(ano, mes);
+       async function updateWeekDisplay() {
+    const weekDisplay = document.getElementById('weekDisplay');
+    const btn = document.getElementById('btnSeguinte');
+    const mes = document.getElementById('mes').value;
+    const ano = await getAnoPainelFirebase();
+    const sala = document.getElementById('sala').value;
+    const weekInfoContainer = weekDisplay.parentElement;
 
-            if (semana > totalSemanas && totalSemanas > 0) {
-                weekDisplay.innerHTML = "Mês completo. Por favor, selecione outro mês.";
-                btn.disabled = true;
-            } else {
-                document.getElementById('semanaNumero').value = semana;
-                weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${getDiasSemana(ano, mes, semana)})`;
-                btn.disabled = false;
-            }
-        };
+    // A função de contagem já está correta, então o resto funciona perfeitamente
+    const semana = await countHistoricoSemanas(ano, mes, sala) + 1;
+    const totalSemanas = getTotalSemanasNoMes(ano, mes);
+
+    if (semana > totalSemanas && totalSemanas > 0) {
+        weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
+        btn.disabled = true;
+        weekInfoContainer.classList.add('warning-state'); // Ativa o aviso
+    } else {
+        document.getElementById('semanaNumero').value = semana;
+        weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${getDiasSemana(ano, mes, semana)})`;
+        btn.disabled = false;
+        weekInfoContainer.classList.remove('warning-state'); // Desativa o aviso
+    }
+}
 
         const loadNacionalidades = async () => {
             const snapshot = await db.collection('nacionalidades').get();
@@ -3657,6 +3689,7 @@ function setupTabClickListeners() {
 
       updateWeekDisplay(); 
       document.getElementById('mes').addEventListener('change', updateWeekDisplay);
+      document.getElementById('sala').addEventListener('change', updateWeekDisplay);
         loadNacionalidades();
         initializeSystemData();
         
