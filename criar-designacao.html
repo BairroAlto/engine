@@ -204,33 +204,27 @@ input:checked + .slider:before { transform: translateX(26px); }
 .popup-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 1000; opacity: 0; transition: opacity 0.3s ease-in-out; }
 .popup-content { background-color: #ffffff; padding: 30px 50px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: center; color: #2c3e50; font-size: 1.1em; }
 
-/* --- NOVO ESTILO PARA A SEÇÃO DE HORÁRIOS --- */
-#horarios-anexo-section {
+/* --- SEÇÕES DE ANEXO --- */
+.anexo-section {
     background-color: #f2f5f7;
-    border-left: 4px solid #3498db;
     padding: 15px;
     margin-top: 10px;
     border-radius: 5px;
 }
-#horarios-anexo-section h4 {
+.anexo-section h4 {
     margin-top: 0;
     margin-bottom: 15px;
     color: #2c3e50;
     font-size: 16px;
 }
-#horarios-anexo-section .horarios-container {
+.anexo-section .anexo-container {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
 }
-#horarios-anexo-section .horarios-group h5 {
-    width: 100%;
-    font-size: 14px;
-    color: #7f8c8d;
-    margin-bottom: 8px;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 5px;
-}
+#horarios-anexo-section { border-left: 4px solid #3498db; } /* Cor azul para horários */
+#locais-anexo-section { border-left: 4px solid #f39c12; } /* Cor laranja para locais */
+
 /* =================================================================== */
 /*  4. RESPONSIVIDADE (Mobile)                                         */
 /*  Esta regra aplica-se a TODAS as páginas.                         */
@@ -274,16 +268,11 @@ input:checked + .slider:before { transform: translateX(26px); }
                         <div class="form-group"><label for="feito-por">Feito por</label><select id="feito-por" required><option value="Masculino">Apenas Homens</option><option value="Feminino">Apenas Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
                         <div class="form-group"><label for="preferencia">Preferência</label><select id="preferencia" required><option value="Masculino">Homens</option><option value="Feminino">Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
                         
-                        <!-- ALTERADO PARA RADIO BUTTONS -->
                         <div class="form-group">
                             <label>Personalidade (do Dirigente)</label>
                             <div class="checkbox-group-horizontal">
-                                <label class="option-item-horizontal">
-                                    <input type="radio" name="personalidade" value="- à vontade"> - à vontade
-                                </label>
-                                <label class="option-item-horizontal">
-                                    <input type="radio" name="personalidade" value="+ à vontade"> + à vontade
-                                </label>
+                                <label class="option-item-horizontal"><input type="radio" name="personalidade" value="- à vontade"> - à vontade</label>
+                                <label class="option-item-horizontal"><input type="radio" name="personalidade" value="+ à vontade"> + à vontade</label>
                             </div>
                         </div>
 
@@ -323,16 +312,19 @@ input:checked + .slider:before { transform: translateX(26px); }
         </select>
     </div>
 
-    <!-- INÍCIO DA NOVA SEÇÃO DE HORÁRIOS ANEXADOS -->
-    <div id="horarios-anexo-section" style="display: none;">
-        <h4>Escolha aqui um horário para anexar ao Dirigente <span class="help-text">(Opcional)</span></h4>
-        <div class="horarios-container" id="horarios-container">
-            <!-- Os horários serão inseridos aqui pelo JavaScript -->
-        </div>
+    <!-- SEÇÃO DE HORÁRIOS ANEXADOS -->
+    <div id="horarios-anexo-section" class="anexo-section" style="display: none;">
+        <h4>Anexar Horário <span class="help-text">(Opcional)</span></h4>
+        <div class="anexo-container" id="horarios-container"></div>
     </div>
-    <!-- FIM DA NOVA SEÇÃO -->
+    
+    <!-- SEÇÃO DE LOCAIS ANEXADOS (NOVA) -->
+    <div id="locais-anexo-section" class="anexo-section" style="display: none;">
+        <h4>Anexar Local <span class="help-text">(Opcional)</span></h4>
+        <div class="anexo-container" id="locais-container"></div>
+    </div>
 
-    <div class="form-group">
+    <div class="form-group" style="margin-top: 20px;">
         <label for="anexo">Anexo <span class="help-text">(Anexar a um Cabeçalho para aparecer na Escala)</span></label>
         <select id="anexo"><option value="">Nenhum</option></select>
     </div>
@@ -386,152 +378,149 @@ input:checked + .slider:before { transform: translateX(26px); }
         document.addEventListener('DOMContentLoaded', async function() {
             if (typeof db === 'undefined') { alert("Erro de configuração do banco de dados."); return; }
 
-            // Lógica para controlar as abas
+            // --- Seletores de Elementos ---
             const tabButtons = document.querySelectorAll('.tab-button');
             const tabPanes = document.querySelectorAll('.tab-pane');
+            const descricaoSelect = document.getElementById('descricao');
+            const anexadoDiscursosGroup = document.getElementById('anexado-discursos-group');
+            const parteSelect = document.getElementById('parte');
+            const horariosSection = document.getElementById('horarios-anexo-section');
+            const locaisSection = document.getElementById('locais-anexo-section'); // Novo seletor
+            const form = document.getElementById('criar-designacao-form');
+            
+            // Flags para carregar dados apenas uma vez
+            let horariosCarregados = false;
+            let locaisCarregados = false; // Novo flag
 
+            // --- Lógica das Abas ---
             function showTab(tabNumber) {
                 tabPanes.forEach(pane => pane.classList.remove('active'));
                 tabButtons.forEach(button => button.classList.remove('active'));
                 document.getElementById(`tab-${tabNumber}`).classList.add('active');
                 document.querySelector(`.tab-button[data-tab="${tabNumber}"]`).classList.add('active');
             }
-
             tabButtons.forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-tab'))));
             document.querySelectorAll('.next-btn').forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-next-tab'))));
             document.querySelectorAll('.prev-btn').forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-prev-tab'))));
 
-            // Lógica para mostrar/esconder o campo 'Anexado a Discursos'
-            const descricaoSelect = document.getElementById('descricao');
-            const anexadoDiscursosGroup = document.getElementById('anexado-discursos-group');
-
+            // Lógica para mostrar/esconder 'Anexado a Discursos'
             descricaoSelect.addEventListener('change', function() {
-                if (this.value === 'sim') {
-                    anexadoDiscursosGroup.style.display = 'block';
-                } else {
-                    anexadoDiscursosGroup.style.display = 'none';
-                    document.getElementById('anexado-discursos').value = 'nao';
-                }
+                anexadoDiscursosGroup.style.display = (this.value === 'sim') ? 'block' : 'none';
+                if (this.value !== 'sim') { document.getElementById('anexado-discursos').value = 'nao'; }
             });
 
-            // Carregamento de dados (Anexos)
+            // --- Funções de Carregamento de Dados ---
             async function carregarAnexos() {
                 const anexoSelect = document.getElementById('anexo');
                 anexoSelect.innerHTML = '<option value="">Selecione um anexo</option>';
                 try {
                     const snapshot = await db.collection('cabecalhos').get();
                     snapshot.forEach(doc => {
-                        const anexo = doc.data();
                         const option = document.createElement('option');
                         option.value = doc.id;
-                        option.textContent = anexo.nome;
+                        option.textContent = doc.data().nome;
                         anexoSelect.appendChild(option);
                     });
                 } catch (error) { console.error("Erro ao carregar anexos: ", error); }
             }
 
-            await carregarAnexos();
-
-            // --- LÓGICA PARA A NOVA SEÇÃO DE HORÁRIOS ANEXADOS ---
-
-            const parteSelect = document.getElementById('parte');
-            const horariosSection = document.getElementById('horarios-anexo-section');
-            let horariosCarregados = false; // Flag para carregar os horários apenas uma vez
-
-            // Função para capitalizar a primeira letra
-            function capitalize(string) {
-                return string.charAt(0).toUpperCase() + string.slice(1);
-            }
+            function capitalize(string) { return string.charAt(0).toUpperCase() + string.slice(1); }
 
             async function carregarHorariosPregacao() {
-                if (horariosCarregados) return; // Não carrega de novo se já foram carregados
-
+                if (horariosCarregados) return;
                 const container = document.getElementById('horarios-container');
-                container.innerHTML = ''; // Limpa o container
-
+                container.innerHTML = 'Carregando horários...';
                 try {
                     const snapshot = await db.collection('horarios').where('tipo', '==', 'pregacao').get();
-                    if (snapshot.empty) {
-                        container.textContent = 'Nenhum horário de pregação encontrado.';
-                        return;
-                    }
-
-                    let semanaHTML = '<div class="horarios-group" style="width: 100%;"><h5>-- Durante a Semana</h5>';
-                    let fimDeSemanaHTML = '<div class="horarios-group" style="width: 100%;"><h5>-- Durante Fim de Semana</h5>';
-
+                    if (snapshot.empty) { container.innerHTML = 'Nenhum horário de pregação encontrado.'; return; }
+                    
+                    let horariosHTML = '';
                     snapshot.forEach(doc => {
                         const data = doc.data();
-                        
-                        // Processa horários da semana
                         if (data['dias-semana-horarios']) {
                             for (const dia in data['dias-semana-horarios']) {
                                 data['dias-semana-horarios'][dia].forEach(hora => {
                                     const valor = `${capitalize(dia)} ${hora}`;
-                                    semanaHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}">${valor}</label>`;
+                                    horariosHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}">${valor}</label>`;
                                 });
                             }
                         }
-
-                        // Processa horários do fim de semana
                         if (data['dias-fimdesemana-horarios']) {
                             for (const dia in data['dias-fimdesemana-horarios']) {
-                                let diaFormatado = dia === 'sabado' ? 'Sábado' : capitalize(dia);
+                                let diaF = dia === 'sabado' ? 'Sábado' : capitalize(dia);
                                 data['dias-fimdesemana-horarios'][dia].forEach(hora => {
-                                    const valor = `${diaFormatado} ${hora}`;
-                                    fimDeSemanaHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}">${valor}</label>`;
+                                    const valor = `${diaF} ${hora}`;
+                                    horariosHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}">${valor}</label>`;
                                 });
                             }
                         }
                     });
-
-                    semanaHTML += '</div>';
-                    fimDeSemanaHTML += '</div>';
-                    container.innerHTML = semanaHTML + fimDeSemanaHTML;
+                    container.innerHTML = horariosHTML;
                     horariosCarregados = true;
-
-                } catch (error) {
-                    console.error("Erro ao carregar horários de pregação: ", error);
-                    container.textContent = 'Erro ao carregar horários.';
-                }
+                } catch (error) { console.error("Erro ao carregar horários: ", error); container.innerHTML = 'Erro ao carregar horários.'; }
+            }
+            
+            // --- NOVA FUNÇÃO PARA CARREGAR LOCAIS ---
+            async function carregarLocais() {
+                if (locaisCarregados) return;
+                const container = document.getElementById('locais-container');
+                container.innerHTML = 'Carregando locais...';
+                try {
+                    const snapshot = await db.collection('locais').where('tag', '==', 'Dirigência Saída').get();
+                    if (snapshot.empty) {
+                        container.innerHTML = 'Nenhum local com a tag "Dirigência Saída" foi encontrado.';
+                        return;
+                    }
+                    let locaisHTML = '';
+                    snapshot.forEach(doc => {
+                        const valor = doc.data().nome;
+                        locaisHTML += `<label class="option-item-horizontal"><input type="radio" name="local_anexado" value="${valor}">${valor}</label>`;
+                    });
+                    container.innerHTML = locaisHTML;
+                    locaisCarregados = true;
+                } catch (error) { console.error("Erro ao carregar locais: ", error); container.innerHTML = 'Erro ao carregar locais.'; }
             }
 
+            // --- Event Listener para o campo "Parte" ---
             parteSelect.addEventListener('change', function() {
                 if (this.value === 'dirigencia saida') {
                     horariosSection.style.display = 'block';
-                    carregarHorariosPregacao(); // Carrega os horários
+                    locaisSection.style.display = 'block'; // Mostra também a seção de locais
+                    carregarHorariosPregacao();
+                    carregarLocais(); // Chama a nova função para carregar locais
                 } else {
                     horariosSection.style.display = 'none';
+                    locaisSection.style.display = 'none'; // Esconde ambas as seções
                 }
             });
 
+            // Carregamento inicial de dados
+            await carregarAnexos();
 
-            // Submissão do formulário
-           const form = document.getElementById('criar-designacao-form');
+            // --- Submissão do Formulário ---
            form.addEventListener('submit', async function(e) {
                 e.preventDefault();
-
-                // Validação
-                const quemFazSelecionado = document.querySelector('input[name="quem_faz"]:checked');
-                if (!quemFazSelecionado) {
+                if (!document.querySelector('input[name="quem_faz"]:checked')) {
                     alert('O campo "Quem faz?" é obrigatório. Por favor, selecione pelo menos uma opção.');
                     showTab(3);
                     return;
                 }
                 
-                const personalidadeSelecionada = document.querySelector('input[name="personalidade"]:checked');
-                const horarioAnexadoSelecionado = document.querySelector('input[name="horario_anexado"]:checked');
+                const personalidadeSel = document.querySelector('input[name="personalidade"]:checked');
+                const horarioAnexadoSel = document.querySelector('input[name="horario_anexado"]:checked');
+                const localAnexadoSel = document.querySelector('input[name="local_anexado"]:checked'); // Pega o local selecionado
 
                 const designacao = {
                     nome: document.getElementById('nome-designacao').value,
                     numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
                     feitoPor: document.getElementById('feito-por').value,
                     preferencia: document.getElementById('preferencia').value,
-                    personalidade: personalidadeSelecionada ? personalidadeSelecionada.value : "",
+                    personalidade: personalidadeSel ? personalidadeSel.value : "",
                     quando: document.getElementById('quando').value,
                     tipo: document.getElementById('tipo').value,
                     parte: document.getElementById('parte').value,
-                    // Adiciona o horário anexado ao objeto, se houver um selecionado
-                    horarioAnexado: horarioAnexadoSelecionado ? horarioAnexadoSelecionado.value : "",
+                    horarioAnexado: horarioAnexadoSel ? horarioAnexadoSel.value : "",
+                    localAnexado: localAnexadoSel ? localAnexadoSel.value : "", // Adiciona o local ao objeto
                     anexo: document.getElementById('anexo').value,
                     descricao: document.getElementById('descricao').value,
                     anexadoDiscursos: document.getElementById('anexado-discursos').value,
@@ -541,17 +530,11 @@ input:checked + .slider:before { transform: translateX(26px); }
                     dataCriacao: new Date()
                 };
 
-                // Função para mostrar o pop-up e redirecionar
                 function showPopupAndRedirect(url) {
                     const popup = document.getElementById('custom-popup');
                     popup.style.display = 'flex';
-                    setTimeout(() => {
-                        popup.style.opacity = '1';
-                    }, 10);
-
-                    setTimeout(() => {
-                        window.location.href = url;
-                    }, 1000);
+                    setTimeout(() => { popup.style.opacity = '1'; }, 10);
+                    setTimeout(() => { window.location.href = url; }, 1000);
                 }
 
                 try {
