@@ -450,6 +450,18 @@ body.popup-open {
     border-left: 4px solid #f39c12; 
 }
 
+.week-info {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* O novo estado de aviso que será ativado via JavaScript */
+.week-info.warning-state {
+    background-color: #fbeae5; /* Fundo vermelho claro (reaproveitado de .invalid-selection) */
+    border-color: #e74c3c;     /* Borda vermelha (reaproveitado de .invalid-selection) */
+    color: #c0392b;            /* Cor do texto mais escura para melhor contraste */
+    font-weight: bold;         /* Deixa o texto em negrito para dar mais ênfase */
+}
+
     </style>
 </head>
 
@@ -854,6 +866,8 @@ body.popup-open {
         const db = firebase.firestore();
 
         document.getElementById('mes').value = new Date().getMonth() + 1;
+        document.getElementById('sala').addEventListener('change', updateWeekDisplay);
+
 
         let allDesignations = new Map();
         let allPeopleDataMap = new Map();
@@ -1967,15 +1981,27 @@ function makeTableSortable(table) {
             return doc.exists ? doc.data().ano : new Date().getFullYear();
         };
 
-        const countHistoricoSemanas = async (ano, mes) => {
-            const q = await db.collection('historico')
-                .where("ano", "==", ano)
-                .where("mes", "==", parseInt(mes))
-                .where("quando", "==", "Semana")
-                .where("parte", "==", "resto da semana")
-                .get();
-            return q.size;
-        };
+ async function countHistoricoSemanas(ano, mes, sala) {
+    let q = db.collection('historico')
+        .where("ano", "==", ano)
+        .where("mes", "==", parseInt(mes))
+        .where("quando", "==", "Semana"); // Conta qualquer entrada da semana...
+
+    // A condição da sala, que é a parte importante, permanece
+    if (sala) {
+        q = q.where("sala", "==", sala);
+    }
+
+    const querySnapshot = await q.get();
+    
+    // Para evitar contagens duplicadas, contamos os números de semana únicos
+    const semanasUnicas = new Set();
+    querySnapshot.forEach(doc => {
+        semanasUnicas.add(doc.data().semanaNumero);
+    });
+
+    return semanasUnicas.size;
+}
 
         const getTotalSemanasNoMes = (ano, mes) => {
             let count = 0, day = new Date(ano, mes - 1, 1);
@@ -2710,24 +2736,37 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
             const next = getRange(nextStart);
             return { current, previous, next };
         }
+async function updateWeekDisplay() {
+    const weekDisplay = document.getElementById('weekDisplay');
+    const btn = document.getElementById('btnSeguinte');
+    const mes = document.getElementById('mes').value;
+    const ano = await getAnoPainelFirebase();
+    const sala = document.getElementById('sala').value;
 
-        const updateWeekDisplay = async () => {
-            const weekDisplay = document.getElementById('weekDisplay');
-            const btn = document.getElementById('btnSeguinte');
-            const mes = document.getElementById('mes').value;
-            const ano = await getAnoPainelFirebase();
-            const semana = await countHistoricoSemanas(ano, mes) + 1;
-            const totalSemanas = getTotalSemanasNoMes(ano, mes);
+    // NOVO: Pega a referência do container DIV para aplicar o estilo
+    const weekInfoContainer = weekDisplay.parentElement;
 
-            if (semana > totalSemanas && totalSemanas > 0) {
-                weekDisplay.innerHTML = "Mês completo. Por favor, selecione outro mês.";
-                btn.disabled = true;
-            } else {
-                document.getElementById('semanaNumero').value = semana;
-                weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${getDiasSemana(ano, mes, semana)})`;
-                btn.disabled = false;
-            }
-        };
+    const semana = await countHistoricoSemanas(ano, mes, sala) + 1;
+    const totalSemanas = getTotalSemanasNoMes(ano, mes);
+
+    // CONDIÇÃO DE MÊS CHEIO (MODIFICADA)
+    if (semana > totalSemanas && totalSemanas > 0) {
+        weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
+        btn.disabled = true;
+        
+        // ADIÇÃO: Adiciona a classe de aviso para deixar o painel vermelho
+        weekInfoContainer.classList.add('warning-state');
+    } 
+    // CONDIÇÃO NORMAL (MODIFICADA)
+    else {
+        document.getElementById('semanaNumero').value = semana;
+        weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${getDiasSemana(ano, mes, semana)})`;
+        btn.disabled = false;
+
+        // ADIÇÃO: Garante que a classe de aviso seja removida se a condição for normal
+        weekInfoContainer.classList.remove('warning-state');
+    }
+}
 
         const loadNacionalidades = async () => {
             const snapshot = await db.collection('nacionalidades').get();
@@ -3629,12 +3668,31 @@ function setupTabClickListeners() {
         });
 
       updateWeekDisplay(); 
-      document.getElementById('mes').addEventListener('change', updateWeekDisplay);
+     document.getElementById('mes').addEventListener('change', updateWeekDisplay);
+        document.getElementById('sala').addEventListener('change', updateWeekDisplay);
+
+        // 2. Adiciona os outros event listeners e chamadas de inicialização
+        document.getElementById('designacoesList').addEventListener('click', async function(event) {
+            // ... (o código original desta função permanece aqui)
+        });
+
+        document.addEventListener('click', function(event) {
+            // ... (o código original desta função permanece aqui)
+        });
+
+        document.getElementById('nacionalidades').addEventListener('change', () => {
+             // ... (o código original desta função permanece aqui)
+        });
+
+        // 3. Executa as funções que carregam os dados iniciais
         loadNacionalidades();
         initializeSystemData();
-        
         fetch('slidebar.html').then(response => response.text()).then(html => document.getElementById("sidebar-placeholder").innerHTML = html);
-    });
+
+        // 4. Faz a primeira chamada para exibir a semana inicial (agora com certeza a função existe)
+        updateWeekDisplay(); 
+        
+    }); // FIM DO addEventListener('DOMContentLoaded', ...)
 </script>
 
 <script src="main.js"></script>
