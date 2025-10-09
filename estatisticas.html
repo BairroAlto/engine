@@ -124,14 +124,37 @@
         .color-green { color: #27ae60; }
         .color-red { color: #c0392b; }
         .color-blue { color: #2980b9; }
-        .individual-content-wrapper { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 20px; }
+        .individual-content-wrapper { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 20px; margin-top: 20px; }
         #individual-detailed-list .detailed-list-item { transition: background-color 0.3s; border-radius: 4px; }
         #individual-detailed-list .highlight { background-color: #eaf2f8; border-left: 3px solid #3498db; }
         .interactive-list .top-list-item { cursor: pointer; }
         .interactive-list .top-list-item:hover { background-color: #f2f2f2; }
         .interactive-list .top-list-item.active { background-color: #d4e6f1; border-left: 3px solid #2980b9; font-weight: bold; }
+        
+        /* ESTILOS PARA GRÁFICOS E MODAL */
+        .charts-grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 25px; padding: 15px; }
+        .chart-card { background-color: #34495e; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .chart-header h2 { margin: 0; font-size: 18px; color: #ecf0f1; }
+        .expand-chart-btn { background: none; border: none; color: #bdc3c7; font-size: 16px; cursor: pointer; transition: color 0.3s; }
+        .expand-chart-btn:hover { color: white; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { position: relative; background-color: #2c3e50; padding: 30px; border-radius: 10px; width: 90%; max-width: 1200px; height: 80%; }
+        .modal-close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; color: white; font-size: 30px; cursor: pointer; }
+        
+        /* ESTILOS PARA SECÇÃO DE DISCURSOS */
+        .discursos-cards-wrapper { display: grid; grid-template-columns: 1fr 2fr 2fr; gap: 20px; margin-top: 20px; }
+        #discursos-average-card p { font-size: 20px; }
+        .discurso-count { font-weight: bold; color: #1abc9c; background-color: #e8f8f5; padding: 2px 8px; border-radius: 10px; font-size: 14px; }
+
+.chart-wrapper {
+    position: relative;
+    height: 300px; /* Altura fixa para os gráficos. Pode ajustar este valor. */
+    width: 100%;
+}
 
         /* Media Queries */
+        @media (max-width: 1200px) { .discursos-cards-wrapper { grid-template-columns: 1fr; } }
         @media (max-width: 992px) { .individual-content-wrapper { grid-template-columns: 1fr; } }
         @media (max-width: 768px) { .sidebar { width: 70px; } .sidebar .logo h2, .sidebar .nav-item span { display: none; } .content { margin-left: 70px; width: calc(100% - 70px); } .stats-grid, .charts-wrapper { grid-template-columns: 1fr; } }
     </style>
@@ -153,7 +176,7 @@
     </div>
 
     <!-- Conteúdo Principal -->
-    <main class="content">
+  <main class="content">
         <h1>Estatísticas</h1>
         <div class="tab-container">
             <button class="tab-link active" onclick="openTab(event, 'Geral')">Geral</button>
@@ -194,13 +217,40 @@
         <div id="Individual" class="tab-content">
             <div class="collapsible-container"><button class="filter-toggle-button"><i class="fas fa-filter"></i><span>Mostrar Filtros</span><i class="fas fa-chevron-down toggle-icon"></i></button><div class="filter-panel-wrapper"></div></div>
             <div class="card"><h2>Selecionar Pessoa para Análise</h2><div class="comparison-search-container"><input type="text" id="individual-search-input" placeholder="Pesquise por nome..."><div id="individual-search-results" class="search-results"></div></div></div>
+            
             <div id="individual-analysis-container" style="display: none;">
                 <div class="card"><div id="individual-summary-header"><span id="individual-total-count"></span><span id="individual-peer-average"></span></div></div>
+                
                 <div class="individual-content-wrapper">
-                    <div class="card"><h2>Histórico de Designações</h2><ul id="individual-detailed-list" class="top-list"></ul></div>
                     <div class="card"><h2>Resumo por Designação</h2><ul id="individual-aggregated-list" class="top-list interactive-list"></ul></div>
+                    <div class="card"><h2>Parceiros Mais Frequentes</h2><ul id="individual-frequent-partners-list" class="top-list interactive-list"></ul></div>
+                    <div class="card"><h2>Histórico de Designações</h2><ul id="individual-detailed-list" class="top-list"></ul></div>
+                </div>
+
+                <div id="individual-discursos-container" style="display: none;">
+                    <div class="discursos-cards-wrapper">
+                        <div class="card"><h2>Média de Discursos</h2><div id="discursos-average-card" class="stat-item" style="border-left-color: #f39c12;"></div></div>
+                        <div class="card"><h2>Resumo por Discurso</h2><ul id="discursos-aggregated-list" class="top-list"></ul></div>
+                        <div class="card"><h2>Histórico de Discursos</h2><ul id="discursos-detailed-list" class="top-list"></ul></div>
+                    </div>
+                    <div class="card" style="margin-top: 20px; background-color: #2c3e50; color: white;">
+                        <div class="charts-grid-container">
+                            <div class="chart-card"><div class="chart-header"><h2>Discursos por Mês</h2><button class="expand-chart-btn" data-chart-id="discursos-by-month" title="Expandir Gráfico"><i class="fas fa-expand-arrows-alt"></i></button></div><div class="chart-wrapper"><canvas id="individual-chart-discursos-by-month"></canvas></div></div>
+                            <div class="chart-card"><div class="chart-header"><h2>Discursos por Ano</h2><button class="expand-chart-btn" data-chart-id="discursos-by-year" title="Expandir Gráfico"><i class="fas fa-expand-arrows-alt"></i></button></div><div class="chart-wrapper"><canvas id="individual-chart-discursos-by-year"></canvas></div></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="individual-charts-container" class="card" style="margin-top: 20px; background-color: #2c3e50; color: white;">
+                    <div class="charts-grid-container">
+                        <div class="chart-card"><div class="chart-header"><h2>Designações por Elemento</h2><button class="expand-chart-btn" data-chart-id="by-designation" title="Expandir Gráfico"><i class="fas fa-expand-arrows-alt"></i></button></div><div class="chart-wrapper"><canvas id="individual-chart-by-designation"></canvas></div></div>
+                        <div class="chart-card"><div class="chart-header"><h2>Designações por Semana</h2><button class="expand-chart-btn" data-chart-id="by-week" title="Expandir Gráfico"><i class="fas fa-expand-arrows-alt"></i></button></div><div class="chart-wrapper"><canvas id="individual-chart-by-week"></canvas></div></div>
+                        <div class="chart-card"><div class="chart-header"><h2>Designações por Mês</h2><button class="expand-chart-btn" data-chart-id="by-month" title="Expandir Gráfico"><i class="fas fa-expand-arrows-alt"></i></button></div><div class="chart-wrapper"><canvas id="individual-chart-by-month"></canvas></div></div>
+                        <div class="chart-card"><div class="chart-header"><h2>Designações por Ano</h2><button class="expand-chart-btn" data-chart-id="by-year" title="Expandir Gráfico"><i class="fas fa-expand-arrows-alt"></i></button></div><div class="chart-wrapper"><canvas id="individual-chart-by-year"></canvas></div></div>
+                    </div>
                 </div>
             </div>
+            
             <div id="individual-placeholder" class="card"><p style="text-align: center; color: #7f8c8d; padding: 20px;">Para começar, pesquise e selecione uma pessoa na barra acima.</p></div>
         </div>
 
@@ -208,6 +258,15 @@
         <div id="Designacoes" class="tab-content"><div class="collapsible-container"><button class="filter-toggle-button"><i class="fas fa-filter"></i><span>Mostrar Filtros</span><i class="fas fa-chevron-down toggle-icon"></i></button><div class="filter-panel-wrapper"></div></div><div class="card"><h2>Estatísticas de Designações</h2></div></div>
         <div id="Discursos" class="tab-content"><div class="collapsible-container"><button class="filter-toggle-button"><i class="fas fa-filter"></i><span>Mostrar Filtros</span><i class="fas fa-chevron-down toggle-icon"></i></button><div class="filter-panel-wrapper"></div></div><div class="card"><h2>Estatísticas de Discursos</h2></div></div>
         <div id="Necessidades" class="tab-content"><div class="collapsible-container"><button class="filter-toggle-button"><i class="fas fa-filter"></i><span>Mostrar Filtros</span><i class="fas fa-chevron-down toggle-icon"></i></button><div class="filter-panel-wrapper"></div></div><div class="card"><h2>Necessidades Locais</h2></div></div>
+    
+        <div id="chart-modal-overlay" class="modal-overlay">
+            <div class="modal-content">
+                <button id="chart-modal-close" class="modal-close-btn">&times;</button>
+                <div class="chart-wrapper" style="height: 100%;">
+                    <canvas id="modal-chart-canvas"></canvas>
+                </div>
+            </div>
+        </div>
     </main>
     
     <!-- Template do Painel de Filtros -->
@@ -245,11 +304,20 @@
     let designacoesMap = new Map();
     let pessoasMap = new Map();
     let nacionalidadesMap = new Map();
+    let discursosMap = new Map();
+    let oradorDesignacaoId = null;
     
     // --- VARIÁVEIS GLOBAIS PARA AS NOVAS ABAS ---
     let selectedPeopleForComparison = [];
     let comparisonChart = null;
     let selectedPersonForIndividual = null;
+    let individualChartByDesignation = null,
+        individualChartByWeek = null,
+        individualChartByMonth = null,
+        individualChartByYear = null,
+        individualChartDiscursosByMonth = null,
+        individualChartDiscursosByYear = null,
+        modalChart = null;
 
     // --- FUNÇÕES AUXILIARES DE UI ---
     function openTab(evt, tabName) { 
@@ -258,7 +326,6 @@
         document.getElementById(tabName).style.display = "block"; 
         evt.currentTarget.classList.add("active"); 
     }
-
     function openSubTab(evt, subTabName) { 
         const parentContent = evt.currentTarget.closest('.tab-content'); 
         parentContent.querySelectorAll('.sub-tab-content').forEach(stc => stc.style.display = "none"); 
@@ -274,44 +341,29 @@
         const checkboxes = container.querySelectorAll('.multi-select-list input[type="checkbox"]');
         const total = checkboxes.length;
         const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-        if (total === 0) {
-            label.textContent = "Nenhuma opção";
-        } else if (selectedCount === total) {
-            label.textContent = "Todos selecionados";
-        } else if (selectedCount === 0) {
-            label.textContent = "Nenhum selecionado";
-        } else {
-            label.textContent = `${selectedCount} selecionados`;
-        }
+        if (total === 0) { label.textContent = "Nenhuma opção"; }
+        else if (selectedCount === total) { label.textContent = "Todos selecionados"; }
+        else if (selectedCount === 0) { label.textContent = "Nenhum selecionado"; }
+        else { label.textContent = `${selectedCount} selecionados`; }
     }
-
     function getCustomDropdownValues(filterPanel, filterName) {
         const container = filterPanel.querySelector(`.multi-select-container[data-filter-name="${filterName}"]`);
         if (!container) return [];
         const checked = container.querySelectorAll('input[type="checkbox"]:checked');
         return Array.from(checked).map(cb => cb.value);
     }
-
     function populateSemanaFilter(panel) {
         if (!panel) return;
         const semanaContainer = panel.querySelector('.multi-select-container[data-filter-name="semana"]');
         const semanaList = semanaContainer.querySelector('.multi-select-list');
         const selectedMonths = getCustomDropdownValues(panel, 'mes').map(m => parseInt(m));
-
-        const semanasFiltradas = selectedMonths.length === 12
-            ? historicoSemanas
-            : historicoSemanas.filter(item => selectedMonths.includes(item.startDate.getMonth() + 1));
-
+        const semanasFiltradas = selectedMonths.length === 12 ? historicoSemanas : historicoSemanas.filter(item => selectedMonths.includes(item.startDate.getMonth() + 1));
         if (semanasFiltradas.length === 0) {
             semanaList.innerHTML = '<label style="color: #7f8c8d; padding-left: 12px;">Nenhuma semana para o(s) mes(es) selecionado(s).</label>';
-            updateMultiSelectLabel(semanaContainer);
-            return;
+            updateMultiSelectLabel(semanaContainer); return;
         }
-        
-        let html = '';
-        let currentMonth = -1;
+        let html = ''; let currentMonth = -1;
         const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-        
         semanasFiltradas.forEach(semana => {
             const semanaMes = semana.startDate.getMonth();
             if (semanaMes !== currentMonth) {
@@ -320,60 +372,74 @@
             }
             html += `<label><input type="checkbox" value="${semana.id}" checked> ${semana.semanaindex}</label>`;
         });
-
         semanaList.innerHTML = html;
         updateMultiSelectLabel(semanaContainer);
     }
 
-    // --- LÓGICA DE FILTRAGEM (CORRIGIDO: MOVIDO PARA ESCOPO GLOBAL) ---
-    function buildHistoricoQuery() {
-        return db.collection('historico');
-    }
-
-    function getFilteredParticipations(documents, filterPanel) {
-        const meses = getCustomDropdownValues(filterPanel, 'mes');
-        const generos = getCustomDropdownValues(filterPanel, 'genero');
-        const idiomaIds = getCustomDropdownValues(filterPanel, 'idioma');
-        const selectedDesignacoes = getCustomDropdownValues(filterPanel, 'designacoes');
-        
-        const totalMeses = 12, totalGeneros = 2;
-        const totalIdiomas = nacionalidadesMap.size;
-        const totalDesignacoes = designacoesMap.size;
-
-        const idiomaNomesFiltro = idiomaIds.map(id => nacionalidadesMap.get(id));
-        let docsToProcess = documents;
-
-        if (meses.length < totalMeses) {
-            const mesesInt = meses.map(m => parseInt(m));
-            docsToProcess = docsToProcess.filter(doc => {
-                const docDate = historicoSemanas.find(s => s.id === doc.id)?.startDate;
-                return docDate && mesesInt.includes(docDate.getMonth() + 1);
-            });
-        }
-
-        const validParticipations = [];
-        docsToProcess.forEach(doc => {
-            if (!doc.designacoes) return;
-            Object.values(doc.designacoes).forEach(desig => {
-                if (selectedDesignacoes.length < totalDesignacoes && !selectedDesignacoes.includes(desig.designacaoId)) return;
-                if (!desig.participantes) return;
-                
-                const participantIds = [desig.participantes.dirigente, desig.participantes.ajudante, desig.participantes.morador].flat().filter(Boolean);
-                
-                participantIds.forEach(id => {
-                    const pessoa = pessoasMap.get(id);
-                    if (!pessoa) return;
-                    const genderMatch = generos.length === totalGeneros || (pessoa.genero && generos.includes(pessoa.genero.toLowerCase()));
-                    const languageMatch = idiomaIds.length === totalIdiomas || (pessoa.idioma && idiomaNomesFiltro.includes(pessoa.idioma));
-                    if (genderMatch && languageMatch) {
-                        validParticipations.push({ personId: id, designacaoId: desig.designacaoId, date: doc.dia });
-                    }
-                });
-            });
+    // --- LÓGICA DE FILTRAGEM ---
+    function buildHistoricoQuery() { return db.collection('historico'); }
+   function getFilteredAssignments(documents, filterPanel) {
+    const meses = getCustomDropdownValues(filterPanel, 'mes');
+    const generos = getCustomDropdownValues(filterPanel, 'genero');
+    const idiomaIds = getCustomDropdownValues(filterPanel, 'idioma');
+    const selectedDesignacoes = getCustomDropdownValues(filterPanel, 'designacoes');
+    const totalMeses = 12, totalGeneros = 2, totalIdiomas = nacionalidadesMap.size, totalDesignacoes = designacoesMap.size;
+    const idiomaNomesFiltro = idiomaIds.map(id => nacionalidadesMap.get(id));
+    let docsToProcess = documents;
+    if (meses.length < totalMeses) {
+        const mesesInt = meses.map(m => parseInt(m));
+        docsToProcess = docsToProcess.filter(doc => {
+            const docDate = historicoSemanas.find(s => s.id === doc.id)?.startDate;
+            return docDate && mesesInt.includes(docDate.getMonth() + 1);
         });
-        console.log(`%cResultado: ${validParticipations.length} participações válidas encontradas.`, 'color: green; font-weight: bold;');
-        return validParticipations;
     }
+    const validAssignments = [];
+    docsToProcess.forEach(doc => {
+        if (!doc.designacoes) return;
+        Object.values(doc.designacoes).forEach(desig => {
+            if (selectedDesignacoes.length < totalDesignacoes && !selectedDesignacoes.includes(desig.designacaoId)) return;
+            
+            // --- INÍCIO DA CORREÇÃO ---
+            let participantIds = [];
+            if (desig.participantes) {
+                // CASO 1: A estrutura é { participante: "..." } ou { participante: ["..."] } (Ex: Orador)
+                if (desig.participantes.participante) {
+                    participantIds = [desig.participantes.participante].flat().filter(Boolean);
+                } 
+                // CASO 2: A estrutura é { dirigente: "...", morador: "..." } (Ex: Demonstrações)
+                else {
+                    const orderedParticipants = [desig.participantes.dirigente, desig.participantes.morador, desig.participantes.ajudante];
+                    participantIds = orderedParticipants.flat().filter(Boolean);
+                }
+            } 
+            // CASO 3: A estrutura tem "participante" no nível principal (outros casos)
+            else if (desig.participante) {
+                participantIds = [desig.participante].flat().filter(Boolean);
+            }
+            // --- FIM DA CORREÇÃO ---
+
+            if (participantIds.length === 0) return;
+
+            const filteredParticipantIds = participantIds.filter(id => {
+                const pessoa = pessoasMap.get(id); if (!pessoa) return false;
+                const genderMatch = generos.length === totalGeneros || (pessoa.genero && generos.includes(pessoa.genero.toLowerCase()));
+                const languageMatch = idiomaIds.length === totalIdiomas || (pessoa.idioma && idiomaNomesFiltro.includes(pessoa.idioma));
+                return genderMatch && languageMatch;
+            });
+
+            if (filteredParticipantIds.length > 0) {
+                validAssignments.push({
+                    designacaoId: desig.designacaoId,
+                    date: doc.dia,
+                    participantIds: filteredParticipantIds,
+                    weekId: doc.id,
+                    descricao: desig.descricao || null
+                });
+            }
+        });
+    });
+    return validAssignments;
+}
 
     // --- FUNÇÕES DE ATUALIZAÇÃO DOS PAINÉIS ---
     async function updateGeralDashboard() {
@@ -396,12 +462,22 @@
             documents = documents.filter(doc => semanasSelecionadas.includes(doc.id));
         }
 
-        const validParticipations = getFilteredParticipations(documents, filterPanel);
+        const validAssignments = getFilteredAssignments(documents, filterPanel);
+        const flatParticipations = [];
+        validAssignments.forEach(assignment => {
+            assignment.participantIds.forEach(personId => {
+                flatParticipations.push({
+                    personId: personId,
+                    designacaoId: assignment.designacaoId,
+                    date: assignment.date
+                });
+            });
+        });
 
-        const totalDesignacoes = validParticipations.length;
+        const totalDesignacoes = flatParticipations.length;
         let totalMasculino = 0, totalFeminino = 0;
         const idiomasCount = new Map();
-        validParticipations.forEach(p => {
+        flatParticipations.forEach(p => {
             const pessoa = pessoasMap.get(p.personId);
             if (!pessoa) return;
             if (pessoa.genero === 'masculino') totalMasculino++;
@@ -423,16 +499,11 @@
         const mediaMascMes = numMonths > 0 ? (totalMasculino / numMonths).toFixed(1) : '0.0';
         const mediaFemMes = numMonths > 0 ? (totalFeminino / numMonths).toFixed(1) : '0.0';
         let mediaIdiomasHTML = '';
-        for (const [idioma, count] of idiomasCount.entries()) {
-            mediaIdiomasHTML += `<div class="idioma-stat">${idioma}: <strong>${numMonths > 0 ? (count / numMonths).toFixed(1) : '0.0'}</strong></div>`;
-        }
-
+        for (const [idioma, count] of idiomasCount.entries()) { mediaIdiomasHTML += `<div class="idioma-stat">${idioma}: <strong>${numMonths > 0 ? (count / numMonths).toFixed(1) : '0.0'}</strong></div>`; }
         const percMasculino = totalDesignacoes > 0 ? ((totalMasculino / totalDesignacoes) * 100).toFixed(0) : '0';
         const percFeminino = totalDesignacoes > 0 ? ((totalFeminino / totalDesignacoes) * 100).toFixed(0) : '0';
         let percIdiomasHTML = '';
-        for (const [idioma, count] of idiomasCount.entries()) {
-            percIdiomasHTML += `<div class="idioma-stat">${idioma}: <strong>${totalDesignacoes > 0 ? ((count / totalDesignacoes) * 100).toFixed(0) : '0'}%</strong></div>`;
-        }
+        for (const [idioma, count] of idiomasCount.entries()) { percIdiomasHTML += `<div class="idioma-stat">${idioma}: <strong>${totalDesignacoes > 0 ? ((count / totalDesignacoes) * 100).toFixed(0) : '0'}%</strong></div>`; }
 
         document.getElementById('total-designacoes').textContent = totalDesignacoes;
         document.getElementById('total-masculino').textContent = totalMasculino;
@@ -449,7 +520,7 @@
         document.getElementById('perc-feminino').textContent = `${percFeminino}%`;
         document.getElementById('perc-idiomas-container').innerHTML = percIdiomasHTML || 'N/A';
     }
-
+    
     async function updateTopDashboard() {
         console.log("A atualizar 'Top' com filtros...");
         const filterPanel = document.getElementById('Top').querySelector('.filter-panel');
@@ -463,29 +534,27 @@
         const totalAnosDisponiveis = filterPanel.querySelector('[data-filter-name="ano"]').querySelectorAll('input[type="checkbox"]').length;
         const totalSemanasDisponiveis = filterPanel.querySelector('[data-filter-name="semana"]').querySelectorAll('input[type="checkbox"]').length;
 
-        if (anosSelecionados.length < totalAnosDisponiveis) {
-            documents = documents.filter(doc => anosSelecionados.includes(doc.ano));
-        }
-        if (semanasSelecionadas.length < totalSemanasDisponiveis) {
-            documents = documents.filter(doc => semanasSelecionadas.includes(doc.id));
-        }
+        if (anosSelecionados.length < totalAnosDisponiveis) { documents = documents.filter(doc => anosSelecionados.includes(doc.ano)); }
+        if (semanasSelecionadas.length < totalSemanasDisponiveis) { documents = documents.filter(doc => semanasSelecionadas.includes(doc.id)); }
         
-        let validParticipations = getFilteredParticipations(documents, filterPanel);
-        const participantCounts = new Map(), assignmentCounts = new Map(), detailedList = [];
-        validParticipations.forEach(p => {
-            participantCounts.set(p.personId, (participantCounts.get(p.personId) || 0) + 1);
-            const desigNome = designacoesMap.get(p.designacaoId) || 'Desconhecida';
+        const validAssignments = getFilteredAssignments(documents, filterPanel);
+        const participantCounts = new Map(), assignmentCounts = new Map(), detailedListHTML = [];
+
+        validAssignments.forEach(assignment => {
+            const desigNome = designacoesMap.get(assignment.designacaoId) || 'Desconhecida';
             assignmentCounts.set(desigNome, (assignmentCounts.get(desigNome) || 0) + 1);
-            const personName = pessoasMap.get(p.personId)?.nomePessoa || `ID(${p.personId})`;
-            const dateParts = p.date ? p.date.split('-') : [];
-            const fDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : (p.date || '');
-            detailedList.push(`<li class="top-list-item detailed-list-item"><div><span class="date">${fDate}</span> - <span class="assignment">${desigNome}:</span> <span class="participants">${personName}</span></div></li>`);
+            assignment.participantIds.forEach(id => { participantCounts.set(id, (participantCounts.get(id) || 0) + 1); });
+            const participantNames = assignment.participantIds.map(id => pessoasMap.get(id)?.nomePessoa || `ID(${id})`).join(' - ');
+            const dateParts = assignment.date ? assignment.date.split('-') : [];
+            const fDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : (assignment.date || '');
+            detailedListHTML.push(`<li class="top-list-item detailed-list-item"><div><span class="date">${fDate}</span> - <span class="assignment">${desigNome}:</span> <span class="participants">${participantNames}</span></div></li>`);
         });
+
         const sortedParticipants = [...participantCounts.entries()].sort((a, b) => b[1] - a[1]);
         document.getElementById('top-pessoas-list').innerHTML = sortedParticipants.length > 0 ? sortedParticipants.map(([id, count]) => `<li class="top-list-item"><span class="name">${pessoasMap.get(id)?.nomePessoa || 'ID Desconhecido'}</span><span class="count">${count}</span></li>`).join('') : "<li>Nenhum resultado.</li>";
         const sortedAssignments = [...assignmentCounts.entries()].sort((a, b) => b[1] - a[1]);
         document.getElementById('top-designacoes-agrupado-list').innerHTML = sortedAssignments.length > 0 ? sortedAssignments.map(([name, count]) => `<li class="top-list-item"><span class="name">${name}</span><span class="count">${count}</span></li>`).join('') : "<li>Nenhum resultado.</li>";
-        document.getElementById('top-designacoes-detalhado-list').innerHTML = detailedList.length > 0 ? detailedList.join('') : "<li>Nenhum resultado.</li>";
+        document.getElementById('top-designacoes-detalhado-list').innerHTML = detailedListHTML.length > 0 ? detailedListHTML.join('') : "<li>Nenhum resultado.</li>";
     }
 
     async function updateComparacaoDashboard() {
@@ -510,171 +579,217 @@
         const totalAnosDisponiveis = filterPanel.querySelector('[data-filter-name="ano"]').querySelectorAll('input[type="checkbox"]').length;
         const totalSemanasDisponiveis = filterPanel.querySelector('[data-filter-name="semana"]').querySelectorAll('input[type="checkbox"]').length;
 
-        if (anosSelecionados.length < totalAnosDisponiveis) {
-            documents = documents.filter(doc => anosSelecionados.includes(doc.ano));
-        }
-        if (semanasSelecionadas.length < totalSemanasDisponiveis) {
-            documents = documents.filter(doc => semanasSelecionadas.includes(doc.id));
-        }
+        if (anosSelecionados.length < totalAnosDisponiveis) { documents = documents.filter(doc => anosSelecionados.includes(doc.ano)); }
+        if (semanasSelecionadas.length < totalSemanasDisponiveis) { documents = documents.filter(doc => semanasSelecionadas.includes(doc.id)); }
         
-        const allValidParticipations = getFilteredParticipations(documents, filterPanel);
-        const totalFilteredAssignments = allValidParticipations.length;
-
-        const chartLabels = [];
-        const chartData = [];
+        const allValidAssignments = getFilteredAssignments(documents, filterPanel);
+        const totalFilteredAssignments = allValidAssignments.reduce((acc, curr) => acc + curr.participantIds.length, 0);
+        const chartLabels = [], chartData = [];
 
         selectedPeopleForComparison.forEach(personId => {
-            const personData = pessoasMap.get(personId);
-            if (!personData) return;
-
-            const personParticipations = allValidParticipations.filter(p => p.personId === personId);
+            const personData = pessoasMap.get(personId); if (!personData) return;
+            const personParticipations = [];
+            allValidAssignments.forEach(assignment => { if (assignment.participantIds.includes(personId)) { personParticipations.push({ designacaoId: assignment.designacaoId, date: assignment.date }); } });
             const personTotal = personParticipations.length;
             const percentage = totalFilteredAssignments > 0 ? ((personTotal / totalFilteredAssignments) * 100).toFixed(1) : 0;
-            
             const assignmentCounts = new Map();
-            personParticipations.forEach(p => {
-                const desigNome = designacoesMap.get(p.designacaoId) || 'Desconhecida';
-                assignmentCounts.set(desigNome, (assignmentCounts.get(desigNome) || 0) + 1);
-            });
-            
+            personParticipations.forEach(p => { const desigNome = designacoesMap.get(p.designacaoId) || 'Desconhecida'; assignmentCounts.set(desigNome, (assignmentCounts.get(desigNome) || 0) + 1); });
             const sortedAssignments = [...assignmentCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
             let topAssignmentsHTML = sortedAssignments.map(([name, count]) => `<li><span>${name}</span><span class="count">${count}</span></li>`).join('');
-            if (sortedAssignments.length === 0) {
-                topAssignmentsHTML = '<li>Nenhuma designação encontrada com os filtros atuais.</li>';
-            }
-
-            chartLabels.push(personData.nomePessoa);
-            chartData.push(personTotal);
-
-            const cardHTML = `
-                <div class="person-comparison-card">
-                    <button class="remove-person-btn" data-person-id="${personId}" title="Remover Pessoa">&times;</button>
-                    <h3>${personData.nomePessoa}</h3>
-                    <div class="stat">Participações Totais: <strong>${personTotal}</strong></div>
-                    <div class="stat">Média (vs Total Filtrado): <strong>${percentage}%</strong></div>
-                    <h4>Top 6 Designações:</h4>
-                    <ul class="top-assignments-list">${topAssignmentsHTML}</ul>
-                </div>
-            `;
+            if (sortedAssignments.length === 0) { topAssignmentsHTML = '<li>Nenhuma designação encontrada com os filtros atuais.</li>'; }
+            chartLabels.push(personData.nomePessoa); chartData.push(personTotal);
+            const cardHTML = `<div class="person-comparison-card"><button class="remove-person-btn" data-person-id="${personId}" title="Remover Pessoa">&times;</button><h3>${personData.nomePessoa}</h3><div class="stat">Participações Totais: <strong>${personTotal}</strong></div><div class="stat">Média (vs Total Filtrado): <strong>${percentage}%</strong></div><h4>Top 6 Designações:</h4><ul class="top-assignments-list">${topAssignmentsHTML}</ul></div>`;
             cardsContainer.innerHTML += cardHTML;
         });
 
         if (selectedPeopleForComparison.length > 1) {
-            chartContainer.style.display = 'block';
-            const ctx = document.getElementById('comparison-chart').getContext('2d');
-            
-            if (comparisonChart) {
-                comparisonChart.destroy();
-            }
-
-            comparisonChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: chartLabels,
-                    datasets: [{
-                        label: 'Total de Participações',
-                        data: chartData,
-                        backgroundColor: 'rgba(52, 152, 219, 0.7)',
-                        borderColor: 'rgba(41, 128, 185, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: { scales: { y: { beginAtZero: true, ticks: { color: '#2c3e50' } }, x: { ticks: { color: '#2c3e50' } } }, plugins: { legend: { labels: { color: '#2c3e50' } } } }
-            });
+            chartContainer.style.display = 'block'; const ctx = document.getElementById('comparison-chart').getContext('2d');
+            if (comparisonChart) { comparisonChart.destroy(); }
+            comparisonChart = new Chart(ctx, { type: 'bar', data: { labels: chartLabels, datasets: [{ label: 'Total de Participações', data: chartData, backgroundColor: 'rgba(52, 152, 219, 0.7)', borderColor: 'rgba(41, 128, 185, 1)', borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true, ticks: { color: '#2c3e50' } }, x: { ticks: { color: '#2c3e50' } } }, plugins: { legend: { labels: { color: '#2c3e50' } } } } });
         }
     }
 
     async function updateIndividualDashboard() {
-        console.log("A atualizar 'Individual' com filtros...");
-        const filterPanel = document.getElementById('Individual').querySelector('.filter-panel');
-        const analysisContainer = document.getElementById('individual-analysis-container');
-        const placeholder = document.getElementById('individual-placeholder');
+    console.log("A atualizar 'Individual' com filtros, gráficos e discursos...");
+    const filterPanel = document.getElementById('Individual').querySelector('.filter-panel');
+    const analysisContainer = document.getElementById('individual-analysis-container');
+    const placeholder = document.getElementById('individual-placeholder');
+    const chartsContainer = document.getElementById('individual-charts-container');
+    const discursosContainer = document.getElementById('individual-discursos-container');
 
-        if (!selectedPersonForIndividual) {
-            analysisContainer.style.display = 'none';
-            placeholder.style.display = 'block';
-            return;
-        }
+    if (!selectedPersonForIndividual) {
+        analysisContainer.style.display = 'none';
+        placeholder.style.display = 'block';
+        return;
+    }
+    
+    analysisContainer.style.display = 'block';
+    placeholder.style.display = 'none';
+    discursosContainer.style.display = 'none'; // Esconde por defeito
+
+    // Obtenção e filtragem de dados (sem alterações)
+    const snapshot = await buildHistoricoQuery().get();
+    let documents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const anosSelecionados = getCustomDropdownValues(filterPanel, 'ano').map(y => parseInt(y));
+    const semanasSelecionadas = getCustomDropdownValues(filterPanel, 'semana');
+    const totalAnosDisponiveis = filterPanel.querySelector('[data-filter-name="ano"]').querySelectorAll('input[type="checkbox"]').length;
+    const totalSemanasDisponiveis = filterPanel.querySelector('[data-filter-name="semana"]').querySelectorAll('input[type="checkbox"]').length;
+    if (anosSelecionados.length < totalAnosDisponiveis) { documents = documents.filter(doc => anosSelecionados.includes(doc.ano)); }
+    if (semanasSelecionadas.length < totalSemanasDisponiveis) { documents = documents.filter(doc => semanasSelecionadas.includes(doc.id)); }
+    const allValidAssignments = getFilteredAssignments(documents, filterPanel);
+    const personAssignments = allValidAssignments.filter(a => a.participantIds.includes(selectedPersonForIndividual));
+
+    // Preenchimento dos cards de resumo, parceiros e histórico (sem alterações)
+    const personData = pessoasMap.get(selectedPersonForIndividual);
+    document.getElementById('individual-total-count').textContent = `${personData.nomePessoa} teve ${personAssignments.length} designações no período.`;
+    document.getElementById('individual-peer-average').innerHTML = '';
+    const aggregatedList = document.getElementById('individual-aggregated-list');
+    const assignmentCounts = new Map();
+    personAssignments.forEach(p => { const desigId = p.designacaoId; assignmentCounts.set(desigId, (assignmentCounts.get(desigId) || 0) + 1); });
+    const sortedAssignments = [...assignmentCounts.entries()].sort((a, b) => b[1] - a[1]);
+    aggregatedList.innerHTML = sortedAssignments.map(([id, count]) => `<li class="top-list-item" data-designation-id="${id}"><span class="name">${designacoesMap.get(id) || 'Desconhecida'}</span><span class="count">${count}</span></li>`).join('') || '<li>Nenhum resultado.</li>';
+    const partnersList = document.getElementById('individual-frequent-partners-list');
+    const partnerCounts = new Map();
+    personAssignments.forEach(assignment => { assignment.participantIds.forEach(participantId => { if (participantId !== selectedPersonForIndividual) { partnerCounts.set(participantId, (partnerCounts.get(participantId) || 0) + 1); } }); });
+    const sortedPartners = [...partnerCounts.entries()].sort((a, b) => b[1] - a[1]);
+    partnersList.innerHTML = sortedPartners.map(([id, count]) => `<li class="top-list-item" data-partner-id="${id}"><span class="name">${pessoasMap.get(id)?.nomePessoa || 'Desconhecido'}</span><span class="count">${count}</span></li>`).join('') || '<li>Nenhum parceiro encontrado.</li>';
+    const detailedList = document.getElementById('individual-detailed-list');
+    detailedList.innerHTML = personAssignments.map(assignment => {
+        const desigNome = designacoesMap.get(assignment.designacaoId) || 'Desconhecida';
+        const dateParts = assignment.date ? assignment.date.split('-') : [];
+        const fDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : (assignment.date || 'Sem data');
+        const otherParticipantIds = assignment.participantIds.filter(id => id !== selectedPersonForIndividual);
+        const coParticipantsText = otherParticipantIds.map(id => pessoasMap.get(id)?.nomePessoa || `ID(${id})`).join(' - ');
+        return `<li class="top-list-item detailed-list-item highlight" data-designation-id="${assignment.designacaoId}" data-co-participant-ids="${otherParticipantIds.join(',')}"><div><span class="date">${fDate}</span> - <span class="assignment">${desigNome}</span>${coParticipantsText ? `: <span class="participants">${coParticipantsText}</span>` : ''}</div></li>`;
+    }).join('') || '<li>Nenhum resultado.</li>';
+
+    // Lógica para os gráficos gerais
+    if (personAssignments.length > 0) {
+        chartsContainer.style.display = 'block';
+        const byDesignation = new Map(), byWeek = new Map(), byMonth = new Map(), byYear = new Map();
+        personAssignments.forEach(a => {
+            const desigName = designacoesMap.get(a.designacaoId) || 'Desconhecida'; byDesignation.set(desigName, (byDesignation.get(desigName) || 0) + 1);
+            const semana = historicoSemanas.find(s => s.id === a.weekId); if (semana) { byWeek.set(semana.semanaindex, (byWeek.get(semana.semanaindex) || 0) + 1); }
+            if (a.date) {
+                const date = new Date(a.date); const year = date.getFullYear(); const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const yearMonth = `${year}/${month}`; byMonth.set(yearMonth, (byMonth.get(yearMonth) || 0) + 1); byYear.set(year, (byYear.get(year) || 0) + 1);
+            }
+        });
+        const sortedWeeks = [...byWeek.entries()].sort((a, b) => historicoSemanas.find(s=>s.semanaindex === a[0]).startDate - historicoSemanas.find(s=>s.semanaindex === b[0]).startDate);
+        const sortedMonths = [...byMonth.entries()].sort(); const sortedYears = [...byYear.entries()].sort();
         
-        analysisContainer.style.display = 'block';
-        placeholder.style.display = 'none';
+        // --- CORREÇÃO AQUI ---
+        // Os nomes dos tipos agora usam hífen para corresponder ao HTML
+        renderIndividualChart('by-designation', [...byDesignation.keys()], [...byDesignation.values()], 'bar', '#3498db');
+        renderIndividualChart('by-week', sortedWeeks.map(w => w[0]), sortedWeeks.map(w => w[1]), 'bar', '#9b59b6');
+        renderIndividualChart('by-month', sortedMonths.map(m => m[0]), sortedMonths.map(m => m[1]), 'line', '#1abc9c');
+        renderIndividualChart('by-year', sortedYears.map(y => y[0]), sortedYears.map(y => y[1]), 'bar', '#e67e22');
 
-        const snapshot = await buildHistoricoQuery().get();
-        let documents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } else { chartsContainer.style.display = 'none'; }
 
-        const anosSelecionados = getCustomDropdownValues(filterPanel, 'ano').map(y => parseInt(y));
-        const semanasSelecionadas = getCustomDropdownValues(filterPanel, 'semana');
-        const totalAnosDisponiveis = filterPanel.querySelector('[data-filter-name="ano"]').querySelectorAll('input[type="checkbox"]').length;
-        const totalSemanasDisponiveis = filterPanel.querySelector('[data-filter-name="semana"]').querySelectorAll('input[type="checkbox"]').length;
+    // Lógica para a secção de discursos
+    if (!oradorDesignacaoId) return;
+    const personDiscursos = personAssignments.filter(a => a.designacaoId === oradorDesignacaoId && a.descricao).map(a => { const discursoInfo = discursosMap.get(a.descricao); if (!discursoInfo) return null; return { date: a.date, discursoId: a.descricao, numero: discursoInfo.numero, nome: discursoInfo.nome }; }).filter(Boolean);
+    if (personDiscursos.length > 0) {
+        discursosContainer.style.display = 'block';
+        const allDiscursos = allValidAssignments.filter(a => a.designacaoId === oradorDesignacaoId);
+        const speakerCounts = new Map(); allDiscursos.forEach(d => { d.participantIds.forEach(id => speakerCounts.set(id, (speakerCounts.get(id) || 0) + 1)); });
+        let average = 0; if (speakerCounts.size > 0) { let total = 0; speakerCounts.forEach(count => total += count); average = total / speakerCounts.size; }
+        const avgCard = document.getElementById('discursos-average-card');
+        let comparisonHTML = `A pessoa está <strong class="color-green">na média</strong>.`;
+        if (personDiscursos.length > average * 1.1) comparisonHTML = `A pessoa está <strong class="color-blue">acima da média</strong>.`;
+        if (personDiscursos.length < average * 0.9) comparisonHTML = `A pessoa está <strong class="color-red">abaixo da média</strong>.`;
+        avgCard.innerHTML = `<h3>${personDiscursos.length} Discursos</h3><p>${comparisonHTML}<br><span>(Média: ${average.toFixed(1)})</span></p>`;
+        
+        const discursosDetailedList = document.getElementById('discursos-detailed-list');
+        discursosDetailedList.innerHTML = personDiscursos.sort((a,b) => new Date(b.date) - new Date(a.date)).map(d => { const dateParts = d.date.split('-'); const fDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`; return `<li class="top-list-item"><span>${fDate} - (${d.numero}) ${d.nome}</span></li>`; }).join('');
+        
+        const discursosAggregatedList = document.getElementById('discursos-aggregated-list');
+        const discursoCounts = new Map(); personDiscursos.forEach(d => { const key = `${d.numero} - ${d.nome}`; discursoCounts.set(key, (discursoCounts.get(key) || 0) + 1); });
+        discursosAggregatedList.innerHTML = [...discursoCounts.entries()].sort((a, b) => b[1] - a[1]).map(([nome, count]) => `<li class="top-list-item"><span class="name">${nome}</span><span class="discurso-count">${count}</span></li>`).join('');
+        
+        const discursosByMonth = new Map(), discursosByYear = new Map();
+        personDiscursos.forEach(d => { const date = new Date(d.date); const year = date.getFullYear(); const month = (date.getMonth() + 1).toString().padStart(2, '0'); const yearMonth = `${month}/${year}`; discursosByMonth.set(yearMonth, (discursosByMonth.get(yearMonth) || 0) + 1); discursosByYear.set(year, (discursosByYear.get(year) || 0) + 1); });
+        const sortedDiscursoMonths = [...discursosByMonth.entries()].sort((a,b) => new Date(a[0].split('/')[1], a[0].split('/')[0]-1) - new Date(b[0].split('/')[1], b[0].split('/')[0]-1));
+        const sortedDiscursoYears = [...discursosByYear.entries()].sort();
 
-        if (anosSelecionados.length < totalAnosDisponiveis) {
-            documents = documents.filter(doc => anosSelecionados.includes(doc.ano));
-        }
-        if (semanasSelecionadas.length < totalSemanasDisponiveis) {
-            documents = documents.filter(doc => semanasSelecionadas.includes(doc.id));
-        }
+        // --- CORREÇÃO AQUI ---
+        // Os nomes dos tipos agora usam hífen para corresponder ao HTML
+        renderIndividualChart('discursos-by-month', sortedDiscursoMonths.map(m => m[0]), sortedDiscursoMonths.map(m => m[1]), 'bar', '#8e8e8e', 'Nº de Discursos');
+        renderIndividualChart('discursos-by-year', sortedDiscursoYears.map(y => y[0]), sortedDiscursoYears.map(y => y[1]), 'bar', '#006400', 'Nº de Discursos');
+    }
+}
 
-        const allValidParticipations = getFilteredParticipations(documents, filterPanel);
+   function renderIndividualChart(type, labels, data, chartType, color, datasetLabel = 'Nº Designações') {
+    const chartId = `individual-chart-${type}`;
+    const ctx = document.getElementById(chartId).getContext('2d');
+    let chartInstance;
 
-        const personData = pessoasMap.get(selectedPersonForIndividual);
-        const personParticipations = allValidParticipations.filter(p => p.personId === selectedPersonForIndividual);
-        const personTotalCount = personParticipations.length;
+    // --- INÍCIO DA CORREÇÃO (PRIMEIRO SWITCH) ---
+    // Os 'case' foram atualizados para usar hífen
+    switch(type) {
+        case 'by-designation': chartInstance = individualChartByDesignation; break;
+        case 'by-week': chartInstance = individualChartByWeek; break;
+        case 'by-month': chartInstance = individualChartByMonth; break;
+        case 'by-year': chartInstance = individualChartByYear; break;
+        case 'discursos-by-month': chartInstance = individualChartDiscursosByMonth; break;
+        case 'discursos-by-year': chartInstance = individualChartDiscursosByYear; break;
+    }
+    // --- FIM DA CORREÇÃO ---
 
-        let peerAverageText = 'Média para outras pessoas: <strong class="color-blue">N/A</strong>';
-        if (personTotalCount > 0) {
-            const personAssignmentTypes = new Set(personParticipations.map(p => p.designacaoId));
-            const peerParticipations = allValidParticipations.filter(p => personAssignmentTypes.has(p.designacaoId));
-            
-            const peerCounts = new Map();
-            peerParticipations.forEach(p => {
-                peerCounts.set(p.personId, (peerCounts.get(p.personId) || 0) + 1);
-            });
+    if (chartInstance) { 
+        chartInstance.destroy(); 
+    }
 
-            if (peerCounts.size > 1) {
-                let totalPeerAssignments = 0;
-                peerCounts.forEach(count => totalPeerAssignments += count);
-                const peerAverage = totalPeerAssignments / peerCounts.size;
-
-                let colorClass = 'color-green';
-                if (personTotalCount < peerAverage * 0.9) colorClass = 'color-red';
-                if (personTotalCount > peerAverage * 1.1) colorClass = 'color-blue';
-
-                peerAverageText = `Média para outras pessoas: <strong class="${colorClass}">${peerAverage.toFixed(1)}</strong>`;
+    const newChart = new Chart(ctx, {
+        type: chartType,
+        data: { 
+            labels: labels, 
+            datasets: [{ 
+                label: datasetLabel, 
+                data: data, 
+                backgroundColor: color, 
+                borderColor: color, 
+                tension: 0.1 
+            }] 
+        },
+        options: {
+            responsive: true, 
+            maintainAspectRatio: false,
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    ticks: { color: '#bdc3c7', stepSize: 1 }, 
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' } 
+                }, 
+                x: { 
+                    ticks: { color: '#bdc3c7' }, 
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' } 
+                } 
+            },
+            plugins: { 
+                legend: { 
+                    labels: { color: '#ecf0f1' } 
+                } 
             }
         }
-        
-        document.getElementById('individual-total-count').textContent = `${personData.nomePessoa} teve ${personTotalCount} designações no período.`;
-        document.getElementById('individual-peer-average').innerHTML = peerAverageText;
+    });
 
-        const aggregatedList = document.getElementById('individual-aggregated-list');
-        const assignmentCounts = new Map();
-        personParticipations.forEach(p => {
-            assignmentCounts.set(p.designacaoId, (assignmentCounts.get(p.designacaoId) || 0) + 1);
-        });
-
-        const sortedAssignments = [...assignmentCounts.entries()].sort((a, b) => b[1] - a[1]);
-        aggregatedList.innerHTML = sortedAssignments.map(([id, count]) => 
-            `<li class="top-list-item" data-designation-id="${id}">
-                <span class="name">${designacoesMap.get(id) || 'Desconhecida'}</span>
-                <span class="count">${count}</span>
-            </li>`
-        ).join('') || '<li>Nenhum resultado.</li>';
-
-        const detailedList = document.getElementById('individual-detailed-list');
-        detailedList.innerHTML = personParticipations.map(p => {
-            const desigNome = designacoesMap.get(p.designacaoId) || 'Desconhecida';
-            const dateParts = p.date ? p.date.split('-') : [];
-            const fDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : (p.date || 'Sem data');
-            
-            return `<li class="top-list-item detailed-list-item highlight" data-designation-id="${p.designacaoId}">
-                        <div><span class="date">${fDate}</span> - <span class="assignment">${desigNome}</span></div>
-                    </li>`;
-        }).join('') || '<li>Nenhum resultado.</li>';
+    // --- INÍCIO DA CORREÇÃO (SEGUNDO SWITCH) ---
+    // Os 'case' também foram atualizados aqui para guardar o novo gráfico
+    switch(type) {
+        case 'by-designation': individualChartByDesignation = newChart; break;
+        case 'by-week': individualChartByWeek = newChart; break;
+        case 'by-month': individualChartByMonth = newChart; break;
+        case 'by-year': individualChartByYear = newChart; break;
+        case 'discursos-by-month': individualChartDiscursosByMonth = newChart; break;
+        case 'discursos-by-year': individualChartDiscursosByYear = newChart; break;
     }
+    // --- FIM DA CORREÇÃO ---
+}
 
     // --- LÓGICA PRINCIPAL DA PÁGINA ---
     document.addEventListener('DOMContentLoaded', async function() {
-        // --- 1. CLONAGEM E PREENCHIMENTO INICIAL DOS FILTROS ---
         const filterTemplate = document.getElementById('filter-panel-template').content;
         document.querySelectorAll('.filter-panel-wrapper').forEach((wrapper, index) => {
             const clone = document.importNode(filterTemplate, true);
@@ -685,17 +800,12 @@
 
         const populateAllFilters = async () => {
             try {
-                const [historicoSnapshot, nacionalidadesSnapshot, designacoesSnapshot] = await Promise.all([
-                    db.collection('historico').get(), db.collection('nacionalidades').get(), db.collection('designacoes').get()
-                ]);
-
-                const years = new Set();
-                const dateRegex = /(\d{1,2})\s(\w{3})/; const monthMap = { 'Jan': 0, 'Fev': 1, 'Mar': 2, 'Abr': 3, 'Mai': 4, 'Jun': 5, 'Jul': 6, 'Ago': 7, 'Set': 8, 'Out': 9, 'Nov': 10, 'Dez': 11 };
+                const [historicoSnapshot, nacionalidadesSnapshot, designacoesSnapshot] = await Promise.all([ db.collection('historico').get(), db.collection('nacionalidades').get(), db.collection('designacoes').get() ]);
+                const years = new Set(); const dateRegex = /(\d{1,2})\s(\w{3})/; const monthMap = { 'Jan': 0, 'Fev': 1, 'Mar': 2, 'Abr': 3, 'Mai': 4, 'Jun': 5, 'Jul': 6, 'Ago': 7, 'Set': 8, 'Out': 9, 'Nov': 10, 'Dez': 11 };
                 historicoSnapshot.forEach(doc => { const data = doc.data(); if (data.ano) years.add(data.ano); if (data.semanaindex) { const match = data.semanaindex.match(dateRegex); if(match){ historicoSemanas.push({ ...data, id: doc.id, startDate: new Date(data.ano, monthMap[match[2]], parseInt(match[1])) }); } } });
                 historicoSemanas = [...new Map(historicoSemanas.map(item => [item['semanaindex'], item])).values()];
                 historicoSemanas.sort((a, b) => a.startDate - b.startDate);
                 const sortedYears = Array.from(years).sort((a, b) => b - a);
-
                 const staticOptions = {
                     mes: [{v:'1',t:'Janeiro'},{v:'2',t:'Fevereiro'},{v:'3',t:'Março'},{v:'4',t:'Abril'},{v:'5',t:'Maio'},{v:'6',t:'Junho'},{v:'7',t:'Julho'},{v:'8',t:'Agosto'},{v:'9',t:'Setembro'},{v:'10',t:'Outubro'},{v:'11',t:'Novembro'},{v:'12',t:'Dezembro'}],
                     tipo: [{v:'reuniao',t:'Reunião'},{v:'pregacao',t:'Pregação'}],
@@ -707,39 +817,33 @@
                     idioma: Array.from(nacionalidadesSnapshot.docs.map(doc => ({v:doc.id, t:doc.data().nome}))),
                     designacoes: Array.from(designacoesSnapshot.docs.map(doc => ({v:doc.id, t:doc.data().nome})))
                 };
-                
                 document.querySelectorAll('.filter-panel').forEach(panel => {
                     for (const [filterName, options] of Object.entries(staticOptions)) {
                         const container = panel.querySelector(`.multi-select-container[data-filter-name="${filterName}"]`);
-                        if (container) {
-                            const list = container.querySelector('.multi-select-list');
-                            list.innerHTML = options.map(opt => `<label><input type="checkbox" value="${opt.v}" checked> ${opt.t}</label>`).join('');
-                            updateMultiSelectLabel(container);
-                        }
+                        if (container) { const list = container.querySelector('.multi-select-list'); list.innerHTML = options.map(opt => `<label><input type="checkbox" value="${opt.v}" checked> ${opt.t}</label>`).join(''); updateMultiSelectLabel(container); }
                     }
                     populateSemanaFilter(panel);
                 });
             } catch (error) { console.error("Erro ao popular os filtros:", error); }
         };
-        await populateAllFilters();
-
-        // --- 2. PRÉ-CARREGAMENTO DE DADOS (CACHE) ---
+        
         async function preloadData() {
             try {
-                const [designacoesSnapshot, pessoasSnapshot, nacionalidadesSnapshot] = await Promise.all([
-                    db.collection('designacoes').get(), db.collection('pessoas').get(), db.collection('nacionalidades').get() 
-                ]);
-                designacoesSnapshot.forEach(doc => designacoesMap.set(doc.id, doc.data().nome));
+                const [designacoesSnapshot, pessoasSnapshot, nacionalidadesSnapshot, discursosSnapshot] = await Promise.all([ db.collection('designacoes').get(), db.collection('pessoas').get(), db.collection('nacionalidades').get(), db.collection('discursos').get() ]);
+                designacoesSnapshot.forEach(doc => { const data = doc.data(); designacoesMap.set(doc.id, data.nome); if (data.nome === 'Orador') { oradorDesignacaoId = doc.id; } });
                 pessoasSnapshot.forEach(doc => pessoasMap.set(doc.id, doc.data()));
                 nacionalidadesSnapshot.forEach(doc => nacionalidadesMap.set(doc.id, doc.data().nome));
-                console.log("Dados de designações, pessoas e nacionalidades pré-carregados.");
+                discursosSnapshot.forEach(doc => discursosMap.set(doc.id, doc.data()));
+                console.log("Dados de designações, pessoas, nacionalidades e discursos pré-carregados.");
+                if (oradorDesignacaoId) { console.log(`ID da designação 'Orador' encontrado: ${oradorDesignacaoId}`); } else { console.warn("'Orador' não encontrado na coleção de designações."); }
             } catch (error) { console.error("Erro ao pré-carregar dados:", error); }
         }
+
+        await populateAllFilters();
         await preloadData();
 
-        // --- 4. EVENT LISTENERS ---
+        // --- EVENT LISTENERS ---
         document.querySelectorAll('.filter-toggle-button').forEach(button => { button.addEventListener('click', () => { const container = button.closest('.collapsible-container'); if (!container) return; const wrapper = container.querySelector('.filter-panel-wrapper'); container.classList.toggle('open'); if (container.classList.contains('open')) { button.querySelector('span').textContent = 'Ocultar Filtros'; setTimeout(() => { wrapper.classList.add('overflow-visible'); }, 400); } else { button.querySelector('span').textContent = 'Mostrar Filtros'; wrapper.classList.remove('overflow-visible'); } }); });
-        
         document.querySelectorAll('.multi-select-container').forEach(container => {
             const button = container.querySelector('.multi-select-button'), options = container.querySelector('.multi-select-options'), list = container.querySelector('.multi-select-list'), searchInput = container.querySelector('.multi-select-search');
             if (button) button.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.multi-select-options.open').forEach(open => { if (open !== options) open.classList.remove('open'); }); options.classList.toggle('open'); });
@@ -750,38 +854,79 @@
             if (selectAll) selectAll.addEventListener('click', () => { list.querySelectorAll('input').forEach(cb => cb.checked = true); actionHandler(); });
             if (clearSelection) clearSelection.addEventListener('click', () => { list.querySelectorAll('input').forEach(cb => cb.checked = false); actionHandler(); });
         });
-
-        document.querySelectorAll('.filter-panel').forEach(panel => { panel.addEventListener('change', () => { const tabId = panel.closest('.tab-content').id; console.log(`Filtro alterado na aba: ${tabId}`); if (tabId === 'Geral') updateGeralDashboard(); else if (tabId === 'Top') updateTopDashboard(); else if (tabId === 'Comparacao') updateComparacaoDashboard(); else if (tabId === 'Individual') updateIndividualDashboard(); }); });
+        document.querySelectorAll('.filter-panel').forEach(panel => { panel.addEventListener('change', () => { const tabId = panel.closest('.tab-content').id; if (tabId === 'Geral') updateGeralDashboard(); else if (tabId === 'Top') updateTopDashboard(); else if (tabId === 'Comparacao') updateComparacaoDashboard(); else if (tabId === 'Individual') updateIndividualDashboard(); }); });
         
-        const btnAgrupar = document.getElementById('btn-agrupar'), btnDetalhado = document.getElementById('btn-detalhado');
-        const viewAgrupado = document.getElementById('view-agrupado'), viewDetalhado = document.getElementById('view-detalhado');
-        if(btnAgrupar) btnAgrupar.addEventListener('click', () => { btnAgrupar.classList.add('active'); btnDetalhado.classList.remove('active'); viewAgrupado.style.display = 'block'; viewDetalhado.style.display = 'none'; });
-        if(btnDetalhado) btnDetalhado.addEventListener('click', () => { btnDetalhado.classList.add('active'); btnAgrupar.classList.remove('active'); viewDetalhado.style.display = 'block'; viewAgrupado.style.display = 'none'; });
-        
-        // Listeners da Aba Comparação
-        const compSearchInput = document.getElementById('comparison-search-input'), compSearchResults = document.getElementById('comparison-search-results'), compCardsContainer = document.getElementById('comparison-cards-container');
-        if(compSearchInput){ compSearchInput.addEventListener('input', () => { const q = compSearchInput.value.toLowerCase(); if(q.length<2){compSearchResults.style.display='none';return;} const f = [...pessoasMap.entries()].filter(([i,d])=>d.nomePessoa.toLowerCase().includes(q)&&!selectedPeopleForComparison.includes(i)); compSearchResults.innerHTML=f.slice(0,10).map(([i,d])=>`<div class="search-result-item" data-person-id="${i}">${d.nomePessoa}</div>`).join(''); compSearchResults.style.display='block'; });}
-        if(compSearchResults){ compSearchResults.addEventListener('click',(e)=>{if(e.target.classList.contains('search-result-item')){const p=e.target.dataset.personId;if(!selectedPeopleForComparison.includes(p)){selectedPeopleForComparison.push(p);updateComparacaoDashboard();}compSearchInput.value='';compSearchResults.style.display='none';}});}
-        if(compCardsContainer){ compCardsContainer.addEventListener('click',(e)=>{if(e.target.classList.contains('remove-person-btn')){const p=e.target.dataset.personId;selectedPeopleForComparison=selectedPeopleForComparison.filter(i=>i!==p);updateComparacaoDashboard();}});}
-
-        // Listeners da Aba Individual
-        const indSearchInput = document.getElementById('individual-search-input'), indSearchResults = document.getElementById('individual-search-results'), indAggregatedList = document.getElementById('individual-aggregated-list');
-        if(indSearchInput){ indSearchInput.addEventListener('input', () => { const q = indSearchInput.value.toLowerCase(); if(q.length<2){indSearchResults.style.display='none';return;} const f=[...pessoasMap.entries()].filter(([i,d])=>d.nomePessoa.toLowerCase().includes(q)); indSearchResults.innerHTML=f.slice(0,10).map(([i,d])=>`<div class="search-result-item" data-person-id="${i}">${d.nomePessoa}</div>`).join(''); indSearchResults.style.display='block'; });}
+        const indSearchInput = document.getElementById('individual-search-input'), indSearchResults = document.getElementById('individual-search-results');
+        if (indSearchInput) { indSearchInput.addEventListener('input', () => { const q = indSearchInput.value.toLowerCase(); if (q.length < 2) { indSearchResults.style.display = 'none'; return; } const f = [...pessoasMap.entries()].filter(([i, d]) => d.nomePessoa.toLowerCase().includes(q)).sort((a, b) => a[1].nomePessoa.localeCompare(b[1].nomePessoa)); indSearchResults.innerHTML = f.slice(0, 10).map(([i, d]) => `<div class="search-result-item" data-person-id="${i}">${d.nomePessoa}</div>`).join(''); indSearchResults.style.display = 'block'; }); }
         if(indSearchResults){ indSearchResults.addEventListener('click',(e)=>{if(e.target.classList.contains('search-result-item')){selectedPersonForIndividual=e.target.dataset.personId;updateIndividualDashboard();indSearchInput.value='';indSearchResults.style.display='none';}});}
-        if(indAggregatedList){ indAggregatedList.addEventListener('click', (e) => { const c = e.target.closest('.top-list-item'); if (!c) return; const dId = c.dataset.designationId; const dItems = document.querySelectorAll('#individual-detailed-list .top-list-item'); const aItems = document.querySelectorAll('#individual-aggregated-list .top-list-item'); if (c.classList.contains('active')) { c.classList.remove('active'); dItems.forEach(i => i.classList.add('highlight')); } else { aItems.forEach(i => i.classList.remove('active')); c.classList.add('active'); dItems.forEach(i => { if (i.dataset.designationId === dId) i.classList.add('highlight'); else i.classList.remove('highlight'); }); } }); }
+
+        const indAggregatedList = document.getElementById('individual-aggregated-list');
+        if(indAggregatedList){ indAggregatedList.addEventListener('click', (e) => { const c = e.target.closest('.top-list-item'); if (!c) return; const dId = c.dataset.designationId; const dItems = document.querySelectorAll('#individual-detailed-list .top-list-item'); const aItems = document.querySelectorAll('#individual-aggregated-list .top-list-item'); const pItems = document.querySelectorAll('#individual-frequent-partners-list .top-list-item'); pItems.forEach(i => i.classList.remove('active')); if (c.classList.contains('active')) { c.classList.remove('active'); dItems.forEach(i => i.classList.add('highlight')); } else { aItems.forEach(i => i.classList.remove('active')); c.classList.add('active'); dItems.forEach(i => { if (i.dataset.designationId === dId) i.classList.add('highlight'); else i.classList.remove('highlight'); }); } }); }
+        
+        const indFrequentPartnersList = document.getElementById('individual-frequent-partners-list');
+        if (indFrequentPartnersList) { indFrequentPartnersList.addEventListener('click', (e) => { const c = e.target.closest('.top-list-item'); if (!c) return; const pId = c.dataset.partnerId; const dItems = document.querySelectorAll('#individual-detailed-list .top-list-item'); const pItems = document.querySelectorAll('#individual-frequent-partners-list .top-list-item'); const aItems = document.querySelectorAll('#individual-aggregated-list .top-list-item'); aItems.forEach(i => i.classList.remove('active')); if (c.classList.contains('active')) { c.classList.remove('active'); dItems.forEach(i => i.classList.add('highlight')); } else { pItems.forEach(i => i.classList.remove('active')); c.classList.add('active'); dItems.forEach(i => { const coIds = i.dataset.coParticipantIds.split(','); if (coIds.includes(pId)) i.classList.add('highlight'); else i.classList.remove('highlight'); }); } }); }
+
+        const modalOverlay = document.getElementById('chart-modal-overlay');
+const modalCloseBtn = document.getElementById('chart-modal-close');
+
+document.querySelectorAll('.expand-chart-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const chartId = btn.dataset.chartId;
+        let sourceChart;
+
+        // --- INÍCIO DA CORREÇÃO ---
+        // Os 'case' agora usam hífen para corresponder exatamente
+        // aos atributos 'data-chart-id' no HTML.
+        switch(chartId) {
+            case 'by-designation': sourceChart = individualChartByDesignation; break;
+            case 'by-week': sourceChart = individualChartByWeek; break;
+            case 'by-month': sourceChart = individualChartByMonth; break;
+            case 'by-year': sourceChart = individualChartByYear; break;
+            case 'discursos-by-month': sourceChart = individualChartDiscursosByMonth; break;
+            case 'discursos-by-year': sourceChart = individualChartDiscursosByYear; break;
+        }
+        // --- FIM DA CORREÇÃO ---
+
+        if (sourceChart) {
+            modalOverlay.style.display = 'flex';
+            const modalCtx = document.getElementById('modal-chart-canvas').getContext('2d');
+            if (modalChart) modalChart.destroy(); // Destruir gráfico anterior do modal
+            
+            // Clona a configuração do gráfico de origem para o modal
+            modalChart = new Chart(modalCtx, {
+                type: sourceChart.config.type,
+                data: sourceChart.config.data,
+                options: { ...sourceChart.config.options, maintainAspectRatio: false } // Garante que o gráfico preenche o espaço
+            });
+        }
+    });
+});
+
+function closeModal() {
+    modalOverlay.style.display = 'none';
+    if (modalChart) {
+        modalChart.destroy();
+        modalChart = null;
+    }
+}
+
+modalCloseBtn.addEventListener('click', closeModal);
+modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) { // Fecha apenas se clicar no fundo
+        closeModal();
+    }
+});
+
+        function closeModal() { modalOverlay.style.display = 'none'; if (modalChart) { modalChart.destroy(); modalChart = null; } }
+        modalCloseBtn.addEventListener('click', closeModal);
+        modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) { closeModal(); } });
         
         window.addEventListener('click', (e) => { 
             const openDropdown = document.querySelector('.multi-select-options.open');
-            if (openDropdown && !openDropdown.parentElement.contains(e.target)) {
-                openDropdown.classList.remove('open');
-            }
-            if(!document.querySelector('.comparison-search-container')?.contains(e.target)){ 
-                if(compSearchResults) compSearchResults.style.display='none'; 
-                if(indSearchResults) indSearchResults.style.display='none'; 
-            }
+            if (openDropdown && !openDropdown.parentElement.contains(e.target)) { openDropdown.classList.remove('open'); }
+            if(!document.querySelector('.comparison-search-container')?.contains(e.target)){ if(indSearchResults) indSearchResults.style.display='none'; }
         });
 
-        // --- 5. CARREGAMENTO INICIAL DOS DADOS ---
         await updateGeralDashboard();
         await updateTopDashboard();
         await updateComparacaoDashboard();
