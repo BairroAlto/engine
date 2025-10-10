@@ -4978,18 +4978,50 @@ function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
 
 
             // Função principal que abre o popup de análise de par
-            async function openPairAnalysisPopup(participants) {
+       async function openPairAnalysisPopup(participants) {
+    console.log('[LOG] Função openPairAnalysisPopup iniciada com:', participants);
+
+    // <<< VERIFICAÇÃO DE ELEMENTOS DO DOM >>>
     const popup = document.getElementById('pairAnalysisPopup');
+    if (!popup) {
+        console.error('[ERRO FATAL] O elemento do popup "pairAnalysisPopup" NÃO FOI ENCONTRADO no DOM. Verifique o HTML.');
+        return; // Interrompe a função
+    }
+
     const title = document.getElementById('pairAnalysisTitle');
+    if (!title) {
+        console.error('[ERRO FATAL] O elemento do título "pairAnalysisTitle" NÃO FOI ENCONTRADO no DOM.');
+        return;
+    }
+    
     const tabsContainer = document.getElementById('pairAnalysisTabsContainer');
+    if (!tabsContainer) {
+        console.error('[ERRO FATAL] O container das abas "pairAnalysisTabsContainer" NÃO FOI ENCONTRADO no DOM.');
+        return;
+    }
+    
     const contentContainer = document.getElementById('pairAnalysisContentContainer');
+    if (!contentContainer) {
+        console.error('[ERRO FATAL] O container de conteúdo "pairAnalysisContentContainer" NÃO FOI ENCONTRADO no DOM.');
+        return;
+    }
+    
+    console.log('[LOG] Todos os elementos do popup foram encontrados com sucesso.');
 
     tabsContainer.innerHTML = 'A carregar...';
     contentContainer.innerHTML = '';
 
     const participantNames = participants.map(p => p.name).join(' & ');
     title.textContent = `Análise de: ${participantNames}`;
+    
+    console.log('[LOG] A tentar mostrar o popup. Alterando display para "flex".');
     popup.style.display = 'flex';
+    
+    if (window.getComputedStyle(popup).display === 'flex') {
+        console.log('%c[SUCESSO] O estilo "display: flex" foi aplicado corretamente ao popup.', 'color: green;');
+    } else {
+        console.error('%c[FALHA] O estilo do popup não foi alterado para "flex". Verifique o CSS ou outras scripts.', 'color: red;');
+    }
 
     const participantIds = participants.map(p => p.id);
     const pairHistory = await fetchPairHistory(participantIds);
@@ -4997,17 +5029,12 @@ function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
     tabsContainer.innerHTML = '';
     contentContainer.innerHTML = '';
 
-    // =================================================================
-    // =========== INÍCIO: CORREÇÃO NOS NOMES DOS ALVOS E IDs ==========
-    // =================================================================
-    // Aba 1: Histórico do Par - O alvo AGORA é "content-history"
     const historyTab = createTab('Histórico do Par', 'content-history', true);
     const historyContent = createTabContent('content-history', true);
     historyContent.appendChild(buildHistoryTable(pairHistory, "Histórico de Colaboração"));
     tabsContainer.appendChild(historyTab);
     contentContainer.appendChild(historyContent);
     
-    // Abas 2, 3, ...: Perfis Individuais - O alvo AGORA é "content-pX"
     participants.forEach((participant, index) => {
         const tab = createTab(participant.name, `content-p${index}`, false);
         const content = createTabContent(`content-p${index}`, false);
@@ -5017,6 +5044,7 @@ function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
         contentContainer.appendChild(content);
 
         tab.addEventListener('click', async () => {
+            console.log(`[LOG] Clique na aba do participante: ${participant.name}`);
             if (content.dataset.loaded !== 'true') {
                 const individualHistory = await fetchIndividualHistory(participant.id);
                 content.innerHTML = '';
@@ -5025,9 +5053,6 @@ function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
             }
         });
     });
-    // =================================================================
-    // ============ FIM: CORREÇÃO NOS NOMES DOS ALVOS E IDS ============
-    // =================================================================
 
     setupTabClickListeners();
 }
@@ -5035,15 +5060,17 @@ function getMeetingDayOfMonth(ano, diasSemanaString, diaSemanaReuniao) {
 
 // Função para buscar o histórico onde TODOS os participantes estiveram juntos
 async function fetchPairHistory(participantIds) {
+    console.log('[LOG] fetchPairHistory: A procurar histórico para o grupo:', participantIds);
     const historicoSnapshot = await db.collection('historico').get();
     const records = [];
     historicoSnapshot.forEach(doc => {
         const historico = doc.data();
         if (historico.designacoes && Array.isArray(historico.designacoes)) {
             historico.designacoes.forEach(designacao => {
-                const allParticipantIdsInDesig = Object.values(designacao.participantes);
+                const allParticipantIdsInDesig = Object.values(designacao.participantes || {});
                 // Verifica se TODOS os IDs do nosso par estão na designação
                 const allMembersPresent = participantIds.every(id => allParticipantIdsInDesig.includes(id));
+                
                 if (allMembersPresent) {
                     records.push({
                         dia: historico.dia,
@@ -5054,6 +5081,8 @@ async function fetchPairHistory(participantIds) {
             });
         }
     });
+    
+    console.log(`[LOG] fetchPairHistory: Encontrados ${records.length} registos de colaboração.`);
     return records.sort((a, b) => new Date(b.dia) - new Date(a.dia));
 }
 
@@ -5710,6 +5739,9 @@ function selectRandomFrom(array) {
 
 
   async function updateActiveDesignationDisplay(designacao, order, quantity, instancePreferences = {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences = {}) {
+    // Log inicial da função (sem alterações)
+    console.log(`[LOG] updateActiveDesignationDisplay chamada para: ${designacao.nome}, Quantidade: ${quantity}`);
+
     const designacaoId = designacao.id;
     const isLeituraBiblia = designacao.nome === 'Leitura da Bíblia';
     const containerToUse = isLeituraBiblia ? document.getElementById('leituraBibliaDesignationContainer') : document.getElementById('activeDesignationsContainer');
@@ -5755,9 +5787,6 @@ function selectRandomFrom(array) {
         title.style.marginBottom = '10px';
         designacaoInstanceContainer.appendChild(title);
         
-        // ===================================================================
-        // AQUI ESTAVA O ERRO: As variáveis que faltavam foram adicionadas
-        // ===================================================================
         const keyNumParticipantes = `numParticipantes-${instanceKeyPrefix}`;
         const keyGeneroPref = `generoPreferencia-${instanceKeyPrefix}`;
         const keyGeneroMix = `generoMix-${instanceKeyPrefix}`;
@@ -5785,97 +5814,22 @@ function selectRandomFrom(array) {
         designationDisplayContainer.appendChild(designacaoInstanceContainer);
         designationDisplayContainer.style.position = 'relative';
 
+        // =========================================================================
+        // =========== INÍCIO: LÓGICA REFORÇADA DOS ÍCONES =========================
+        // =========================================================================
+
+        // Criação de todos os ícones
         const filterPopup = document.createElement('div');
         filterPopup.className = 'filter-popup';
         filterPopup.innerHTML = `<h4>Filtros</h4>
             <div class="filter-options"><label for="num-participantes-${designacaoInstance}">Número de Participantes</label><select id="num-participantes-${designacaoInstance}"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
             <div class="filter-options" style="margin-top: 15px;"><label for="genero-preferencia-${designacaoInstance}">Preferência de Género</label><select id="genero-preferencia-${designacaoInstance}"><option value="masculino feminino">Masculino/Feminino</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option></select></div>
             <div class="filter-options" style="margin-top: 15px;"><label for="genero-mix-${designacaoInstance}">Masculino com Feminino</label><select id="genero-mix-${designacaoInstance}" class="gender-mix-select"><option value="nao">Não</option><option value="sim">Sim</option></select></div>`;
-
-        const numParticipantesSelect = filterPopup.querySelector(`#num-participantes-${designacaoInstance}`);
-        numParticipantesSelect.value = numeroParticipantesDynamic;
         
-      numParticipantesSelect.addEventListener('change', async (e) => {
-    const newParticipantCount = parseInt(e.target.value);
-    temporaryPreferences[keyNumParticipantes] = newParticipantCount;
-
-    const currentSelects = designacaoInstanceContainer.querySelectorAll('.form-select');
-    const savedValues = Array.from(currentSelects).map(s => s.value);
-
-    console.log(`[LOG FORTE] Valores guardados antes de limpar:`, savedValues);
-
-    designacaoInstanceContainer.innerHTML = '';
-    designacaoInstanceContainer.appendChild(title);
-    for (let i = 0; i < newParticipantCount; i++) {
-        const roleLabel = document.createElement('span');
-        roleLabel.textContent = newParticipantCount === 1 ? participantRoles[0] : participantRoles[i + 1];
-        roleLabel.style.fontSize = '0.9em'; roleLabel.style.color = '#777'; roleLabel.style.display = 'block'; roleLabel.style.marginBottom = '3px';
-        designacaoInstanceContainer.appendChild(roleLabel);
-
-        let participantSelect = document.createElement('select');
-        participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
-        participantSelect.className = 'form-select';
-        participantSelect.style.marginBottom = '10px'; participantSelect.style.width = '100%';
-        participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
-        participantSelect.addEventListener('change', () => saveSelectionsForDesignation(designacaoId));
-        designacaoInstanceContainer.appendChild(participantSelect);
-    }
-
-    // Agora este 'await' vai esperar de verdade.
-    await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, generoPreferencia);
-    
-    const newSelects = designacaoInstanceContainer.querySelectorAll('.form-select');
-    newSelects.forEach((select, index) => {
-        console.log(`--- [DEBUG] Tentativa de Restauração (Dropdown ${index + 1}) ---`);
-        const valueToRestore = savedValues[index];
-        console.log(`Valor que deveria ser restaurado: '${valueToRestore}'`);
-        if (valueToRestore) {
-            const optionElement = select.querySelector(`option[value="${valueToRestore}"]`);
-            const optionExists = optionElement !== null;
-            console.log(`A opção com o valor '${valueToRestore}' existe no novo dropdown? ${optionExists}`);
-            if (optionExists) {
-                console.log(`%cSUCESSO: O valor foi encontrado e será restaurado.`, 'color: #2ecc71; font-weight: bold;');
-                select.value = valueToRestore;
-            } else {
-                const availableOptions = Array.from(select.options).map(opt => opt.value);
-                console.warn(`%cFALHA: O participante (ID: ${valueToRestore}) não foi encontrado na nova lista de opções. A seleção foi perdida.`, 'color: #e74c3c; font-weight: bold;');
-                console.log('Opções que estão realmente disponíveis neste dropdown:', availableOptions);
-            }
-        } else {
-            console.log("Nenhum valor anterior para restaurar neste dropdown.");
-        }
-        console.log(`--- [DEBUG] Fim da Tentativa (Dropdown ${index + 1}) ---`);
-    });
-
-    if (newSelects.length > 0 && newSelects[0].value) {
-        handleGenderSync(newSelects[0]);
-    }
-});
-
-        
-        const generoPreferenciaSelect = filterPopup.querySelector(`#genero-preferencia-${designacaoInstance}`);
-        generoPreferenciaSelect.value = generoPreferencia;
-        generoPreferenciaSelect.addEventListener('change', (e) => {
-            temporaryPreferences[keyGeneroPref] = e.target.value;
-            loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, e.target.value);
-            filterPopup.classList.remove('active');
-        });
-        
-        const generoMixSelect = filterPopup.querySelector(`#genero-mix-${designacaoInstance}`);
-        generoMixSelect.value = generoMix;
-        generoMixSelect.addEventListener('change', (e) => {
-            temporaryPreferences[keyGeneroMix] = e.target.value;
-            const firstSelect = designationDisplayContainer.querySelector('.form-select');
-            if (firstSelect) handleGenderSync(firstSelect);
-        });
-
         const filterIcon = document.createElement('i');
         filterIcon.className = 'fas fa-filter filter-icon';
         filterIcon.addEventListener('click', (e) => { e.stopPropagation(); filterPopup.classList.toggle('active'); });
-
-        designationDisplayContainer.appendChild(filterPopup);
-        designationDisplayContainer.appendChild(filterIcon);
-
+        
         const lockIcon = document.createElement('i');
         lockIcon.className = 'fas fa-lock-open lock-icon';
         lockIcon.title = 'Bloquear/Desbloquear Designação';
@@ -5892,16 +5846,6 @@ function selectRandomFrom(array) {
             e.target.classList.toggle('fa-lock');
             e.target.classList.toggle('fa-lock-open');
         });
-        designationDisplayContainer.appendChild(lockIcon);
-
-        const lupaIcon = document.createElement('i');
-        lupaIcon.className = 'fas fa-search-plus lupa-icon';
-        lupaIcon.title = 'Analisar Histórico';
-        lupaIcon.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // ... (lógica do ícone)
-        });
-        designationDisplayContainer.appendChild(lupaIcon);
 
         const labIcon = document.createElement('i');
         labIcon.className = 'fas fa-flask lab-icon';
@@ -5910,8 +5854,65 @@ function selectRandomFrom(array) {
             e.stopPropagation();
             openLabPopup(e.target.closest('.active-designation-container'));
         });
-        designationDisplayContainer.appendChild(labIcon);
 
+        const lupaIcon = document.createElement('i');
+        lupaIcon.className = 'fas fa-search-plus lupa-icon';
+        lupaIcon.title = 'Analisar Histórico';
+        
+        // <<< NOVO LOG DE VERIFICAÇÃO >>>
+        console.log(`[LOG ATTACH] Anexando 'ouvinte' de clique ao ícone da lupa para a instância: ${containerId}`);
+
+        // <<< BLOCO TRY...CATCH ADICIONADO >>>
+        lupaIcon.addEventListener('click', (e) => {
+            try {
+                console.log('%c[EVENTO DISPARADO] Clique na lupa DETETADO para o container:', 'color: green; font-weight: bold;', containerId);
+                console.log('[DEBUG] Objeto do evento de clique:', e);
+                
+                e.stopPropagation();
+
+                const container = e.target.closest('.active-designation-container');
+                if (!container) {
+                    throw new Error('Não foi possível encontrar o .active-designation-container a partir do ícone.');
+                }
+
+                const selects = container.querySelectorAll('.form-select');
+                const participantsToAnalyze = [];
+
+                selects.forEach(select => {
+                    if (select.value) {
+                        participantsToAnalyze.push({
+                            id: select.value,
+                            name: select.options[select.selectedIndex].text
+                        });
+                    }
+                });
+
+                console.log('[LOG] Participantes identificados para análise:', participantsToAnalyze);
+
+                if (participantsToAnalyze.length > 0) {
+                    openPairAnalysisPopup(participantsToAnalyze);
+                } else {
+                    console.warn('[AVISO] Nenhum participante selecionado para analisar.');
+                    alert("Por favor, selecione pelo menos um participante para analisar o histórico.");
+                }
+
+            } catch (error) {
+                // <<< CAPTURA DE ERRO >>>
+                console.error('%c[ERRO CRÍTICO] Ocorreu um erro DENTRO do event listener da lupa!', 'color: red; font-weight: bold;', error);
+                alert("Ocorreu um erro ao tentar analisar o histórico. Verifique a consola para mais detalhes.");
+            }
+        });
+
+        // Adiciona todos os elementos ao DOM
+        designationDisplayContainer.appendChild(filterPopup);
+        designationDisplayContainer.appendChild(filterIcon);
+        designationDisplayContainer.appendChild(lockIcon);
+        designationDisplayContainer.appendChild(lupaIcon);
+        designationDisplayContainer.appendChild(labIcon);
+        
+        // =========================================================================
+        // ======================= FIM DA LÓGICA REFORÇADA =========================
+        // =========================================================================
 
         await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, generoPreferencia);
     }
