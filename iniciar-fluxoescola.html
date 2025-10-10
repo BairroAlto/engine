@@ -2031,12 +2031,12 @@ estatisticasButton.addEventListener('click', async () => {
     document.body.classList.add('popup-open');
 
     // Ativa a primeira aba por defeito e carrega seu conteúdo
-    if (!document.querySelector('.tab-button.active')) {
-        document.querySelector('.tab-button[data-tab="geral"]').classList.add('active');
+    if (!document.querySelector('#estatisticasPopup .tab-button.active')) { // Adicionei #estatisticasPopup aqui também por segurança
+        document.querySelector('#estatisticasPopup .tab-button[data-tab="geral"]').classList.add('active');
         document.querySelector('#tab-content-geral').classList.add('active');
     }
 
-    const activeTab = document.querySelector('.tab-button.active').dataset.tab;
+    const activeTab = document.querySelector('#estatisticasPopup .tab-button.active').dataset.tab; // <-- A CORREÇÃO PRINCIPAL
     loadTabData(activeTab); // Carrega os dados da aba ativa
 
     // Configura o listener para trocar de aba
@@ -2044,24 +2044,32 @@ estatisticasButton.addEventListener('click', async () => {
 });
 
 const setupTabListeners = () => {
-    const tabs = document.querySelectorAll('.tab-button');
+    // A MUDANÇA PRINCIPAL: Agora só procuramos botões DENTRO do popup de estatísticas.
+    const tabs = document.querySelectorAll('#estatisticasPopup .tab-button');
+    
     tabs.forEach(tab => {
-        // Remove event listener antigo para evitar duplicação
-        tab.replaceWith(tab.cloneNode(true));
-    });
+        // Esta técnica é mais segura para garantir que não há múltiplos "ouvintes" no mesmo botão.
+        const newTab = tab.cloneNode(true);
+        tab.parentNode.replaceChild(newTab, tab);
 
-    // Adiciona o novo listener
-    document.querySelectorAll('.tab-button').forEach(tab => {
-        tab.addEventListener('click', (e) => {
+        // Adicionamos o "ouvinte" de clique apenas ao botão que acabámos de recriar.
+        newTab.addEventListener('click', (e) => {
             const tabName = e.target.dataset.tab;
             
-            document.querySelectorAll('.tab-button').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            // Agora, estas ações também só afetam os elementos DENTRO do popup de estatísticas.
+            document.querySelectorAll('#estatisticasPopup .tab-button').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('#estatisticasPopup .tab-content').forEach(c => c.classList.remove('active'));
 
             e.target.classList.add('active');
-            document.getElementById(`tab-content-${tabName}`).classList.add('active');
-
-            loadTabData(tabName);
+            
+            // Verificação de segurança antes de causar o erro
+            const contentArea = document.getElementById(`tab-content-${tabName}`);
+            if (contentArea) {
+                contentArea.classList.add('active');
+                loadTabData(tabName);
+            } else {
+                console.error(`Erro: Não foi possível encontrar a área de conteúdo para a aba "${tabName}".`);
+            }
         });
     });
 };
