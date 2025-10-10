@@ -1384,7 +1384,10 @@ body.popup-open {
     font-weight: bold;
 }
 
-
+.form-select.warning-selection {
+    border: 2px solid #f39c12; /* Laranja/Amarelo */
+    background-color: #fef9e7;
+}
 
         </style>
 
@@ -1701,15 +1704,52 @@ const getRecentPairs = async () => {
     return recentPairsMap;
 };
 
+const getPairCollaborationHistoryForYear = async (ano) => {
+    // Usa um cache simples para evitar buscas repetidas ao DB na mesma sessão
+    if (window.pairHistoryCache && window.pairHistoryCache.ano === ano) {
+        return window.pairHistoryCache.data;
+    }
+
+    const pairHistoryMap = new Map();
+    const historicoRef = db.collection('historico');
+    const q = historicoRef.where("ano", "==", ano).where("parte", "==", "escola");
+    const snapshot = await q.get();
+
+    snapshot.forEach(doc => {
+        const historico = doc.data();
+        if (historico.designacoes && historico.dia) {
+            historico.designacoes.forEach(desig => {
+                const participantes = Object.values(desig.participantes || {});
+                if (participantes.length >= 2) {
+                    // Gera todas as combinações de pares dentro da designação
+                    for (let i = 0; i < participantes.length; i++) {
+                        for (let j = i + 1; j < participantes.length; j++) {
+                            const pairKey = [participantes[i], participantes[j]].sort().join('_');
+                            if (!pairHistoryMap.has(pairKey)) {
+                                pairHistoryMap.set(pairKey, []);
+                            }
+                            pairHistoryMap.get(pairKey).push(historico.dia);
+                        }
+                    }
+                }
+            });
+        }
+    });
+    
+    // Guarda em cache
+    window.pairHistoryCache = { ano: ano, data: pairHistoryMap };
+    return pairHistoryMap;
+};
 
 // --- Função principal que valida TODAS as seleções na página (COM LOGS) ---
 const validateAllSelections = async () => {
-    console.log("[VALIDATION] 🚀 Função validateAllSelections iniciada.");
+    console.log("[VALIDATION] 🚀 Função validateAllSelections iniciada (com novas regras de pares).");
 
     const alertContainer = document.getElementById('validation-alert-container');
     const alertIcon = document.getElementById('validation-alert-icon');
     const validationList = document.getElementById('validation-list');
 
+    // Limpa estilos e mensagens de validações anteriores
     document.querySelectorAll('.form-select.invalid-selection, .form-select.warning-selection').forEach(el => {
         el.classList.remove('invalid-selection', 'warning-selection');
     });
@@ -1720,22 +1760,20 @@ const validateAllSelections = async () => {
     const mes = parseInt(document.getElementById('mes').value);
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
 
-    // --- OBTENÇÃO DOS DADOS (AGORA INCLUI A NOVA VERIFICAÇÃO) ---
+    // --- FASE 1: OBTENÇÃO DOS DADOS ---
     const [
         participantsLastWeek,
         participantsNextWeek,
-        recentPairsMap,
-        participationStats,
-        nonSchoolAssignments
+        nonSchoolAssignments,
+        pairCollaborationHistory // Dado para a nova lógica de pares
     ] = await Promise.all([
         getParticipantsLastWeek(ano, mes, semanaNumero),
         getParticipantsNextWeek(ano, mes, semanaNumero),
-        getRecentPairs(),
-        getParticipationStatsForYear(ano),
-        getNonSchoolAssignmentsForWeek(ano, mes, semanaNumero)
+        getNonSchoolAssignmentsForWeek(ano, mes, semanaNumero),
+        getPairCollaborationHistoryForYear(ano) // Função auxiliar que busca o histórico
     ]);
 
-    // --- VERIFICAÇÕES INDIVIDUAIS ---
+    // --- FASE 2: VERIFICAÇÕES INDIVIDUAIS ---
     const allSelects = document.querySelectorAll('#activeDesignationsContainer .form-select, #leituraBibliaDesignationContainer .form-select');
     const currentSelections = new Map();
 
@@ -1743,105 +1781,118 @@ const validateAllSelections = async () => {
         if (select.value) {
             const personId = select.value;
             const personName = select.options[select.selectedIndex].text;
-            let hasRedError = false;
-
-            // ... (as suas verificações existentes de duplicados, semana passada, etc. permanecem aqui)
+            
+            // Regra: Duplicação na mesma semana
             if (currentSelections.has(personId)) {
                 allViolations.push({ message: `${personName} está designado para mais de uma tarefa nesta semana.`, type: 'error' });
                 select.classList.add('invalid-selection');
                 currentSelections.get(personId).selectElement.classList.add('invalid-selection');
-                hasRedError = true;
             } else {
                 currentSelections.set(personId, { selectElement: select, name: personName });
             }
+
+            // Regra: Participou na semana passada
             if (participantsLastWeek.has(personId)) {
                 allViolations.push({ message: `${personName} participou na semana anterior.`, type: 'error' });
                 select.classList.add('invalid-selection');
-                hasRedError = true;
             }
+
+            // Regra: Participará na semana seguinte
             if (participantsNextWeek.has(personId)) {
                 allViolations.push({ message: `${personName} já está designado(a) para a semana seguinte.`, type: 'error' });
                 select.classList.add('invalid-selection');
-                hasRedError = true;
             }
 
-            // ==================================================================
-            // ============ INÍCIO: NOVA LÓGICA DE VERIFICAÇÃO DE BLOQUEIO =====
-            // ==================================================================
+            // Regra: Conflitos de Bloqueio com outras partes
             if (nonSchoolAssignments.has(personId)) {
-                console.group(`[VALIDAÇÃO-BLOQUEIO] Verificando ${personName}`);
-                const currentDesignationContainer = select.closest('.active-designation-container');
-                const currentDesignationId = currentDesignationContainer?.dataset.designacaoId;
-                const currentDesignationName = currentDesignationContainer?.querySelector('h5')?.textContent || 'Designação Atual';
+                 const currentDesignationContainer = select.closest('.active-designation-container');
+                 const currentDesignationId = currentDesignationContainer?.dataset.designacaoId;
+                 const otherDesignationIds = nonSchoolAssignments.get(personId);
+                 for (const otherDesigId of otherDesignationIds) {
+                     const otherDesigData = allDesignationsDataMap.get(otherDesigId);
+                     if (otherDesigData && (!otherDesigData.bloqueio || otherDesigData.bloqueio[currentDesignationId] !== 'Sim')) {
+                         allViolations.push({ message: `${personName} já está a realizar "${otherDesigData.nome}" esta semana.`, type: 'error' });
+                         select.classList.add('invalid-selection');
+                         break;
+                     }
+                 }
+            }
+        }
+    });
+    
+    // --- FASE 3: NOVA LÓGICA DE VERIFICAÇÕES DE PARES ---
+    const monthNames = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const currentDate = new Date(ano, mes - 1, 15); // Data de referência para o mês atual
+    const lastMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const nextMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    
+    document.querySelectorAll('.active-designation-container').forEach(container => {
+        const selectedInGroup = Array.from(container.querySelectorAll('.form-select'))
+            .map(s => ({ id: s.value, name: s.options[s.selectedIndex].text, element: s }))
+            .filter(p => p.id);
 
-                console.log(`- Pessoa: ${personName} (ID: ${personId})`);
-                console.log(`- Parte Atual: "${currentDesignationName}" (ID: ${currentDesignationId})`);
-
-                const otherDesignationIds = nonSchoolAssignments.get(personId);
-
-                for (const otherDesigId of otherDesignationIds) {
-                    const otherDesigData = allDesignationsDataMap.get(otherDesigId);
+        if (selectedInGroup.length >= 2) {
+            // Gera e verifica todas as combinações de pares dentro do grupo
+            for (let i = 0; i < selectedInGroup.length; i++) {
+                for (let j = i + 1; j < selectedInGroup.length; j++) {
+                    const p1 = selectedInGroup[i];
+                    const p2 = selectedInGroup[j];
+                    const pairKey = [p1.id, p2.id].sort().join('_');
+                    const pairNames = `${p1.name} e ${p2.name}`;
                     
-                    if (otherDesigData) {
-                        console.log(`- Conflito Potencial com: "${otherDesigData.nome}"`);
+                    const collaborationDates = pairCollaborationHistory.get(pairKey);
+                    if (collaborationDates) {
+                        let isCritical = false;
                         
-                        if (otherDesigData.bloqueio) {
-                            const permissao = otherDesigData.bloqueio[currentDesignationId];
-                            console.log(`- Verificando permissão: "${otherDesigData.nome}" permite "${currentDesignationName}"? -> Resposta: ${permissao}`);
-                            
-                            if (permissao !== 'Sim') {
-                                console.warn(`%c  -> BLOQUEADO! A regra de "${otherDesigData.nome}" impede esta combinação.`, 'color: red; font-weight: bold;');
-                                const message = `${personName} já está a realizar "${otherDesigData.nome}" esta semana.`;
-                                allViolations.push({ message: message, type: 'error' });
-                                select.classList.add('invalid-selection');
-                                hasRedError = true;
-                                break;
-                            } else {
-                                console.log(`%c  -> PERMITIDO. A regra de "${otherDesigData.nome}" permite esta combinação.`, 'color: green;');
+                        // REGRA DO ALERTA VERMELHO: Verifica se houve colaboração na janela de tempo crítica
+                        for (const dateStr of collaborationDates) {
+                            const collabDate = new Date(dateStr + "T12:00:00"); // Adiciona hora para evitar problemas de fuso horário
+                            const collabYear = collabDate.getFullYear();
+                            const collabMonth = collabDate.getMonth();
+
+                            // Condição: colaborou este mês, mês passado ou próximo mês
+                            if ((collabYear === currentDate.getFullYear() && collabMonth === currentDate.getMonth()) ||
+                                (collabYear === lastMonthDate.getFullYear() && collabMonth === lastMonthDate.getMonth()) ||
+                                (collabYear === nextMonthDate.getFullYear() && collabMonth === nextMonthDate.getMonth()))
+                            {
+                                allViolations.push({ message: `${pairNames} já colaboraram recentemente (${monthNames[collabMonth + 1]}).`, type: 'error' });
+                                p1.element.classList.add('invalid-selection');
+                                p2.element.classList.add('invalid-selection');
+                                isCritical = true;
+                                break; // Já encontrou um erro crítico para este par, não precisa de procurar mais
                             }
-                        } else {
-                            console.warn(`%c  -> BLOQUEADO! A designação "${otherDesigData.nome}" não tem um campo 'bloqueio' definido, bloqueando por defeito.`, 'color: orange;');
-                            const message = `${personName} já está a realizar "${otherDesigData.nome}" esta semana (regra de bloqueio padrão).`;
-                            allViolations.push({ message: message, type: 'error' });
-                            select.classList.add('invalid-selection');
-                            hasRedError = true;
-                            break;
+                        }
+                        
+                        // REGRA DO ALERTA AMARELO: Se não for crítico, verifica se houve colaboração este ano
+                        if (!isCritical) {
+                            const lastCollaboration = collaborationDates.sort().pop(); // Pega a data mais recente
+                            const formattedDate = new Date(lastCollaboration + "T12:00:00").toLocaleDateString('pt-PT');
+                            allViolations.push({ message: `${pairNames} já colaboraram este ano (última vez: ${formattedDate}).`, type: 'warning' });
+                            p1.element.classList.add('warning-selection');
+                            p2.element.classList.add('warning-selection');
                         }
                     }
                 }
-                console.groupEnd();
-            }
-            // ==================================================================
-            // ============== FIM: NOVA LÓGICA DE VERIFICAÇÃO DE BLOQUEIO =======
-            // ==================================================================
-
-            if (!hasRedError) {
-                // ... (a sua lógica existente para avisos de participação acima da média)
             }
         }
     });
 
-    // --- VERIFICAÇÃO DE PARES (sem alterações) ---
-    // ...
-
-    // --- ATUALIZAR A UI (sem alterações) ---
+    // --- FASE 4: ATUALIZAR A INTERFACE DO UTILIZADOR ---
     if (allViolations.length > 0) {
-        // ... (a sua lógica existente para mostrar os avisos)
         const hasErrors = allViolations.some(v => v.type === 'error');
         alertIcon.classList.remove('warning-only');
         if (!hasErrors) {
-            alertIcon.classList.add('warning-only');
+            alertIcon.classList.add('warning-only'); // Ícone fica amarelo se só houver avisos
         }
-        const uniqueViolations = Array.from(new Set(allViolations.map(v => v.message)))
-                                     .map(message => allViolations.find(v => v.message === message));
-        uniqueViolations.forEach(violation => {
+        
+        // Remove mensagens duplicadas para uma lista mais limpa
+        const uniqueMessages = [...new Map(allViolations.map(item => [item.message, item])).values()];
+
+        uniqueMessages.forEach(violation => {
             const li = document.createElement('li');
             li.textContent = violation.message;
-            if (violation.type === 'warning') {
-                li.classList.add('warning-item');
-            } else if (violation.type === 'error') {
-                li.classList.add('error-item');
-            }
+            if (violation.type === 'warning') li.style.color = '#f39c12'; // Laranja
+            else if (violation.type === 'error') li.style.color = '#c0392b'; // Vermelho
             validationList.appendChild(li);
         });
         alertContainer.style.display = 'block';
@@ -5166,8 +5217,11 @@ function buildHistoryTable(records, titleText) {
 }
 
 
-function scoreCombination(combination, context) {
+function scoreCombination(comboObject, context) {
+    // Extrai as informações do objeto
+    const { combination, isException } = comboObject;
     let score = 0;
+    
     const {
         designation,
         participationStats,
@@ -5175,52 +5229,103 @@ function scoreCombination(combination, context) {
         participantsThisMonth,
     } = context;
 
-    // --- Penalidades Individuais ---
+    // --- Penalidades Individuais (não alteradas) ---
     combination.forEach(personId => {
         const stats = participationStats.get(personId);
-        // Penalidade por já ter participado este mês (regra suave)
         if (participantsThisMonth.has(personId)) {
-            score += 20; // Penalidade média
+            score += 20;
         }
-        // Penalidade baseada no número de vezes que já fez ESTA designação
         if (stats && stats.byDesignation.has(designation.id)) {
-            score += stats.byDesignation.get(designation.id) * 5; // 5 pontos por cada vez
+            score += stats.byDesignation.get(designation.id) * 5;
         }
     });
 
-    // --- Penalidades de Pares/Trios ---
+    // --- Penalidades de Pares/Trios (não alteradas) ---
     if (combination.length >= 2) {
         for (let i = 0; i < combination.length; i++) {
             for (let j = i + 1; j < combination.length; j++) {
                 const pairKey = [combination[i], combination[j]].sort().join('_');
                 const history = pairHistory.get(pairKey) || [];
-
                 // Penalidade alta se já fizeram ESTA designação juntos este ano
-                if (history.some(h => h.designacaoId === designation.id)) {
-                    score += 100; // Penalidade muito alta
-                }
-                
-                // Penalidade média por já terem feito qualquer parte juntos este ano
+                // Esta regra é agora tratada ANTES, na geração, mas uma penalidade geral por colaboração ainda é útil.
                 score += history.length * 10;
             }
         }
     }
 
-    return score;
+    // ========= INÍCIO DA GRANDE MUDANÇA =========
+    // Adiciona uma penalidade significativa se a combinação for uma exceção.
+    // Isto garante que só será escolhida se não houver outras opções com pontuação menor.
+    if (isException) {
+        score += 50; // Penalidade de "Último Recurso"
+    }
+    // ========= FIM DA GRANDE MUDANÇA =========
 
-    
+    return score;
 }
 
 
-    async function findBestAssignmentForGroup(group, context) {
+
+
+
+
+
+
+
+function checkPairRepetition(person1Id, person2Id, designationId, context) {
+    const { allPeopleData, pairHistory } = context;
+
+    const pairKey = [person1Id, person2Id].sort().join('_');
+    const historyForPair = pairHistory.get(pairKey) || [];
+
+    // Filtra o histórico para encontrar as vezes que fizeram ESTA designação juntos.
+    const relevantHistory = historyForPair.filter(h => h.designacaoId === designationId);
+
+    // Se nunca fizeram esta designação juntos, a combinação é perfeitamente válida.
+    if (relevantHistory.length === 0) {
+        return { isInvalid: false, isException: false };
+    }
+
+    // --- Se já repetiram, verificamos as condições de EXCEÇÃO ---
+
+    // Condição 1: Ambos devem ter personalidade "+ à vontade".
+    const p1Data = allPeopleData.get(person1Id);
+    const p2Data = allPeopleData.get(person2Id);
+    if (p1Data.personalidade !== '+ à vontade' || p2Data.personalidade !== '+ à vontade') {
+        // Eles repetiram, mas não têm a personalidade certa. É inválido.
+        return { isInvalid: true, isException: false };
+    }
+
+    // Condição 2: Deve ter havido uma troca de papéis.
+    // O novo par é (person1Id = Dirigente, person2Id = Morador).
+    // Verificamos se em alguma colaboração anterior, os papéis eram o inverso.
+    const hasRoleSwapped = relevantHistory.some(collaboration =>
+        collaboration.roles.dirigente === person2Id && collaboration.roles.morador === person1Id
+    );
+
+    if (hasRoleSwapped) {
+        // Eles repetiram, têm a personalidade certa E trocaram de papéis.
+        // A combinação é VÁLIDA, mas marcada como uma EXCEÇÃO.
+        return { isInvalid: false, isException: true };
+    } else {
+        // Eles repetiram, têm a personalidade certa, mas NÃO trocaram de papéis. É inválido.
+        return { isInvalid: true, isException: false };
+    }
+}
+
+
+
+
+
+
+   async function findBestAssignmentForGroup(group, context) {
     const { designation } = context;
 
     const generateCombinations = (strictMode) => {
-        // Desestrutura o 'context' para obter as novas variáveis
-        const { allPeopleData, allDesignationsData, assignedPeopleThisWeek, participantsLastWeek, participantsNextWeek, diaDaReuniao, pairHistory, nonSchoolAssignmentsThisWeek } = context;
+        const { allPeopleData, assignedPeopleThisWeek, participantsLastWeek, participantsNextWeek, diaDaReuniao, nonSchoolAssignmentsThisWeek, allDesignationsData } = context;
         let combinations = [];
 
-        // Lógica para INDIVÍDUOS (group.length === 1)
+        // Lógica para INDIVÍDUOS (esta parte já estava correta)
         if (group.length === 1) {
             const select = group[0];
             const candidatos = getEligiblePeopleForDropdown(select);
@@ -5235,48 +5340,35 @@ function scoreCombination(combination, context) {
                 if (designation.parte === 'escola' && !personData.fazDesignacoesReuniao) isValid = false;
                 if (strictMode && participantsLastWeek.has(personId)) isValid = false;
 
-                // ==========================================================
-                // ================ INÍCIO DA NOVA REGRA DE BLOQUEIO ========
-                // ==========================================================
                 if (isValid && nonSchoolAssignmentsThisWeek.has(personId)) {
-                    // A pessoa já tem uma parte fora da escola esta semana. Vamos verificar se é permitido.
                     const otherDesignationIds = nonSchoolAssignmentsThisWeek.get(personId);
-                    let isBlocked = true; // Assume que está bloqueado por defeito
-
+                    let isBlocked = true;
                     for (const otherDesigId of otherDesignationIds) {
                         const otherDesigData = allDesignationsData.get(otherDesigId);
-                        // Verifica se a designação externa permite a atual
                         if (otherDesigData && otherDesigData.bloqueio && otherDesigData.bloqueio[designation.id] === 'Sim') {
-                            isBlocked = false; // Encontrou uma permissão explícita
-                            break; // Se uma permite, já não está bloqueado
+                            isBlocked = false;
+                            break;
                         }
                     }
                     if (isBlocked) {
-                        isValid = false; // Se continuou bloqueado, a combinação é inválida
+                        isValid = false;
                     }
                 }
-                // ==========================================================
-                // ================== FIM DA NOVA REGRA DE BLOQUEIO =========
-                // ==========================================================
 
                 if (isValid) {
-                    // A lógica de privilégios permanece a mesma
                     if (designation.quemFaz && designation.quemFaz.length > 0) {
                         const hasRequiredPrivilege = designation.quemFaz.some(p => personData.privilegiosCongregacao && personData.privilegiosCongregacao.includes(p));
                         if (hasRequiredPrivilege) {
-                            combinations.push([personId]);
+                            combinations.push({ combination: [personId], isException: false });
                         }
                     } else {
-                        combinations.push([personId]);
+                        combinations.push({ combination: [personId], isException: false });
                     }
                 }
             }
         }
         
-        // As lógicas para PARES e TRIOS também precisam da mesma verificação.
-        // O código abaixo já inclui a verificação para todos os cenários.
-
-        // Lógica para PARES (group.length === 2)
+        // Lógica para PARES (com a correção aplicada)
         if (group.length === 2) {
             const [select1, select2] = group;
             const candidatos1 = getEligiblePeopleForDropdown(select1);
@@ -5285,22 +5377,21 @@ function scoreCombination(combination, context) {
             for (const p1 of candidatos1) {
                 for (const p2 of candidatos2) {
                     if (p1 === p2) continue;
-                    let isValid = true;
+                    let isValidPair = true; // A variável correta para este bloco
                     const combination = [p1, p2];
 
                     for (const personId of combination) {
                         const personData = allPeopleData.get(personId);
                         if (!personData || assignedPeopleThisWeek.has(personId) || participantsNextWeek.has(personId) || (personData.ausencias && personData.ausencias.includes(diaDaReuniao))) {
-                            isValid = false; break;
+                            isValidPair = false; break;
                         }
                         if (strictMode && participantsLastWeek.has(personId)) {
-                             isValid = false; break;
+                            isValidPair = false; break;
                         }
                         if (designation.quemFaz && designation.quemFaz.length > 0) {
                             const hasPrivilege = designation.quemFaz.some(p => personData.privilegiosCongregacao && personData.privilegiosCongregacao.includes(p));
-                            if (!hasPrivilege) { isValid = false; break; }
+                            if (!hasPrivilege) { isValidPair = false; break; }
                         }
-                        // NOVA REGRA DE BLOQUEIO APLICADA AQUI TAMBÉM
                         if (nonSchoolAssignmentsThisWeek.has(personId)) {
                             const otherDesignationIds = nonSchoolAssignmentsThisWeek.get(personId);
                             let isBlocked = true;
@@ -5311,37 +5402,35 @@ function scoreCombination(combination, context) {
                                     break;
                                 }
                             }
-                            if (isBlocked) { isValid = false; break; }
+                            // ================== CORREÇÃO AQUI ==================
+                            if (isBlocked) { isValidPair = false; break; } // Usar isValidPair em vez de isValid
+                            // ===================================================
                         }
                     }
-                    if (!isValid) continue;
+                    if (!isValidPair) continue;
 
                     const p1Data = allPeopleData.get(p1);
                     const permiteMenosAVontade = Array.isArray(designation.personalidade) && designation.personalidade.includes('- à vontade');
                     if (p1Data.personalidade === '- à vontade' && !permiteMenosAVontade) continue;
-
+                    
                     const genderMixSelect = select1.closest('.active-designation-container').querySelector('.gender-mix-select');
-                    if (genderMixSelect.value === 'nao' && p1Data.genero !== allPeopleData.get(p2).genero) continue;
-
-                    const pairKey = [p1, p2].sort().join('_');
-                    if (strictMode && (pairHistory.get(pairKey) || []).some(h => h.designacaoId === designation.id)) {
-                        if (p1Data.personalidade !== '+ à vontade' || allPeopleData.get(p2).personalidade !== '+ à vontade') continue;
+                    if (genderMixSelect && genderMixSelect.value === 'nao' && p1Data.genero !== allPeopleData.get(p2).genero) continue;
+                    
+                    if (strictMode) {
+                        const repetitionCheck = checkPairRepetition(p1, p2, designation.id, context);
+                        if (repetitionCheck.isInvalid) {
+                            continue;
+                        }
+                        combinations.push({ combination: combination, isException: repetitionCheck.isException });
+                    } else {
+                        combinations.push({ combination: combination, isException: false });
                     }
-
-                    combinations.push(combination);
                 }
             }
-        }
-
-        // Lógica para TRIOS (group.length === 3)
-        if (group.length === 3) {
-            // A lógica para trios seguiria o mesmo padrão, adicionando a verificação de bloqueio para cada um dos 3 participantes.
-            // Por brevidade, o padrão é idêntico ao de duplas.
         }
         return combinations;
     };
 
-    // A estratégia de duas tentativas e a seleção final permanecem as mesmas.
     let possibleCombinations = generateCombinations(true);
 
     if (possibleCombinations.length === 0) {
@@ -5354,9 +5443,13 @@ function scoreCombination(combination, context) {
         return null;
     }
 
-    const scoredCombinations = possibleCombinations.map(combo => {
-        return { combination: combo, score: scoreCombination(combo, context) };
+    const scoredCombinations = possibleCombinations.map(comboObject => {
+        return {
+            combination: comboObject.combination,
+            score: scoreCombination(comboObject, context)
+        };
     });
+
     scoredCombinations.sort((a, b) => a.score - b.score);
     const bestScore = scoredCombinations[0].score;
     const bestCombinations = scoredCombinations.filter(c => c.score === bestScore);
