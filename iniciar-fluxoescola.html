@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8"> 
-    <meta name="viewport" contenta="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Fluxo Escola - Sistema de Escala</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -2727,7 +2727,66 @@ const geralTable = tableContainer.querySelector('.estatisticas-table');
 
 
 
+// ======================================================================== //
+// ============ INÍCIO: CORREÇÃO PARA FILTRO DINÂMICO DE IDIOMA ========== //
+// ======================================================================== //
 
+// Adiciona um "ouvinte" ao container das checkboxes
+document.getElementById('nacionalidades').addEventListener('change', async (event) => {
+    // Verifica se o que mudou foi de facto uma checkbox
+    if (event.target.type === 'checkbox') {
+        console.log("Filtro de nacionalidade alterado. A atualizar todos os dropdowns...");
+
+        // Encontra todas as designações que já estão ativas e visíveis na página
+        const activeDesignations = document.querySelectorAll(
+            '#activeDesignationsContainer .active-designation-container, #leituraBibliaDesignationContainer .active-designation-container'
+        );
+
+        // Se não houver designações ativas, não faz nada
+        if (activeDesignations.length === 0) {
+            return;
+        }
+        
+        // Obtém o contexto da semana (dias, etc.) para passar para a função de atualização
+        const ano = await getAnoPainelFirebase();
+        const horariosData = await getHorariosFromFirebase(ano);
+        const diaSemanaReuniaoString = horariosData['dia-semana'];
+        const diasSemanaDisplay = document.getElementById('weekDisplay').innerHTML;
+        const diasSemanaMatch = diasSemanaDisplay.match(/\((.*?)\)/);
+        const diasSemana = diasSemanaMatch ? diasSemanaMatch[1] : null;
+
+        // Itera sobre cada designação ativa e força a sua recarga
+        for (const container of activeDesignations) {
+            const designacaoId = container.dataset.designacaoId;
+            
+            // Para obter os dados da designação, precisamos de a buscar na base de dados
+            const designacaoDoc = await db.collection('designacoes').doc(designacaoId).get();
+            if (designacaoDoc.exists) {
+                const designacaoData = designacaoDoc.data();
+                
+                // Obtém a ordem e quantidade atuais diretamente do DOM
+                const mainDesignationItem = document.querySelector(`.designacao-item[data-designacao-id="${designacaoId}"]`);
+                const orderButton = mainDesignationItem.querySelector('.order-button');
+                const order = parseInt(orderButton.dataset.order) || 0;
+                const quantity = parseInt(orderButton.dataset.quantity) || 1;
+                
+                const designacaoInfo = {
+                    id: designacaoId,
+                    ...designacaoData
+                };
+
+                // Chama a função existente para reconstruir os dropdowns desta designação
+                // A função irá ler automaticamente os novos filtros de idioma
+                updateActiveDesignationDisplay(designacaoInfo, order, quantity, {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
+            }
+        }
+        console.log("Dropdowns atualizados com sucesso.");
+    }
+});
+
+// ======================================================================== //
+// ============== FIM: CORREÇÃO PARA FILTRO DINÂMICO DE IDIOMA ============ //
+// ======================================================================== //
 
 
 function analyzeBoardAndGetCandidates(emptySelects, context) {
