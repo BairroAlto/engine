@@ -529,7 +529,17 @@ body.popup-open {
 
                 <div id="designacoesSection" class="designacoes-section">
                     <h4>Designações</h4>
-                    <div id="designacoesList"></div>
+                     <!-- NOVO LOADER -->
+   <div id="designacoesLoading" style="text-align: center; padding: 30px; display: none;">
+    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #3498db;"></i>
+    <p style="margin-top: 10px; color: #666;">
+        A carregar designações... 
+        <br>
+        <small style="color: #999;">Tempo estimado: <span id="loadingCountdown">--</span>s</small>
+    </p>
+</div>
+
+    <div id="designacoesList"></div>
 
                     <div id="turboButtonContainer" class="turbo-button-container">
                         <button id="turboButton" class="turbo-button" type="button" title="Preencher Participantes Automaticamente" style="color: #2ecc71;">
@@ -2776,51 +2786,97 @@ async function updateWeekDisplay() {
             });
         };
 
-        const loadDesignacoes = async () => {
-            const snapshot = await db.collection('designacoes')
-                .where('tipo', '==', 'reuniao')
-                .where('quando', '==', 'Semana')
-                .where('parte', '==', 'resto da semana')
-                .where('status', '==', true)
-                .orderBy("ordem")
-                .get();
-            
+  const loadDesignacoes = async () => {
             const list = document.getElementById('designacoesList');
+            const loadingDiv = document.getElementById('designacoesLoading');
+            const countdownSpan = document.getElementById('loadingCountdown'); // Elemento do contador
+            const turboContainer = document.getElementById('turboButtonContainer');
+            const activeContainer = document.getElementById('activeDesignationsContainer');
+
+            loadingDiv.style.display = 'block';
+            list.style.display = 'none';
+            turboContainer.style.display = 'none';
+            activeContainer.style.display = 'none';
             list.innerHTML = '';
             
-            if (snapshot.empty) {
-                list.innerHTML = '<p>Nenhuma designação encontrada.</p>';
-                return;
-            }
+            let countdownInterval;
 
-            const designacoesParaAtivar = [];
-            snapshot.forEach(doc => {
-                const designacao = { id: doc.id, ...doc.data() };
-                allDesignations.set(doc.id, designacao);
-                designacoesParaAtivar.push(designacao);
-
-                const div = document.createElement('div');
-                div.className = 'designacao-item';
-                div.dataset.designacaoId = designacao.id;
-                div.dataset.firestoreOrder = designacao.ordem;
+            try {
+                const snapshot = await db.collection('designacoes')
+                    .where('tipo', '==', 'reuniao')
+                    .where('quando', '==', 'Semana')
+                    .where('parte', '==', 'resto da semana')
+                    .where('status', '==', true)
+                    .orderBy("ordem")
+                    .get();
                 
-                div.innerHTML = `<label><button type="button" class="order-button" data-order="0" data-quantity="1"></button><span>${designacao.nome}</span></label>`;
-                list.appendChild(div);
-            });
+                if (snapshot.empty) {
+                    list.innerHTML = '<p>Nenhuma designação encontrada.</p>';
+                    return;
+                }
 
-            for (const [index, designacao] of designacoesParaAtivar.entries()) {
-                const order = index + 1;
-                const quantity = 1;
+                // --- LÓGICA DE ESTIMATIVA DE TEMPO ---
+                const totalItems = snapshot.size;
+                const TIME_PER_ITEM = 0.8; // Ajuste este valor: 0.8s por item parece razoável
+                let estimatedSeconds = Math.ceil(totalItems * TIME_PER_ITEM);
                 
-                const button = list.querySelector(`.designacao-item[data-designacao-id="${designacao.id}"] .order-button`);
-                button.dataset.order = order;
-                button.dataset.quantity = quantity;
-                button.textContent = quantity;
-                updateOrderButtonClasses(button, order);
-                await updateActiveDesignationDisplay(designacao, order, quantity);
+                countdownSpan.textContent = estimatedSeconds;
+
+                countdownInterval = setInterval(() => {
+                    estimatedSeconds--;
+                    if (estimatedSeconds < 0) estimatedSeconds = 0; // Não deixa ir a negativo
+                    countdownSpan.textContent = estimatedSeconds;
+                    
+                    // Se chegar a 0 e ainda não tiver acabado, muda a mensagem
+                    if (estimatedSeconds === 0) {
+                        countdownSpan.parentElement.innerHTML = "Quase pronto...";
+                        clearInterval(countdownInterval);
+                    }
+                }, 1000);
+                // -------------------------------------
+
+                const designacoesParaAtivar = [];
+                snapshot.forEach(doc => {
+                    const designacao = { id: doc.id, ...doc.data() };
+                    allDesignations.set(doc.id, designacao);
+                    designacoesParaAtivar.push(designacao);
+
+                    const div = document.createElement('div');
+                    div.className = 'designacao-item';
+                    div.dataset.designacaoId = designacao.id;
+                    div.dataset.firestoreOrder = designacao.ordem;
+                    div.innerHTML = `<label><button type="button" class="order-button" data-order="0" data-quantity="1"></button><span>${designacao.nome}</span></label>`;
+                    list.appendChild(div);
+                });
+
+                for (const [index, designacao] of designacoesParaAtivar.entries()) {
+                    const order = index + 1;
+                    const quantity = 1;
+                    const button = list.querySelector(`.designacao-item[data-designacao-id="${designacao.id}"] .order-button`);
+                    if (button) {
+                        button.dataset.order = order;
+                        button.dataset.quantity = quantity;
+                        button.textContent = quantity;
+                        updateOrderButtonClasses(button, order);
+                    }
+                    await updateActiveDesignationDisplay(designacao, order, quantity);
+                }
+                
+                reIndexOrderNumbers();
+
+            } catch (error) {
+                console.error("Erro ao carregar designações:", error);
+                list.innerHTML = '<p style="color:red">Erro ao carregar dados.</p>';
+            } finally {
+                clearInterval(countdownInterval); // Para o contador
+                loadingDiv.style.display = 'none';
+                list.style.display = 'block';
+                turboContainer.style.display = 'flex';
+                activeContainer.style.display = 'block';
             }
-            reIndexOrderNumbers();
         };
+
+
 
         const removeActiveDesignationDisplay = (designacaoId) => {
             const displayToRemove = document.getElementById(`active-designation-${designacaoId}`);
