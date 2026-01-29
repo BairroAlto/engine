@@ -886,7 +886,7 @@ body.popup-open {
         let currentTurboAssignments = new Map();
         let participationStatsCache = { ano: null, data: null };
         let currentPersonParticipationRecords = [];
-
+let peopleUnsubscribe = null;
 
 
         // --- Elementos da DOM ---
@@ -2349,34 +2349,77 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
 
 
 
-      const initializeSystemData = async () => {
-            console.log('[DEBUG] initializeSystemData: Iniciando...'); // Log de início
-            const searchInput = document.getElementById('pesquisaPessoa');
-            try {
-                const [pessoasSnapshot] = await Promise.all([
-                    db.collection('pessoas').orderBy('nomePessoa').get(),
-                ]);
-                allPeople = [];
-                allPeopleDataMap.clear();
-                pessoasSnapshot.forEach(doc => {
-                    const pessoaData = doc.data();
-                    allPeople.push({ id: doc.id, nome: pessoaData.nomePessoa });
-                    allPeopleDataMap.set(doc.id, { nome: pessoaData.nomePessoa, genero: pessoaData.genero });
+   const initializeSystemData = async () => {
+    console.log('[DEBUG] initializeSystemData: A iniciar listener em tempo real...'); 
+    const searchInput = document.getElementById('pesquisaPessoa');
+    
+    // Se já houver um listener, cancela-o para evitar duplicados
+    if (peopleUnsubscribe) {
+        peopleUnsubscribe();
+    }
+
+    try {
+        // Inicializa cache de discursos (mantém-se igual)
+        await initializeDiscursos();
+
+        // LISTENER EM TEMPO REAL NA COLEÇÃO PESSOAS
+        peopleUnsubscribe = db.collection('pessoas').orderBy('nomePessoa')
+            .onSnapshot(snapshot => {
+                let hasChanges = false;
+                
+                // Processa apenas as mudanças
+                snapshot.docChanges().forEach(change => {
+                    const personData = change.doc.data();
+                    const personId = change.doc.id;
+
+                    if (change.type === "added" || change.type === "modified") {
+                        // Atualiza o Mapa de Dados Completo
+                        allPeopleDataMap.set(personId, { 
+                            id: personId, 
+                            ...personData 
+                        });
+                        
+                        // Atualiza a Lista de Pesquisa Simples
+                        const existingIndex = allPeople.findIndex(p => p.id === personId);
+                        if (existingIndex > -1) {
+                            allPeople[existingIndex] = { id: personId, nome: personData.nomePessoa };
+                        } else {
+                            allPeople.push({ id: personId, nome: personData.nomePessoa });
+                        }
+                        hasChanges = true;
+                    }
+                    
+                    if (change.type === "removed") {
+                        allPeopleDataMap.delete(personId);
+                        allPeople = allPeople.filter(p => p.id !== personId);
+                        hasChanges = true;
+                    }
                 });
 
-                console.log(`[DEBUG] initializeSystemData: ${allPeople.length} pessoas carregadas para a lista 'allPeople'.`); // Log do número de pessoas
+                // Configuração inicial da barra de pesquisa (apenas na primeira carga ou atualização)
+                if (searchInput) {
+                    searchInput.disabled = false;
+                    searchInput.placeholder = "Comece a digitar um nome...";
+                }
 
-                // Ativa o campo de pesquisa e atualiza o placeholder
-                searchInput.disabled = false;
-                searchInput.placeholder = "Comece a digitar um nome...";
-                console.log('[DEBUG] initializeSystemData: Campo de pesquisa ativado.'); // Log de confirmação
+                // SE HOUVER ALTERAÇÕES e a página já tiver designações carregadas:
+                // Atualiza os dropdowns automaticamente
+                if (hasChanges && document.querySelectorAll('.active-designation-container').length > 0) {
+                    console.log("[REAL-TIME] Alterações detetadas em 'pessoas'. A atualizar dropdowns...");
+                    refreshActiveDropdowns();
+                }
+                
+                console.log(`[DEBUG] Dados de pessoas sincronizados. Total: ${allPeople.length}`);
 
-                await initializeDiscursos();
-            } catch (error) {
-                console.error("Erro ao inicializar dados do sistema:", error);
-                searchInput.placeholder = "Erro ao carregar participantes";
-            }
-        };
+            }, error => {
+                console.error("Erro no listener de pessoas:", error);
+                if(searchInput) searchInput.placeholder = "Erro ao sincronizar participantes";
+            });
+
+    } catch (error) {
+        console.error("Erro ao inicializar dados do sistema:", error);
+    }
+};
 
 
 
@@ -3796,7 +3839,40 @@ const loadLastMonthFromFirebase = async () => {
 };
 
 
+/**
+ * Função chamada automaticamente pelo Listener quando há alterações no banco de dados.
+ * Ela recarrega as opções de todos os selects visíveis sem perder a seleção atual (se possível).
+ */
+const refreshActiveDropdowns = () => {
+    // 1. Identifica todos os cartões de designação ativos
+    const activeContainers = document.querySelectorAll('.active-designation-container');
+    if (activeContainers.length === 0) return;
 
+    // 2. Obtém os filtros globais atuais
+    const selectedIdiomas = getSelectedNacionalidades();
+
+    // 3. Para cada cartão, recarrega as pessoas
+    activeContainers.forEach(container => {
+        const designacaoId = container.dataset.designacaoId;
+        const designacao = allDesignations.get(designacaoId);
+
+        if (designacao) {
+            // Verifica se o cartão tem filtros locais aplicados
+            const genderSelect = container.querySelector('.genero-preferencia-select');
+            const genderPreference = genderSelect ? genderSelect.value : 'ambos';
+
+            // RECARREGA AS OPÇÕES
+            // Nota: A função loadPeopleOptionsIntoSelects preserva o 'value' selecionado
+            // se ele ainda existir na nova lista de opções.
+            loadPeopleOptionsIntoSelects(designacao, container, genderPreference, selectedIdiomas);
+        }
+    });
+    
+    // Opcional: Revalida os alertas (triângulo vermelho) se houver
+    if (typeof validateAllSelections === 'function') {
+        setTimeout(validateAllSelections, 500);
+    }
+};
 
 
 
