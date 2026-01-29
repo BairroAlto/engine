@@ -777,9 +777,35 @@ body.popup-open {
 <!-- ================ FIM: POPUP DE CONFIRMAÇÃO DE EVENTO ESPECIAL =============== -->
 <!-- =================================================================== -->
 
-    </main>
+<!-- POPUP DE AVISO DE DATA NÃO COINCIDENTE -->
+<div id="eventMismatchPopup" class="popup-overlay">
+    <div class="popup-content" style="max-width: 500px;">
+        <div class="popup-header">
+            <h2 class="popup-title" style="color: #e74c3c;">
+                <i class="fas fa-exclamation-triangle"></i> Atenção
+            </h2>
+            <button class="popup-close-button" id="closeMismatchPopup">×</button>
+        </div>
+        <div class="popup-body" style="padding: 20px 0;">
+            <p style="text-align: center; font-size: 16px; line-height: 1.6; color: #333;">
+                Não foi encontrado nenhum evento de <strong><span id="mismatchEventName"></span></strong> agendado para esta semana na base de dados.
+            </p>
+            <p style="text-align: center; font-size: 14px; color: #777; margin-top: 10px;">
+                Verifique se selecionou a semana correta ou configure a data do evento no painel de gestão.
+            </p>
+        </div>
+        <div class="popup-actions" style="display: flex; justify-content: center; gap: 15px;">
+            <button class="btn-submit" onclick="window.location.href='editar-evento.html'" style="background-color: #3498db;">
+                <i class="fas fa-calendar-alt"></i> Ir para Eventos
+            </button>
+            <button class="btn-submit" id="cancelMismatch" style="background-color: #95a5a6;">Fechar</button>
+        </div>
+    </div>
+</div>
 
-  
+
+
+    </main>
 <script>
    document.addEventListener('DOMContentLoaded', function() {
          // Botão de Perfil (Funcional)
@@ -861,19 +887,21 @@ body.popup-open {
         // ===================================================================
         // ================== CONFIGURAÇÃO E VARIÁVEIS GLOBAIS =================
         // ===================================================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
-            authDomain: "escalas-6e0f9.firebaseapp.com",
-            projectId: "escalas-6e0f9",
-            storageBucket: "escalas-6e0f9.firebasestorage.app",
-            messagingSenderId: "19118998563",
-            appId: "1:19118998563:web:5412be658ae34bd45add96"
-        };
+       const firebaseConfig = {
+    apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+    authDomain: "escalas-6e0f9.firebaseapp.com",
+    projectId: "escalas-6e0f9",
+    storageBucket: "escalas-6e0f9.firebasestorage.app",
+    messagingSenderId: "19118998563",
+    appId: "1:19118998563:web:5412be658ae34bd45add96"
+};
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const db = firebase.firestore();
+// Inicializa o Firebase globalmente
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+// Define 'db' globalmente para ser acessível em todas as funções
+const db = firebase.firestore();
 
         document.getElementById('sala').addEventListener('change', updateWeekDisplay);
 
@@ -1083,21 +1111,24 @@ const getRecentPairs = async () => {
 
 // Função principal de validação (com logs de depuração)
 const validateAllSelections = async () => {
-    console.log('%c[VALIDATION TRIGGERED] A função validateAllSelections foi chamada.', 'background: #222; color: #bada55');
+    console.log('%c[VALIDATION] A validar regras...', 'color: #bada55');
     const alertContainer = document.getElementById('validation-alert-container');
     const alertIcon = document.getElementById('validation-alert-icon');
     const validationList = document.getElementById('validation-list');
 
+    // Limpa estados anteriores
     document.querySelectorAll('.form-select.invalid-selection, .form-select.warning-selection').forEach(el => {
         el.classList.remove('invalid-selection', 'warning-selection');
     });
     validationList.innerHTML = '';
     let allViolations = [];
 
+    // Dados de contexto
     const ano = await getAnoPainelFirebase();
     const mes = parseInt(document.getElementById('mes').value);
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
 
+    // Carrega dados de comparação
     const [prevWeekCtx, nextWeekCtx] = await Promise.all([
         getPreviousWeekContext(ano, mes, semanaNumero),
         getNextWeekContext(ano, mes, semanaNumero)
@@ -1110,59 +1141,64 @@ const validateAllSelections = async () => {
     ]);
 
     const currentSelections = new Map();
+
+    // 1. Verifica duplicados na mesma semana e participação em semanas adjacentes
     document.querySelectorAll('#activeDesignationsContainer .form-select:not(.descricao-input):not(.discurso-search-input)').forEach(select => {
         if (select.value) {
             const personId = select.value;
-            const personName = (allPeopleDataMap.get(personId) || {}).nome || 'Desconhecido';
+            
+            // --- CORREÇÃO AQUI: Mudámos de .nome para .nomePessoa ---
+            // Tenta obter do mapa, se falhar tenta obter do texto do próprio select selecionado
+            const dataFromMap = allPeopleDataMap.get(personId) || {};
+            const personName = dataFromMap.nomePessoa || select.options[select.selectedIndex]?.text || 'Desconhecido';
+            // ---------------------------------------------------------
+
             let hasRedError = false;
 
+            // Verifica duplicados na semana atual
             if (currentSelections.has(personId)) {
-                console.log(`%c[DUPLICADO DETETADO] A verificar ${personName}...`, 'color: orange; font-weight: bold;');
                 const firstOccurrence = currentSelections.get(personId);
                 const firstSelect = firstOccurrence.selectElement;
+                
                 const currentDesignationId = select.closest('.active-designation-container')?.dataset.designacaoId;
                 const firstDesignationId = firstSelect.closest('.active-designation-container')?.dataset.designacaoId;
-                console.log(`> Designação 1 (anterior): ${firstDesignationId}`);
-                console.log(`> Designação 2 (atual): ${currentDesignationId}`);
-                if (!currentDesignationId || !firstDesignationId || currentDesignationId === firstDesignationId) {
-                    console.error('>> ERRO REGISTADO: Designações inválidas ou idênticas.');
-                    allViolations.push({ message: `${personName} está designado(a) para mais de uma tarefa.`, type: 'error' });
+
+                // Verifica se é a mesma designação ou se há permissão de repetição
+                let isRepetitionAllowed = false;
+                if (currentDesignationId && firstDesignationId && currentDesignationId !== firstDesignationId) {
+                    const currentInfo = allDesignations.get(currentDesignationId);
+                    const firstInfo = allDesignations.get(firstDesignationId);
+                    
+                    const check1 = currentInfo?.repeticao?.includes(firstDesignationId);
+                    const check2 = firstInfo?.repeticao?.includes(currentDesignationId);
+                    isRepetitionAllowed = check1 || check2;
+                }
+
+                if (!isRepetitionAllowed) {
+                    allViolations.push({ message: `${personName} está designado(a) para mais de uma tarefa nesta semana.`, type: 'error' });
                     select.classList.add('invalid-selection');
                     firstSelect.classList.add('invalid-selection');
                     hasRedError = true;
-                } else {
-                    const currentDesignationInfo = allDesignations.get(currentDesignationId);
-                    const firstDesignationInfo = allDesignations.get(firstDesignationId);
-                    console.log('> Info da Designação 1 (anterior):', firstDesignationInfo);
-                    console.log('> Info da Designação 2 (atual):', currentDesignationInfo);
-                    const check1 = currentDesignationInfo?.repeticao?.includes(firstDesignationId);
-                    const check2 = firstDesignationInfo?.repeticao?.includes(currentDesignationId);
-                    const isRepetitionAllowed = check1 || check2;
-                    console.log(`> Verificação 1 (Atual permite a Anterior?): ${check1}`);
-                    console.log(`> Verificação 2 (Anterior permite a Atual?): ${check2}`);
-                    console.log(`>> RESULTADO: A repetição é permitida? ${isRepetitionAllowed}`);
-                    if (!isRepetitionAllowed) {
-                        console.error('>> ERRO REGISTADO: A repetição não é permitida pelas regras.');
-                        allViolations.push({ message: `${personName} está designado(a) para mais de uma tarefa.`, type: 'error' });
-                        select.classList.add('invalid-selection');
-                        firstSelect.classList.add('invalid-selection');
-                        hasRedError = true;
-                    } else {
-                        console.log('%c>> AVISO IGNORADO: A regra de repetição permitiu a duplicação.', 'color: green;');
-                    }
                 }
-                console.log('--- Fim da verificação de duplicado ---');
             } else {
                 currentSelections.set(personId, { selectElement: select, name: personName });
             }
+
+            // Verifica semana anterior
             if (participantsLastWeek.has(personId)) {
                 allViolations.push({ message: `${personName} participou na semana anterior.`, type: 'error' });
-                select.classList.add('invalid-selection'); hasRedError = true;
+                select.classList.add('invalid-selection'); 
+                hasRedError = true;
             }
+
+            // Verifica semana seguinte
             if (participantsNextWeek.has(personId)) {
                 allViolations.push({ message: `${personName} já está designado(a) para a semana seguinte.`, type: 'error' });
-                select.classList.add('invalid-selection'); hasRedError = true;
+                select.classList.add('invalid-selection'); 
+                hasRedError = true;
             }
+
+            // Verifica média anual (apenas aviso amarelo)
             if (!hasRedError) {
                 const designacaoId = select.closest('.active-designation-container')?.dataset.designacaoId;
                 if (designacaoId && participationStats.has(designacaoId)) {
@@ -1177,19 +1213,33 @@ const validateAllSelections = async () => {
         }
     });
 
+    // 2. Verifica Pares Recentes
     document.querySelectorAll('#activeDesignationsContainer .active-designation-container').forEach(instance => {
         const selectedPeople = Array.from(instance.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'))
             .filter(select => select.value)
-            .map(select => ({ id: select.value, name: (allPeopleDataMap.get(select.value) || {}).nome, element: select }));
+            .map(select => {
+                const pData = allPeopleDataMap.get(select.value) || {};
+                // Correção aqui também para garantir consistência
+                return { 
+                    id: select.value, 
+                    name: pData.nomePessoa || select.options[select.selectedIndex]?.text || 'Desconhecido', 
+                    element: select 
+                };
+            });
+
         if (selectedPeople.length >= 2) {
             const pairNames = selectedPeople.map(p => p.name).join(' e ');
             const ids = selectedPeople.map(p => p.id).sort();
             const pairKey = ids.join('_');
+            
             if (recentPairsMap.has(pairKey)) {
                 const history = recentPairsMap.get(pairKey);
                 const lastDate = new Date(history.lastDate);
+                
+                // Verifica se foi nos últimos 2 meses (aprox)
                 const lastMonthYear = lastDate.getFullYear() * 12 + lastDate.getMonth();
                 const currentMonthYear = new Date().getFullYear() * 12 + new Date().getMonth();
+                
                 if (Math.abs(currentMonthYear - lastMonthYear) <= 1) {
                     allViolations.push({ message: `${pairNames} trabalharam juntos recentemente.`, type: 'error' });
                     selectedPeople.forEach(p => p.element.classList.add('invalid-selection'));
@@ -1198,10 +1248,14 @@ const validateAllSelections = async () => {
         }
     });
 
+    // Exibe os alertas
     if (allViolations.length > 0) {
         const hasErrors = allViolations.some(v => v.type === 'error');
         alertIcon.classList.toggle('warning-only', !hasErrors);
+        
+        // Remove mensagens duplicadas
         const uniqueViolations = [...new Map(allViolations.map(v => [v.message, v])).values()];
+        
         uniqueViolations.forEach(violation => {
             const li = document.createElement('li');
             li.textContent = violation.message;
@@ -1419,7 +1473,6 @@ if(validationIcon && validationPanel && validationPanelClose) {
 
         // --- ETAPA 6: Gravar os dados ---
         await db.collection("historico").add(historicoData);
-        alert("Fluxo semanal criado com sucesso!");
         window.location.reload();
 
     } catch (error) {
@@ -1436,50 +1489,75 @@ if(validationIcon && validationPanel && validationPanelClose) {
 
 
         // Função para gerar o resumo no popup
-   async function generatePopupSummary() {
+async function generatePopupSummary() {
     const summaryList = document.getElementById('popupSummaryList');
     summaryList.innerHTML = ''; 
 
     const designacaoContainers = document.querySelectorAll('#activeDesignationsContainer .active-designation-container');
-    if (designacaoContainers.length === 0) {
-        summaryList.innerHTML = '<li>Nenhuma designação selecionada.</li>';
+    
+    // Filtra apenas os cartões que têm alguma seleção feita
+    const containersComSelecao = Array.from(designacaoContainers).filter(container => {
+        const selects = container.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)');
+        const inputsTexto = container.querySelector('.descricao-input');
+        const inputsDiscurso = container.querySelector('.discurso-search-input');
+        
+        const temPessoaSelecionada = Array.from(selects).some(s => s.value !== "");
+        const temTexto = inputsTexto && inputsTexto.value.trim() !== "";
+        const temDiscurso = inputsDiscurso && inputsDiscurso.dataset.selectedDiscursoId;
+        
+        return temPessoaSelecionada || temTexto || temDiscurso;
+    });
+
+    if (containersComSelecao.length === 0) {
+        summaryList.innerHTML = '<li style="color: #777; font-style: italic;">Nenhuma designação selecionada.</li>';
         return;
     }
 
-    for (const container of designacaoContainers) {
+    for (const container of containersComSelecao) {
         const designacaoId = container.dataset.designacaoId;
         const designacao = allDesignations.get(designacaoId);
         const designacaoNome = designacao ? designacao.nome : 'Designação Desconhecida';
         
         const participantSelects = container.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)');
+        
+        // --- CORREÇÃO AQUI ---
         const participantNames = Array.from(participantSelects).map(select => {
-            return select.value ? (allPeopleDataMap.get(select.value) || {}).nome : null;
+            if (!select.value) return null;
+            const personData = allPeopleDataMap.get(select.value);
+            // Tenta obter .nomePessoa, se falhar tenta o texto do select, se falhar mostra aviso
+            return personData ? personData.nomePessoa : (select.options[select.selectedIndex]?.text || 'Nome não encontrado');
         }).filter(Boolean);
+        // ---------------------
 
         let descricaoTexto = '';
         const searchInput = container.querySelector('.discurso-search-input');
         if (searchInput && searchInput.dataset.selectedDiscursoId) {
+            // Busca o nome do discurso no cache ou usa o texto do input
             const discurso = allDiscursosCache.find(d => d.id === searchInput.dataset.selectedDiscursoId);
-            if(discurso) descricaoTexto = `<br><small style="color: #555;"><em>Discurso: ${discurso.numero} - ${discurso.nome}</em></small>`;
+            const discursoTitulo = discurso ? `${discurso.numero} - ${discurso.nome}` : searchInput.value;
+            descricaoTexto = `<br><small style="color: #555; display: block; margin-top: 2px;"><em>Discurso: ${discursoTitulo}</em></small>`;
         } else {
             const descricaoInput = container.querySelector('.descricao-input');
-            if (descricaoInput && container.querySelector('.descricao-container').style.display !== 'none' && descricaoInput.value.trim()) {
-                descricaoTexto = `<br><small style="color: #555;"><em>Tema: ${descricaoInput.value.trim()}</em></small>`;
+            // Verifica se o input existe E se o container dele está visível E se tem texto
+            if (descricaoInput && 
+                container.querySelector('.descricao-container').style.display !== 'none' && 
+                descricaoInput.value.trim()) {
+                descricaoTexto = `<br><small style="color: #555; display: block; margin-top: 2px;"><em>Tema: ${descricaoInput.value.trim()}</em></small>`;
             }
         }
         
-        if (participantNames.length > 0 || descricaoTexto) {
-            const li = document.createElement('li');
-            li.innerHTML = `<strong>${designacaoNome}:</strong> ${participantNames.join(', ') || '<i>(Sem participantes)</i>'}${descricaoTexto}`;
-            summaryList.appendChild(li);
-        }
+        const li = document.createElement('li');
+        // Estilo melhorado para o resumo
+        li.style.marginBottom = '10px';
+        li.style.borderBottom = '1px solid #eee';
+        li.style.paddingBottom = '5px';
+        
+        const nomesFormatados = participantNames.length > 0 ? `<strong>${participantNames.join(', ')}</strong>` : '<i style="color: #999;">(Sem participantes)</i>';
+        
+        li.innerHTML = `<span style="color: #2c3e50;">${designacaoNome}:</span> ${nomesFormatados}${descricaoTexto}`;
+        summaryList.appendChild(li);
     }
 }
-        
-        // Lógica para fechar o popup
-        closePopupButton.addEventListener('click', () => {
-            confirmationPopup.style.display = 'none';
-        });
         
         // ===================================================================
 // ================== LÓGICA DO POPUP DE ESTATÍSTICAS ==================
@@ -1985,10 +2063,15 @@ function makeTableSortable(table) {
         // =========== O RESTO DO SEU CÓDIGO ORIGINAL CONTINUA AQUI ============
         // ===================================================================
 
-        const getAnoPainelFirebase = async () => {
-            const doc = await db.collection('painel').doc('ano').get();
-            return doc.exists ? doc.data().ano : new Date().getFullYear();
-        };
+     const getAnoPainelFirebase = async () => {
+    try {
+        const doc = await db.collection('painel').doc('ano').get();
+        return doc.exists ? doc.data().ano : new Date().getFullYear();
+    } catch (error) {
+        console.error("Erro ao obter ano:", error);
+        return new Date().getFullYear();
+    }
+};
 
  async function countHistoricoSemanas(ano, mes, sala, parte) {
     let q = db.collection('historico')
@@ -2829,95 +2912,111 @@ async function updateWeekDisplay() {
             });
         };
 
-  const loadDesignacoes = async () => {
-            const list = document.getElementById('designacoesList');
-            const loadingDiv = document.getElementById('designacoesLoading');
-            const countdownSpan = document.getElementById('loadingCountdown'); // Elemento do contador
-            const turboContainer = document.getElementById('turboButtonContainer');
-            const activeContainer = document.getElementById('activeDesignationsContainer');
+ const loadDesignacoes = async () => {
+    const list = document.getElementById('designacoesList');
+    const loadingDiv = document.getElementById('designacoesLoading');
+    const countdownSpan = document.getElementById('loadingCountdown'); // Elemento do contador
+    const turboContainer = document.getElementById('turboButtonContainer');
+    const activeContainer = document.getElementById('activeDesignationsContainer');
 
-            loadingDiv.style.display = 'block';
-            list.style.display = 'none';
-            turboContainer.style.display = 'none';
-            activeContainer.style.display = 'none';
-            list.innerHTML = '';
+    // Mostra o loader
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    
+    // Esconde as outras áreas enquanto carrega
+    if (list) list.style.display = 'none';
+    if (turboContainer) turboContainer.style.display = 'none';
+    if (activeContainer) activeContainer.style.display = 'none';
+    if (list) list.innerHTML = '';
+    
+    let countdownInterval;
+
+    try {
+        const snapshot = await db.collection('designacoes')
+            .where('tipo', '==', 'reuniao')
+            .where('quando', '==', 'Semana')
+            .where('parte', '==', 'resto da semana')
+            .where('status', '==', true)
+            .orderBy("ordem")
+            .get();
+        
+        if (snapshot.empty) {
+            if (list) list.innerHTML = '<p>Nenhuma designação encontrada.</p>';
+            return;
+        }
+
+        // --- LÓGICA DE ESTIMATIVA DE TEMPO (COM PROTEÇÃO) ---
+        const totalItems = snapshot.size;
+        const TIME_PER_ITEM = 0.8; 
+        let estimatedSeconds = Math.ceil(totalItems * TIME_PER_ITEM);
+        
+        // Verifica se o elemento existe antes de tentar alterar o texto
+        if (countdownSpan) {
+            countdownSpan.textContent = estimatedSeconds;
             
-            let countdownInterval;
-
-            try {
-                const snapshot = await db.collection('designacoes')
-                    .where('tipo', '==', 'reuniao')
-                    .where('quando', '==', 'Semana')
-                    .where('parte', '==', 'resto da semana')
-                    .where('status', '==', true)
-                    .orderBy("ordem")
-                    .get();
+            countdownInterval = setInterval(() => {
+                estimatedSeconds--;
+                if (estimatedSeconds < 0) estimatedSeconds = 0; 
                 
-                if (snapshot.empty) {
-                    list.innerHTML = '<p>Nenhuma designação encontrada.</p>';
-                    return;
-                }
-
-                // --- LÓGICA DE ESTIMATIVA DE TEMPO ---
-                const totalItems = snapshot.size;
-                const TIME_PER_ITEM = 0.8; // Ajuste este valor: 0.8s por item parece razoável
-                let estimatedSeconds = Math.ceil(totalItems * TIME_PER_ITEM);
-                
-                countdownSpan.textContent = estimatedSeconds;
-
-                countdownInterval = setInterval(() => {
-                    estimatedSeconds--;
-                    if (estimatedSeconds < 0) estimatedSeconds = 0; // Não deixa ir a negativo
+                if (countdownSpan) {
                     countdownSpan.textContent = estimatedSeconds;
                     
-                    // Se chegar a 0 e ainda não tiver acabado, muda a mensagem
-                    if (estimatedSeconds === 0) {
+                    if (estimatedSeconds === 0 && countdownSpan.parentElement) {
                         countdownSpan.parentElement.innerHTML = "Quase pronto...";
                         clearInterval(countdownInterval);
                     }
-                }, 1000);
-                // -------------------------------------
-
-                const designacoesParaAtivar = [];
-                snapshot.forEach(doc => {
-                    const designacao = { id: doc.id, ...doc.data() };
-                    allDesignations.set(doc.id, designacao);
-                    designacoesParaAtivar.push(designacao);
-
-                    const div = document.createElement('div');
-                    div.className = 'designacao-item';
-                    div.dataset.designacaoId = designacao.id;
-                    div.dataset.firestoreOrder = designacao.ordem;
-                    div.innerHTML = `<label><button type="button" class="order-button" data-order="0" data-quantity="1"></button><span>${designacao.nome}</span></label>`;
-                    list.appendChild(div);
-                });
-
-                for (const [index, designacao] of designacoesParaAtivar.entries()) {
-                    const order = index + 1;
-                    const quantity = 1;
-                    const button = list.querySelector(`.designacao-item[data-designacao-id="${designacao.id}"] .order-button`);
-                    if (button) {
-                        button.dataset.order = order;
-                        button.dataset.quantity = quantity;
-                        button.textContent = quantity;
-                        updateOrderButtonClasses(button, order);
-                    }
-                    await updateActiveDesignationDisplay(designacao, order, quantity);
+                } else {
+                    // Se o elemento desapareceu, para o intervalo para evitar erros
+                    clearInterval(countdownInterval);
                 }
-                
-                reIndexOrderNumbers();
+            }, 1000);
+        }
+        // -------------------------------------
 
-            } catch (error) {
-                console.error("Erro ao carregar designações:", error);
-                list.innerHTML = '<p style="color:red">Erro ao carregar dados.</p>';
-            } finally {
-                clearInterval(countdownInterval); // Para o contador
-                loadingDiv.style.display = 'none';
-                list.style.display = 'block';
-                turboContainer.style.display = 'flex';
-                activeContainer.style.display = 'block';
+        const designacoesParaAtivar = [];
+        snapshot.forEach(doc => {
+            const designacao = { id: doc.id, ...doc.data() };
+            allDesignations.set(doc.id, designacao);
+            designacoesParaAtivar.push(designacao);
+
+            const div = document.createElement('div');
+            div.className = 'designacao-item';
+            div.dataset.designacaoId = designacao.id;
+            div.dataset.firestoreOrder = designacao.ordem;
+            div.innerHTML = `<label><button type="button" class="order-button" data-order="0" data-quantity="1"></button><span>${designacao.nome}</span></label>`;
+            if (list) list.appendChild(div);
+        });
+
+        for (const [index, designacao] of designacoesParaAtivar.entries()) {
+            const order = index + 1;
+            const quantity = 1;
+            
+            let button = null;
+            if (list) {
+                button = list.querySelector(`.designacao-item[data-designacao-id="${designacao.id}"] .order-button`);
             }
-        };
+
+            if (button) {
+                button.dataset.order = order;
+                button.dataset.quantity = quantity;
+                button.textContent = quantity;
+                updateOrderButtonClasses(button, order);
+            }
+            await updateActiveDesignationDisplay(designacao, order, quantity);
+        }
+        
+        reIndexOrderNumbers();
+
+    } catch (error) {
+        console.error("Erro ao carregar designações:", error);
+        if (list) list.innerHTML = '<p style="color:red">Erro ao carregar dados.</p>';
+    } finally {
+        if (countdownInterval) clearInterval(countdownInterval); 
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (list) list.style.display = 'block';
+        if (turboContainer) turboContainer.style.display = 'flex';
+        if (activeContainer) activeContainer.style.display = 'block';
+    }
+};
 
 
 
@@ -3607,21 +3706,21 @@ function setupTabClickListeners() {
         document.getElementById('closePairAnalysisPopup').addEventListener('click', () => document.getElementById('pairAnalysisPopup').style.display = 'none');
         document.getElementById('closeLabPopup').addEventListener('click', () => document.getElementById('labPopup').style.display = 'none');
         
-  document.getElementById('btnSeguinte').addEventListener('click', async function() {
-    console.log("=====================================================");
-    console.log("[DEBUG] Botão 'Seguinte' clicado. Iniciando verificação (v2)...");
-
+ document.getElementById('btnSeguinte').addEventListener('click', async function() {
+    console.log("[DEBUG] Botão 'Seguinte' clicado.");
     const tipoReuniao = document.getElementById('tipo').value;
-    console.log(`[DEBUG] 1. Tipo de Reunião selecionado: "${tipoReuniao}"`);
+    const btnSeguinte = this;
+    const originalText = btnSeguinte.textContent;
 
     const specialEventTypes = ['memorial', 'assembleia', 'congresso', 'visita-servo'];
 
+    // === LÓGICA DE EVENTOS ESPECIAIS ===
     if (specialEventTypes.includes(tipoReuniao)) {
-        console.log(`[DEBUG] 2. O tipo "${tipoReuniao}" é um evento especial.`);
+        btnSeguinte.textContent = "A verificar...";
+        btnSeguinte.disabled = true;
 
         const ano = await getAnoPainelFirebase();
-        console.log(`[DEBUG] 3. Ano do painel: ${ano}`);
-
+        
         const eventNameMap = {
             'memorial': 'Memorial',
             'assembleia': 'Assembleia',
@@ -3629,86 +3728,101 @@ function setupTabClickListeners() {
             'visita-servo': 'Visita do Servo'
         };
         const eventNameForQuery = eventNameMap[tipoReuniao];
-        console.log(`[DEBUG] 4. Nome para a consulta: "${eventNameForQuery}"`);
+        
+        let overlapFound = false;
 
         if (eventNameForQuery) {
+            // Procura o evento no ano atual e no próximo (para cobrir transição de ano)
             const snapshot = await db.collection('eventos')
                 .where('nome', '==', eventNameForQuery)
-                .where('ano', '==', ano)
+                .where('ano', 'in', [ano, ano + 1]) 
                 .get();
 
             if (!snapshot.empty) {
-                console.log(`[DEBUG] 5. SUCESSO! Foram encontrados ${snapshot.docs.length} evento(s) com este nome.`);
-                
                 const mes = parseInt(document.getElementById('mes').value);
                 const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
                 const { monday: weekStart, sunday: weekEnd } = getWeekMondaySunday(ano, mes, semanaNumero);
                 
-                console.log(`[DEBUG] 6. Intervalo da semana a verificar: ${weekStart.toLocaleDateString()} a ${weekEnd.toLocaleDateString()}`);
-
-                let overlapFound = false;
-
-                // ===== INÍCIO DA LÓGICA CORRIGIDA =====
-                // Agora percorremos TODOS os documentos encontrados
                 for (const doc of snapshot.docs) {
                     const eventData = doc.data();
-                    console.log(`[DEBUG] 7. A verificar o evento com data: ${eventData.data || (eventData.data_inicio + ' a ' + eventData.data_fim)}`);
-
-                    // Verifica evento com data única
+                    
                     if (eventData.data) {
-                        const eventDate = new Date(eventData.data + 'T12:00:00');
+                        let eventDate;
+                        // Tratamento de formatos de data (YYYY-MM-DD ou DD/MM/YYYY)
+                        if (eventData.data.includes('/')) {
+                            const parts = eventData.data.split('/');
+                            eventDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                        } else {
+                            eventDate = new Date(eventData.data + 'T12:00:00');
+                        }
+                        
+                        // Verifica se a data do evento cai dentro da semana selecionada
                         if (eventDate >= weekStart && eventDate <= weekEnd) {
                             overlapFound = true;
-                            console.log(`[DEBUG] 8. VERDADEIRO! Sobreposição encontrada com este evento. A interromper a verificação.`);
-                            break; // Interrompe o loop, pois já encontrámos uma correspondência
+                            break; 
                         }
                     } 
-                    // Verifica evento com data de início e fim
                     else if (eventData.data_inicio && eventData.data_fim) {
                         const eventStart = new Date(eventData.data_inicio + 'T00:00:00');
                         const eventEnd = new Date(eventData.data_fim + 'T23:59:59');
                         if (eventStart <= weekEnd && eventEnd >= weekStart) {
                             overlapFound = true;
-                             console.log(`[DEBUG] 8. VERDADEIRO! Sobreposição encontrada com este evento. A interromper a verificação.`);
-                            break; // Interrompe o loop
+                            break;
                         }
                     }
                 }
-                // ===== FIM DA LÓGICA CORRIGIDA =====
-
-
-                if (overlapFound) {
-                    console.log("[DEBUG] 9. A chamar o pop-up de confirmação.");
-                    const confirmed = await showSpecialEventConfirmation(tipoReuniao);
-                    if (confirmed) {
-                        const success = await saveSpecialEvent();
-                        if (success) {
-                            alert(`Evento de ${eventNameForQuery} gravado com sucesso!`);
-                            window.location.reload();
-                        }
-                    }
-                    return; 
-                } else {
-                    console.log("[DEBUG] 8. FALSO. Nenhum dos eventos encontrados coincide com a semana selecionada.");
-                }
-            } else {
-                console.warn(`[DEBUG] 5. AVISO! Nenhum evento correspondente encontrado para "${eventNameForQuery}" em ${ano}.`);
             }
         }
-    } else {
-         console.log(`[DEBUG] 2. O tipo "${tipoReuniao}" não é um evento especial.`);
+
+        btnSeguinte.textContent = originalText;
+        btnSeguinte.disabled = false;
+
+        if (overlapFound) {
+            // CENÁRIO 1: Evento Encontrado -> Popup de Confirmação para Gravar
+            const confirmed = await showSpecialEventConfirmation(tipoReuniao);
+            if (confirmed) {
+                const success = await saveSpecialEvent();
+                if (success) {
+                    alert(`Semana de ${eventNameForQuery} gravada com sucesso!`);
+                    window.location.reload();
+                }
+            }
+            return; // Pára a execução aqui (não mostra designações)
+        } else {
+            // CENÁRIO 2: Evento NÃO Encontrado -> Popup de Erro
+            const popup = document.getElementById('eventMismatchPopup');
+            const eventNameSpan = document.getElementById('mismatchEventName');
+            const closeBtn = document.getElementById('closeMismatchPopup');
+            const cancelBtn = document.getElementById('cancelMismatch');
+
+            if (popup) {
+                eventNameSpan.textContent = eventNameForQuery;
+                popup.style.display = 'flex';
+
+                const closeHandler = () => { popup.style.display = 'none'; };
+                closeBtn.onclick = closeHandler;
+                cancelBtn.onclick = closeHandler;
+            } else {
+                alert(`AVISO: Não foi encontrado nenhum evento de "${eventNameForQuery}" para esta semana na base de dados.`);
+            }
+            return; // Pára a execução aqui (não mostra designações)
+        }
     }
 
-    console.log("[DEBUG] A continuar para o fluxo normal (mostrar designações).");
+    // === LÓGICA NORMAL (Se não for evento especial) ===
+    console.log("[DEBUG] Fluxo normal iniciado.");
     document.getElementById('designacoesSection').classList.add('active');
     document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
     
+    // Scroll suave para a lista
     const spacer = document.createElement('div');
     spacer.id = 'temp-scroll-spacer';
     spacer.style.height = '100vh';
     document.querySelector('.card').insertAdjacentElement('afterend', spacer);
     document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
     await loadDesignacoes();
+    
     document.getElementById('temp-scroll-spacer')?.remove();
 });
 
@@ -3813,9 +3927,9 @@ const loadLastMonthFromFirebase = async () => {
     const selectMes = document.getElementById('mes');
     
     try {
-        // Consulta específica para 'resto da semana'
+        // Tenta buscar a última designação de "resto da semana"
         const snapshot = await db.collection('historico')
-            .where('parte', '==', 'resto da semana') // <--- AQUI ESTÁ A DIFERENÇA
+            .where('parte', '==', 'resto da semana')
             .orderBy('timestamp', 'desc')
             .limit(1)
             .get();
@@ -3824,15 +3938,16 @@ const loadLastMonthFromFirebase = async () => {
             const data = snapshot.docs[0].data();
             if (data.mes) {
                 selectMes.value = data.mes; 
-                console.log(`[AUTO-MES] Último registo 'resto da semana' encontrado: Mês ${data.mes}.`);
+                console.log(`[AUTO-MES] Último registo encontrado: Mês ${data.mes}.`);
                 return; 
             }
         }
     } catch (error) {
-        console.warn("[AUTO-MES] Erro ao procurar último mês (Provável falta de índice 'parte + timestamp').", error);
+        // Se der erro (ex: falta de índice), ignora e usa o mês atual
+        console.warn("[AUTO-MES] Aviso: Não foi possível obter o último mês (provável falta de índice). Usando mês atual.");
     }
 
-    // FALLBACK: Se falhar, usa o mês atual
+    // FALLBACK: Usa o mês atual do sistema
     const currentMonth = new Date().getMonth() + 1;
     selectMes.value = currentMonth;
     console.log(`[AUTO-MES] Usando mês atual do sistema: ${currentMonth}`);
@@ -3874,7 +3989,123 @@ const refreshActiveDropdowns = () => {
     }
 };
 
+/**
+ * Mostra o popup de confirmação para gravar evento especial.
+ */
+const showSpecialEventConfirmation = (eventType) => {
+    const eventDisplayNames = {
+        'memorial': 'O Memorial',
+        'assembleia': 'A Assembleia',
+        'congresso': 'O Congresso',
+        'visita-servo': 'A Visita do Servo'
+    };
+    const eventName = eventDisplayNames[eventType] || 'Este evento especial';
 
+    return new Promise((resolve) => {
+        const popup = document.getElementById('specialEventConfirmationPopup');
+        const messageEl = document.getElementById('specialEventPopupMessage');
+        const confirmBtn = document.getElementById('confirmSpecialEventSave');
+        const cancelBtn = document.getElementById('cancelSpecialEventSave');
+
+        messageEl.innerHTML = `A data de <strong>${eventName}</strong> coincide com esta semana.<br><br>Deseja gravar como evento especial (sem designações) e concluir?`;
+        
+        popup.style.display = 'flex';
+
+        // Remove listeners antigos para evitar duplicação
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+        newConfirmBtn.addEventListener('click', () => {
+            popup.style.display = 'none';
+            resolve(true);
+        });
+
+        newCancelBtn.addEventListener('click', () => {
+            popup.style.display = 'none';
+            resolve(false);
+        });
+    });
+};
+
+/**
+ * Grava o evento especial na base de dados (Parte: "resto da semana").
+ */
+const saveSpecialEvent = async () => {
+    try {
+        const ano = await getAnoPainelFirebase();
+        const mes = parseInt(document.getElementById('mes').value);
+        const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+        const tipoEvento = document.getElementById('tipo').value;
+        const sala = document.getElementById('sala').value;
+        const idiomas = getSelectedNacionalidades();
+
+        // Obter horários e dias para calcular o timestamp correto
+        const horariosData = await getHorariosFromFirebase(ano);
+        const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+        const diaSemanaReuniaoString = horariosData['dia-semana'];
+        const horaSemana = horariosData['hora-semana'];
+        
+        // Calcula a data da reunião
+        let meetingDayOfMonth = getMeetingDayOfMonth(ano, diasSemana, diaSemanaReuniaoString);
+        
+        // Se for visita do servo, tenta pegar a data exata do evento (opcional, mas recomendado)
+        if (tipoEvento === 'visita-servo') {
+             const snapshot = await db.collection('eventos').where('nome', '==', 'Visita do Servo').where('ano', '==', ano).get();
+             if (!snapshot.empty && snapshot.docs[0].data().data) {
+                 meetingDayOfMonth = snapshot.docs[0].data().data;
+             }
+        }
+
+        const historicoData = {
+            ano: ano,
+            mes: mes,
+            semanaNumero: semanaNumero,
+            semanaindex: `(${diasSemana} ${ano})`,
+            designacoes: [], // LISTA VAZIA = SEM DESIGNAÇÕES
+            evento: tipoEvento,
+            tipo: "reuniao",
+            idioma: idiomas,
+            sala: sala,
+            quando: "Semana",
+            parte: "resto da semana", // IMPORTANTE PARA ESTA PÁGINA
+            oque: "reuniao",
+            dia: meetingDayOfMonth,
+            hora: horaSemana,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection("historico").add(historicoData);
+        return true;
+    } catch (error) {
+        console.error("Erro ao gravar evento especial:", error);
+        alert("Erro ao gravar: " + error.message);
+        return false;
+    }
+};
+
+const getWeekMondaySunday = (ano, mes, semanaNumero) => {
+    const primeiroDiaMes = new Date(ano, mes - 1, 1);
+    let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
+    if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7; 
+
+    let diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
+    if (primeiroDiaMes.getDay() === 1) {
+        diasToAddForFirstMonday = 0;
+    }
+
+    const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
+    const monday = new Date(primeiroSegundaMes);
+    monday.setDate(monday.getDate() + (semanaNumero - 1) * 7);
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6); 
+
+    monday.setHours(0, 0, 0, 0);
+    sunday.setHours(23, 59, 59, 999);
+
+    return { monday, sunday };
+};
 
 </script>
 
