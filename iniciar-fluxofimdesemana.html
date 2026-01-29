@@ -772,82 +772,6 @@ body.popup-open {
 
   
 <script>
-    document.addEventListener('DOMContentLoaded', async function() {
-         // Botão de Perfil (Funcional)
-        document.getElementById('perfilButton').addEventListener('click', () => {
-            document.getElementById('perfilPopup').style.display = 'flex';
-        });
-
-        document.body.addEventListener('change', (event) => {
-    if (event.target.classList.contains('form-select')) {
-        handleGenderSync(event.target);
-    }
-});
-
-        // Botão de Foguetão (Placeholder)
-   document.getElementById('turboButton').addEventListener('click', async (event) => {
-            const button = event.currentTarget;
-
-            if (button.disabled) return;
-            button.disabled = true;
-
-            button.classList.add('is-flying');
-
-            try {
-                // Obter a lista de pessoas atualmente atribuídas pelo foguetão
-                const exclusionSet = new Set(currentTurboAssignments.values());
-                
-                // Tenta encontrar uma nova combinação excluindo as pessoas atuais
-                let newAssignments = await preencherAutomaticamente(exclusionSet);
-
-                // Se não encontrou novas combinações, reinicia o ciclo
-                if (Object.keys(newAssignments).length === 0) {
-                    console.log("Não foram encontradas mais combinações. A reiniciar o ciclo.");
-                    currentTurboAssignments.clear(); // Limpa o estado
-                    newAssignments = await preencherAutomaticamente(new Set()); // Tenta novamente do zero
-                }
-                
-                // Aplica os resultados encontrados na interface
-                for (const [elementId, pessoaId] of Object.entries(newAssignments)) {
-                    const selectElement = document.getElementById(elementId);
-                    if (selectElement) {
-                        selectElement.value = pessoaId;
-                    }
-                }
-                
-                // Guarda o novo estado
-                currentTurboAssignments = new Map(Object.entries(newAssignments));
-
-            } catch (error) {
-                console.error("Ocorreu um erro crítico no preenchimento automático:", error);
-                alert("Ocorreu um erro durante o preenchimento automático. Verifique a consola para mais detalhes.");
-            } finally {
-                // A mesma lógica de animação de antes
-                const ROTATION_TIME = 200;
-                const FLIGHT_TIME = 500;
-
-                button.classList.remove('is-flying');
-                button.classList.add('is-returning');
-
-                setTimeout(() => {
-                    button.classList.remove('is-returning');
-                }, ROTATION_TIME);
-
-                setTimeout(() => {
-                    button.disabled = false;
-                }, ROTATION_TIME + FLIGHT_TIME);
-            }
-        });
-        
-  
-
-
-
-
-        // Botão de Pesquisa (Placeholder)
-        document.getElementById('pesquisarButton').addEventListener('click', () => {
-            alert('A função de Pesquisa será implementada futuramente.');
-        });
 
         // ===================================================================
         // ================== CONFIGURAÇÃO E VARIÁVEIS GLOBAIS =================
@@ -904,6 +828,105 @@ closePerfilPopup.addEventListener('click', () => {
     perfilPopup.style.display = 'none';
 });
 
+// 1. Função para calcular o intervalo de Segunda a Domingo da semana selecionada
+const getWeekMondaySunday = (ano, mes, semanaNumero) => {
+    const primeiroDiaMes = new Date(ano, mes - 1, 1);
+    let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
+    if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7; // Converte Domingo (0) para 7
+
+    let diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
+    if (primeiroDiaMes.getDay() === 1) {
+        diasToAddForFirstMonday = 0;
+    }
+
+    const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
+    const monday = new Date(primeiroSegundaMes);
+    monday.setDate(monday.getDate() + (semanaNumero - 1) * 7);
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6); // Adiciona 6 dias para ir de Segunda a Domingo
+
+    monday.setHours(0, 0, 0, 0);
+    sunday.setHours(23, 59, 59, 999);
+
+    return { monday, sunday };
+};
+
+
+// 2. Função para mostrar o popup de confirmação do evento
+const showSpecialEventConfirmation = (eventType) => {
+    const eventDisplayNames = {
+        'memorial': 'O Memorial',
+        'assembleia': 'A Assembleia',
+        'congresso': 'O Congresso',
+        'visita-servo': 'A Visita do Servo'
+    };
+    const eventName = eventDisplayNames[eventType] || 'Este evento especial';
+
+    return new Promise((resolve) => {
+        const popup = document.getElementById('specialEventConfirmationPopup');
+        const messageEl = document.getElementById('specialEventPopupMessage');
+        const confirmBtn = document.getElementById('confirmSpecialEventSave');
+        const cancelBtn = document.getElementById('cancelSpecialEventSave');
+
+        messageEl.textContent = `A data de ${eventName} coincide com este fim de semana. Deseja gravar um evento especial sem designações e concluir?`;
+        
+        popup.style.display = 'flex';
+
+        const handleConfirm = () => {
+            popup.style.display = 'none';
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            resolve(true);
+        };
+
+        const handleCancel = () => {
+            popup.style.display = 'none';
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            resolve(false);
+        };
+
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+    });
+};
+
+// 3. Função para gravar o evento especial imediatamente
+const saveSpecialEvent = async () => {
+    try {
+        const ano = await getAnoPainelFirebase();
+        const mes = parseInt(document.getElementById('mes').value);
+        const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+        const tipoEvento = document.getElementById('tipo').value;
+        const idiomasSelecionados = getSelectedNacionalidades();
+        const salaSelecionada = document.getElementById('sala').value;
+        
+        const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+        const horariosData = await getHorariosFromFirebase(ano);
+        const hora = horariosData['hora-fimdesemana'];
+        const diaSemanaReuniaoString = horariosData['dia-fimdesemana'];
+        
+        const meetingDayOfMonth = getMeetingDayOfMonth(ano, diasSemana, diaSemanaReuniaoString); 
+
+        const historicoData = {
+            ano: ano, mes: mes, semanaNumero: semanaNumero, 
+            semanaindex: `(${diasSemana} ${ano})`,
+            designacoes: [], evento: tipoEvento, tipo: "reuniao", idioma: idiomasSelecionados,
+            sala: salaSelecionada, dia: meetingDayOfMonth, hora: hora, 
+            quando: "Fim de Semana",
+            oque: "reuniao", parte: "fim de semana", 
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection("historico").add(historicoData);
+        return true;
+    } catch (error) {
+        console.error("Erro ao gravar evento especial:", error);
+        alert("Ocorreu um erro ao gravar o evento especial: " + error.message);
+        return false;
+    }
+};
+
 pesquisaInput.addEventListener('input', () => {
     console.log('--------------------');
     console.log('[DEBUG] Evento "input" disparado no campo de pesquisa.');
@@ -938,13 +961,6 @@ pesquisaInput.addEventListener('input', () => {
     console.log(`[DEBUG] A caixa de sugestões está agora ${filteredPeople.length > 0 ? 'visível' : 'escondida'}.`);
     console.log('--------------------');
 });
-
-
-
-
-
-
-
 
 
 
@@ -3430,80 +3446,127 @@ const renderProfileTable = () => {
         document.getElementById('closeLabPopup').addEventListener('click', () => document.getElementById('labPopup').style.display = 'none');
         
  document.getElementById('btnSeguinte').addEventListener('click', async function() {
-            const tipoReuniao = document.getElementById('tipo').value;
-            const specialEventTypes = ['assembleia', 'congresso', 'visita-servo'];
+    const tipoReuniao = document.getElementById('tipo').value;
+    const btnSeguinte = this;
+    
+    // Lista de eventos que vamos verificar a data
+    const specialEventTypes = ['assembleia', 'congresso', 'visita-servo'];
 
-            if (specialEventTypes.includes(tipoReuniao)) {
-                const ano = await getAnoPainelFirebase();
-                const eventNameMap = {
-                    'assembleia': 'Assembleia',
-                    'congresso': 'Congresso',
-                    'visita-servo': 'Visita do Servo'
-                };
-                const eventNameForQuery = eventNameMap[tipoReuniao];
+    if (specialEventTypes.includes(tipoReuniao)) {
+        const originalText = btnSeguinte.textContent;
+        btnSeguinte.textContent = "A verificar...";
+        btnSeguinte.disabled = true;
 
-                if (eventNameForQuery) {
-                    const snapshot = await db.collection('eventos')
-                        .where('nome', '==', eventNameForQuery)
-                        .where('ano', '==', ano)
-                        .get();
+        const ano = await getAnoPainelFirebase();
+        const eventNameMap = {
+            'assembleia': 'Assembleia',
+            'congresso': 'Congresso',
+            'visita-servo': 'Visita do Servo'
+        };
+        const eventNameForQuery = eventNameMap[tipoReuniao];
 
-                    if (!snapshot.empty) {
-                        const mes = parseInt(document.getElementById('mes').value);
-                        const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
-                        const { monday: weekStart, sunday: weekEnd } = getWeekMondaySunday(ano, mes, semanaNumero);
-                        
-                        let overlapFound = false;
-                        for (const doc of snapshot.docs) {
-                            const eventData = doc.data();
-                            if (eventData.data) {
-                                const eventDate = new Date(eventData.data + 'T12:00:00');
-                                if (eventDate >= weekStart && eventDate <= weekEnd) {
-                                    overlapFound = true;
-                                    break;
-                                }
-                            } 
-                            else if (eventData.data_inicio && eventData.data_fim) {
-                                const eventStart = new Date(eventData.data_inicio + 'T00:00:00');
-                                const eventEnd = new Date(eventData.data_fim + 'T23:59:59');
-                                if (eventStart <= weekEnd && eventEnd >= weekStart) {
-                                    overlapFound = true;
-                                    break;
-                                }
-                            }
+        if (eventNameForQuery) {
+            // Procura no ano atual e no próximo (para cobrir transição de ano)
+            const snapshot = await db.collection('eventos')
+                .where('nome', '==', eventNameForQuery)
+                .where('ano', 'in', [ano, ano + 1])
+                .get();
+
+            let overlapFound = false;
+
+            if (!snapshot.empty) {
+                const mes = parseInt(document.getElementById('mes').value);
+                const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+                
+                // Usa a função que corrigimos anteriormente
+                const { monday: weekStart, sunday: weekEnd } = getWeekMondaySunday(ano, mes, semanaNumero);
+                
+                for (const doc of snapshot.docs) {
+                    const eventData = doc.data();
+                    
+                    if (eventData.data) {
+                        // Lógica para data única
+                        let eventDate;
+                        const rawDate = eventData.data;
+                        if (rawDate.includes('/')) {
+                            const parts = rawDate.split('/');
+                            eventDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                        } else {
+                            eventDate = new Date(rawDate + 'T12:00:00');
                         }
+                        eventDate.setHours(12, 0, 0, 0);
 
-                        if (overlapFound) {
-                            const confirmed = await showSpecialEventConfirmation(tipoReuniao);
-                            if (confirmed) {
-                                const success = await saveSpecialEvent();
-                                if (success) {
-                                    alert(`Evento de ${eventNameForQuery} gravado com sucesso!`);
-                                    window.location.reload();
-                                }
-                            }
-                            return; 
+                        if (eventDate >= weekStart && eventDate <= weekEnd) {
+                            overlapFound = true;
+                            break;
+                        }
+                    } 
+                    else if (eventData.data_inicio && eventData.data_fim) {
+                        // Lógica para intervalo de datas
+                        const eventStart = new Date(eventData.data_inicio + 'T00:00:00');
+                        const eventEnd = new Date(eventData.data_fim + 'T23:59:59');
+                        if (eventStart <= weekEnd && eventEnd >= weekStart) {
+                            overlapFound = true;
+                            break;
                         }
                     }
                 }
             }
 
-            document.getElementById('designacoesSection').classList.add('active');
-            document.querySelector('#fluxoFimDeSemanaForm button[type="submit"]').style.display = 'block';
-            
-            const spacer = document.createElement('div');
-            spacer.id = 'temp-scroll-spacer';
-            spacer.style.height = '100vh';
-            document.querySelector('.card').insertAdjacentElement('afterend', spacer);
-            document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth', block: 'center' });
-            
-            await loadDesignacoes();
+            btnSeguinte.textContent = originalText;
+            btnSeguinte.disabled = false;
 
-            // Após carregar as designações, aplicamos imediatamente o filtro dos grupos.
-            refrescarFiltrosDePessoas();
+            if (overlapFound) {
+                // === LÓGICA ALTERADA AQUI ===
+                
+                if (tipoReuniao === 'visita-servo') {
+                    // SE FOR VISITA DO SERVO:
+                    // Ignora o popup de gravação imediata e deixa o código fluir para baixo 
+                    // para mostrar a secção de designações.
+                    console.log("Visita do Servo coincidente encontrada. A avançar para designações...");
+                } else {
+                    // SE FOR ASSEMBLEIA OU CONGRESSO:
+                    // Mostra o popup para gravar imediatamente e encerra a função.
+                    const confirmed = await showSpecialEventConfirmation(tipoReuniao);
+                    if (confirmed) {
+                        const success = await saveSpecialEvent();
+                        if (success) {
+                            alert(`Evento de ${eventNameForQuery} gravado com sucesso!`);
+                            window.location.reload();
+                        }
+                    }
+                    return; // Pára a execução aqui, não mostra designações
+                }
+            } else {
+                // Se a data não bater certo, avisa o utilizador (opcional, pode só deixar passar)
+                console.log("Nenhum evento coincidente encontrado nas datas selecionadas.");
+                // Aqui você pode decidir se mostra um alerta ou se deixa criar normalmente.
+                // Atualmente deixamos passar para criar como se fosse uma reunião normal se não encontrar a data.
+            }
+        }
+    }
 
-            document.getElementById('temp-scroll-spacer')?.remove();
-        });
+    // === MOSTRAR DESIGNAÇÕES ===
+    // Este código será executado para reuniões normais E para a Visita do Servo (se a data bater certo)
+    
+    document.getElementById('designacoesSection').classList.add('active');
+    document.querySelector('#fluxoFimDeSemanaForm button[type="submit"]').style.display = 'block';
+    
+    // Adiciona espaço temporário para scroll suave
+    const spacer = document.createElement('div');
+    spacer.id = 'temp-scroll-spacer';
+    spacer.style.height = '100vh';
+    document.querySelector('.card').insertAdjacentElement('afterend', spacer);
+    
+    document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    await loadDesignacoes();
+
+    // Aplica filtros
+    refrescarFiltrosDePessoas();
+
+    document.getElementById('temp-scroll-spacer')?.remove();
+});
 
         document.getElementById('designacoesList').addEventListener('click', async function(event) {
             const orderButton = event.target.closest('.order-button');
@@ -3589,7 +3652,87 @@ const renderProfileTable = () => {
             updateWeekDisplay();
         });
 
-        // =========================================================================
+
+
+
+      document.addEventListener('DOMContentLoaded', async function() {
+         // Botão de Perfil (Funcional)
+        document.getElementById('perfilButton').addEventListener('click', () => {
+            document.getElementById('perfilPopup').style.display = 'flex';
+        });
+
+        document.body.addEventListener('change', (event) => {
+    if (event.target.classList.contains('form-select')) {
+        handleGenderSync(event.target);
+    }
+});
+
+        // Botão de Foguetão (Placeholder)
+   document.getElementById('turboButton').addEventListener('click', async (event) => {
+            const button = event.currentTarget;
+
+            if (button.disabled) return;
+            button.disabled = true;
+
+            button.classList.add('is-flying');
+
+            try {
+                // Obter a lista de pessoas atualmente atribuídas pelo foguetão
+                const exclusionSet = new Set(currentTurboAssignments.values());
+                
+                // Tenta encontrar uma nova combinação excluindo as pessoas atuais
+                let newAssignments = await preencherAutomaticamente(exclusionSet);
+
+                // Se não encontrou novas combinações, reinicia o ciclo
+                if (Object.keys(newAssignments).length === 0) {
+                    console.log("Não foram encontradas mais combinações. A reiniciar o ciclo.");
+                    currentTurboAssignments.clear(); // Limpa o estado
+                    newAssignments = await preencherAutomaticamente(new Set()); // Tenta novamente do zero
+                }
+                
+                // Aplica os resultados encontrados na interface
+                for (const [elementId, pessoaId] of Object.entries(newAssignments)) {
+                    const selectElement = document.getElementById(elementId);
+                    if (selectElement) {
+                        selectElement.value = pessoaId;
+                    }
+                }
+                
+                // Guarda o novo estado
+                currentTurboAssignments = new Map(Object.entries(newAssignments));
+
+            } catch (error) {
+                console.error("Ocorreu um erro crítico no preenchimento automático:", error);
+                alert("Ocorreu um erro durante o preenchimento automático. Verifique a consola para mais detalhes.");
+            } finally {
+                // A mesma lógica de animação de antes
+                const ROTATION_TIME = 200;
+                const FLIGHT_TIME = 500;
+
+                button.classList.remove('is-flying');
+                button.classList.add('is-returning');
+
+                setTimeout(() => {
+                    button.classList.remove('is-returning');
+                }, ROTATION_TIME);
+
+                setTimeout(() => {
+                    button.disabled = false;
+                }, ROTATION_TIME + FLIGHT_TIME);
+            }
+        });
+        
+
+
+        // Botão de Pesquisa (Placeholder)
+        document.getElementById('pesquisarButton').addEventListener('click', () => {
+            alert('A função de Pesquisa será implementada futuramente.');
+        });
+        
+
+
+
+               // =========================================================================
         // PONTO DE ENTRADA PRINCIPAL DA LÓGICA DA PÁGINA
         // =========================================================================
         
@@ -3602,6 +3745,7 @@ const renderProfileTable = () => {
         
         fetch('sidebar.html').then(response => response.text()).then(html => document.getElementById("sidebar-placeholder").innerHTML = html);
     });
+
 </script>
 
 <script src="main.js"></script>
