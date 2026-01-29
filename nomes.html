@@ -1042,6 +1042,25 @@ body.sidebar-collapsed .column:first-child {
     margin-bottom: 18px;
 }
 
+/* Estilo para os subtítulos dentro do grupo de designações */
+.category-header {
+    width: 100%; /* Força a quebra de linha no flexbox */
+    font-size: 0.9rem;
+    color: #2c3e50; /* Azul escuro */
+    font-weight: 700;
+    margin-top: 15px;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #e9ecef;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Remove a margem do topo para o primeiro título */
+.category-header:first-child {
+    margin-top: 0;
+}
+
 
 
     </style>
@@ -1727,17 +1746,39 @@ body.sidebar-collapsed .column:first-child {
             });
         }
 
-        function loadAllDesignacoes() {
+function loadAllDesignacoes() {
             return db.collection('designacoes').get().then(snapshot => {
-                allDesignacoes.reuniao = []; allDesignacoes.pregacao = [];
+                allDesignacoes.reuniao = []; 
+                allDesignacoes.pregacao = [];
+                
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    allDesignationDetails[doc.id] = { nome: data.nome || 'Desconhecida', tipo: data.tipo || 'desconhecido', quando: data.quando || 'desconhecido', emoji: data.emoji || '🔹' };
-                    if (data.tipo === 'reuniao') allDesignacoes.reuniao.push(data.nome);
-                    else if (data.tipo === 'pregacao') allDesignacoes.pregacao.push(data.nome);
+                    allDesignationDetails[doc.id] = { 
+                        nome: data.nome || 'Desconhecida', 
+                        tipo: data.tipo || 'desconhecido', 
+                        quando: data.quando || 'desconhecido', 
+                        emoji: data.emoji || '🔹' 
+                    };
+
+                    if (data.tipo === 'reuniao') {
+                        allDesignacoes.reuniao.push({ 
+                            nome: data.nome, 
+                            parte: data.parte || 'outros',
+                            ordem: typeof data.ordem === 'number' ? data.ordem : 999 // NOVO: Guarda a ordem
+                        });
+                    }
+                    else if (data.tipo === 'pregacao') {
+                        allDesignacoes.pregacao.push(data.nome);
+                    }
                 });
-                allDesignacoes.reuniao.sort(); allDesignacoes.pregacao.sort();
-                dataLoaded.designacoes = true; dataLoaded.designationDetails = true;
+                
+                // A ordenação inicial aqui não é crítica, pois vamos reordenar na exibição,
+                // mas ajuda a manter a consistência.
+                allDesignacoes.reuniao.sort((a, b) => a.ordem - b.ordem);
+                allDesignacoes.pregacao.sort();
+                
+                dataLoaded.designacoes = true; 
+                dataLoaded.designationDetails = true;
             });
         }
 
@@ -2028,16 +2069,75 @@ body.sidebar-collapsed .column:first-child {
                     return ausencia;
                 }).filter(Boolean);
                 updateAusenciasDisplay();
-            } else if (tabId === 'permissoes-tab') {
+    } else if (tabId === 'permissoes-tab') {
                 document.getElementById('edit-fazDesignacoesReuniao').checked = data.fazDesignacoesReuniao || false;
                 document.getElementById('edit-rule').value = data.rule || '';
+                
                 const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group');
                 desigReuniaoGroupDiv.innerHTML = '';
                 const currentDesigReuniao = data.designacoesReuniao || [];
-                allDesignacoes.reuniao.forEach(desig => desigReuniaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-reuniao', currentDesigReuniao.includes(desig))));
-                if (allDesignacoes.reuniao.length === 0) desigReuniaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
+
+                const categoriesOrder = ['resto da semana', 'escola', 'fim de semana', 'tecnicas'];
+                const categoryLabels = {
+                    'resto da semana': 'Resto da Semana',
+                    'escola': 'Escola',
+                    'fim de semana': 'Fim de Semana',
+                    'tecnicas': 'Técnicas'
+                };
+
+                const groupedDesignations = {
+                    'resto da semana': [],
+                    'escola': [],
+                    'fim de semana': [],
+                    'tecnicas': [],
+                    'outros': []
+                };
+
+                // Distribuir as designações (AGORA GUARDAMOS O OBJETO COMPLETO)
+                allDesignacoes.reuniao.forEach(desigObj => {
+                    const partKey = desigObj.parte ? desigObj.parte.toLowerCase() : 'outros';
+                    
+                    if (groupedDesignations[partKey]) {
+                        groupedDesignations[partKey].push(desigObj); // Guarda o objeto {nome, ordem, parte}
+                    } else {
+                        groupedDesignations['outros'].push(desigObj);
+                    }
+                });
+
+                let hasAnyOption = false;
+
+                const renderGroup = (key, label) => {
+                    const items = groupedDesignations[key];
+                    if (items && items.length > 0) {
+                        hasAnyOption = true;
+                        
+                        const header = document.createElement('div');
+                        header.className = 'category-header';
+                        header.textContent = label;
+                        desigReuniaoGroupDiv.appendChild(header);
+
+                        // ORDENAÇÃO POR CAMPO 'ORDEM'
+                        items.sort((a, b) => a.ordem - b.ordem);
+
+                        items.forEach(desig => {
+                            const isChecked = currentDesigReuniao.includes(desig.nome);
+                            // Passamos apenas o nome para criar o checkbox, pois é o valor que queremos salvar
+                            desigReuniaoGroupDiv.appendChild(createEditCheckbox(desig.nome, 'edit-designacao-reuniao', isChecked));
+                        });
+                    }
+                };
+
+                categoriesOrder.forEach(key => renderGroup(key, categoryLabels[key]));
+
+                if (groupedDesignations['outros'].length > 0) {
+                    renderGroup('outros', 'Outras Designações');
+                }
+
+                if (!hasAnyOption) {
+                    desigReuniaoGroupDiv.innerHTML = '<span class="loading-placeholder">Nenhuma opção disponível.</span>';
+                }
             }
-        }
+        } 
 
         function saveTabData(tabId, saveButton) {
             if (!selectedPersonId) return;
@@ -2109,20 +2209,30 @@ body.sidebar-collapsed .column:first-child {
                 saveButton.disabled = false; saveButton.innerHTML = '<i class="fas fa-save"></i> Gravar'; return;
             }
 
-            db.collection('pessoas').doc(selectedPersonId).update(dataToUpdate).then(() => {
+        db.collection('pessoas').doc(selectedPersonId).update(dataToUpdate).then(() => {
                 selectedPersonData = { ...selectedPersonData, ...dataToUpdate };
+                
+                // Atualiza a visualização da aba atual
                 if (tabId === 'pessoal-tab') populatePessoalTab(selectedPersonData);
                 else if (tabId === 'espiritual-tab') populateEspiritualTab(selectedPersonData);
                 else if (tabId === 'pregacao-tab') populatePregacaoTab(selectedPersonData);
                 else if (tabId === 'disponibilidade-tab') populateDisponibilidadeTab(selectedPersonData);
                 else if (tabId === 'permissoes-tab') populatePermissoesTab(selectedPersonData);
+                
+                // Atualiza o nome na lista lateral se tiver mudado
                 if (dataToUpdate.nomePessoa) {
-                    document.querySelector(`#pessoas-list li[data-id="${selectedPersonId}"]`).textContent = dataToUpdate.nomePessoa;
+                    const liItem = document.querySelector(`#pessoas-list li[data-id="${selectedPersonId}"]`);
+                    if (liItem) liItem.textContent = dataToUpdate.nomePessoa;
                     detailNameH3.textContent = dataToUpdate.nomePessoa;
                 }
-                cancelEditMode(); alert('Dados gravados com sucesso!');
+                
+                // ALTERAÇÃO AQUI: Removemos o alert(), mantemos apenas o cancelEditMode()
+                cancelEditMode(); 
+                
             }).catch(error => {
-                console.error("Erro ao gravar:", error); alert(error.code === 'permission-denied' ? 'Erro: Permissão negada.' : 'Erro ao gravar dados.'); cancelEditMode();
+                console.error("Erro ao gravar:", error); 
+                alert(error.code === 'permission-denied' ? 'Erro: Permissão negada.' : 'Erro ao gravar dados.'); 
+                cancelEditMode();
             });
         }
 
