@@ -1509,6 +1509,36 @@ body.popup-open {
                 </div>
             </div>
         </div>
+<!-- =================================================================== -->
+<!-- ============= INÍCIO: POPUP AVISO DE DATA NÃO COINCIDENTE ========= -->
+<!-- =================================================================== -->
+<div id="eventMismatchPopup" class="popup-overlay">
+    <div class="popup-content" style="max-width: 500px;">
+        <div class="popup-header">
+            <h2 class="popup-title" style="color: #e74c3c;">
+                <i class="fas fa-exclamation-triangle"></i> Atenção
+            </h2>
+            <button class="popup-close-button" id="closeMismatchPopup">×</button>
+        </div>
+        <div class="popup-body" style="padding: 20px 0;">
+            <p style="text-align: center; font-size: 16px; line-height: 1.6; color: #333;">
+                Não foi encontrado nenhum evento de <strong><span id="mismatchEventName"></span></strong> agendado para esta semana na base de dados.
+            </p>
+            <p style="text-align: center; font-size: 14px; color: #777; margin-top: 10px;">
+                Verifique se selecionou a semana correta ou configure a data do evento no painel de gestão.
+            </p>
+        </div>
+        <div class="popup-actions" style="display: flex; justify-content: center; gap: 15px;">
+            <button class="btn-submit" onclick="window.location.href='editar-evento.html'" style="background-color: #3498db;">
+                <i class="fas fa-calendar-alt"></i> Ir para Eventos
+            </button>
+            <button class="btn-submit" id="cancelMismatch" style="background-color: #95a5a6;">Fechar</button>
+        </div>
+    </div>
+</div>
+<!-- =================================================================== -->
+<!-- =============== FIM: POPUP AVISO DE DATA NÃO COINCIDENTE ========== -->
+<!-- =================================================================== -->
 
 
  <script>
@@ -3927,13 +3957,16 @@ loadNacionalidades();
             };
 
             // Handle "Seguinte" button click (VERSÃO COM PAINEL CUSTOMIZADO)
-   document.getElementById('btnSeguinte').addEventListener('click', async function() {
+document.getElementById('btnSeguinte').addEventListener('click', async function() {
     const tipoReuniao = document.getElementById('tipo').value;
-    
-    // Lista de eventos que acionam a verificação (incluindo Visita do Servo, para consistência)
+    const btnSeguinte = this;
     const specialEventTypes = ['memorial', 'assembleia', 'congresso', 'visita-servo'];
 
     if (specialEventTypes.includes(tipoReuniao)) {
+        const originalText = btnSeguinte.textContent;
+        btnSeguinte.textContent = "A verificar...";
+        btnSeguinte.disabled = true;
+
         const ano = await getAnoPainelFirebase();
         
         const eventNameMap = {
@@ -3945,63 +3978,91 @@ loadNacionalidades();
         const eventNameForQuery = eventNameMap[tipoReuniao];
         
         if (eventNameForQuery) {
+            // CORREÇÃO CRÍTICA: Procura no ano atual E no próximo ano
+            // Isto resolve o problema da semana 30 Dez 2019 - 05 Jan 2020
             const snapshot = await db.collection('eventos')
                 .where('nome', '==', eventNameForQuery)
-                .where('ano', '==', ano)
+                .where('ano', 'in', [ano, ano + 1]) 
                 .get();
+
+            let overlapFound = false;
 
             if (!snapshot.empty) {
                 const mes = parseInt(document.getElementById('mes').value);
                 const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
                 const { monday: weekStart, sunday: weekEnd } = getWeekMondaySunday(ano, mes, semanaNumero);
                 
-                let overlapFound = false;
-
-                // ===== INÍCIO DA LÓGICA CORRIGIDA =====
-                // Agora percorremos TODOS os documentos de evento encontrados
                 for (const doc of snapshot.docs) {
                     const eventData = doc.data();
                     
-                    // Verifica evento com data única
                     if (eventData.data) {
-                        const eventDate = new Date(eventData.data + 'T12:00:00');
+                        let eventDate;
+                        const rawDate = eventData.data;
+                        
+                        // Suporte para formatos DD/MM/YYYY e YYYY-MM-DD
+                        if (rawDate.includes('/')) {
+                            const parts = rawDate.split('/');
+                            eventDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                        } else {
+                            eventDate = new Date(rawDate + 'T12:00:00');
+                        }
+                        // Define hora neutra para comparar apenas os dias
+                        eventDate.setHours(12, 0, 0, 0); 
+
+                        // Verifica se a data do evento cai dentro da semana
                         if (eventDate >= weekStart && eventDate <= weekEnd) {
                             overlapFound = true;
-                            break; // Encontrou uma correspondência, pode parar de procurar
+                            break; 
                         }
                     } 
-                    // Verifica evento com intervalo de datas
+                    // Suporte para eventos com data de início e fim
                     else if (eventData.data_inicio && eventData.data_fim) {
                         const eventStart = new Date(eventData.data_inicio + 'T00:00:00');
                         const eventEnd = new Date(eventData.data_fim + 'T23:59:59');
                         if (eventStart <= weekEnd && eventEnd >= weekStart) {
                             overlapFound = true;
-                            break; // Encontrou uma correspondência, pode parar de procurar
+                            break;
                         }
                     }
                 }
-                // ===== FIM DA LÓGICA CORRIGIDA =====
+            }
 
-                if (overlapFound) {
-                    const confirmed = await showSpecialEventConfirmation(tipoReuniao);
-                    if (confirmed) {
-                        const success = await saveSpecialEvent();
-                        if (success) {
-                            alert(`Evento de ${eventNameForQuery} gravado com sucesso!`);
-                            window.location.reload();
-                        }
+            btnSeguinte.textContent = originalText;
+            btnSeguinte.disabled = false;
+
+            if (overlapFound) {
+                // SUCESSO: Mostra popup para gravar
+                const confirmed = await showSpecialEventConfirmation(tipoReuniao);
+                if (confirmed) {
+                    const success = await saveSpecialEvent();
+                    if (success) {
+                        alert(`Evento de ${eventNameForQuery} gravado com sucesso!`);
+                        window.location.reload();
                     }
-                    return; // Interrompe o fluxo para não mostrar as designações
                 }
+                return;
+            } else {
+                // ERRO: Mostra popup de aviso
+                const popup = document.getElementById('eventMismatchPopup');
+                const eventNameSpan = document.getElementById('mismatchEventName');
+                const closeBtn = document.getElementById('closeMismatchPopup');
+                const cancelBtn = document.getElementById('cancelMismatch');
+
+                eventNameSpan.textContent = eventNameForQuery;
+                popup.style.display = 'flex';
+
+                const closeHandler = () => { popup.style.display = 'none'; };
+                closeBtn.onclick = closeHandler;
+                cancelBtn.onclick = closeHandler;
+                return;
             }
         }
     }
 
-    // Se não for um evento especial com sobreposição de datas, continua com a lógica original
+    // Código original para continuar se não for evento especial...
     const designacoesSection = document.getElementById('designacoesSection');
     const leituraBibliaSection = document.getElementById('leituraBibliaSection');
     const iniciarFluxoButton = document.querySelector('#fluxoSemanalForm button[type="submit"].btn-submit');
-
     designacoesSection.classList.add('active');
     leituraBibliaSection.style.display = 'block';
     iniciarFluxoButton.style.display = 'block';
@@ -6008,24 +6069,20 @@ function selectRandomFrom(array) {
 
 
 
-
-
-
-
-
-
 async function initializePage() {
     try {
-        // A MÁGICA ACONTECE AQUI: `await` força o código a esperar que
-        // o display da semana seja completamente atualizado antes de continuar.
+        // 1. Define o Mês correto (baseado no histórico ou sistema)
+        await loadLastMonthFromFirebase();
+
+        // 2. Com o mês já selecionado, calcula as semanas e atualiza o texto "Xª semana de Y..."
         await updateWeekDisplay(); 
         
-        // Só depois de o display estar pronto é que carregamos as designações
-        await loadDesignacoes(); // Adicionamos await aqui para garantir que termina.
+        // 3. Carrega as designações
+        await loadDesignacoes(); 
     
     } catch (error) {
         console.error("Erro durante a inicialização da página:", error);
-        document.getElementById('weekDisplay').textContent = "Erro ao carregar dados da semana.";
+        document.getElementById('weekDisplay').textContent = "Erro ao carregar dados.";
     }
 }
 
@@ -6088,6 +6145,52 @@ let participationStatsCache = { ano: null, data: null };
             // Initial load of designacoes
 
         });
+
+
+// Função para definir o mês com base na última designação de escola gravada
+const loadLastMonthFromFirebase = async () => {
+    const selectMes = document.getElementById('mes');
+    
+    try {
+        // 1. Consulta o Firebase:
+        // - Coleção: historico
+        // - Filtro: apenas registos de 'escola'
+        // - Ordem: timestamp descendente (do mais novo para o mais velho)
+        // - Limite: apenas 1 (o último)
+        const snapshot = await db.collection('historico')
+            .where('parte', '==', 'escola')
+            .orderBy('timestamp', 'desc')
+            .limit(1)
+            .get();
+
+        if (!snapshot.empty) {
+            // 2. Se encontrou registos
+            const data = snapshot.docs[0].data();
+            
+            // O campo 'mes' no firebase deve ser um número (ex: 1, 2, ... 12)
+            if (data.mes) {
+                // Atribui ao dropdown. Como o HTML é <option value="1">, funciona direto.
+                selectMes.value = data.mes; 
+                console.log(`[AUTO-MES] Último registo encontrado: Mês ${data.mes}. Dropdown atualizado.`);
+                return; 
+            }
+        } else {
+            console.log("[AUTO-MES] Nenhum histórico de escola encontrado.");
+        }
+    } catch (error) {
+        // Este erro acontece geralmente se faltar o Índice no Firebase
+        console.warn("[AUTO-MES] Erro ao procurar último mês (Provável falta de índice composto 'parte + timestamp').", error);
+    }
+
+    // 3. FALLBACK: Se algo falhar ou não houver dados, usa o mês atual do sistema
+    const currentMonth = new Date().getMonth() + 1;
+    selectMes.value = currentMonth;
+    console.log(`[AUTO-MES] Usando mês atual do sistema: ${currentMonth}`);
+};
+
+
+
+
     </script>
 
 <script src="main.js"></script>
