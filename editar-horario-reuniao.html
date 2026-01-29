@@ -84,8 +84,10 @@
     
     <script src="firebase-config.js"></script>
     <script src="main.js"></script>
-    <script>
+
+<script>
         document.addEventListener('DOMContentLoaded', async () => {
+            // Verificação de segurança do Firebase
             if (typeof db === 'undefined') {
                 showMessage('Erro: Configuração do Firebase não encontrada.', 'error');
                 return;
@@ -93,85 +95,124 @@
 
             const form = document.getElementById('horarioForm');
             const messageDiv = document.getElementById('message');
-            let docIdParaAtualizar = null; // Variável para guardar o ID do documento
+            
+            // Variável para saber se vamos ATUALIZAR (doc existente) ou CRIAR (novo doc)
+            let docIdParaAtualizar = null; 
 
-            // Função para carregar os dados existentes no formulário
-            async function loadExistingSchedule() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const year = urlParams.get('year');
-
-                if (!year) {
-                    showMessage('Ano não especificado. Volte ao painel e tente novamente.', 'error');
-                    form.style.display = 'none'; // Esconde o formulário se não houver ano
-                    return;
-                }
-
+            // --- FUNÇÃO PRINCIPAL ---
+            async function carregarDadosDoPainelEHorarios() {
                 try {
-                    const querySnapshot = await db.collection('horarios')
-                        .where('ano', '==', parseInt(year))
+                    // PASSO 1: Descobrir qual é o Ano Oficial no Painel
+                    const docPainel = await db.collection('painel').doc('ano').get();
+                    
+                    if (!docPainel.exists || !docPainel.data().ano) {
+                        showMessage('Erro: O Ano Atual não está definido no Painel.', 'error');
+                        form.style.display = 'none';
+                        return;
+                    }
+
+                    // Define o ano na variável e no input (que é readonly)
+                    const anoOficial = parseInt(docPainel.data().ano);
+                    document.getElementById('ano').value = anoOficial;
+
+                    // PASSO 2: Agora que sabemos o ano, buscamos os horários DESTE ano
+                    await buscarHorariosDoAno(anoOficial);
+
+                } catch (error) {
+                    console.error(error);
+                    showMessage('Erro ao carregar dados iniciais: ' + error.message, 'error');
+                }
+            }
+
+            // --- FUNÇÃO PARA PREENCHER OS CAMPOS ---
+            async function buscarHorariosDoAno(ano) {
+                try {
+                    const snapshot = await db.collection('horarios')
+                        .where('ano', '==', ano)
                         .where('tipo', '==', 'reuniao')
                         .limit(1)
                         .get();
 
-                    if (!querySnapshot.empty) {
-                        const doc = querySnapshot.docs[0];
-                        const data = doc.data();
-                        docIdParaAtualizar = doc.id; // Guarda o ID para a atualização
+                    if (!snapshot.empty) {
+                        // CENÁRIO A: Já existe configuração salva no Firebase
+                        const doc = snapshot.docs[0];
+                        const dados = doc.data();
+                        
+                        docIdParaAtualizar = doc.id; // Guardamos o ID para usar no salvar
 
-                        // Preenche o formulário com os dados do Firestore
-                        document.getElementById('ano').value = data.ano;
-                        document.getElementById('diaSemana').value = data['dia-semana'] || '';
-                        document.getElementById('horaSemana').value = data['hora-semana'] || '';
-                        document.getElementById('diaFimSemana').value = data['dia-fimdesemana'] || '';
-                        document.getElementById('horaFimSemana').value = data['hora-fimdesemana'] || '';
+                        // Preenche os campos com o que veio do banco
+                        document.getElementById('diaSemana').value = dados['dia-semana'] || '';
+                        document.getElementById('horaSemana').value = dados['hora-semana'] || '';
+                        document.getElementById('diaFimSemana').value = dados['dia-fimdesemana'] || '';
+                        document.getElementById('horaFimSemana').value = dados['hora-fimdesemana'] || '';
+
+                        console.log(`Dados carregados para o ano ${ano}. ID: ${docIdParaAtualizar}`);
                     } else {
-                        showMessage(`Nenhum horário de reunião encontrado para o ano ${year}.`, 'error');
-                        form.style.display = 'none';
+                        // CENÁRIO B: Não existe configuração ainda para este ano
+                        // Limpa os campos para não mostrar dados de cache ou lixo
+                        docIdParaAtualizar = null;
+                        document.getElementById('diaSemana').value = '';
+                        document.getElementById('horaSemana').value = '';
+                        document.getElementById('diaFimSemana').value = '';
+                        document.getElementById('horaFimSemana').value = '';
+                        
+                        // Mostra um aviso amigável (opcional)
+                        showMessage(`Nenhum horário configurado para ${ano} ainda. Preencha e salve.`, 'success');
                     }
                 } catch (error) {
-                    showMessage('Erro ao carregar os dados do horário: ' + error.message, 'error');
+                    console.error(error);
+                    showMessage('Erro ao buscar detalhes do horário.', 'error');
                 }
             }
 
-            // Lógica de submissão do formulário para ATUALIZAR
+            // --- FUNÇÃO DE SALVAR ---
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
-                if (!docIdParaAtualizar) {
-                    showMessage('Erro: Não foi possível encontrar o horário para atualizar.', 'error');
-                    return;
-                }
+                const anoInput = parseInt(document.getElementById('ano').value);
 
-                const horarioAtualizado = {
-                    ano: parseInt(document.getElementById('ano').value),
+                const dadosParaSalvar = {
+                    ano: anoInput,
                     'dia-semana': document.getElementById('diaSemana').value,
                     'hora-semana': document.getElementById('horaSemana').value,
                     'dia-fimdesemana': document.getElementById('diaFimSemana').value,
                     'hora-fimdesemana': document.getElementById('horaFimSemana').value,
-                    tipo: 'reuniao' // Mantém o tipo
+                    tipo: 'reuniao'
                 };
 
                 try {
-                    await db.collection('horarios').doc(docIdParaAtualizar).update(horarioAtualizado);
-                    showMessage('Horário atualizado com sucesso!', 'success');
+                    if (docIdParaAtualizar) {
+                        // Se já existia (tem ID), atualiza
+                        await db.collection('horarios').doc(docIdParaAtualizar).update(dadosParaSalvar);
+                        showMessage('Horários atualizados com sucesso!', 'success');
+                    } else {
+                        // Se não existia (ID nulo), cria um novo
+                        await db.collection('horarios').add(dadosParaSalvar);
+                        showMessage('Novos horários criados com sucesso!', 'success');
+                    }
 
+                    // Volta para o painel após 1.5 segundos
                     setTimeout(() => {
-                        window.location.href = 'index.html'; // Redireciona de volta para o painel
+                        window.location.href = 'index.html';
                     }, 1500);
+
                 } catch (error) {
-                    showMessage('Erro ao salvar as alterações: ' + error.message, 'error');
+                    showMessage('Erro ao salvar: ' + error.message, 'error');
                 }
             });
 
+            // Função utilitária para mensagens
             function showMessage(text, type) {
                 messageDiv.textContent = text;
                 messageDiv.className = `message ${type}`;
                 messageDiv.style.display = 'block';
             }
 
-            // Inicia o carregamento dos dados assim que a página é aberta
-            await loadExistingSchedule();
+            // INICIA O PROCESSO AO ABRIR A PÁGINA
+            await carregarDadosDoPainelEHorarios();
         });
     </script>
+
+
 </body>
 </html>
