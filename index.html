@@ -175,38 +175,65 @@
             }
         }
 
-        async function loadSchedules(year) {
-            const weekdayScheduleDiv = document.getElementById('weekdaySchedule');
-            const weekendScheduleDiv = document.getElementById('weekendSchedule');
-            const weekdayPreachingScheduleDiv = document.getElementById('weekdayPreachingSchedule');
-            const weekendPreachingScheduleDiv = document.getElementById('weekendPreachingSchedule');
+   async function loadSchedules(year) {
+    const weekdayScheduleDiv = document.getElementById('weekdaySchedule');
+    const weekendScheduleDiv = document.getElementById('weekendSchedule');
+    const weekdayPreachingScheduleDiv = document.getElementById('weekdayPreachingSchedule');
+    const weekendPreachingScheduleDiv = document.getElementById('weekendPreachingSchedule');
 
-            try {
-                const reuniaoQuery = await db.collection('horarios').where('ano', '==', parseInt(year)).where('tipo', '==', 'reuniao').limit(1).get();
-                if (!reuniaoQuery.empty) {
-                    const data = reuniaoQuery.docs[0].data();
-                    weekdayScheduleDiv.textContent = `${data['dia-semana']} ${data['hora-semana']}`;
-                    weekendScheduleDiv.textContent = `${data['dia-fimdesemana']} ${data['hora-fimdesemana']}`;
-                } else {
-                    weekdayScheduleDiv.textContent = 'Não configurado';
-                    weekendScheduleDiv.textContent = 'Não configurado';
-                }
+    try {
+        // --- PARTE 1: REUNIÕES (Mantivemos por ano, caso mude anualmente) ---
+        const reuniaoQuery = await db.collection('horarios')
+            .where('ano', '==', parseInt(year))
+            .where('tipo', '==', 'reuniao')
+            .limit(1)
+            .get();
 
-                const pregacaoQuery = await db.collection('horarios').where('ano', '==', parseInt(year)).where('tipo', '==', 'pregacao').limit(1).get();
-                if (!pregacaoQuery.empty) {
-                    const data = pregacaoQuery.docs[0].data();
-                    let semanaHtml = Object.entries(data['dias-semana-horarios'] || {}).map(([dia, horas]) => `${dia.charAt(0).toUpperCase() + dia.slice(1)}: ${horas.join(', ')}`).join('<br>');
-                    let fimSemanaHtml = Object.entries(data['dias-fimdesemana-horarios'] || {}).map(([dia, horas]) => `${dia.charAt(0).toUpperCase() + dia.slice(1)}: ${horas.join(', ')}`).join('<br>');
-                    weekdayPreachingScheduleDiv.innerHTML = semanaHtml || 'Não configurado';
-                    weekendPreachingScheduleDiv.innerHTML = fimSemanaHtml || 'Não configurado';
-                } else {
-                    weekdayPreachingScheduleDiv.textContent = 'Não configurado';
-                    weekendPreachingScheduleDiv.textContent = 'Não configurado';
-                }
-            } catch (error) {
-                console.error('Erro ao carregar horários:', error);
-            }
+        if (!reuniaoQuery.empty) {
+            const data = reuniaoQuery.docs[0].data();
+            weekdayScheduleDiv.textContent = `${data['dia-semana']} ${data['hora-semana']}`;
+            weekendScheduleDiv.textContent = `${data['dia-fimdesemana']} ${data['hora-fimdesemana']}`;
+        } else {
+            weekdayScheduleDiv.textContent = 'Não configurado para este ano';
+            weekendScheduleDiv.textContent = 'Não configurado para este ano';
         }
+
+        // --- PARTE 2: PREGAÇÃO (ALTERADO: Carrega o documento único, ignora o ano) ---
+        // Removemos o .where('ano', ...) para pegar o documento de configuração global
+        const pregacaoQuery = await db.collection('horarios')
+            .where('tipo', '==', 'pregacao')
+            .limit(1) // Pega apenas 1 documento (o único que existir)
+            .get();
+
+        if (!pregacaoQuery.empty) {
+            const data = pregacaoQuery.docs[0].data();
+            
+            // Lógica para formatar os horários da semana
+            let semanaHtml = '';
+            if (data['dias-semana-horarios']) {
+                 semanaHtml = Object.entries(data['dias-semana-horarios'])
+                    .map(([dia, horas]) => `${dia.charAt(0).toUpperCase() + dia.slice(1)}: ${horas.join(', ')}`)
+                    .join('<br>');
+            }
+
+            // Lógica para formatar os horários do fim de semana
+            let fimSemanaHtml = '';
+            if (data['dias-fimdesemana-horarios']) {
+                fimSemanaHtml = Object.entries(data['dias-fimdesemana-horarios'])
+                    .map(([dia, horas]) => `${dia.charAt(0).toUpperCase() + dia.slice(1)}: ${horas.join(', ')}`)
+                    .join('<br>');
+            }
+
+            weekdayPreachingScheduleDiv.innerHTML = semanaHtml || 'Não configurado';
+            weekendPreachingScheduleDiv.innerHTML = fimSemanaHtml || 'Não configurado';
+        } else {
+            weekdayPreachingScheduleDiv.textContent = 'Documento de pregação não encontrado';
+            weekendPreachingScheduleDiv.textContent = 'Documento de pregação não encontrado';
+        }
+    } catch (error) {
+        console.error('Erro ao carregar horários:', error);
+    }
+}
 
         // --- LÓGICA PRINCIPAL CENTRALIZADA ---
 
