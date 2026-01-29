@@ -3960,6 +3960,8 @@ loadNacionalidades();
 document.getElementById('btnSeguinte').addEventListener('click', async function() {
     const tipoReuniao = document.getElementById('tipo').value;
     const btnSeguinte = this;
+    
+    // Lista de eventos que requerem verificação de data na base de dados
     const specialEventTypes = ['memorial', 'assembleia', 'congresso', 'visita-servo'];
 
     if (specialEventTypes.includes(tipoReuniao)) {
@@ -3978,8 +3980,7 @@ document.getElementById('btnSeguinte').addEventListener('click', async function(
         const eventNameForQuery = eventNameMap[tipoReuniao];
         
         if (eventNameForQuery) {
-            // CORREÇÃO CRÍTICA: Procura no ano atual E no próximo ano
-            // Isto resolve o problema da semana 30 Dez 2019 - 05 Jan 2020
+            // Procura no ano atual E no próximo ano
             const snapshot = await db.collection('eventos')
                 .where('nome', '==', eventNameForQuery)
                 .where('ano', 'in', [ano, ano + 1]) 
@@ -4031,18 +4032,29 @@ document.getElementById('btnSeguinte').addEventListener('click', async function(
             btnSeguinte.disabled = false;
 
             if (overlapFound) {
-                // SUCESSO: Mostra popup para gravar
-                const confirmed = await showSpecialEventConfirmation(tipoReuniao);
-                if (confirmed) {
-                    const success = await saveSpecialEvent();
-                    if (success) {
-                        alert(`Evento de ${eventNameForQuery} gravado com sucesso!`);
-                        window.location.reload();
+                // === LÓGICA ALTERADA AQUI ===
+                
+                // Se for Visita do Servo, permitimos continuar para baixo (mostrar designações)
+                // Não fazemos return aqui.
+                if (tipoReuniao === 'visita-servo') {
+                    console.log("Visita do Servo encontrada. Continuando para mostrar designações...");
+                    // O código sairá deste bloco 'if' e executará a parte final da função
+                } 
+                else {
+                    // Para Memorial, Assembleia e Congresso, mantemos o comportamento de gravar e sair
+                    const confirmed = await showSpecialEventConfirmation(tipoReuniao);
+                    if (confirmed) {
+                        const success = await saveSpecialEvent();
+                        if (success) {
+                            alert(`Evento de ${eventNameForQuery} gravado com sucesso!`);
+                            window.location.reload();
+                        }
                     }
+                    return; // IMPORTANTE: Pára a execução aqui para estes eventos
                 }
-                return;
+
             } else {
-                // ERRO: Mostra popup de aviso
+                // ERRO: Data não coincide. Mostra popup de aviso e pára.
                 const popup = document.getElementById('eventMismatchPopup');
                 const eventNameSpan = document.getElementById('mismatchEventName');
                 const closeBtn = document.getElementById('closeMismatchPopup');
@@ -4054,18 +4066,22 @@ document.getElementById('btnSeguinte').addEventListener('click', async function(
                 const closeHandler = () => { popup.style.display = 'none'; };
                 closeBtn.onclick = closeHandler;
                 cancelBtn.onclick = closeHandler;
-                return;
+                return; // Pára a execução se a data não bater certo
             }
         }
     }
 
-    // Código original para continuar se não for evento especial...
+    // Código original para mostrar a secção de designações
+    // (Agora a Visita do Servo chegará aqui se a data estiver correta)
     const designacoesSection = document.getElementById('designacoesSection');
     const leituraBibliaSection = document.getElementById('leituraBibliaSection');
     const iniciarFluxoButton = document.querySelector('#fluxoSemanalForm button[type="submit"].btn-submit');
+    
     designacoesSection.classList.add('active');
     leituraBibliaSection.style.display = 'block';
     iniciarFluxoButton.style.display = 'block';
+    
+    // Smooth scroll para as designações
     designacoesSection.scrollIntoView({ behavior: 'smooth' });
 });
 
