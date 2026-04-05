@@ -936,18 +936,25 @@
    <!-- =================================================================== -->
 <!-- ============= INÍCIO: PAINEL DE ALERTA DE VALIDAÇÃO ============== -->
 <!-- =================================================================== -->
-<div id="validation-alert-container" style="display: none;">
-    <i id="validation-alert-icon" class="fas fa-exclamation-triangle" title="Alertas de Validação"></i>
+<div id="validation-alert-container">
+    <!-- Ícone de Erro (Vermelho) -->
+    <i id="icon-error" class="fas fa-exclamation-circle" style="display: none; color: #e74c3c;" title="Erros Críticos"></i>
+    <!-- Ícone de Aviso (Laranja) -->
+    <i id="icon-warning" class="fas fa-exclamation-triangle" style="display: none; color: #f39c12;" title="Avisos"></i>
+    <!-- Ícone de Informação (Azul) -->
+    <i id="icon-info" class="fas fa-info-circle" style="display: none; color: #3498db;" title="Informações"></i>
+
     <div id="validation-panel">
         <div id="validation-panel-header">
             <h3>Regras Violadas</h3>
             <button id="validation-panel-close">×</button>
         </div>
         <ul id="validation-list">
-            <!-- As mensagens de erro serão inseridas aqui via JavaScript -->
+            <!-- As mensagens de erro serão inseridas aqui -->
         </ul>
     </div>
 </div>
+
 <!-- =================================================================== -->
 <!-- ================ FIM: PAINEL DE ALERTA DE VALIDAÇÃO =============== -->
 <!-- =================================================================== -->
@@ -1451,6 +1458,37 @@ body.popup-open {
     color: #3498db; /* Azul */
 }
 
+#validation-alert-container {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column-reverse; /* Empilha de baixo para cima */
+    gap: 10px;
+    align-items: center;
+}
+
+#validation-alert-container i {
+    font-size: 30px;
+    cursor: pointer;
+    background-color: white;
+    border-radius: 50%;
+    padding: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+}
+
+#validation-alert-container i:hover {
+    transform: scale(1.2);
+}
+
+/* Garante que a borda vermelha apareça no select */
+.form-select.invalid-selection {
+    border: 2px solid #e74c3c !important;
+    background-color: #fbeae5 !important;
+}
+
         </style>
 
         <div class="card">
@@ -1833,125 +1871,7 @@ const getPairCollaborationHistoryForYear = async (ano) => {
     return pairHistoryMap;
 };
 
-// --- Função principal que valida TODAS as seleções na página (COM LOGS) ---
-const validateAllSelections = async () => {
-    console.log("[VALIDATION] 🚀 Função validateAllSelections iniciada (com avisos informativos).");
 
-    const alertContainer = document.getElementById('validation-alert-container');
-    const alertIcon = document.getElementById('validation-alert-icon');
-    const validationList = document.getElementById('validation-list');
-
-    // Limpa estilos e mensagens de validações anteriores
-    document.querySelectorAll('.form-select.invalid-selection, .form-select.warning-selection, .form-select.info-selection').forEach(el => {
-        el.classList.remove('invalid-selection', 'warning-selection', 'info-selection');
-    });
-    validationList.innerHTML = '';
-    let allViolations = [];
-
-    const ano = await getAnoPainelFirebase();
-    const mes = parseInt(document.getElementById('mes').value);
-    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
-
-    // --- FASE 1: OBTENÇÃO DOS DADOS (INCLUINDO O NOVO RESUMO) ---
-    const [
-        participantsLastWeek,
-        participantsNextWeek,
-        nonSchoolAssignments,
-        pairCollaborationHistory,
-        participationSummary // <-- NOVO DADO
-    ] = await Promise.all([
-        getParticipantsLastWeek(ano, mes, semanaNumero),
-        getParticipantsNextWeek(ano, mes, semanaNumero),
-        getNonSchoolAssignmentsForWeek(ano, mes, semanaNumero),
-        getPairCollaborationHistoryForYear(ano),
-        getParticipationHistorySummary() // <-- NOVA CHAMADA
-    ]);
-
-    // --- FASE 2: VERIFICAÇÕES INDIVIDUAIS (COM NOVAS REGRAS) ---
-    const allSelects = document.querySelectorAll('#activeDesignationsContainer .form-select, #leituraBibliaDesignationContainer .form-select');
-    const currentSelections = new Map();
-
-    allSelects.forEach(select => {
-        if (select.value) {
-            const personId = select.value;
-            const personName = select.options[select.selectedIndex].text;
-            
-            // ... (as suas regras existentes de duplicação, semana passada/seguinte, etc., continuam aqui sem alterações) ...
-            
-           // ================================================================
-// ===== INÍCIO: NOVA LÓGICA PARA AVISOS INFORMATIVOS (AZUIS) =====
-// ================================================================
-
-// A lógica aqui agora usa as contagens exatas.
-// Lembre-se: o resumo do histórico NÃO inclui a designação que está a ser feita AGORA.
-// Por isso, quando o histórico diz "1", a designação atual será a segunda.
-
-const personStats = participationSummary.get(personId);
-const currentYear = ano;
-
-if (!personStats) {
-    // Se a pessoa não tem estatísticas, esta é a sua PRIMEIRA vez de SEMPRE.
-    allViolations.push({ message: `Primeira designação de escola de SEMPRE para ${personName}.`, type: 'info' });
-    select.classList.add('info-selection');
-
-} else if (personStats.totalCount === 1) {
-    // Se a contagem total no histórico é 1, esta será a sua SEGUNDA vez de SEMPRE.
-    allViolations.push({ message: `Segunda designação de escola de SEMPRE para ${personName}.`, type: 'info' });
-    select.classList.add('info-selection');
-
-} else if (!personStats.byYear.has(currentYear)) {
-    // Se tem um total > 1, mas não tem registo para este ano, é a sua PRIMEIRA vez ESTE ANO.
-    allViolations.push({ message: `Primeira designação de escola ESTE ANO para ${personName}.`, type: 'info' });
-    select.classList.add('info-selection');
-
-} else if (personStats.byYear.get(currentYear) === 1) {
-    // Se tem registo para este ano e a contagem é 1, esta será a sua SEGUNDA vez ESTE ANO.
-    allViolations.push({ message: `Segunda designação de escola ESTE ANO para ${personName}.`, type: 'info' });
-    select.classList.add('info-selection');
-}
-
-// ================================================================
-// ====== FIM: NOVA LÓGICA PARA AVISOS INFORMATIVOS (AZUIS) =======
-// ================================================================
-        }
-    });
-    
-    // --- FASE 3: LÓGICA DE VERIFICAÇÕES DE PARES (sem alterações) ---
-    // ... (o seu código de verificação de pares continua aqui) ...
-
-
-    // --- FASE 4: ATUALIZAR A INTERFACE DO UTILIZADOR (COM LÓGICA PARA AZUL) ---
-    if (allViolations.length > 0) {
-        const hasErrors = allViolations.some(v => v.type === 'error');
-        const hasWarnings = allViolations.some(v => v.type === 'warning');
-        // Não precisamos de `hasInfo` aqui, a lógica abaixo cobre isso.
-
-        alertIcon.classList.remove('warning-only', 'info-only'); // Limpa classes de cor
-        
-        if (hasErrors) {
-            // A cor padrão (vermelha) é usada
-        } else if (hasWarnings) {
-            alertIcon.classList.add('warning-only'); // Fica amarelo/laranja
-        } else { // Se não há erros nem avisos, só pode haver informativos
-            alertIcon.classList.add('info-only'); // Fica azul
-        }
-        
-        const uniqueMessages = [...new Map(allViolations.map(item => [item.message, item])).values()];
-
-        uniqueMessages.forEach(violation => {
-            const li = document.createElement('li');
-            li.textContent = violation.message;
-            if (violation.type === 'warning') li.style.color = '#f39c12';
-            else if (violation.type === 'error') li.style.color = '#c0392b';
-            else if (violation.type === 'info') li.style.color = '#2980b9'; // <-- Cor do texto para o aviso azul
-            validationList.appendChild(li);
-        });
-        alertContainer.style.display = 'block';
-    } else {
-        alertContainer.style.display = 'none';
-        document.getElementById('validation-panel').classList.remove('active');
-    }
-};
 
 
 
@@ -1969,41 +1889,85 @@ function getMeetingDayOfMonth(diasSemanaString, diaSemanaReuniao) {
 
 
 
+// ESTA É A VERSÃO ÚNICA QUE DEVE FICAR NO TEU SCRIPT
+const validateAllSelections = async () => {
+    const iconError = document.getElementById('icon-error');
+    const iconWarning = document.getElementById('icon-warning');
+    const iconInfo = document.getElementById('icon-info');
+    const validationList = document.getElementById('validation-list');
+    const alertContainer = document.getElementById('validation-alert-container');
+
+    // Reset de cores e ícones
+    document.querySelectorAll('.form-select').forEach(el => el.classList.remove('invalid-selection', 'warning-selection', 'info-selection'));
+    if(iconError) iconError.style.display = 'none';
+    if(iconWarning) iconWarning.style.display = 'none';
+    if(iconInfo) iconInfo.style.display = 'none';
+    validationList.innerHTML = '';
+
+    const currentSelections = new Map();
+    const ano = await getAnoPainelFirebase();
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+
+    const [lastW, nextW, stats] = await Promise.all([
+        getParticipantsLastWeek(ano, mes, semanaNumero),
+        getParticipantsNextWeek(ano, mes, semanaNumero),
+        getParticipationHistorySummary()
+    ]);
+
+    const allSelects = document.querySelectorAll('.form-select');
+    let hasViolations = false;
+
+    allSelects.forEach(select => {
+        if (!select.value) return;
+        const personId = select.value;
+        const personName = select.options[select.selectedIndex].text;
+
+        // VERMELHO: Duplicados
+        if (currentSelections.has(personId)) {
+            hasViolations = true;
+            iconError.style.display = 'block';
+            select.classList.add('invalid-selection');
+            document.getElementById(currentSelections.get(personId))?.classList.add('invalid-selection');
+            const li = document.createElement('li');
+            li.textContent = `⚠️ ${personName} está duplicado!`;
+            li.style.color = '#c0392b';
+            validationList.appendChild(li);
+        } else {
+            currentSelections.set(personId, select.id);
+        }
+
+        // LARANJA: Semana passada/seguinte
+        if (lastW.has(personId) || nextW.has(personId)) {
+            hasViolations = true;
+            iconWarning.style.display = 'block';
+            if (!select.classList.contains('invalid-selection')) select.classList.add('warning-selection');
+            const li = document.createElement('li');
+            li.textContent = `🔸 ${personName} participou recentemente.`;
+            li.style.color = '#f39c12';
+            validationList.appendChild(li);
+        }
+
+        // AZUL: Informação histórica
+        const pStats = stats.get(personId);
+        if (!pStats || pStats.totalCount <= 1) {
+            hasViolations = true;
+            iconInfo.style.display = 'block';
+            if (!select.classList.contains('invalid-selection') && !select.classList.contains('warning-selection')) select.classList.add('info-selection');
+            const li = document.createElement('li');
+            li.textContent = `ℹ️ Primeira vez de ${personName}.`;
+            li.style.color = '#2980b9';
+            validationList.appendChild(li);
+        }
+    });
+
+    alertContainer.style.display = hasViolations ? 'flex' : 'none';
+};
 
 
 
 
 
-
-// --- Event Listeners ---
-
-
-// Adicionar um ouvinte para o botão de foguete para validar após o preenchimento automático
-document.getElementById('turboButton').addEventListener('click', () => {
-    // Adiciona um pequeno atraso para garantir que os valores do select foram atualizados antes da validação
-    setTimeout(validateAllSelections, 500); 
-});
-
-
-// Lógica para mostrar/esconder o painel de validação
-const validationIcon = document.getElementById('validation-alert-icon');
-const validationPanel = document.getElementById('validation-panel');
-const validationPanelClose = document.getElementById('validation-panel-close');
-
-validationIcon.addEventListener('click', () => {
-    validationPanel.classList.toggle('active');
-});
-
-validationPanelClose.addEventListener('click', () => {
-    validationPanel.classList.remove('active');
-});
-
-// Fechar o painel se clicar fora dele
-document.addEventListener('click', (event) => {
-    if (!validationPanel.contains(event.target) && !validationIcon.contains(event.target)) {
-        validationPanel.classList.remove('active');
-    }
-});
 
             
            // --- INÍCIO: NOVA LÓGICA DO POPUP DE ESTATÍSTICAS COM ABAS ---
@@ -6291,7 +6255,56 @@ const loadLastMonthFromFirebase = async () => {
 };
 
 
+// =================================================================== //
+// ========== GESTÃO DOS CLIQUES NOS ÍCONES E PAINEL DE ALERTA ======= //
+// =================================================================== //
 
+const setupValidationListeners = () => {
+    const ids = ['icon-error', 'icon-warning', 'icon-info'];
+    const validationPanel = document.getElementById('validation-panel');
+    const closeBtn = document.getElementById('validation-panel-close');
+
+    // 1. Configurar clique para abrir/fechar o painel em cada ícone
+    ids.forEach(id => {
+        const icon = document.getElementById(id);
+        if (icon && validationPanel) {
+            icon.addEventListener('click', (event) => {
+                event.stopPropagation(); // Impede que o clique feche o painel imediatamente
+                validationPanel.classList.toggle('active');
+                console.log(`[UI] Painel de validação alternado via ícone: ${id}`);
+            });
+        } else {
+            console.warn(`[AVISO] Elemento com ID "${id}" não encontrado para adicionar listener.`);
+        }
+    });
+
+    // 2. Configurar o botão de fechar (X) dentro do painel
+    if (closeBtn && validationPanel) {
+        closeBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            validationPanel.classList.remove('active');
+        });
+    }
+
+    // 3. Fechar o painel se o utilizador clicar em qualquer outro lugar da página
+    document.addEventListener('click', (event) => {
+        if (validationPanel && validationPanel.classList.contains('active')) {
+            // Verifica se o clique foi fora do painel e fora de qualquer um dos ícones
+            const clickedInsidePanel = validationPanel.contains(event.target);
+            const clickedOnIcon = ids.some(id => {
+                const icon = document.getElementById(id);
+                return icon && icon.contains(event.target);
+            });
+
+            if (!clickedInsidePanel && !clickedOnIcon) {
+                validationPanel.classList.remove('active');
+            }
+        }
+    });
+};
+
+// Chamar a função para ativar os ouvintes de eventos
+setupValidationListeners();
 
 
 
