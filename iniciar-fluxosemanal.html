@@ -564,6 +564,23 @@ body.popup-open {
 }
 .btn-dark-gray:hover { background-color: #3e4247; }
 
+/* Estilo para o botão de fechar (X) no card */
+.remove-card-icon {
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    color: #bdc3c7; /* Cinzento claro */
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.remove-card-icon:hover {
+    color: #e74c3c; /* Vermelho ao passar o rato */
+    transform: scale(1.2);
+}
+
     </style>
 </head>
 
@@ -906,6 +923,24 @@ body.popup-open {
         </div>
     </div>
 </div>
+
+
+<!-- POPUP DE CONFIRMAÇÃO PERSONALIZADO -->
+<div id="customConfirmPopup" class="popup-overlay" style="display: none;">
+    <div class="popup-content" style="background-color: #262626; color: white; max-width: 400px; text-align: center; border-radius: 12px; border: 1px solid #444;">
+        <div style="padding: 20px;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 40px; color: #f39c12; margin-bottom: 15px;"></i>
+            <h3 style="margin-bottom: 10px; font-size: 20px;">Atenção</h3>
+            <p id="customConfirmMessage" style="color: #ccc; line-height: 1.5; font-size: 16px;">Deseja realmente remover esta designação?</p>
+        </div>
+        <div class="popup-actions" style="display: flex; gap: 0; border-top: 1px solid #444; margin-top: 10px;">
+            <button id="confirmCancelBtn" style="flex: 1; background: none; border: none; color: #888; padding: 15px; cursor: pointer; font-size: 16px; border-right: 1px solid #444;">Cancelar</button>
+            <button id="confirmOkBtn" style="flex: 1; background: none; border: none; color: #e74c3c; padding: 15px; cursor: pointer; font-size: 16px; font-weight: bold;">Remover</button>
+        </div>
+    </div>
+</div>
+
+
 
 
 
@@ -1429,6 +1464,16 @@ if(validationIcon && validationPanel && validationPanelClose) {
         const fluxoSemanalForm = document.getElementById('fluxoSemanalForm');
         const confirmationPopup = document.getElementById('confirmationPopup');
         const closePopupButton = document.getElementById('closePopup');
+        closePopupButton.addEventListener('click', function() {
+    confirmationPopup.style.display = 'none';
+});
+
+// Opcional: Fechar ao clicar fora da caixa branca (no fundo escuro)
+window.addEventListener('click', function(event) {
+    if (event.target == confirmationPopup) {
+        confirmationPopup.style.display = 'none';
+    }
+});
         const createFluxoButton = document.getElementById('createFluxoSemanal');
 
         const initializeDiscursos = async () => {
@@ -2816,56 +2861,68 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
     return { vaga, candidatos: candidatosComFrequencia };
 }
 
-      function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignmentsMap, designationsMap, nivelBloqueio) {
+    function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignmentsMap, designationsMap, nivelBloqueio) {
     const designacaoAtual = designationsMap.get(vaga.designacaoId);
     if (!designacaoAtual) return false;
 
-    // Obtém uma lista de todas as designações que o candidato já tem, de ambas as fontes.
-    const existingDesignationIds = new Set();
+    const nomeCandidato = candidato.nomePessoa || candidato.nome || "Desconhecido";
+    const nomeVagaDestino = designacaoAtual.nome;
+
+    console.log(`%c[LOG-TURBO] A analisar: ${nomeCandidato} para a vaga: ${nomeVagaDestino}`, "color: #3498db; font-weight: bold;");
+
+    // 1. Criar lista de designações que a pessoa já tem nesta semana
+    const designacoesQueJaTem = new Set();
     
-    // Fonte 1: Designações pré-carregadas do histórico (ex: da parte da "Escola").
+    // Verificar se já veio do histórico (ex: Escola)
     if (preloadedAssignmentsMap.has(candidato.id)) {
-        preloadedAssignmentsMap.get(candidato.id).forEach(id => existingDesignationIds.add(id));
+        preloadedAssignmentsMap.get(candidato.id).forEach(id => {
+            designacoesQueJaTem.add(id);
+            const nomeJaTem = designationsMap.get(id)?.nome || id;
+            console.log(`   -> O candidato já está ocupado em: ${nomeJaTem} (Vindo da Escola/Histórico)`);
+        });
     }
 
-    // Fonte 2: Designações já feitas nesta execução do foguetão.
+    // Verificar o que o Foguete já preencheu nesta rodada
     for (const [vagaId, pessoaId] of Object.entries(atribuicoesAtuais)) {
         if (pessoaId === candidato.id) {
-            const dId = document.getElementById(vagaId).closest('.active-designation-container').dataset.designacaoId;
-            existingDesignationIds.add(dId);
+            const selectElement = document.getElementById(vagaId);
+            const container = selectElement ? selectElement.closest('.active-designation-container') : null;
+            const dId = container ? container.dataset.designacaoId : null;
+            if (dId) {
+                designacoesQueJaTem.add(dId);
+                const nomeJaTem = designationsMap.get(dId)?.nome || dId;
+                console.log(`   -> O candidato já foi escalado agora por mim em: ${nomeJaTem}`);
+            }
         }
     }
 
-    // Se a pessoa não tem nenhuma designação, ela é válida (do ponto de vista de duplicação).
-    if (existingDesignationIds.size === 0) {
+    // SE A PESSOA ESTÁ LIVRE
+    if (designacoesQueJaTem.size === 0) {
+        console.log(`   %c[OK] ${nomeCandidato} está totalmente livre. Aceite.`, "color: #2ecc71;");
         return true;
     }
 
-    // Agora, verifica as regras de bloqueio/repetição para cada designação que a pessoa já tem.
-    for (const existingD_Id of existingDesignationIds) {
-        const designacaoExistente = designationsMap.get(existingD_Id);
-        if (!designacaoExistente) continue; // Pula se a designação não for encontrada.
+    // SE A PESSOA JÁ TEM ALGO, VERIFICAR REGRAS DE REPETIÇÃO
+    for (const idExistente of designacoesQueJaTem) {
+        const designacaoExistente = designationsMap.get(idExistente);
+        const nomeExistente = designacaoExistente ? designacaoExistente.nome : "Outra";
 
-        // Verifica se a designação atual permite repetir a existente.
-        const repeticaoPermitida = designacaoAtual.repeticao?.includes(existingD_Id) || designacaoExistente.repeticao?.includes(designacaoAtual.id);
-        
-        // Se a repetição é permitida, não precisamos verificar o bloqueio.
+        // Regra de Repetição: Uma permite a outra?
+        const repeticaoPermitida = 
+            (designacaoAtual.repeticao && designacaoAtual.repeticao.includes(idExistente)) || 
+            (designacaoExistente && designacaoExistente.repeticao && designacaoExistente.repeticao.includes(vaga.designacaoId));
+
         if (repeticaoPermitida) {
-            continue; // Passa para a próxima designação existente.
+            console.log(`   %c[AVISO] ${nomeCandidato} já está em ${nomeExistente}, mas a repetição é permitida com ${nomeVagaDestino}.`, "color: #f39c12;");
+            continue; // Continua a verificar se há outros conflitos
         }
 
-        // Se a repetição não é permitida, verifica as regras de bloqueio.
-        const bloqueioAtual = designacaoAtual.bloqueio?.[existingD_Id];
-        if (bloqueioAtual === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioAtual === 'Moderado')) {
-            return false; // Bloqueio encontrado. Candidato inválido.
-        }
-        const bloqueioOutro = designacaoExistente.bloqueio?.[designacaoAtual.id];
-        if (bloqueioOutro === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioOutro === 'Moderado')) {
-            return false; // Bloqueio encontrado. Candidato inválido.
-        }
+        // Se chegou aqui e tem algo, e não há regra de repetição... REJEITA.
+        console.log(`   %c[BLOQUEADO] ${nomeCandidato} REJEITADO para ${nomeVagaDestino} porque já está em ${nomeExistente} e NÃO há regra de repetição.`, "color: #e74c3c; font-weight: bold;");
+        return false; 
     }
 
-    // Se passou por todas as verificações, o candidato é válido.
+    console.log(`   %c[OK] ${nomeCandidato} passou nos testes de conflito. Aceite.`, "color: #2ecc71;");
     return true;
 }
 
@@ -3044,25 +3101,40 @@ async function updateWeekDisplay() {
             if (displayToRemove) displayToRemove.remove();
         };
 
- const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
-    // ======================= INÍCIO DO LOG DE DEPURAÇÃO =======================
-    // Apenas para depuração, vamos verificar a designação "Necessidades Locais"
-    if (designacao.nome === 'Necessidades Locais') {
-        console.log("==============================================");
-        console.log("[DEBUG] Processando o card:", designacao.nome);
-        console.log("[DEBUG] Objeto 'designacao' completo:", designacao);
-        console.log("[DEBUG] Valor de 'anexadoDiscursos':", designacao.anexadoDiscursos);
-        console.log("[DEBUG] Tipo de 'anexadoDiscursos':", typeof designacao.anexadoDiscursos);
-        console.log("[DEBUG] Verificação (designacao.anexadoDiscursos === true):", designacao.anexadoDiscursos === true);
-    }
-    // ======================= FIM DO LOG DE DEPURAÇÃO =======================
 
+
+        function showCustomConfirm(mensagem) {
+    return new Promise((resolve) => {
+        const popup = document.getElementById('customConfirmPopup');
+        const messageEl = document.getElementById('customConfirmMessage');
+        const okBtn = document.getElementById('confirmOkBtn');
+        const cancelBtn = document.getElementById('confirmCancelBtn');
+
+        messageEl.textContent = mensagem;
+        popup.style.display = 'flex';
+
+        // Quando clica em OK
+        okBtn.onclick = () => {
+            popup.style.display = 'none';
+            resolve(true);
+        };
+
+        // Quando clica em Cancelar
+        cancelBtn.onclick = () => {
+            popup.style.display = 'none';
+            resolve(false);
+        };
+    });
+}
+
+ const updateActiveDesignationDisplay = async (designacao, order, quantity) => {
     const containerToUse = document.getElementById('activeDesignationsContainer');
     const savedSelections = {};
     let savedDescriptions = {};
     let placeholder = document.createElement('div');
     const existingCard = document.getElementById(`active-designation-${designacao.id}`);
     
+    // 1. Guardar estados para não perder o que já foi preenchido
     if (existingCard) {
         existingCard.querySelectorAll('.active-designation-container').forEach((instance, instanceIndex) => {
             savedSelections[instanceIndex] = Array.from(instance.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'))
@@ -3070,22 +3142,14 @@ async function updateWeekDisplay() {
 
             const descInput = instance.querySelector('.descricao-input');
             const searchInput = instance.querySelector('.discurso-search-input');
-            if (descInput) {
-                savedDescriptions[instanceIndex] = { type: 'text', value: descInput.value };
-            } else if (searchInput) {
-                savedDescriptions[instanceIndex] = { 
-                    type: 'discurso', 
-                    value: searchInput.value, 
-                    id: searchInput.dataset.selectedDiscursoId 
-                };
-            }
+            if (descInput) savedDescriptions[instanceIndex] = { type: 'text', value: descInput.value };
+            else if (searchInput) savedDescriptions[instanceIndex] = { type: 'discurso', value: searchInput.value, id: searchInput.dataset.selectedDiscursoId };
         });
         placeholder.id = `placeholder-${designacao.id}`;
         existingCard.parentNode.insertBefore(placeholder, existingCard);
     }
 
     removeActiveDesignationDisplay(designacao.id); 
-    
     if (quantity <= 0) {
         if(placeholder && placeholder.parentNode) placeholder.remove();
         return;
@@ -3106,188 +3170,129 @@ async function updateWeekDisplay() {
         const colors = ['rgba(46, 204, 113, 0.1)', 'rgba(52, 152, 219, 0.1)', 'rgba(243, 156, 18, 0.1)', 'rgba(155, 89, 182, 0.1)', 'rgba(231, 76, 60, 0.1)', 'rgba(192, 57, 43, 0.1)', 'rgba(142, 68, 173, 0.1)'];
         instanceContainer.style.backgroundColor = colors[(order - 1) % colors.length] || '#f8f9fa';
         
+        // Título
         const title = document.createElement('h5');
         title.textContent = `${designacao.nome}` + (quantity > 1 ? ` (${i})` : '');
         instanceContainer.appendChild(title);
+
+        // --- BOTÃO X (CRIADO E ADICIONADO) ---
+ const removeIcon = document.createElement('i');
+        removeIcon.className = 'fas fa-times remove-card-icon';
         
+        // Note o uso de 'async' aqui para podermos esperar pela resposta do popup
+        removeIcon.onclick = async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Chama o nosso popup em vez do confirm do browser
+            const confirmacao = await showCustomConfirm(`Remover "${designacao.nome}"?`);
+            
+            if (confirmacao) {
+                const sidebarBtn = document.querySelector(`.designacao-item[data-designacao-id="${designacao.id}"] .order-button`);
+                if (sidebarBtn) sidebarBtn.click();
+            }
+        };
+        instanceContainer.appendChild(removeIcon);
+
+        // --- ADICIONAR CONTEÚDO USANDO insertAdjacentHTML (PARA NÃO MATAR OS EVENTOS) ---
         const numParticipantes = temporaryPreferences[`participantes-${designacao.id}-${i}`] || designacao.numeroParticipantes || 1;
         const roles = numParticipantes == 1 ? ["Participante"] : (numParticipantes == 2 ? ["Dirigente", "Ajudante 1"] : ["Dirigente", "Ajudante 1", "Ajudante 2"]);
         
+        let rolesHTML = '';
         roles.forEach((role, index) => {
-            instanceContainer.innerHTML += `<label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">${role}</label><select id="participant-${designacao.id}-${i}-${index}" class="form-select"><option value="">Selecione...</option></select>`;
+            rolesHTML += `<label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">${role}</label>
+                          <select id="participant-${designacao.id}-${i}-${index}" class="form-select"><option value="">Selecione...</option></select>`;
         });
+        instanceContainer.insertAdjacentHTML('beforeend', rolesHTML);
 
-        const descricaoContainer = document.createElement('div');
-        descricaoContainer.className = 'descricao-container';
-        descricaoContainer.style.display = 'none';
+        // Área de Descrição
+        const descDiv = document.createElement('div');
+        descDiv.className = 'descricao-container';
+        descDiv.style.display = 'none';
 
-        // A condição crítica está aqui
         if (designacao.anexadoDiscursos === true || designacao.anexadoDiscursos === 'sim') {
-            // Log para saber qual bloco foi executado
-            if (designacao.nome === 'Necessidades Locais') console.log("[DEBUG] Bloco IF executado: Criando barra de pesquisa.");
-            descricaoContainer.innerHTML = `
-                <label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">Discurso</label>
-                <div class="discurso-search-wrapper" style="position: relative;">
-                    <input type="text" class="form-select discurso-search-input" placeholder="Pesquisar por nº ou tema..." autocomplete="off" data-selected-discurso-id="">
-                    <div class="search-suggestions discurso-suggestions"></div>
-                </div>`;
+            descDiv.innerHTML = `<label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">Discurso</label>
+                                 <div class="discurso-search-wrapper" style="position: relative;">
+                                    <input type="text" class="form-select discurso-search-input" placeholder="Pesquisar nº ou tema..." autocomplete="off">
+                                    <div class="search-suggestions discurso-suggestions"></div>
+                                 </div>`;
         } else {
-            // Log para saber qual bloco foi executado
-             if (designacao.nome === 'Necessidades Locais') console.log("[DEBUG] Bloco ELSE executado: Criando campo de texto normal.");
-            descricaoContainer.innerHTML = `
-                <label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">Descrição/Tema</label>
-                <input type="text" class="form-select descricao-input" placeholder="Insira o tema ou descrição...">`;
+            descDiv.innerHTML = `<label style="display: block; font-size: 14px; color: #555; margin-top: 10px;">Descrição/Tema</label>
+                                 <input type="text" class="form-select descricao-input" placeholder="Insira o tema...">`;
         }
-        instanceContainer.appendChild(descricaoContainer);
+        instanceContainer.appendChild(descDiv);
         
-        // ... (resto do código da função continua igual)
-        const filterIcon = document.createElement('i');
-        filterIcon.className = 'fas fa-filter filter-icon';
-        filterIcon.title = 'Filtrar';
-        const filterPopup = document.createElement('div');
-        filterPopup.className = 'filter-popup';
-
-        filterPopup.innerHTML = `
-            <h4>Filtros</h4>
-            <div>
-                <label>Nº de Participantes</label>
-                <select class="num-participantes-select"> <option value="1">1</option> <option value="2">2</option> <option value="3">3</option> </select>
+        // Ícones de baixo (Filtro, Cadeado, Lupa)
+        const iconsHTML = `
+            <i class="fas fa-filter filter-icon"></i>
+            <div class="filter-popup">
+                <h4>Filtros</h4>
+                <div><label>Nº Participantes</label><select class="num-participantes-select"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+                <div style="margin-top:15px;"><label>Género</label><select class="genero-preferencia-select"><option value="ambos">Ambos</option><option value="masculino">Masc</option><option value="feminino">Fem</option></select></div>
+                <div style="margin-top:15px;"><label>Mostrar Descrição</label><select class="descricao-tema-select"><option value="sim">Sim</option><option value="nao" selected>Não</option></select></div>
             </div>
-            <div style="margin-top: 15px;">
-                <label>Preferência de Género</label>
-                <select class="genero-preferencia-select"> <option value="ambos">Masculino/Feminino</option> <option value="masculino">Masculino</option> <option value="feminino">Feminino</option> </select>
-            </div>
-            <div style="margin-top: 15px;">
-                <label>Masculino com Feminino</label>
-                <select class="gender-mix-select"> <option value="nao">Não</option> <option value="sim">Sim</option> </select>
-            </div>
-            <div style="margin-top: 15px;">
-                <label>Descrição/Tema</label>
-                <select class="descricao-tema-select"> <option value="sim">Sim</option> <option value="nao" selected>Não</option> </select>
-            </div>
+            <i class="fas fa-lock-open lock-icon"></i>
+            <i class="fas fa-search-plus lupa-icon"></i>
         `;
-        instanceContainer.appendChild(filterPopup);
-        instanceContainer.appendChild(filterIcon);
-        
-        const numParticipantesSelect = filterPopup.querySelector('.num-participantes-select');
-        const generoPreferenciaSelect = filterPopup.querySelector('.genero-preferencia-select');
-        const descricaoTemaSelect = filterPopup.querySelector('.descricao-tema-select');
-        numParticipantesSelect.value = temporaryPreferences[`participantes-${designacao.id}-${i}`] || designacao.numeroParticipantes || 1;
-        generoPreferenciaSelect.value = designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos';
-        descricaoTemaSelect.value = designacao.descricao === 'sim' || designacao.anexadoDiscursos === true ? 'sim' : 'nao';
-        if (descricaoTemaSelect.value === 'sim') { descricaoContainer.style.display = 'block'; }
-        filterIcon.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.filter-popup.active').forEach(p => { if (p !== filterPopup) p.classList.remove('active'); }); filterPopup.classList.toggle('active'); });
-        numParticipantesSelect.addEventListener('change', (e) => { temporaryPreferences[`participantes-${designacao.id}-${i}`] = e.target.value; updateActiveDesignationDisplay(designacao, order, quantity); filterPopup.classList.remove('active'); });
-        generoPreferenciaSelect.addEventListener('change', (e) => { const selectedIdiomas = getSelectedNacionalidades(); loadPeopleOptionsIntoSelects(designacao, instanceContainer, e.target.value, selectedIdiomas); filterPopup.classList.remove('active'); });
-        descricaoTemaSelect.addEventListener('change', (e) => { descricaoContainer.style.display = e.target.value === 'sim' ? 'block' : 'none'; filterPopup.classList.remove('active'); });
-        const lockIcon = document.createElement('i'); lockIcon.className = 'fas fa-lock-open lock-icon'; lockIcon.title = 'Bloquear/Desbloquear'; lockIcon.addEventListener('click', (e) => { const isLocked = instanceContainer.dataset.locked === 'true'; instanceContainer.dataset.locked = !isLocked; e.target.classList.toggle('fa-lock-open', isLocked); e.target.classList.toggle('fa-lock', !isLocked); e.target.classList.toggle('locked', !isLocked); }); instanceContainer.appendChild(lockIcon); 
-        
-const lupaIcon = document.createElement('i');
-lupaIcon.className = 'fas fa-search-plus lupa-icon';
-lupaIcon.title = 'Analisar Histórico';
-lupaIcon.addEventListener('click', () => {
-    const selectedParticipants = Array.from(instanceContainer.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'))
-        .map(select => {
-            if (select.selectedIndex > -1 && select.value) {
-                return { 
-                    id: select.value, 
-                    name: select.options[select.selectedIndex].text 
-                };
-            }
-            return null;
-        })
-        .filter(p => p !== null);
+        instanceContainer.insertAdjacentHTML('beforeend', iconsHTML);
 
-    if (selectedParticipants.length === 1) {
-        // A MÁGICA ACONTECE AQUI:
-        const participant = selectedParticipants[0];
+        // Re-atribuir eventos dos ícones internos
+        const filterIcon = instanceContainer.querySelector('.filter-icon');
+        const filterPopup = instanceContainer.querySelector('.filter-popup');
+        filterIcon.onclick = () => filterPopup.classList.toggle('active');
 
-        // 1. Preenche o campo de pesquisa com o nome do participante.
-        document.getElementById('pesquisaPessoa').value = participant.name;
-        
-        // 2. Carrega o histórico desse participante.
-        loadParticipantProfile(participant.id);
-        
-        // 3. Mostra o popup.
-        document.getElementById('perfilPopup').style.display = 'flex';
+        const numSel = instanceContainer.querySelector('.num-participantes-select');
+        numSel.value = numParticipantes;
+        numSel.onchange = (e) => { 
+            temporaryPreferences[`participantes-${designacao.id}-${i}`] = e.target.value; 
+            updateActiveDesignationDisplay(designacao, order, quantity); 
+        };
 
-    } else if (selectedParticipants.length > 1) {
-        openPairAnalysisPopup(selectedParticipants);
-    } else {
-        alert("Por favor, selecione pelo menos um participante para analisar.");
-    }
-});
-instanceContainer.appendChild(lupaIcon);  
-        
-        
-        
-        
-        const labIcon = document.createElement('i'); labIcon.className = 'fas fa-flask lab-icon'; labIcon.title = 'Laboratório de Combinações'; labIcon.addEventListener('click', () => { alert("Laboratório de Combinações (Funcionalidade Futura)"); }); instanceContainer.appendChild(labIcon);
-        
-        const searchInput = instanceContainer.querySelector('.discurso-search-input');
-        if (searchInput) {
-            const suggestionsContainer = instanceContainer.querySelector('.discurso-suggestions');
-            const performSearch = () => {
-                const query = searchInput.value.toLowerCase();
-                suggestionsContainer.style.display = 'block';
-                const resultados = allDiscursosCache.filter(d => d.numero.startsWith(query) || d.nome.toLowerCase().includes(query)).slice(0, 10);
-                suggestionsContainer.innerHTML = '';
-                if (resultados.length > 0) {
-                    resultados.forEach(discurso => {
-                        const item = document.createElement('div');
-                        item.className = 'suggestion-item';
-                        item.textContent = `${discurso.numero} - ${discurso.nome}`;
-                        item.dataset.id = discurso.id;
-                        item.dataset.fulltext = `${discurso.numero} - ${discurso.nome}`;
-                        suggestionsContainer.appendChild(item);
-                    });
-                } else {
-                    suggestionsContainer.innerHTML = '<div class="suggestion-item" style="pointer-events: none;">Nenhum discurso encontrado</div>';
-                }
-            };
-            searchInput.addEventListener('focus', performSearch);
-            searchInput.addEventListener('input', performSearch);
-            searchInput.addEventListener('blur', () => setTimeout(() => { suggestionsContainer.style.display = 'none'; }, 200));
-            suggestionsContainer.addEventListener('mousedown', (e) => {
-                const target = e.target.closest('.suggestion-item');
-                if (target && target.dataset.id) {
-                    searchInput.value = target.dataset.fulltext;
-                    searchInput.dataset.selectedDiscursoId = target.dataset.id;
-                }
-            });
-        }
+        const descSel = instanceContainer.querySelector('.descricao-tema-select');
+        descSel.value = (designacao.descricao === 'sim' || designacao.anexadoDiscursos === true) ? 'sim' : 'nao';
+        if (descSel.value === 'sim') descDiv.style.display = 'block';
+        descSel.onchange = (e) => descDiv.style.display = e.target.value === 'sim' ? 'block' : 'none';
+
+        const lockIcon = instanceContainer.querySelector('.lock-icon');
+        lockIcon.onclick = (e) => {
+            const isLocked = instanceContainer.dataset.locked === 'true';
+            instanceContainer.dataset.locked = !isLocked;
+            e.target.className = isLocked ? 'fas fa-lock-open lock-icon' : 'fas fa-lock lock-icon locked';
+        };
+
+        const lupaIcon = instanceContainer.querySelector('.lupa-icon');
+        lupaIcon.onclick = () => {
+            const selected = Array.from(instanceContainer.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'))
+                .map(s => s.value ? {id: s.value, name: s.options[s.selectedIndex].text} : null).filter(p => p);
+            if (selected.length === 1) { loadParticipantProfile(selected[0].id); document.getElementById('perfilPopup').style.display='flex'; }
+            else if (selected.length > 1) openPairAnalysisPopup(selected);
+        };
+
         mainDisplayContainer.appendChild(instanceContainer);
     }
     
-    if (placeholder && placeholder.parentNode) {
-        placeholder.parentNode.replaceChild(mainDisplayContainer, placeholder);
-    } else {
-        containerToUse.appendChild(mainDisplayContainer);
-    }
+    if (placeholder && placeholder.parentNode) placeholder.parentNode.replaceChild(mainDisplayContainer, placeholder);
+    else containerToUse.appendChild(mainDisplayContainer);
 
+    // Carregar nomes e restaurar valores
     const selectedIdiomas = getSelectedNacionalidades();
     await loadPeopleOptionsIntoSelects(designacao, mainDisplayContainer, designacao.feitoPor ? designacao.feitoPor.toLowerCase() : 'ambos', selectedIdiomas);
 
-    mainDisplayContainer.querySelectorAll('.active-designation-container').forEach((instance, instanceIndex) => {
-        if (savedSelections[instanceIndex]) {
-            instance.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)').forEach((select, selectIndex) => {
-                if(savedSelections[instanceIndex][selectIndex]) select.value = savedSelections[instanceIndex][selectIndex];
+    mainDisplayContainer.querySelectorAll('.active-designation-container').forEach((instance, idx) => {
+        if (savedSelections[idx]) {
+            instance.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)').forEach((select, sIdx) => {
+                if(savedSelections[idx][sIdx]) select.value = savedSelections[idx][sIdx];
             });
-        }
-        if (savedDescriptions[instanceIndex]) {
-            if (savedDescriptions[instanceIndex].type === 'text') {
-                const descInput = instance.querySelector('.descricao-input');
-                if (descInput) descInput.value = savedDescriptions[instanceIndex].value;
-            } else if (savedDescriptions[instanceIndex].type === 'discurso') {
-                const searchInput = instance.querySelector('.discurso-search-input');
-                if (searchInput) {
-                    searchInput.value = savedDescriptions[instanceIndex].value;
-                    searchInput.dataset.selectedDiscursoId = savedDescriptions[instanceIndex].id;
-                }
-            }
         }
     });
 };
+
+
+
+
+
+
+
         
         const updateOrderButtonClasses = (button, order) => {
             button.className = 'order-button';
