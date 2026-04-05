@@ -899,6 +899,7 @@
     }
 }
 
+
     </style>
 </head>
 <body>
@@ -6017,6 +6018,9 @@ async function updateActiveDesignationDisplay(designacao, order, quantity, insta
             let participantSelect = document.createElement('select');
             participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
             participantSelect.className = 'form-select';
+            participantSelect.style.width = '100%';
+participantSelect.style.display = 'block'; 
+
             participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
             
             // === 2. RECUPERAR O VALOR SALVO (SE EXISTIR) PARA ESTA POSIÇÃO ===
