@@ -5944,7 +5944,6 @@ function selectRandomFrom(array) {
 
 
   async function updateActiveDesignationDisplay(designacao, order, quantity, instancePreferences = {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences = {}) {
-    // Log inicial da função (sem alterações)
     console.log(`[LOG] updateActiveDesignationDisplay chamada para: ${designacao.nome}, Quantidade: ${quantity}`);
 
     const designacaoId = designacao.id;
@@ -6019,29 +6018,53 @@ function selectRandomFrom(array) {
         designationDisplayContainer.appendChild(designacaoInstanceContainer);
         designationDisplayContainer.style.position = 'relative';
 
-        // =========================================================================
-        // =========== INÍCIO: LÓGICA REFORÇADA DOS ÍCONES =========================
-        // =========================================================================
-
-        // Criação de todos os ícones
+        // --- POPUP DE FILTROS ---
         const filterPopup = document.createElement('div');
         filterPopup.className = 'filter-popup';
         filterPopup.innerHTML = `<h4>Filtros</h4>
-            <div class="filter-options"><label for="num-participantes-${designacaoInstance}">Número de Participantes</label><select id="num-participantes-${designacaoInstance}"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-            <div class="filter-options" style="margin-top: 15px;"><label for="genero-preferencia-${designacaoInstance}">Preferência de Género</label><select id="genero-preferencia-${designacaoInstance}"><option value="masculino feminino">Masculino/Feminino</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option></select></div>
-            <div class="filter-options" style="margin-top: 15px;"><label for="genero-mix-${designacaoInstance}">Masculino com Feminino</label><select id="genero-mix-${designacaoInstance}" class="gender-mix-select"><option value="nao">Não</option><option value="sim">Sim</option></select></div>`;
+            <div class="filter-options"><label for="num-participantes-${instanceKeyPrefix}">Número de Participantes</label><select id="num-participantes-${instanceKeyPrefix}"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+            <div class="filter-options" style="margin-top: 15px;"><label for="genero-preferencia-${instanceKeyPrefix}">Preferência de Género</label><select id="genero-preferencia-${instanceKeyPrefix}"><option value="masculino feminino">Masculino/Feminino</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option></select></div>
+            <div class="filter-options" style="margin-top: 15px;"><label for="genero-mix-${instanceKeyPrefix}">Masculino com Feminino</label><select id="genero-mix-${instanceKeyPrefix}" class="gender-mix-select"><option value="nao">Não</option><option value="sim">Sim</option></select></div>`;
         
+        // =========================================================================
+        // === INÍCIO DA LÓGICA DOS EVENTOS DO FILTRO (CORRIGIDO) ===
+        // =========================================================================
+
+        const numSelect = filterPopup.querySelector(`#num-participantes-${instanceKeyPrefix}`);
+        numSelect.value = numeroParticipantesDynamic;
+        numSelect.addEventListener('change', (e) => {
+            const novoValor = parseInt(e.target.value);
+            console.log(`%c[FILTRO] Participantes alterados para ${novoValor} em ${designacao.nome}`, "color: #e67e22; font-weight: bold;");
+            temporaryPreferences[keyNumParticipantes] = novoValor;
+            updateActiveDesignationDisplay(designacao, order, quantity, {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
+        });
+
+        const genSelect = filterPopup.querySelector(`#genero-preferencia-${instanceKeyPrefix}`);
+        genSelect.value = generoPreferencia;
+        genSelect.addEventListener('change', (e) => {
+            console.log(`%c[FILTRO] Género alterado para ${e.target.value} em ${designacao.nome}`, "color: #9b59b6;");
+            temporaryPreferences[keyGeneroPref] = e.target.value;
+            updateActiveDesignationDisplay(designacao, order, quantity, {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
+        });
+
+        const mixSelect = filterPopup.querySelector(`#genero-mix-${instanceKeyPrefix}`);
+        mixSelect.value = generoMix;
+        mixSelect.addEventListener('change', (e) => {
+            console.log(`%c[FILTRO] Mix Gênero (M+F) alterado para ${e.target.value}`, "color: #3498db;");
+            temporaryPreferences[keyGeneroMix] = e.target.value;
+            updateActiveDesignationDisplay(designacao, order, quantity, {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
+        });
+
+        // =========================================================================
+        // === FIM DA LÓGICA DOS FILTROS ===
+        // =========================================================================
+
         const filterIcon = document.createElement('i');
         filterIcon.className = 'fas fa-filter filter-icon';
         filterIcon.addEventListener('click', (e) => { e.stopPropagation(); filterPopup.classList.toggle('active'); });
         
         const lockIcon = document.createElement('i');
         lockIcon.className = 'fas fa-lock-open lock-icon';
-        lockIcon.title = 'Bloquear/Desbloquear Designação';
-        if (designationDisplayContainer.dataset.locked === 'true') {
-            lockIcon.classList.add('locked', 'fa-lock');
-            lockIcon.classList.remove('fa-lock-open');
-        }
         lockIcon.addEventListener('click', (e) => {
             e.stopPropagation();
             const container = e.target.closest('.active-designation-container');
@@ -6054,7 +6077,6 @@ function selectRandomFrom(array) {
 
         const labIcon = document.createElement('i');
         labIcon.className = 'fas fa-flask lab-icon';
-        labIcon.title = 'Laboratório de Combinações';
         labIcon.addEventListener('click', (e) => {
             e.stopPropagation();
             openLabPopup(e.target.closest('.active-designation-container'));
@@ -6062,63 +6084,25 @@ function selectRandomFrom(array) {
 
         const lupaIcon = document.createElement('i');
         lupaIcon.className = 'fas fa-search-plus lupa-icon';
-        lupaIcon.title = 'Analisar Histórico';
-        
-        // <<< NOVO LOG DE VERIFICAÇÃO >>>
-        console.log(`[LOG ATTACH] Anexando 'ouvinte' de clique ao ícone da lupa para a instância: ${containerId}`);
-
-        // <<< BLOCO TRY...CATCH ADICIONADO >>>
         lupaIcon.addEventListener('click', (e) => {
-            try {
-                console.log('%c[EVENTO DISPARADO] Clique na lupa DETETADO para o container:', 'color: green; font-weight: bold;', containerId);
-                console.log('[DEBUG] Objeto do evento de clique:', e);
-                
-                e.stopPropagation();
-
-                const container = e.target.closest('.active-designation-container');
-                if (!container) {
-                    throw new Error('Não foi possível encontrar o .active-designation-container a partir do ícone.');
+            e.stopPropagation();
+            const container = e.target.closest('.active-designation-container');
+            const selects = container.querySelectorAll('.form-select');
+            const participantsToAnalyze = [];
+            selects.forEach(select => {
+                if (select.value) {
+                    participantsToAnalyze.push({ id: select.value, name: select.options[select.selectedIndex].text });
                 }
-
-                const selects = container.querySelectorAll('.form-select');
-                const participantsToAnalyze = [];
-
-                selects.forEach(select => {
-                    if (select.value) {
-                        participantsToAnalyze.push({
-                            id: select.value,
-                            name: select.options[select.selectedIndex].text
-                        });
-                    }
-                });
-
-                console.log('[LOG] Participantes identificados para análise:', participantsToAnalyze);
-
-                if (participantsToAnalyze.length > 0) {
-                    openPairAnalysisPopup(participantsToAnalyze);
-                } else {
-                    console.warn('[AVISO] Nenhum participante selecionado para analisar.');
-                    alert("Por favor, selecione pelo menos um participante para analisar o histórico.");
-                }
-
-            } catch (error) {
-                // <<< CAPTURA DE ERRO >>>
-                console.error('%c[ERRO CRÍTICO] Ocorreu um erro DENTRO do event listener da lupa!', 'color: red; font-weight: bold;', error);
-                alert("Ocorreu um erro ao tentar analisar o histórico. Verifique a consola para mais detalhes.");
-            }
+            });
+            if (participantsToAnalyze.length > 0) { openPairAnalysisPopup(participantsToAnalyze); }
         });
 
-        // Adiciona todos os elementos ao DOM
         designationDisplayContainer.appendChild(filterPopup);
         designationDisplayContainer.appendChild(filterIcon);
         designationDisplayContainer.appendChild(lockIcon);
         designationDisplayContainer.appendChild(lupaIcon);
         designationDisplayContainer.appendChild(labIcon);
         
-        // =========================================================================
-        // ======================= FIM DA LÓGICA REFORÇADA =========================
-        // =========================================================================
-
         await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, generoPreferencia);
     }
 }
@@ -6246,6 +6230,8 @@ const loadLastMonthFromFirebase = async () => {
     selectMes.value = currentMonth;
     console.log(`[AUTO-MES] Usando mês atual do sistema: ${currentMonth}`);
 };
+
+
 
 
 
