@@ -849,6 +849,56 @@
     font-weight: bold;
 }
 
+/* Configuração Geral para todos os Popups para respeitarem a tela */
+.popup-content {
+    max-height: 90vh; /* Ocupa no máximo 90% da altura da tela */
+    display: flex;
+    flex-direction: column; /* Organiza cabeçalho, corpo e rodapé verticalmente */
+    overflow: hidden; /* Impede que o container principal transborde */
+}
+
+/* Cabeçalho fixo no topo */
+.popup-header {
+    flex-shrink: 0; /* Não deixa o cabeçalho encolher */
+}
+
+/* O Corpo do popup é o que deve rolar */
+.popup-body {
+    flex-grow: 1; /* Ocupa o espaço restante */
+    overflow-y: auto; /* Ativa rolagem vertical interna */
+    padding: 15px;
+    -webkit-overflow-scrolling: touch; /* Suavidade em dispositivos iOS */
+}
+
+/* Garante que tabelas dentro do popup não quebrem a largura */
+.analysis-popup .tab-content {
+    width: 100%;
+    overflow-x: auto; /* Rolagem horizontal apenas se a tabela for larga */
+}
+
+/* Ajuste específico para o Popup de Análise de Par */
+.analysis-popup {
+    width: 95%; /* Quase toda a largura em telas pequenas */
+    max-width: 1100px; /* Limite em telas grandes */
+}
+
+/* Responsividade para Celulares */
+@media (max-width: 768px) {
+    .analysis-popup {
+        width: 98%;
+        max-height: 95vh;
+    }
+    
+    .analysis-popup .tabs {
+        flex-wrap: wrap; /* Abas quebram linha se não houver espaço */
+    }
+    
+    .analysis-popup .tab-button {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+}
+
     </style>
 </head>
 <body>
@@ -3197,157 +3247,154 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
         const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
         const ano = await getAnoPainelFirebase();
         const designacaoId = designationContainer.dataset.designacaoId;
-        const designacaoData = (await db.collection('designacoes').doc(designacaoId).get()).data();
         
-        // <<< NOVO INÍCIO: Buscar a lista de participantes a serem excluídos >>>
-        // Usamos Promise.all para buscar os dados das semanas anterior e seguinte em paralelo
+        // 1. Dados de apoio (Semana passada/seguinte)
         const [participantsLastWeek, participantsNextWeek] = await Promise.all([
             getParticipantsLastWeek(ano, mes, semanaNumero),
             getParticipantsNextWeek(ano, mes, semanaNumero)
         ]);
-        // <<< NOVO FIM: Fim da busca de participantes >>>
         
+        // 2. Pessoas já ocupadas no quadro (exceto as deste dropdown)
         const assignedPeopleThisWeek = new Set(Array.from(document.querySelectorAll('.form-select')).filter(s => s.value).map(s => s.value));
         originalSelects.forEach(s => { if (s.value) assignedPeopleThisWeek.delete(s.value); });
         
-        const lockedIcon = clonedSelects[0].parentNode.querySelector('.lab-lock-icon[data-locked="true"]');
+        const isIndividual = originalSelects.length === 1;
+        let finalRankedList = [];
 
-        const pairCollaborationCount = new Map();
-        const historicoSnapshot = await db.collection('historico').where('ano', '==', ano).get();
-        
-        historicoSnapshot.forEach(doc => {
-            doc.data().designacoes?.forEach(d => {
-                const participantes = Object.values(d.participantes || {});
-                if (participantes.length >= 2) {
-                    for (let i = 0; i < participantes.length; i++) {
-                        for (let j = i + 1; j < participantes.length; j++) {
-                            const pairKey = [participantes[i], participantes[j]].sort().join('_');
-                            const currentCount = pairCollaborationCount.get(pairKey) || 0;
-                            pairCollaborationCount.set(pairKey, currentCount + 1);
+        // --- LÓGICA PARA INDIVIDUAL (1 PARTICIPANTE) ---
+        if (isIndividual) {
+            const targetSelect = originalSelects[0];
+            const candidates = getEligiblePeopleForDropdown(targetSelect).filter(id => 
+                !assignedPeopleThisWeek.has(id) &&
+                !participantsLastWeek.has(id) &&
+                !participantsNextWeek.has(id)
+            );
+
+            // Buscar contagem de participações para rotatividade
+            const statsSummary = await getParticipationHistorySummary();
+
+            finalRankedList = candidates.map(id => {
+                const personStats = statsSummary.get(id);
+                const countThisYear = personStats?.byYear.get(ano) || 0;
+                return { 
+                    pair: [id], 
+                    totalScore: countThisYear, 
+                    justification: `Participou ${countThisYear} vezes este ano.` 
+                };
+            }).sort((a, b) => a.totalScore - b.totalScore);
+
+        // --- LÓGICA PARA PARES (2 PARTICIPANTES) ---
+        } else {
+            // Contagem de colaborações (Tua lógica original)
+            const pairCollaborationCount = new Map();
+            const historicoSnapshot = await db.collection('historico').where('ano', '==', ano).get();
+            historicoSnapshot.forEach(doc => {
+                doc.data().designacoes?.forEach(d => {
+                    const participantes = Object.values(d.participantes || {});
+                    if (participantes.length >= 2) {
+                        for (let i = 0; i < participantes.length; i++) {
+                            for (let j = i + 1; j < participantes.length; j++) {
+                                const pairKey = [participantes[i], participantes[j]].sort().join('_');
+                                pairCollaborationCount.set(pairKey, (pairCollaborationCount.get(pairKey) || 0) + 1);
+                            }
                         }
                     }
-                }
+                });
             });
-        });
 
-        let rankedPairs = [];
+            const lockedIcon = clonedSelects[0].parentNode.querySelector('.lab-lock-icon[data-locked="true"]');
 
-        if (lockedIcon) {
-            const lockedIndex = parseInt(lockedIcon.dataset.selectIndex);
-            const fixedPersonId = clonedSelects[lockedIndex].value;
-            
-            if (!fixedPersonId) {
-                 suggestionsContainer.innerHTML = '<h3><i class="fas fa-lightbulb"></i> Sugestões</h3><p>Por favor, selecione uma pessoa no campo que deseja bloquear.</p>';
-                 return;
-            }
+            if (lockedIcon) {
+                // CASO: Um dos participantes está trancado (Tua lógica original)
+                const lockedIndex = parseInt(lockedIcon.dataset.selectIndex);
+                const fixedPersonId = clonedSelects[lockedIndex].value;
+                
+                if (!fixedPersonId) {
+                    suggestionsContainer.innerHTML = '<h3>Sugestões</h3><p>Selecione alguém para "trancar".</p>';
+                    return;
+                }
 
-            const fixedPersonData = allPeopleDataMap.get(fixedPersonId);
-            const targetSelectIndex = lockedIndex === 0 ? 1 : 0;
-            const targetSelect = originalSelects[targetSelectIndex];
-
-            // <<< NOVO INÍCIO: Aplicar o filtro extra aos candidatos >>>
-            let candidates = getEligiblePeopleForDropdown(targetSelect)
-                .filter(id =>
+                const targetSelectIndex = lockedIndex === 0 ? 1 : 0;
+                const fixedPersonData = allPeopleDataMap.get(fixedPersonId);
+                
+                const candidates = getEligiblePeopleForDropdown(originalSelects[targetSelectIndex]).filter(id =>
                     id !== fixedPersonId &&
                     !assignedPeopleThisWeek.has(id) &&
-                    !participantsLastWeek.has(id) && // Exclui quem participou na semana passada
-                    !participantsNextWeek.has(id) && // Exclui quem participará na próxima semana
+                    !participantsLastWeek.has(id) &&
+                    !participantsNextWeek.has(id) &&
                     (allPeopleDataMap.get(id)?.genero === fixedPersonData.genero)
                 );
-            // <<< NOVO FIM: Fim do filtro extra >>>
-            
-            rankedPairs = candidates.map(candidateId => {
-                const pairKey = [fixedPersonId, candidateId].sort().join('_');
-                const score = pairCollaborationCount.get(pairKey) || 0;
-                const pair = [];
-                pair[lockedIndex] = fixedPersonId;
-                pair[targetSelectIndex] = candidateId;
-                return { pair: pair, totalScore: score };
-            }).sort((a, b) => a.totalScore - b.totalScore);
 
-        } else {
-            // <<< NOVO INÍCIO: Aplicar o filtro extra às listas de elegíveis >>>
-            const eligibleDirigentes = getEligiblePeopleForDropdown(originalSelects[0])
-                .filter(id => 
-                    !assignedPeopleThisWeek.has(id) &&
-                    !participantsLastWeek.has(id) && // Exclui quem participou na semana passada
-                    !participantsNextWeek.has(id)    // Exclui quem participará na próxima semana
+                finalRankedList = candidates.map(candidateId => {
+                    const pair = [];
+                    pair[lockedIndex] = fixedPersonId;
+                    pair[targetSelectIndex] = candidateId;
+                    const pairKey = [fixedPersonId, candidateId].sort().join('_');
+                    const score = pairCollaborationCount.get(pairKey) || 0;
+                    return { pair: pair, totalScore: score, justification: `Colaborações: ${score}` };
+                });
+
+            } else {
+                // CASO: Nenhum trancado - Sugerir todos os pares possíveis (Tua lógica original devolvida)
+                const eligibleDirigentes = getEligiblePeopleForDropdown(originalSelects[0]).filter(id => 
+                    !assignedPeopleThisWeek.has(id) && !participantsLastWeek.has(id) && !participantsNextWeek.has(id)
                 );
 
-            const eligibleMoradores = getEligiblePeopleForDropdown(originalSelects[1])
-                .filter(id =>
-                    !assignedPeopleThisWeek.has(id) &&
-                    !participantsLastWeek.has(id) && // Exclui quem participou na semana passada
-                    !participantsNextWeek.has(id)    // Exclui quem participará na próxima semana
+                const eligibleMoradores = getEligiblePeopleForDropdown(originalSelects[1]).filter(id =>
+                    !assignedPeopleThisWeek.has(id) && !participantsLastWeek.has(id) && !participantsNextWeek.has(id)
                 );
-            // <<< NOVO FIM: Fim do filtro extra >>>
-            
-            let possiblePairs = [];
-            for (const dId of eligibleDirigentes) {
-                for (const mId of eligibleMoradores) {
-                    if (dId !== mId) {
-                        const dData = allPeopleDataMap.get(dId);
-                        const mData = allPeopleDataMap.get(mId);
-                        if (dData && mData && dData.genero === mData.genero) {
-                            possiblePairs.push([dId, mId]);
+                
+                let possiblePairs = [];
+                for (const dId of eligibleDirigentes) {
+                    for (const mId of eligibleMoradores) {
+                        if (dId !== mId) {
+                            const dData = allPeopleDataMap.get(dId);
+                            const mData = allPeopleDataMap.get(mId);
+                            if (dData && mData && dData.genero === mData.genero) {
+                                const pairKey = [dId, mId].sort().join('_');
+                                const score = pairCollaborationCount.get(pairKey) || 0;
+                                possiblePairs.push({ pair: [dId, mId], totalScore: score, justification: `Colaborações: ${score}` });
+                            }
                         }
                     }
                 }
+                finalRankedList = possiblePairs;
             }
-            
-            rankedPairs = possiblePairs.map(pair => {
-                const pairKey = [pair[0], pair[1]].sort().join('_');
-                const score = pairCollaborationCount.get(pairKey) || 0;
-                return { pair, totalScore: score };
-            }).sort((a, b) => a.totalScore - b.totalScore);
+            finalRankedList.sort((a, b) => a.totalScore - b.totalScore);
         }
 
+        // --- RENDERIZAÇÃO FINAL (Compatível com ambos os casos) ---
         suggestionsContainer.innerHTML = '<h3><i class="fas fa-lightbulb"></i> Sugestões</h3>';
         const listContainer = document.createElement('div');
         suggestionsContainer.appendChild(listContainer);
 
-        if (rankedPairs.length === 0) {
-            listContainer.innerHTML = '<p>Nenhuma sugestão válida foi encontrada. (Possivelmente todos os candidatos elegíveis participaram na semana anterior/seguinte).</p>';
+        if (finalRankedList.length === 0) {
+            listContainer.innerHTML = '<p>Nenhuma sugestão válida encontrada.</p>';
             return;
         }
 
-        let currentlyDisplayed = 0;
-        const itemsPerLoad = 6;
-
-        const renderNextBatch = () => {
-            const nextBatch = rankedPairs.slice(currentlyDisplayed, currentlyDisplayed + itemsPerLoad);
-            nextBatch.forEach(rankedPair => {
-                const [dirigenteId, moradorId] = rankedPair.pair;
-                const dName = (allPeopleDataMap.get(dirigenteId) || {}).nome || 'N/A';
-                const mName = (allPeopleDataMap.get(moradorId) || {}).nome || 'N/A';
-                const suggestionItem = document.createElement('div');
-                suggestionItem.className = 'suggestion-item';
-                suggestionItem.innerHTML = `
-                    <strong>Dirigente:</strong> ${dName} <br> 
-                    <strong>Morador:</strong> ${mName}
-                    <div class="suggestion-justification">Colaborações anteriores: ${rankedPair.totalScore}</div>
-                `;
-                suggestionItem.dataset.dirigente = dirigenteId;
-                suggestionItem.dataset.morador = moradorId;
-                listContainer.appendChild(suggestionItem);
-            });
-            currentlyDisplayed += nextBatch.length;
-            const existingBtn = suggestionsContainer.querySelector('#loadMoreSuggestionsBtn');
-            if (existingBtn) existingBtn.remove();
-            if (currentlyDisplayed < rankedPairs.length) {
-                const loadMoreBtn = document.createElement('button');
-                loadMoreBtn.id = 'loadMoreSuggestionsBtn';
-                loadMoreBtn.textContent = `Carregar Mais (${rankedPairs.length - currentlyDisplayed} restantes)`;
-                loadMoreBtn.className = 'btn-submit';
-                loadMoreBtn.onclick = renderNextBatch;
-                suggestionsContainer.appendChild(loadMoreBtn);
+        // Mostrar as primeiras 10 sugestões
+        finalRankedList.slice(0, 10).forEach(item => {
+            const suggestionItem = document.createElement('div');
+            suggestionItem.className = 'suggestion-item';
+            
+            if (isIndividual) {
+                const name = (allPeopleDataMap.get(item.pair[0]) || {}).nome || 'N/A';
+                suggestionItem.innerHTML = `<strong>Participante:</strong> ${name}<div class="suggestion-justification">${item.justification}</div>`;
+                suggestionItem.dataset.dirigente = item.pair[0]; // ID para o clique
+            } else {
+                const dName = (allPeopleDataMap.get(item.pair[0]) || {}).nome || 'N/A';
+                const mName = (allPeopleDataMap.get(item.pair[1]) || {}).nome || 'N/A';
+                suggestionItem.innerHTML = `<strong>Dirigente:</strong> ${dName} <br> <strong>Morador:</strong> ${mName}<div class="suggestion-justification">${item.justification}</div>`;
+                suggestionItem.dataset.dirigente = item.pair[0];
+                suggestionItem.dataset.morador = item.pair[1];
             }
-        };
-        renderNextBatch();
+            listContainer.appendChild(suggestionItem);
+        });
 
     } catch (error) {
-        console.error("[LAB] Erro ao gerar sugestões:", error);
-        suggestionsContainer.innerHTML = `<h3><i class="fas fa-lightbulb"></i> Sugestões</h3><p style="color: red;">Ocorreu um erro ao gerar sugestões. Verifique a consola.</p>`;
+        console.error("[LAB] Erro:", error);
+        suggestionsContainer.innerHTML = '<h3>Sugestões</h3><p style="color:red">Erro ao processar.</p>';
     }
 }
 
@@ -3735,7 +3782,7 @@ loadNacionalidades();
     return semanasUnicas.size;
 }
 
-          const getDiasSemana = (ano, mes, semanaNumero) => { // FUNÇÃO 1 CORRIGIDA
+      const getDiasSemana = (ano, mes, semanaNumero) => {
     const primeiroDiaMes = new Date(ano, mes - 1, 1);
     let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
     if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7;
@@ -3754,7 +3801,6 @@ loadNacionalidades();
     };
 
     const formatarMes = (date) => {
-        // O array de meses mal formatado foi corrigido aqui.
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         return monthNames[date.getMonth()];
     };
@@ -3764,12 +3810,9 @@ loadNacionalidades();
     const inicio_mes = formatarMes(inicioSemanaDate);
     const fim_mes = formatarMes(fimSemanaDate);
 
-    let diasSemanaString;
-    if (inicioSemanaDate.getMonth() !== fimSemanaDate.getMonth()) {
-        diasSemanaString = `${inicio_dia} ${inicio_mes} - ${fim_dia} ${fim_mes}`;
-    } else {
-        diasSemanaString = `${inicio_dia} - ${fim_dia} ${inicio_mes}`;
-    }
+    // ALTERAÇÃO AQUI: Removemos o "if" e forçamos sempre a exibição dos dois meses
+    let diasSemanaString = `${inicio_dia} ${inicio_mes} - ${fim_dia} ${fim_mes}`;
+    
     return diasSemanaString;
 };
 
