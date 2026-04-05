@@ -5943,14 +5943,22 @@ function selectRandomFrom(array) {
 
 
 
-  async function updateActiveDesignationDisplay(designacao, order, quantity, instancePreferences = {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences = {}) {
-    console.log(`[LOG] updateActiveDesignationDisplay chamada para: ${designacao.nome}, Quantidade: ${quantity}`);
-
+async function updateActiveDesignationDisplay(designacao, order, quantity, instancePreferences = {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences = {}) {
     const designacaoId = designacao.id;
     const isLeituraBiblia = designacao.nome === 'Leitura da Bíblia';
     const containerToUse = isLeituraBiblia ? document.getElementById('leituraBibliaDesignationContainer') : document.getElementById('activeDesignationsContainer');
 
+    // === 1. CAPTURAR VALORES DE TODAS AS INSTÂNCIAS DESTA DESIGNAÇÃO ANTES DE LIMPAR ===
+    const savedSelections = {};
     const existingContainers = containerToUse.querySelectorAll(`.active-designation-container[data-designacao-id="${designacaoId}"]`);
+    
+    existingContainers.forEach(container => {
+        const instanceNum = container.id.split('-').pop();
+        const selects = container.querySelectorAll('.form-select');
+        savedSelections[instanceNum] = Array.from(selects).map(sel => sel.value);
+    });
+
+    // Remover containers excedentes se a quantidade diminuiu
     existingContainers.forEach(container => {
         const instanceNum = parseInt(container.id.split('-').pop());
         if (instanceNum > quantity) {
@@ -5960,6 +5968,7 @@ function selectRandomFrom(array) {
 
     if (quantity <= 0) return;
 
+    // Ciclo para criar/atualizar cada instância
     for (let designacaoInstance = 1; designacaoInstance <= quantity; designacaoInstance++) {
         const containerId = `active-designation-${designacaoId}-${designacaoInstance}`;
         let designationDisplayContainer = containerToUse.querySelector(`#${containerId}`);
@@ -5976,19 +5985,17 @@ function selectRandomFrom(array) {
             containerToUse.appendChild(designationDisplayContainer);
         }
         
-        designationDisplayContainer.innerHTML = '';
+        designationDisplayContainer.innerHTML = ''; // Limpa para redesenhar
 
         const designacaoInstanceContainer = document.createElement('div');
         designacaoInstanceContainer.className = 'designacao-instance-container';
         designacaoInstanceContainer.style.marginBottom = '20px';
 
-        const orderLevel = order;
-        if (orderLevel === 1) { designationDisplayContainer.style.backgroundColor = 'rgba(46, 204, 113, 0.1)'; }
+        if (order === 1) { designationDisplayContainer.style.backgroundColor = 'rgba(46, 204, 113, 0.1)'; }
         else { designationDisplayContainer.style.backgroundColor = '#f8f9fa'; }
 
         const title = document.createElement('h5');
         title.textContent = `${designacao.nome} (${designacaoInstance})`;
-        title.style.marginBottom = '10px';
         designacaoInstanceContainer.appendChild(title);
         
         const keyNumParticipantes = `numParticipantes-${instanceKeyPrefix}`;
@@ -6000,17 +6007,23 @@ function selectRandomFrom(array) {
         let generoMix = temporaryPreferences[keyGeneroMix] || 'nao';
 
         const participantRoles = ["Participante", "Dirigente", "Morador", "Ajudante"];
+        
         for (let i = 0; i < numeroParticipantesDynamic; i++) {
             const roleLabel = document.createElement('span');
             roleLabel.textContent = numeroParticipantesDynamic === 1 ? participantRoles[0] : participantRoles[i + 1];
-            roleLabel.style.fontSize = '0.9em'; roleLabel.style.color = '#777'; roleLabel.style.display = 'block'; roleLabel.style.marginBottom = '3px';
+            roleLabel.style.fontSize = '0.9em'; roleLabel.style.color = '#777'; roleLabel.style.display = 'block';
             designacaoInstanceContainer.appendChild(roleLabel);
 
             let participantSelect = document.createElement('select');
             participantSelect.id = `participant-${designacaoId}-${designacaoInstance}-${i}`;
             participantSelect.className = 'form-select';
-            participantSelect.style.marginBottom = '10px'; participantSelect.style.width = '100%';
             participantSelect.innerHTML = '<option value="">Selecione uma pessoa</option>';
+            
+            // === 2. RECUPERAR O VALOR SALVO (SE EXISTIR) PARA ESTA POSIÇÃO ===
+            if (savedSelections[designacaoInstance] && savedSelections[designacaoInstance][i]) {
+                participantSelect.dataset.pendingValue = savedSelections[designacaoInstance][i];
+            }
+
             participantSelect.addEventListener('change', () => saveSelectionsForDesignation(designacaoId));
             designacaoInstanceContainer.appendChild(participantSelect);
         }
@@ -6030,30 +6043,63 @@ function selectRandomFrom(array) {
         // === INÍCIO DA LÓGICA DOS EVENTOS DO FILTRO (CORRIGIDO) ===
         // =========================================================================
 
-        const numSelect = filterPopup.querySelector(`#num-participantes-${instanceKeyPrefix}`);
-        numSelect.value = numeroParticipantesDynamic;
-        numSelect.addEventListener('change', (e) => {
-            const novoValor = parseInt(e.target.value);
-            console.log(`%c[FILTRO] Participantes alterados para ${novoValor} em ${designacao.nome}`, "color: #e67e22; font-weight: bold;");
-            temporaryPreferences[keyNumParticipantes] = novoValor;
-            updateActiveDesignationDisplay(designacao, order, quantity, {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
-        });
+   const numSelect = filterPopup.querySelector(`#num-participantes-${instanceKeyPrefix}`);
+numSelect.value = numeroParticipantesDynamic;
 
-        const genSelect = filterPopup.querySelector(`#genero-preferencia-${instanceKeyPrefix}`);
-        genSelect.value = generoPreferencia;
-        genSelect.addEventListener('change', (e) => {
-            console.log(`%c[FILTRO] Género alterado para ${e.target.value} em ${designacao.nome}`, "color: #9b59b6;");
-            temporaryPreferences[keyGeneroPref] = e.target.value;
-            updateActiveDesignationDisplay(designacao, order, quantity, {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
-        });
+numSelect.addEventListener('change', (e) => {
+    const novoValor = parseInt(e.target.value);
 
-        const mixSelect = filterPopup.querySelector(`#genero-mix-${instanceKeyPrefix}`);
-        mixSelect.value = generoMix;
-        mixSelect.addEventListener('change', (e) => {
-            console.log(`%c[FILTRO] Mix Gênero (M+F) alterado para ${e.target.value}`, "color: #3498db;");
-            temporaryPreferences[keyGeneroMix] = e.target.value;
-            updateActiveDesignationDisplay(designacao, order, quantity, {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences);
+    // --- FUNÇÃO AUXILIAR PARA O LOG ---
+    const capturarEstadoGlobal = () => {
+        const estado = [];
+        document.querySelectorAll('.active-designation-container').forEach(container => {
+            const titulo = container.querySelector('h5')?.textContent || "Sem Título";
+            const selecionados = Array.from(container.querySelectorAll('.form-select'))
+                                     .map(sel => sel.options[sel.selectedIndex]?.text || "Vazio");
+            estado.push({ titulo, selecionados });
         });
+        return estado;
+    };
+
+    // 1. Capturar como estão todos os cards AGORA
+    const estadoAntes = capturarEstadoGlobal();
+
+    console.group(`%c🔍 AUDITORIA DE IMPACTO: Alterando ${designacao.nome}`, "background: #222; color: #bada55; padding: 5px;");
+    console.log("ESTADO ANTES DA ALTERAÇÃO:");
+    console.table(estadoAntes);
+
+    // 2. Realizar a alteração
+    temporaryPreferences[keyNumParticipantes] = novoValor;
+    
+    // 3. Chamar o redesenho (apenas para este card específico)
+    updateActiveDesignationDisplay(designacao, order, quantity, {}, diasSemana, diaSemanaReuniaoString, temporaryPreferences)
+    .then(() => {
+        // 4. Capturar como ficaram todos os cards DEPOIS
+        const estadoDepois = capturarEstadoGlobal();
+        
+        console.log("ESTADO DEPOIS DA ALTERAÇÃO:");
+        console.table(estadoDepois);
+
+        // 5. Verificação de Integridade
+        console.log("%c✅ Verificação de Segurança:", "font-weight: bold; color: #2ecc71;");
+        estadoAntes.forEach((cardAntes, index) => {
+            const cardDepois = estadoDepois[index];
+            if (cardAntes.titulo !== `${designacao.nome} (${designacaoInstance})`) {
+                const nomesAntes = JSON.stringify(cardAntes.selecionados);
+                const nomesDepois = JSON.stringify(cardDepois.selecionados);
+                
+                if (nomesAntes === nomesDepois) {
+                    console.log(`%c[OK] Card "${cardAntes.titulo}" permaneceu intacto.`, "color: #27ae60;");
+                } else {
+                    console.warn(`%c[ALERTA] Card "${cardAntes.titulo}" foi alterado indevidamente!`, "color: #e74c3c;");
+                }
+            } else {
+                console.log(`%c[INFO] Card "${cardAntes.titulo}" foi o card alvo da alteração.`, "color: #3498db;");
+            }
+        });
+        console.groupEnd();
+    });
+});
 
         // =========================================================================
         // === FIM DA LÓGICA DOS FILTROS ===
@@ -6103,9 +6149,18 @@ function selectRandomFrom(array) {
         designationDisplayContainer.appendChild(lupaIcon);
         designationDisplayContainer.appendChild(labIcon);
         
-        await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, generoPreferencia);
+         await loadPeopleOptionsIntoSelects(designacao, designationDisplayContainer, {}, diasSemana, diaSemanaReuniaoString, generoPreferencia);
+        
+        // === 3. APLICAR VALORES RECUPERADOS APÓS O CARREGAMENTO DAS OPÇÕES ===
+        designationDisplayContainer.querySelectorAll('.form-select').forEach(sel => {
+            if (sel.dataset.pendingValue) {
+                sel.value = sel.dataset.pendingValue;
+                delete sel.dataset.pendingValue;
+            }
+        });
     }
 }
+
 
 
 
