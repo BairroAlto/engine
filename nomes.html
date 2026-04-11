@@ -1061,6 +1061,21 @@ body.sidebar-collapsed .column:first-child {
     margin-top: 0;
 }
 
+/* --- Estilos das Colunas Ajustados --- */
+.list-column { 
+    flex: 0 0 260px; /* Reduzido de 320px para 260px */
+}
+
+.detail-column { 
+    flex: 2.5; /* Aumentado de 1.8 para 2.5 para dar muito mais destaque */
+    min-width: 500px; 
+}
+
+.history-column { 
+    flex: 1.5; /* Reduzido levemente de 1.7 para 1.5 para sobrar espaço no meio */
+    min-width: 380px; 
+}
+
 
 
     </style>
@@ -1247,47 +1262,60 @@ body.sidebar-collapsed .column:first-child {
                     </div>
 
                     <!-- Aba de Pregação -->
-                    <div id="pregacao-tab" class="tab-content">
-                        <div class="display-mode">
-                            <h4>Disponibilidade e Funções de Pregação</h4>
-                            <div class="data-item"><strong>Faz Desig. Pregação:</strong> <span id="detail-fazDesignacoesPregacao">-</span></div>
-                            <div class="data-item"><strong>Designações Pregação:</strong> <div id="detail-designacoesPregacao" class="array-data">-</div></div>
-                            <div class="data-item"><strong>Horários Pregação:</strong> <pre><code id="detail-horariosPregacao">-</code></pre></div>
-                            <div class="data-item"><strong>Acompanha Carrinhos:</strong> <span id="detail-acompanhaCarrinhos">-</span></div>
-                        </div>
-                        <div class="edit-mode" style="display: none;">
-                            <h4>Editar Funções e Horários de Pregação</h4>
-                            <div class="form-group">
-                                <label class="boolean-checkbox-label">
-                                    <input type="checkbox" id="edit-fazDesignacoesPregacao"> Faz Designações Dirigente?
-                                </label>
-                            </div>
-                            <div class="form-group">
-                                <label>Designações que pode fazer (Pregação):</label>
-                                <div class="checkbox-group" id="edit-designacoesPregacao-group">
-                                     <span class="loading-placeholder">Carregando opções...</span>
-                                </div>
-                            </div>
-                            <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
-                            <div class="form-group">
-                                <label>Horários de Pregação:</label>
-                                <div class="horarios-edit-container">
-                                    <div class="horarios-column" id="edit-horarios-semana">
-                                        <h5>Semana</h5>
-                                        <span class="loading-placeholder">Carregando...</span>
-                                    </div>
-                                    <div class="horarios-column" id="edit-horarios-fim-de-semana">
-                                        <h5>Fim de Semana</h5>
-                                        <span class="loading-placeholder">Carregando...</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                 <label class="boolean-checkbox-label">
-                                     <input type="checkbox" id="edit-acompanhaCarrinhos"> Acompanha Carrinhos
-                                 </label>
-                            </div>
-                        </div>
+              <div id="pregacao-tab" class="tab-content">
+    <div class="display-mode">
+        <h4>Disponibilidade e Funções de Pregação</h4>
+        <!-- NOVO CAMPO GERAL -->
+        <div class="data-item"><strong>Faz Designações:</strong> <span id="detail-fazDesignacoesPregacao">-</span></div>
+        <!-- CAMPO DIRIGENTE (RENOMEADO) -->
+        <div class="data-item"><strong>Faz Desig. (Dirigente):</strong> <span id="detail-fazDesignacoesDirigente">-</span></div>
+        
+        <div class="data-item"><strong>Designações Pregação:</strong> <div id="detail-designacoesPregacao" class="array-data">-</div></div>
+        <div class="data-item"><strong>Horários Pregação:</strong> <pre><code id="detail-horariosPregacao">-</code></pre></div>
+        <div class="data-item"><strong>Acompanha Carrinhos:</strong> <span id="detail-acompanhaCarrinhos">-</span></div>
+    </div>
+    <div class="edit-mode" style="display: none;">
+        <h4>Editar Funções e Horários de Pregação</h4>
+        <!-- CHECKBOX GERAL (O que o sistema de carrinhos usa) -->
+        <div class="form-group">
+            <label class="boolean-checkbox-label">
+                <input type="checkbox" id="edit-fazDesignacoesPregacao"> Faz Designações?
+            </label>
+        </div>
+        <!-- CHECKBOX DIRIGENTE -->
+        <div class="form-group">
+            <label class="boolean-checkbox-label">
+                <input type="checkbox" id="edit-fazDesignacoesDirigente"> Faz de Dirigente?
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <label>Designações que pode fazer (Pregação):</label>
+            <div class="checkbox-group" id="edit-designacoesPregacao-group">
+                 <span class="loading-placeholder">Carregando opções...</span>
+            </div>
+        </div>
+        <!-- ... resto do código (horários e acompanha carrinhos) permanece igual ... -->
+        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
+        <div class="form-group">
+            <label>Horários de Pregação:</label>
+            <div class="horarios-edit-container">
+                <div class="horarios-column" id="edit-horarios-semana">
+                    <h5>Semana</h5>
+                    <span class="loading-placeholder">Carregando...</span>
+                </div>
+                <div class="horarios-column" id="edit-horarios-fim-de-semana">
+                    <h5>Fim de Semana</h5>
+                    <span class="loading-placeholder">Carregando...</span>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+             <label class="boolean-checkbox-label">
+                 <input type="checkbox" id="edit-acompanhaCarrinhos"> Acompanha Carrinhos
+             </label>
+        </div>
+    </div>
                         <div class="edit-controls">
                             <button class="edit-btn" data-tab-target="pregacao-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
                             <button class="save-btn" data-tab-target="pregacao-tab"><i class="fas fa-save"></i> Gravar</button>
@@ -1527,6 +1555,8 @@ body.sidebar-collapsed .column:first-child {
         let allDesignationDetails = {};
         let dataLoaded = { designacoes: false, horarios: false, designationDetails: false };
         let selectedAusencias = [];
+        let isEditing = false;
+        let hasChanges = false;
 
         if (bodyEl) {
             bodyEl.classList.add('sidebar-collapsed');
@@ -1538,6 +1568,46 @@ body.sidebar-collapsed .column:first-child {
                 }
             });
         }
+
+
+
+        // Aviso ao tentar fechar ou recarregar a página
+window.addEventListener('beforeunload', (e) => {
+    if (hasChanges) { // SÓ bloqueia a saída se houver edição real
+        e.preventDefault();
+        e.returnValue = 'Alterações não salvas!';
+    }
+});
+
+// Monitora qualquer digitação ou mudança em inputs dentro da coluna de detalhes
+document.getElementById('detail-content').addEventListener('input', (e) => {
+    if (isEditing) {
+        hasChanges = true;
+        console.log("Alteração detectada!");
+    }
+});
+
+// Detecta qualquer alteração em inputs, selects ou textareas na área de detalhes
+document.getElementById('detail-content').addEventListener('change', () => {
+    if (isEditing) hasChanges = true;
+});
+
+document.getElementById('detail-content').addEventListener('input', () => {
+    if (isEditing) hasChanges = true;
+});
+
+// Aviso global para fechar a aba do navegador
+window.onbeforeunload = function() {
+    if (hasChanges) {
+        return "Você tem alterações não salvas. Deseja realmente sair?";
+    }
+};
+
+// E nos botões de ausência, adicione hasChanges = true no clique deles:
+addSingleAusenciaBtn.addEventListener('click', () => { hasChanges = true; /* resto da sua logica */ });
+addRangeAusenciaBtn.addEventListener('click', () => { hasChanges = true; /* resto da sua logica */ });
+
+
 
         // --- Funções de Sugestão ---
         function showSuggestions(suggestions, container, onSelect) {
@@ -1804,18 +1874,32 @@ function loadAllDesignacoes() {
                     pessoasListUl.innerHTML = '<li style="cursor: default; color: #6c757d;">Nenhuma pessoa encontrada.</li>';
                     return;
                 }
-                snapshot.forEach(doc => {
-                    const li = document.createElement('li'); li.textContent = doc.data().nomePessoa; li.dataset.id = doc.id;
-                    li.addEventListener('click', () => {
-                        document.querySelector('#pessoas-list li.selected')?.classList.remove('selected');
-                        li.classList.add('selected');
-                        selectedPersonId = doc.id;
-                        cancelEditMode();
-                        loadPersonDetails(selectedPersonId);
-                        loadPersonHistory(selectedPersonId);
-                    });
-                    pessoasListUl.appendChild(li);
-                });
+             snapshot.forEach(doc => {
+    const li = document.createElement('li'); 
+    li.textContent = doc.data().nomePessoa; 
+    li.dataset.id = doc.id;
+
+ li.addEventListener('click', () => {
+    if (hasChanges) { // SÓ aparece se algo foi realmente alterado
+        if (!confirm("Você alterou dados. Deseja descartar as mudanças?")) {
+            return;
+        }
+    }
+
+        // Se não estiver editando ou se o usuário confirmou que deseja descartar:
+        document.querySelector('#pessoas-list li.selected')?.classList.remove('selected');
+        li.classList.add('selected');
+        selectedPersonId = doc.id;
+        
+        // Importante: cancelEditMode define isEditing = false
+        cancelEditMode(); 
+        
+        loadPersonDetails(selectedPersonId);
+        loadPersonHistory(selectedPersonId);
+    });
+    
+    pessoasListUl.appendChild(li);
+});
             }).catch(error => {
                 showLoading('list', false);
                 console.error("Erro ao carregar lista de pessoas:", error);
@@ -1874,12 +1958,14 @@ function loadAllDesignacoes() {
             }
         }
 
-        function populatePregacaoTab(data) {
-            document.getElementById('detail-fazDesignacoesPregacao').textContent = formatBoolean(data.fazDesignacoesPregacao);
-            formatArrayForDisplay(data.designacoesPregacao, 'detail-designacoesPregacao');
-            document.getElementById('detail-horariosPregacao').textContent = formatHorarios(data.horariosPregacao);
-            document.getElementById('detail-acompanhaCarrinhos').textContent = formatBoolean(data.acompanhaCarrinhos);
-        }
+   function populatePregacaoTab(data) {
+    document.getElementById('detail-fazDesignacoesPregacao').textContent = formatBoolean(data.fazDesignacoesPregacao);
+    // Novo campo
+    document.getElementById('detail-fazDesignacoesDirigente').textContent = formatBoolean(data.fazDesignacoesDirigente);
+    formatArrayForDisplay(data.designacoesPregacao, 'detail-designacoesPregacao');
+    document.getElementById('detail-horariosPregacao').textContent = formatHorarios(data.horariosPregacao);
+    document.getElementById('detail-acompanhaCarrinhos').textContent = formatBoolean(data.acompanhaCarrinhos);
+}
 
         function populateDisponibilidadeTab(data) { document.getElementById('detail-ausencias').textContent = formatAusencias(data.ausencias); }
         
@@ -1889,35 +1975,83 @@ function loadAllDesignacoes() {
             document.getElementById('detail-rule').textContent = data.rule || '-';
         }
 
-        function enterEditMode(tabId) {
-            if (!selectedPersonData || !dataLoaded.horarios || !dataLoaded.designacoes) {
-                alert("Os dados ainda estão a ser carregados. Por favor, aguarde um momento e tente novamente."); 
-                return;
-            }
+function enterEditMode(tabId) {
+    if (!selectedPersonData || !dataLoaded.horarios || !dataLoaded.designacoes) {
+        alert("Os dados ainda estão a ser carregados. Por favor, aguarde um momento e tente novamente."); 
+        return;
+    }
 
-            cancelEditMode();
-            const tabContent = document.getElementById(tabId); if (!tabContent) return;
-            const displayDiv = tabContent.querySelector('.display-mode'); const editDiv = tabContent.querySelector('.edit-mode');
-            const editBtn = tabContent.querySelector('.edit-btn'); const saveBtn = tabContent.querySelector('.save-btn'); const cancelBtn = tabContent.querySelector('.cancel-btn');
-            
-            populateEditFields(tabId, selectedPersonData);
-            
-            if (displayDiv) displayDiv.style.display = 'none'; if (editDiv) editDiv.style.display = 'block';
-            if (editBtn) editBtn.style.display = 'none'; if (saveBtn) saveBtn.style.display = 'inline-flex'; if (cancelBtn) cancelBtn.style.display = 'inline-flex';
-        }
+    // Ativa o estado de edição, mas reseta o rastreio de mudanças reais
+    isEditing = true;
+    hasChanges = false; 
 
-        function cancelEditMode() {
-            tabContents.forEach(tabContent => {
-                const displayDiv = tabContent.querySelector('.display-mode'); const editDiv = tabContent.querySelector('.edit-mode');
-                const editBtn = tabContent.querySelector('.edit-btn'); const saveBtn = tabContent.querySelector('.save-btn'); const cancelBtn = tabContent.querySelector('.cancel-btn');
-                if (displayDiv) displayDiv.style.display = 'block'; if (editDiv) editDiv.style.display = 'none';
-                if (editBtn) editBtn.style.display = 'inline-flex';
-                if (saveBtn) { saveBtn.style.display = 'none'; saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> Gravar'; }
-                if (cancelBtn) cancelBtn.style.display = 'none';
-            });
-            selectedAusencias = [];
-            updateAusenciasDisplay();
+    // Preenche os campos de edição de TODAS as abas de uma vez só
+    // Isso garante que se você mudar de aba, os dados já estarão nos inputs
+    const todasAsAbas = ['pessoal-tab', 'espiritual-tab', 'pregacao-tab', 'permissoes-tab', 'disponibilidade-tab'];
+    todasAsAbas.forEach(id => {
+        populateEditFields(id, selectedPersonData);
+    });
+
+    // Percorre todas as abas para esconder o modo visualização e mostrar o modo edição
+    tabContents.forEach(tabContent => {
+        const displayDiv = tabContent.querySelector('.display-mode');
+        const editDiv = tabContent.querySelector('.edit-mode');
+        const editBtn = tabContent.querySelector('.edit-btn');
+        const saveBtn = tabContent.querySelector('.save-btn');
+        const cancelBtn = tabContent.querySelector('.cancel-btn');
+        
+        if (displayDiv) displayDiv.style.display = 'none';
+        if (editDiv) editDiv.style.display = 'block';
+        if (editBtn) editBtn.style.display = 'none';
+        
+        if (saveBtn) {
+            saveBtn.style.display = 'inline-flex';
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Gravar';
         }
+        
+        if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    });
+
+    console.log("Modo de edição ativado em todas as abas.");
+}
+
+
+function cancelEditMode() {
+    // Reseta os estados de controle
+    isEditing = false;
+    hasChanges = false;
+
+    // Percorre todas as abas para voltar ao estado original de visualização
+    tabContents.forEach(tabContent => {
+        const displayDiv = tabContent.querySelector('.display-mode');
+        const editDiv = tabContent.querySelector('.edit-mode');
+        const editBtn = tabContent.querySelector('.edit-btn');
+        const saveBtn = tabContent.querySelector('.save-btn');
+        const cancelBtn = tabContent.querySelector('.cancel-btn');
+        
+        // Mostra o texto estático e esconde os inputs
+        if (displayDiv) displayDiv.style.display = 'block';
+        if (editDiv) editDiv.style.display = 'none';
+        
+        // Mostra o botão Editar e esconde Gravar/Cancelar
+        if (editBtn) editBtn.style.display = 'inline-flex';
+        
+        if (saveBtn) {
+            saveBtn.style.display = 'none';
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Gravar';
+        }
+        
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    });
+
+    // Limpa a lista temporária de ausências que estava na memória de edição
+    selectedAusencias = [];
+    updateAusenciasDisplay();
+    
+    console.log("Modo de edição cancelado.");
+}
 
         function formatDateForInput(dateField) {
             if (!dateField) return '';
@@ -2021,6 +2155,7 @@ function loadAllDesignacoes() {
                 spiritualEditModeDiv.addEventListener('change', handlePrivilegeChange);
             } else if (tabId === 'pregacao-tab') {
                 document.getElementById('edit-fazDesignacoesPregacao').checked = data.fazDesignacoesPregacao || false;
+                document.getElementById('edit-fazDesignacoesDirigente').checked = data.fazDesignacoesDirigente || false;
                 document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false;
 
                 const desigPregacaoGroupDiv = document.getElementById('edit-designacoesPregacao-group');
@@ -2139,102 +2274,114 @@ function loadAllDesignacoes() {
             }
         } 
 
-        function saveTabData(tabId, saveButton) {
-            if (!selectedPersonId) return;
-            saveButton.disabled = true; saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gravando...';
-            let dataToUpdate = {};
-            try {
-                if (tabId === 'pessoal-tab') {
-                    const familiaValue = document.getElementById('edit-familia').value.trim();
-                    const spouseName = document.getElementById('edit-casadoCom').value.trim();
-                    const spouse = allPessoasData.find(p => p.nomePessoa === spouseName);
-                    
-                    dataToUpdate = {
-                        nomePessoa: document.getElementById('edit-nomePessoa').value.trim(),
-                        nomeCompletoPessoa: document.getElementById('edit-nomeCompletoPessoa').value.trim(),
-                        morada: document.getElementById('edit-morada').value.trim(),
-                        genero: document.getElementById('edit-genero').value,
-                        idioma: document.getElementById('edit-idioma').value,
-                        personalidade: document.getElementById('edit-personalidade').value,
-                        naCongregacao: document.getElementById('edit-naCongregacao').checked,
-                        dataNascimento: document.getElementById('edit-dataNascimento').value || null,
-                        dataBatismo: document.getElementById('edit-dataBatismo').value || null,
-                        email: document.getElementById('edit-email').value.trim(),
-                        telemovel: document.getElementById('edit-telemovel').value.trim(),
-                        familia: familiaValue ? familiaValue.split(',').map(name => name.trim()).filter(Boolean) : [],
-                        casadoCom: spouse ? spouse.id : null
-                    };
-                } else if (tabId === 'espiritual-tab') {
-                    const getSelectedPrivileges = (type) => Array.from(document.querySelectorAll(`#edit-privilegios-${type}-group input:checked`)).map(cb => cb.value);
-                    
-                    dataToUpdate = {
-                        ativo: document.getElementById('edit-ativo').checked,
-                        grupo: document.getElementById('edit-grupo').value || null,
-                        privilegiosCongregacao: getSelectedPrivileges('congregacao'),
-                        privilegiosPregacao: getSelectedPrivileges('pregacao'),
-                        privilegiosEspeciais: getSelectedPrivileges('especiais')
-                    };
-                    
-                    const oradorPublicoIsSelected = dataToUpdate.privilegiosEspeciais.includes('Orador Público');
-                    dataToUpdate.congregacao = oradorPublicoIsSelected ? document.getElementById('edit-congregacao').value.trim() : null;
+  function saveTabData(tabId, saveButton) {
+    if (!selectedPersonId) return;
+    
+    saveButton.disabled = true; 
+    saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gravando...';
+    
+    let dataToUpdate = {};
 
-                } else if (tabId === 'pregacao-tab') {
-                    const horariosPregacao = { semana: {}, fimDeSemana: {} };
-                    document.querySelectorAll('#edit-horarios-semana .horario-checkbox:checked').forEach(cb => {
-                        const day = cb.dataset.day; if (!horariosPregacao.semana[day]) horariosPregacao.semana[day] = []; horariosPregacao.semana[day].push(cb.value);
-                    });
-                    document.querySelectorAll('#edit-horarios-fim-de-semana .horario-checkbox:checked').forEach(cb => {
-                        const day = cb.dataset.day; if (!horariosPregacao.fimDeSemana[day]) horariosPregacao.fimDeSemana[day] = []; horariosPregacao.fimDeSemana[day].push(cb.value);
-                    });
-                    const selectedDesigPregacao = Array.from(document.querySelectorAll('#edit-designacoesPregacao-group input:checked')).map(cb => cb.value);
-                    dataToUpdate = { 
-                        horariosPregacao: horariosPregacao,
-                        fazDesignacoesPregacao: document.getElementById('edit-fazDesignacoesPregacao').checked, 
-                        designacoesPregacao: selectedDesigPregacao,
-                        acompanhaCarrinhos: document.getElementById('edit-acompanhaCarrinhos').checked
-                    };
+    // 1. Coletar dados da Aba Pessoal (se estiver preenchida no DOM)
+    if (document.getElementById('edit-nomePessoa')) {
+        const familiaValue = document.getElementById('edit-familia').value.trim();
+        const spouseName = document.getElementById('edit-casadoCom').value.trim();
+        const spouse = allPessoasData.find(p => p.nomePessoa === spouseName);
+        
+        Object.assign(dataToUpdate, {
+            nomePessoa: document.getElementById('edit-nomePessoa').value.trim(),
+            nomeCompletoPessoa: document.getElementById('edit-nomeCompletoPessoa').value.trim(),
+            morada: document.getElementById('edit-morada').value.trim(),
+            genero: document.getElementById('edit-genero').value,
+            idioma: document.getElementById('edit-idioma').value,
+            personalidade: document.getElementById('edit-personalidade').value,
+            naCongregacao: document.getElementById('edit-naCongregacao').checked,
+            dataNascimento: document.getElementById('edit-dataNascimento').value || null,
+            dataBatismo: document.getElementById('edit-dataBatismo').value || null,
+            email: document.getElementById('edit-email').value.trim(),
+            telemovel: document.getElementById('edit-telemovel').value.trim(),
+            familia: familiaValue ? familiaValue.split(',').map(name => name.trim()).filter(Boolean) : [],
+            casadoCom: spouse ? spouse.id : null
+        });
+    }
 
-                } else if (tabId === 'disponibilidade-tab') {
-                    dataToUpdate = { ausencias: selectedAusencias.sort() };
-                } else if (tabId === 'permissoes-tab') {
-                    const selectedDesigReuniao = Array.from(document.querySelectorAll('#edit-designacoesReuniao-group input:checked')).map(cb => cb.value);
-                    dataToUpdate = {
-                        fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked, 
-                        designacoesReuniao: selectedDesigReuniao,
-                        rule: document.getElementById('edit-rule').value.trim() || null
-                    };
-                }
-            } catch (error) {
-                console.error("Erro ao coletar dados:", error); alert("Erro ao ler dados do formulário.");
-                saveButton.disabled = false; saveButton.innerHTML = '<i class="fas fa-save"></i> Gravar'; return;
-            }
+    // 2. Coletar dados da Aba Espiritual
+    const ativoCheckbox = document.getElementById('edit-ativo');
+    if (ativoCheckbox) {
+        const getSelectedPrivileges = (type) => Array.from(document.querySelectorAll(`#edit-privilegios-${type}-group input:checked`)).map(cb => cb.value);
+        Object.assign(dataToUpdate, {
+            ativo: ativoCheckbox.checked,
+            grupo: document.getElementById('edit-grupo').value || null,
+            privilegiosCongregacao: getSelectedPrivileges('congregacao'),
+            privilegiosPregacao: getSelectedPrivileges('pregacao'),
+            privilegiosEspeciais: getSelectedPrivileges('especiais'),
+            congregacao: document.getElementById('edit-congregacao').value.trim() || null
+        });
+    }
 
-        db.collection('pessoas').doc(selectedPersonId).update(dataToUpdate).then(() => {
-                selectedPersonData = { ...selectedPersonData, ...dataToUpdate };
-                
-                // Atualiza a visualização da aba atual
-                if (tabId === 'pessoal-tab') populatePessoalTab(selectedPersonData);
-                else if (tabId === 'espiritual-tab') populateEspiritualTab(selectedPersonData);
-                else if (tabId === 'pregacao-tab') populatePregacaoTab(selectedPersonData);
-                else if (tabId === 'disponibilidade-tab') populateDisponibilidadeTab(selectedPersonData);
-                else if (tabId === 'permissoes-tab') populatePermissoesTab(selectedPersonData);
-                
-                // Atualiza o nome na lista lateral se tiver mudado
-                if (dataToUpdate.nomePessoa) {
-                    const liItem = document.querySelector(`#pessoas-list li[data-id="${selectedPersonId}"]`);
-                    if (liItem) liItem.textContent = dataToUpdate.nomePessoa;
-                    detailNameH3.textContent = dataToUpdate.nomePessoa;
-                }
-                
-                // ALTERAÇÃO AQUI: Removemos o alert(), mantemos apenas o cancelEditMode()
-                cancelEditMode(); 
-                
-            }).catch(error => {
-                console.error("Erro ao gravar:", error); 
-                alert(error.code === 'permission-denied' ? 'Erro: Permissão negada.' : 'Erro ao gravar dados.'); 
-                cancelEditMode();
-            });
+    // 3. Coletar dados da Aba Pregação
+    if (document.getElementById('edit-fazDesignacoesPregacao')) {
+        const horariosPregacao = { semana: {}, fimDeSemana: {} };
+        document.querySelectorAll('#edit-horarios-semana .horario-checkbox:checked').forEach(cb => {
+            const day = cb.dataset.day; 
+            if (!horariosPregacao.semana[day]) horariosPregacao.semana[day] = []; 
+            horariosPregacao.semana[day].push(cb.value);
+        });
+        document.querySelectorAll('#edit-horarios-fim-de-semana .horario-checkbox:checked').forEach(cb => {
+            const day = cb.dataset.day; 
+            if (!horariosPregacao.fimDeSemana[day]) horariosPregacao.fimDeSemana[day] = []; 
+            horariosPregacao.fimDeSemana[day].push(cb.value);
+        });
+
+        Object.assign(dataToUpdate, { 
+            horariosPregacao: horariosPregacao,
+            fazDesignacoesPregacao: document.getElementById('edit-fazDesignacoesPregacao').checked, 
+            fazDesignacoesDirigente: document.getElementById('edit-fazDesignacoesDirigente').checked,
+            designacoesPregacao: Array.from(document.querySelectorAll('#edit-designacoesPregacao-group input:checked')).map(cb => cb.value),
+            acompanhaCarrinhos: document.getElementById('edit-acompanhaCarrinhos').checked
+        });
+    }
+
+    // 4. Coletar dados da Aba Designações/Permissões
+    if (document.getElementById('edit-fazDesignacoesReuniao')) {
+        Object.assign(dataToUpdate, {
+            fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked, 
+            designacoesReuniao: Array.from(document.querySelectorAll('#edit-designacoesReuniao-group input:checked')).map(cb => cb.value),
+            rule: document.getElementById('edit-rule').value.trim() || null
+        });
+    }
+
+    // 5. Coletar Ausências (se a aba foi carregada)
+    if (selectedAusencias.length > 0 || document.getElementById('selected-ausencias-list')) {
+        dataToUpdate.ausencias = selectedAusencias.sort();
+    }
+
+    // Salvar no Firebase
+    db.collection('pessoas').doc(selectedPersonId).update(dataToUpdate).then(() => {
+        selectedPersonData = { ...selectedPersonData, ...dataToUpdate };
+        
+        // Atualiza as views
+        populatePessoalTab(selectedPersonData);
+        populateEspiritualTab(selectedPersonData);
+        populatePregacaoTab(selectedPersonData);
+        populateDisponibilidadeTab(selectedPersonData);
+        populatePermissoesTab(selectedPersonData);
+        
+        if (dataToUpdate.nomePessoa) {
+            const liItem = document.querySelector(`#pessoas-list li[data-id="${selectedPersonId}"]`);
+            if (liItem) liItem.textContent = dataToUpdate.nomePessoa;
+            detailNameH3.textContent = dataToUpdate.nomePessoa;
         }
+        
+        cancelEditMode(); // Isso define isEditing = false e limpa a interface
+    }).catch(error => {
+        console.error("Erro:", error);
+        alert('Erro ao gravar.');
+        saveButton.disabled = false;
+        saveButton.innerHTML = '<i class="fas fa-save"></i> Gravar';
+    });
+}
+
 
 
         // --- Lógica do Histórico ---
@@ -2537,11 +2684,27 @@ function loadAllDesignacoes() {
             });
         }
         
-        function switchTab(tabId) {
-            cancelEditMode(); tabButtons.forEach(btn => btn.classList.remove('active')); tabContents.forEach(content => content.classList.remove('active'));
-            const activeButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`); const activeContent = document.getElementById(tabId);
-            if (activeButton) activeButton.classList.add('active'); if (activeContent) activeContent.classList.add('active');
-        }
+function switchTab(tabId) {
+    // Apenas removemos a classe active dos botões e conteúdos
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    tabContents.forEach(content => content.classList.remove('active'));
+    
+    const activeButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+    const activeContent = document.getElementById(tabId);
+    
+    if (activeButton) activeButton.classList.add('active');
+    if (activeContent) activeContent.classList.add('active');
+
+    // Se estivermos em modo de edição, garantimos que os botões de Gravar/Cancelar apareçam nesta aba
+    if (isEditing) {
+        // (A lógica de visibilidade já foi tratada no enterEditMode, 
+        // mas aqui garantimos que a aba que acabou de abrir esteja em modo edição)
+        const displayDiv = activeContent.querySelector('.display-mode');
+        const editDiv = activeContent.querySelector('.edit-mode');
+        if (displayDiv) displayDiv.style.display = 'none';
+        if (editDiv) editDiv.style.display = 'block';
+    }
+}
         
         // --- Event Listeners e Inicialização ---
         filterPessoasInput.addEventListener('input', filterPessoasList);
