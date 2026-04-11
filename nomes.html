@@ -1860,17 +1860,23 @@ function loadAllDesignacoes() {
             });
         }
 
-        function loadAllHorarios() {
-            return db.collection("horarios").orderBy("ano", "desc").limit(1).get().then(snapshot => {
-                if (!snapshot.empty) {
-                    const data = snapshot.docs[0].data();
-                    allHorarios = { semana: data['dias-semana-horarios'] || {}, fimDeSemana: data['dias-fimdesemana-horarios'] || {} };
-                } else {
-                    allHorarios = { semana: {}, fimDeSemana: {} };
-                }
-                dataLoaded.horarios = true;
-            });
+      function loadAllHorarios() {
+    return db.collection("horarios").orderBy("ano", "desc").limit(1).get().then(snapshot => {
+        if (!snapshot.empty) {
+            const data = snapshot.docs[0].data();
+            console.log("Horários carregados do Firebase:", data); // Verifique o console do navegador (F12)
+            allHorarios = {
+                // Use os nomes EXATOS que aparecem no seu Firebase
+                semana: data['dias-semana-horarios'] || {},
+                fimDeSemana: data['dias-fimdesemana-horarios'] || {}
+            };
+        } else {
+            console.warn("Nenhum documento de horários encontrado.");
+            allHorarios = { semana: {}, fimDeSemana: {} };
         }
+        dataLoaded.horarios = true;
+    });
+}
 
         function loadPessoasList() {
             showLoading('list', true);
@@ -2203,24 +2209,31 @@ function populateEditFields(tabId, data) {
         const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
         const weekendOrder = ["sabado", "domingo"];
         
-        const populateDay = (day, times, container) => {
-            if (times && times.length > 0) {
-                const dayContainer = document.createElement('div');
-                dayContainer.className = 'day-container';
-                const dayTitle = document.createElement('h6');
-                dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
-                dayContainer.appendChild(dayTitle);
-                const keyToUse = container.id === 'edit-horarios-semana' ? 'semana' : 'fimDeSemana';
-                const personTimesForThisDay = (currentHorarios[keyToUse] || {})[day] || [];
-                times.sort().forEach(time => {
-                    const isChecked = personTimesForThisDay.includes(time);
-                    dayContainer.appendChild(createTimeSlotCheckbox(time, day, isChecked));
-                });
-                container.appendChild(dayContainer);
-            }
-        };
-        weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv));
-        weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimDeSemanaDiv));
+       const populateDay = (day, times, container) => {
+    // Se 'times' vier do Firebase como um Array, ele entra aqui
+    if (times && Array.isArray(times) && times.length > 0) {
+        const dayContainer = document.createElement('div');
+        dayContainer.className = 'day-container';
+        const dayTitle = document.createElement('h6');
+        dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
+        dayContainer.appendChild(dayTitle);
+        
+        const keyToUse = container.id === 'edit-horarios-semana' ? 'semana' : 'fimDeSemana';
+        const personTimesForThisDay = (currentHorarios[keyToUse] || {})[day] || [];
+
+        times.sort().forEach(time => {
+            const isChecked = personTimesForThisDay.includes(time);
+            dayContainer.appendChild(createTimeSlotCheckbox(time, day, isChecked));
+        });
+        container.appendChild(dayContainer);
+    }
+};
+// Limpa e reconstrói as colunas
+horariosSemanaDiv.innerHTML = '<h5>Semana</h5>'; 
+horariosFimDeSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
+
+weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv));
+weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimDeSemanaDiv));
 
         // Define estado inicial de bloqueio
         updatePregacaoFieldsState();
