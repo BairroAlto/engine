@@ -1274,49 +1274,57 @@ body.sidebar-collapsed .column:first-child {
         <div class="data-item"><strong>Horários Pregação:</strong> <pre><code id="detail-horariosPregacao">-</code></pre></div>
         <div class="data-item"><strong>Acompanha Carrinhos:</strong> <span id="detail-acompanhaCarrinhos">-</span></div>
     </div>
-    <div class="edit-mode" style="display: none;">
-        <h4>Editar Funções e Horários de Pregação</h4>
-        <!-- CHECKBOX GERAL (O que o sistema de carrinhos usa) -->
-        <div class="form-group">
-            <label class="boolean-checkbox-label">
-                <input type="checkbox" id="edit-fazDesignacoesPregacao"> Faz Designações?
-            </label>
+   <div class="edit-mode" style="display: none;">
+    <h4>Editar Funções e Horários de Pregação</h4>
+
+    <!-- Deixe apenas o Dirigente no topo ou onde preferir -->
+    <div class="form-group">
+        <label class="boolean-checkbox-label">
+            <input type="checkbox" id="edit-fazDesignacoesDirigente"> Faz de Dirigente?
+        </label>
+    </div>
+    
+    <div class="form-group">
+        <label>Designações que pode fazer (Pregação):</label>
+        <div class="checkbox-group" id="edit-designacoesPregacao-group">
+             <span class="loading-placeholder">Carregando opções...</span>
         </div>
-        <!-- CHECKBOX DIRIGENTE -->
-        <div class="form-group">
-            <label class="boolean-checkbox-label">
-                <input type="checkbox" id="edit-fazDesignacoesDirigente"> Faz de Dirigente?
-            </label>
-        </div>
-        
-        <div class="form-group">
-            <label>Designações que pode fazer (Pregação):</label>
-            <div class="checkbox-group" id="edit-designacoesPregacao-group">
-                 <span class="loading-placeholder">Carregando opções...</span>
-            </div>
-        </div>
+    </div>
         <!-- ... resto do código (horários e acompanha carrinhos) permanece igual ... -->
-        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
-        <div class="form-group">
-            <label>Horários de Pregação:</label>
-            <div class="horarios-edit-container">
-                <div class="horarios-column" id="edit-horarios-semana">
-                    <h5>Semana</h5>
-                    <span class="loading-placeholder">Carregando...</span>
-                </div>
-                <div class="horarios-column" id="edit-horarios-fim-de-semana">
-                    <h5>Fim de Semana</h5>
-                    <span class="loading-placeholder">Carregando...</span>
-                </div>
+      <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
+
+    <div class="form-group">
+        <label>Horários de Pregação:</label>
+        <div class="horarios-edit-container">
+            <div class="horarios-column" id="edit-horarios-semana">
+                <h5>Semana</h5>
+                <span class="loading-placeholder">Carregando...</span>
             </div>
+            <div class="horarios-column" id="edit-horarios-fim-de-semana">
+                <h5>Fim de Semana</h5>
+                <span class="loading-placeholder">Carregando...</span>
+            </div>
+        </div>
+    </div>
+
+
+ <!-- NOVO BLOCO NO FUNDO: Faz Designações ao lado de Acompanha Carrinhos -->
+    <div class="grid-row" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+        <div class="form-group">
+            <label class="boolean-checkbox-label">
+                <input type="checkbox" id="edit-fazDesignacoesPregacao"> Participa nos Carrinhos?
+            </label>
         </div>
         <div class="form-group">
              <label class="boolean-checkbox-label">
-                 <input type="checkbox" id="edit-acompanhaCarrinhos"> Acompanha Carrinhos
+                 <input type="checkbox" id="edit-acompanhaCarrinhos"> Tem de ser acompanhado? (idoso)
              </label>
         </div>
     </div>
-                        <div class="edit-controls">
+</div>
+
+
+<div class="edit-controls">
                             <button class="edit-btn" data-tab-target="pregacao-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
                             <button class="save-btn" data-tab-target="pregacao-tab"><i class="fas fa-save"></i> Gravar</button>
                             <button class="cancel-btn" data-tab-target="pregacao-tab"><i class="fas fa-times"></i> Cancelar</button>
@@ -1916,6 +1924,7 @@ function loadAllDesignacoes() {
                     selectedPersonData = doc.data();
                     detailContentDiv.style.display = 'block'; selectPromptDiv.style.display = 'none';
                     detailNameH3.textContent = selectedPersonData.nomePessoa || 'Nome não encontrado';
+                    updateTitleBackground(selectedPersonData.naCongregacao);
                     populatePessoalTab(selectedPersonData);
                     populateEspiritualTab(selectedPersonData);
                     populatePregacaoTab(selectedPersonData);
@@ -2018,11 +2027,11 @@ function enterEditMode(tabId) {
 
 
 function cancelEditMode() {
-    // Reseta os estados de controle
+    // Reseta flags de controle
     isEditing = false;
     hasChanges = false;
 
-    // Percorre todas as abas para voltar ao estado original de visualização
+    // Percorre todas as abas para voltar ao modo de visualização
     tabContents.forEach(tabContent => {
         const displayDiv = tabContent.querySelector('.display-mode');
         const editDiv = tabContent.querySelector('.edit-mode');
@@ -2030,11 +2039,8 @@ function cancelEditMode() {
         const saveBtn = tabContent.querySelector('.save-btn');
         const cancelBtn = tabContent.querySelector('.cancel-btn');
         
-        // Mostra o texto estático e esconde os inputs
         if (displayDiv) displayDiv.style.display = 'block';
         if (editDiv) editDiv.style.display = 'none';
-        
-        // Mostra o botão Editar e esconde Gravar/Cancelar
         if (editBtn) editBtn.style.display = 'inline-flex';
         
         if (saveBtn) {
@@ -2046,11 +2052,16 @@ function cancelEditMode() {
         if (cancelBtn) cancelBtn.style.display = 'none';
     });
 
-    // Limpa a lista temporária de ausências que estava na memória de edição
+    // Restaura a cor do título baseada nos dados originais do banco
+    if (selectedPersonData) {
+        updateTitleBackground(selectedPersonData.naCongregacao);
+    }
+
+    // Limpa estados temporários de edição
     selectedAusencias = [];
     updateAusenciasDisplay();
     
-    console.log("Modo de edição cancelado.");
+    console.log("Edição cancelada e estados resetados.");
 }
 
         function formatDateForInput(dateField) {
@@ -2112,167 +2123,156 @@ function cancelEditMode() {
 
 
 
-        function populateEditFields(tabId, data) {
-            if (tabId === 'pessoal-tab') {
-                document.getElementById('edit-nomePessoa').value = data.nomePessoa || '';
-                document.getElementById('edit-nomeCompletoPessoa').value = data.nomeCompletoPessoa || '';
-                document.getElementById('edit-morada').value = data.morada || '';
-                document.getElementById('edit-genero').value = data.genero || '';
-                document.getElementById('edit-idioma').value = data.idioma || '';
-                document.getElementById('edit-personalidade').value = data.personalidade || '';
-                document.getElementById('edit-naCongregacao').checked = typeof data.naCongregacao === 'boolean' ? data.naCongregacao : true;
-                document.getElementById('edit-dataNascimento').value = formatDateForInput(data.dataNascimento);
-                document.getElementById('edit-dataBatismo').value = formatDateForInput(data.dataBatismo);
-                document.getElementById('edit-email').value = data.email || '';
-                document.getElementById('edit-telemovel').value = data.telemovel || '';
-                document.getElementById('edit-familia').value = Array.isArray(data.familia) ? data.familia.join(', ') : '';
-                document.getElementById('edit-casadoCom').value = data.casadoCom ? (allPessoasNames[data.casadoCom] || '') : '';
-            } else if (tabId === 'espiritual-tab') {
-                document.getElementById('edit-ativo').checked = typeof data.ativo === 'boolean' ? data.ativo : true;
-                document.getElementById('edit-grupo').value = data.grupo || '';
-                
-                const populatePrivilegeGroup = (groupDivId, privilegeType, currentPrivileges) => {
-                    const groupDiv = document.getElementById(groupDivId);
-                    groupDiv.innerHTML = '';
-                    allPrivilegios[privilegeType].forEach(priv => {
-                        const isChecked = Array.isArray(currentPrivileges) && currentPrivileges.includes(priv);
-                        groupDiv.appendChild(createEditCheckbox(priv, `edit-privilegio-${privilegeType}`, isChecked, privilegeType));
-                    });
-                };
-                populatePrivilegeGroup('edit-privilegios-congregacao-group', 'congregacao', data.privilegiosCongregacao);
-                populatePrivilegeGroup('edit-privilegios-pregacao-group', 'pregacao', data.privilegiosPregacao);
-                populatePrivilegeGroup('edit-privilegios-especiais-group', 'especiais', data.privilegiosEspeciais);
+function populateEditFields(tabId, data) {
+    if (tabId === 'pessoal-tab') {
+        document.getElementById('edit-nomePessoa').value = data.nomePessoa || '';
+        document.getElementById('edit-nomeCompletoPessoa').value = data.nomeCompletoPessoa || '';
+        document.getElementById('edit-morada').value = data.morada || '';
+        document.getElementById('edit-genero').value = data.genero || '';
+        document.getElementById('edit-idioma').value = data.idioma || '';
+        document.getElementById('edit-personalidade').value = data.personalidade || '';
+        document.getElementById('edit-email').value = data.email || '';
+        document.getElementById('edit-telemovel').value = data.telemovel || '';
+        document.getElementById('edit-dataNascimento').value = formatDateForInput(data.dataNascimento);
+        document.getElementById('edit-dataBatismo').value = formatDateForInput(data.dataBatismo);
+        document.getElementById('edit-familia').value = Array.isArray(data.familia) ? data.familia.join(', ') : '';
+        document.getElementById('edit-casadoCom').value = data.casadoCom ? (allPessoasNames[data.casadoCom] || '') : '';
 
-                const oradorPublicoChecked = (data.privilegiosEspeciais || []).includes('Orador Público');
-                const congregacaoGroup = document.getElementById('congregacao-externa-group');
-                const congregacaoInput = document.getElementById('edit-congregacao');
-                
-                congregacaoInput.value = data.congregacao || '';
-                congregacaoGroup.style.display = oradorPublicoChecked ? 'block' : 'none';
+        const naCongregacaoCB = document.getElementById('edit-naCongregacao');
+        naCongregacaoCB.checked = typeof data.naCongregacao === 'boolean' ? data.naCongregacao : true;
+        
+        // Regra visual: Muda a cor do título ao clicar
+        naCongregacaoCB.onclick = function() {
+            updateTitleBackground(this.checked);
+        };
 
-                const spiritualEditModeDiv = document.getElementById('espiritual-tab').querySelector('.edit-mode');
-                spiritualEditModeDiv.removeEventListener('change', handlePrivilegeChange); 
-                spiritualEditModeDiv.addEventListener('change', handlePrivilegeChange);
-            } else if (tabId === 'pregacao-tab') {
-                document.getElementById('edit-fazDesignacoesPregacao').checked = data.fazDesignacoesPregacao || false;
-                document.getElementById('edit-fazDesignacoesDirigente').checked = data.fazDesignacoesDirigente || false;
-                document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false;
+    } else if (tabId === 'espiritual-tab') {
+        document.getElementById('edit-ativo').checked = typeof data.ativo === 'boolean' ? data.ativo : true;
+        document.getElementById('edit-grupo').value = data.grupo || '';
+        
+        const populatePrivilegeGroup = (groupDivId, privilegeType, currentPrivileges) => {
+            const groupDiv = document.getElementById(groupDivId);
+            groupDiv.innerHTML = '';
+            allPrivilegios[privilegeType].forEach(priv => {
+                const isChecked = Array.isArray(currentPrivileges) && currentPrivileges.includes(priv);
+                groupDiv.appendChild(createEditCheckbox(priv, `edit-privilegio-${privilegeType}`, isChecked, privilegeType));
+            });
+        };
+        populatePrivilegeGroup('edit-privilegios-congregacao-group', 'congregacao', data.privilegiosCongregacao);
+        populatePrivilegeGroup('edit-privilegios-pregacao-group', 'pregacao', data.privilegiosPregacao);
+        populatePrivilegeGroup('edit-privilegios-especiais-group', 'especiais', data.privilegiosEspeciais);
 
-                const desigPregacaoGroupDiv = document.getElementById('edit-designacoesPregacao-group');
-                desigPregacaoGroupDiv.innerHTML = '';
-                const currentDesigPregacao = data.designacoesPregacao || [];
-                allDesignacoes.pregacao.forEach(desig => desigPregacaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-pregacao', currentDesigPregacao.includes(desig))));
-                if (allDesignacoes.pregacao.length === 0) desigPregacaoGroupDiv.innerHTML = 'Nenhuma opção disponível.';
+        const oradorPublicoChecked = (data.privilegiosEspeciais || []).includes('Orador Público');
+        const congregacaoGroup = document.getElementById('congregacao-externa-group');
+        const congregacaoInput = document.getElementById('edit-congregacao');
+        
+        congregacaoInput.value = data.congregacao || '';
+        congregacaoGroup.style.display = oradorPublicoChecked ? 'block' : 'none';
 
-                const horariosSemanaDiv = document.getElementById('edit-horarios-semana');
-                const horariosFimDeSemanaDiv = document.getElementById('edit-horarios-fim-de-semana');
-                horariosSemanaDiv.innerHTML = '<h5>Semana</h5>'; 
-                horariosFimDeSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
-                
-                const currentHorarios = data.horariosPregacao || { semana: {}, fimDeSemana: {} };
-                const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
-                const weekendOrder = ["sabado", "domingo"];
-                
-                const populateDay = (day, times, container) => {
-                    if (times && times.length > 0) {
-                        const dayContainer = document.createElement('div');
-                        dayContainer.className = 'day-container';
-                        const dayTitle = document.createElement('h6');
-                        dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
-                        dayContainer.appendChild(dayTitle);
-                        
-                        const keyToUse = container.id === 'edit-horarios-semana' ? 'semana' : 'fimDeSemana';
-                        const personTimesForThisDay = (currentHorarios[keyToUse] || {})[day] || [];
+        const spiritualEditModeDiv = document.getElementById('espiritual-tab').querySelector('.edit-mode');
+        spiritualEditModeDiv.removeEventListener('change', handlePrivilegeChange); 
+        spiritualEditModeDiv.addEventListener('change', handlePrivilegeChange);
 
-                        times.sort().forEach(time => {
-                            const isChecked = personTimesForThisDay.includes(time);
-                            dayContainer.appendChild(createTimeSlotCheckbox(time, day, isChecked));
-                        });
-                        container.appendChild(dayContainer);
-                    }
-                };
-                
-                weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv));
-                weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimDeSemanaDiv));
+    } else if (tabId === 'pregacao-tab') {
+        // "Faz Designações?" controla Horários
+        const fazPregacaoCB = document.getElementById('edit-fazDesignacoesPregacao');
+        fazPregacaoCB.checked = data.fazDesignacoesPregacao || false;
+        fazPregacaoCB.onclick = updatePregacaoFieldsState;
 
-            } else if (tabId === 'disponibilidade-tab') {
-                selectedAusencias = (data.ausencias || []).map(ausencia => {
-                    if (ausencia?.toDate) {
-                        const dateObj = ausencia.toDate();
-                        return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-                    }
-                    return ausencia;
-                }).filter(Boolean);
-                updateAusenciasDisplay();
-    } else if (tabId === 'permissoes-tab') {
-                document.getElementById('edit-fazDesignacoesReuniao').checked = data.fazDesignacoesReuniao || false;
-                document.getElementById('edit-rule').value = data.rule || '';
-                
-                const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group');
-                desigReuniaoGroupDiv.innerHTML = '';
-                const currentDesigReuniao = data.designacoesReuniao || [];
+        // "Faz de Dirigente?" controla Lista de Designações
+        const fazDirigenteCB = document.getElementById('edit-fazDesignacoesDirigente');
+        fazDirigenteCB.checked = data.fazDesignacoesDirigente || false;
+        fazDirigenteCB.onclick = updatePregacaoFieldsState;
 
-                const categoriesOrder = ['resto da semana', 'escola', 'fim de semana', 'tecnicas'];
-                const categoryLabels = {
-                    'resto da semana': 'Resto da Semana',
-                    'escola': 'Escola',
-                    'fim de semana': 'Fim de Semana',
-                    'tecnicas': 'Técnicas'
-                };
+        document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false;
 
-                const groupedDesignations = {
-                    'resto da semana': [],
-                    'escola': [],
-                    'fim de semana': [],
-                    'tecnicas': [],
-                    'outros': []
-                };
-
-                // Distribuir as designações (AGORA GUARDAMOS O OBJETO COMPLETO)
-                allDesignacoes.reuniao.forEach(desigObj => {
-                    const partKey = desigObj.parte ? desigObj.parte.toLowerCase() : 'outros';
-                    
-                    if (groupedDesignations[partKey]) {
-                        groupedDesignations[partKey].push(desigObj); // Guarda o objeto {nome, ordem, parte}
-                    } else {
-                        groupedDesignations['outros'].push(desigObj);
-                    }
+        // Montagem das Designações
+        const desigPregacaoGroupDiv = document.getElementById('edit-designacoesPregacao-group');
+        desigPregacaoGroupDiv.innerHTML = '';
+        const currentDesigPregacao = data.designacoesPregacao || [];
+        allDesignacoes.pregacao.forEach(desig => {
+            desigPregacaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-pregacao', currentDesigPregacao.includes(desig)));
+        });
+        
+        // Montagem dos Horários
+        const horariosSemanaDiv = document.getElementById('edit-horarios-semana');
+        const horariosFimDeSemanaDiv = document.getElementById('edit-horarios-fim-de-semana');
+        horariosSemanaDiv.innerHTML = '<h5>Semana</h5>'; 
+        horariosFimDeSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
+        const currentHorarios = data.horariosPregacao || { semana: {}, fimDeSemana: {} };
+        const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
+        const weekendOrder = ["sabado", "domingo"];
+        
+        const populateDay = (day, times, container) => {
+            if (times && times.length > 0) {
+                const dayContainer = document.createElement('div');
+                dayContainer.className = 'day-container';
+                const dayTitle = document.createElement('h6');
+                dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
+                dayContainer.appendChild(dayTitle);
+                const keyToUse = container.id === 'edit-horarios-semana' ? 'semana' : 'fimDeSemana';
+                const personTimesForThisDay = (currentHorarios[keyToUse] || {})[day] || [];
+                times.sort().forEach(time => {
+                    const isChecked = personTimesForThisDay.includes(time);
+                    dayContainer.appendChild(createTimeSlotCheckbox(time, day, isChecked));
                 });
-
-                let hasAnyOption = false;
-
-                const renderGroup = (key, label) => {
-                    const items = groupedDesignations[key];
-                    if (items && items.length > 0) {
-                        hasAnyOption = true;
-                        
-                        const header = document.createElement('div');
-                        header.className = 'category-header';
-                        header.textContent = label;
-                        desigReuniaoGroupDiv.appendChild(header);
-
-                        // ORDENAÇÃO POR CAMPO 'ORDEM'
-                        items.sort((a, b) => a.ordem - b.ordem);
-
-                        items.forEach(desig => {
-                            const isChecked = currentDesigReuniao.includes(desig.nome);
-                            // Passamos apenas o nome para criar o checkbox, pois é o valor que queremos salvar
-                            desigReuniaoGroupDiv.appendChild(createEditCheckbox(desig.nome, 'edit-designacao-reuniao', isChecked));
-                        });
-                    }
-                };
-
-                categoriesOrder.forEach(key => renderGroup(key, categoryLabels[key]));
-
-                if (groupedDesignations['outros'].length > 0) {
-                    renderGroup('outros', 'Outras Designações');
-                }
-
-                if (!hasAnyOption) {
-                    desigReuniaoGroupDiv.innerHTML = '<span class="loading-placeholder">Nenhuma opção disponível.</span>';
-                }
+                container.appendChild(dayContainer);
             }
-        } 
+        };
+        weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv));
+        weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimDeSemanaDiv));
+
+        // Define estado inicial de bloqueio
+        updatePregacaoFieldsState();
+
+    } else if (tabId === 'disponibilidade-tab') {
+        selectedAusencias = (data.ausencias || []).map(ausencia => {
+            if (ausencia?.toDate) {
+                const d = ausencia.toDate();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+            return ausencia;
+        }).filter(Boolean);
+        updateAusenciasDisplay();
+
+    } else if (tabId === 'permissoes-tab') {
+        const fazReuniaoCB = document.getElementById('edit-fazDesignacoesReuniao');
+        fazReuniaoCB.checked = data.fazDesignacoesReuniao || false;
+        fazReuniaoCB.onclick = updateReuniaoFieldsState;
+
+        document.getElementById('edit-rule').value = data.rule || '';
+        
+        const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group');
+        desigReuniaoGroupDiv.innerHTML = '';
+        const currentDesigReuniao = data.designacoesReuniao || [];
+        const categoriesOrder = ['resto da semana', 'escola', 'fim de semana', 'tecnicas'];
+        const categoryLabels = {'resto da semana': 'Resto da Semana', 'escola': 'Escola', 'fim de semana': 'Fim de Semana', 'tecnicas': 'Técnicas'};
+        const groupedDesignations = {'resto da semana': [], 'escola': [], 'fim de semana': [], 'tecnicas': [], 'outros': []};
+
+        allDesignacoes.reuniao.forEach(desigObj => {
+            const partKey = desigObj.parte ? desigObj.parte.toLowerCase() : 'outros';
+            if (groupedDesignations[partKey]) groupedDesignations[partKey].push(desigObj);
+            else groupedDesignations['outros'].push(desigObj);
+        });
+
+        categoriesOrder.forEach(key => {
+            const items = groupedDesignations[key];
+            if (items && items.length > 0) {
+                const header = document.createElement('div');
+                header.className = 'category-header';
+                header.textContent = categoryLabels[key];
+                desigReuniaoGroupDiv.appendChild(header);
+                items.sort((a, b) => a.ordem - b.ordem).forEach(desig => {
+                    const isChecked = currentDesigReuniao.includes(desig.nome);
+                    desigReuniaoGroupDiv.appendChild(createEditCheckbox(desig.nome, 'edit-designacao-reuniao', isChecked));
+                });
+            }
+        });
+
+        // Define estado inicial de bloqueio
+        updateReuniaoFieldsState();
+    }
+}
 
   function saveTabData(tabId, saveButton) {
     if (!selectedPersonId) return;
@@ -2755,6 +2755,96 @@ function switchTab(tabId) {
             loadPessoasList();
         });
     });
+
+    function updateReuniaoFieldsState() {
+    const mainCheckbox = document.getElementById('edit-fazDesignacoesReuniao');
+    const groupDiv = document.getElementById('edit-designacoesReuniao-group');
+    
+    if (!mainCheckbox || !groupDiv) return;
+
+    const isChecked = mainCheckbox.checked;
+    const checkboxes = groupDiv.querySelectorAll('input[type="checkbox"]');
+
+    if (isChecked) {
+        groupDiv.style.opacity = "1";
+        groupDiv.style.pointerEvents = "auto";
+        checkboxes.forEach(cb => cb.disabled = false);
+    } else {
+        groupDiv.style.opacity = "0.5";
+        groupDiv.style.pointerEvents = "none"; // Impede cliques
+        checkboxes.forEach(cb => {
+            cb.disabled = true;
+            cb.checked = false; // Opcional: desmarca tudo se desativar a função
+        });
+    }
+}
+
+function updatePregacaoFieldsState() {
+    // 1. Controle dos Horários (via "Faz Designações?")
+    const fazPregacaoCB = document.getElementById('edit-fazDesignacoesPregacao');
+    const horariosContainer = document.querySelector('.horarios-edit-container');
+    
+    if (fazPregacaoCB && horariosContainer) {
+        const podeVerHorarios = fazPregacaoCB.checked;
+        horariosContainer.style.opacity = podeVerHorarios ? "1" : "0.5";
+        horariosContainer.style.pointerEvents = podeVerHorarios ? "auto" : "none";
+        horariosContainer.querySelectorAll('input').forEach(input => input.disabled = !podeVerHorarios);
+    }
+
+    // 2. Controle das Designações (via "Faz de Dirigente?")
+    const fazDirigenteCB = document.getElementById('edit-fazDesignacoesDirigente');
+    const groupDiv = document.getElementById('edit-designacoesPregacao-group');
+    
+    if (fazDirigenteCB && groupDiv) {
+        const podeVerDesignacoes = fazDirigenteCB.checked;
+        groupDiv.style.opacity = podeVerDesignacoes ? "1" : "0.5";
+        groupDiv.style.pointerEvents = podeVerDesignacoes ? "auto" : "none";
+        groupDiv.querySelectorAll('input').forEach(cb => cb.disabled = !podeVerDesignacoes);
+    }
+}
+
+function updateTitleBackground(naCongregacao) {
+    const titleH3 = document.getElementById('detail-name');
+    if (!titleH3) return;
+    if (naCongregacao === false) {
+        titleH3.style.backgroundColor = "#dc3545";
+        titleH3.style.color = "white";
+    } else {
+        titleH3.style.backgroundColor = "#e9ecef";
+        titleH3.style.color = "#343a40";
+    }
+}
+
+// Bloqueio na aba Reunião
+function updateReuniaoFieldsState() {
+    const mainCB = document.getElementById('edit-fazDesignacoesReuniao');
+    const groupDiv = document.getElementById('edit-designacoesReuniao-group');
+    if (!mainCB || !groupDiv) return;
+    const isChecked = mainCB.checked;
+    groupDiv.style.opacity = isChecked ? "1" : "0.5";
+    groupDiv.style.pointerEvents = isChecked ? "auto" : "none";
+    groupDiv.querySelectorAll('input').forEach(cb => cb.disabled = !isChecked);
+}
+
+// Bloqueio na aba Pregação
+function updatePregacaoFieldsState() {
+    const fazPregacaoCB = document.getElementById('edit-fazDesignacoesPregacao');
+    const fazDirigenteCB = document.getElementById('edit-fazDesignacoesDirigente');
+    const horariosCont = document.querySelector('.horarios-edit-container');
+    const desigGroup = document.getElementById('edit-designacoesPregacao-group');
+
+    if (fazPregacaoCB && horariosCont) {
+        horariosCont.style.opacity = fazPregacaoCB.checked ? "1" : "0.5";
+        horariosCont.style.pointerEvents = fazPregacaoCB.checked ? "auto" : "none";
+        horariosCont.querySelectorAll('input').forEach(i => i.disabled = !fazPregacaoCB.checked);
+    }
+    if (fazDirigenteCB && desigGroup) {
+        desigGroup.style.opacity = fazDirigenteCB.checked ? "1" : "0.5";
+        desigGroup.style.pointerEvents = fazDirigenteCB.checked ? "auto" : "none";
+        desigGroup.querySelectorAll('input').forEach(i => i.disabled = !fazDirigenteCB.checked);
+    }
+}
+
     </script>
     
 </body>
