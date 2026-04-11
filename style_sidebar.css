@@ -1,0 +1,138 @@
+/* style_sidebar.css - Versão Transparente & Dark Mode */
+
+/* Variáveis de Cor para facilitar a adaptação (e para extensões lerem melhor) */
+:root {
+    --bg-sidebar: rgba(30, 41, 59, 0.65); /* Fundo bem transparente (65%) */
+    --blur-sidebar: blur(14px); /* Efeito de vidro focado */
+    --text-inactive: rgba(255, 255, 255, 0.7);
+    --text-active: #ffffff;
+    --border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Modo Escuro Nativo (O browser ou extensões ativam isto) */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-sidebar: rgba(15, 23, 42, 0.75); /* Fundo um pouco mais escuro no dark mode */
+        --border-color: rgba(255, 255, 255, 0.05);
+        --text-inactive: rgba(255, 255, 255, 0.6);
+    }
+}
+
+/* Ajuste do conteúdo principal */
+.content {
+    margin-left: 0 !important;
+    margin-bottom: 90px !important;
+    padding: 20px !important;
+    transition: none !important;
+}
+
+/* Barra Inferior Flutuante */
+.sidebar {
+    all: unset;
+    position: fixed !important;
+    bottom: 20px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: auto !important;
+    min-width: 300px !important;
+    max-width: 95% !important;
+    height: 52px !important; /* Ligeiramente mais fina */
+    
+    /* Cores Adaptáveis e Transparência */
+    background-color: var(--bg-sidebar) !important;
+    backdrop-filter: var(--blur-sidebar) !important;
+    -webkit-backdrop-filter: var(--blur-sidebar) !important;
+    border: 1px solid var(--border-color) !important;
+    
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 8px !important;
+    border-radius: 30px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+    z-index: 99999 !important;
+    overflow: hidden !important;
+    
+    /* Ajuda extensões de Dark Mode a perceberem que este elemento já é escuro */
+    color-scheme: dark !important; 
+}
+
+/* Esconder elementos desnecessários */
+.sidebar .logo, .sidebar h2, .sidebar .logo h2 {
+    display: none !important;
+}
+
+/* Lista de Menus */
+.nav-list {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 4px !important;
+    height: 100% !important;
+}
+
+.nav-item {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* Botões/Links */
+.nav-item a {
+    color: var(--text-inactive) !important;
+    text-decoration: none !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 16px !important;
+    height: 36px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    border-radius: 20px !important;
+    transition: all 0.2s ease-in-out !important;
+    white-space: nowrap !important;
+}
+
+.nav-item a i {
+    margin-right: 8px !important;
+    font-size: 16px !important;
+    width: auto !important;
+}
+
+/* Botão Ativo (Ao clicar e página atual) */
+.nav-item.active a {
+    background-color: #1abc9c !important; /* Mantém o verde vibrante */
+    color: var(--text-active) !important;
+    box-shadow: 0 4px 12px rgba(26, 188, 156, 0.3) !important;
+}
+
+/* Efeito de passar o rato */
+.nav-item a:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: var(--text-active) !important;
+}
+
+.nav-list::-webkit-scrollbar {
+    display: none !important;
+}
+
+/* Adaptabilidade para ecrãs pequenos */
+@media (max-width: 768px) {
+    .sidebar {
+        min-width: 92% !important;
+        height: 50px !important;
+        bottom: 15px !important;
+    }
+    .nav-item a {
+        padding: 0 12px !important;
+        font-size: 12px !important;
+    }
+    .nav-list {
+        overflow-x: auto !important;
+        justify-content: flex-start !important;
+    }
+}
