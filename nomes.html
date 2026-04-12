@@ -2819,11 +2819,15 @@ function updatePregacaoFieldsState() {
 function updateTitleBackground(naCongregacao) {
     const titleH3 = document.getElementById('detail-name');
     if (!titleH3) return;
-    if (naCongregacao === false) {
-        titleH3.style.backgroundColor = "#dc3545";
+
+    // Esta verificação cobre: 
+    // 1. O booleano false
+    // 2. A string "false" (caso algum dado tenha sido salvo como texto)
+    if (naCongregacao === false || naCongregacao === "false") { 
+        titleH3.style.backgroundColor = "#dc3545"; // Vermelho
         titleH3.style.color = "white";
     } else {
-        titleH3.style.backgroundColor = "#e9ecef";
+        titleH3.style.backgroundColor = "#e9ecef"; // Cinza padrão
         titleH3.style.color = "#343a40";
     }
 }
