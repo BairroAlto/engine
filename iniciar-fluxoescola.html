@@ -2967,7 +2967,10 @@ const initializeSystemData = async () => {
 async function loadAllPeopleMap() {
     try {
         // Busca todas as pessoas que podem participar nas reuniões
-        const pessoasSnapshot = await db.collection('pessoas').where('fazDesignacoesReuniao', '==', true).get();
+        const pessoasSnapshot = await db.collection('pessoas')
+    .where('fazDesignacoesReuniao', '==', true)
+    .where('naCongregacao', '==', true) // Nova Regra
+    .get();
         // Limpa o mapa global e preenche-o com os dados mais recentes
         allPeopleDataMap = new Map();
         pessoasSnapshot.forEach(doc => {
@@ -3370,12 +3373,12 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
 
 async function getPrecomputationData(ano) {
     console.log("[FOGUETÃO-DATA] A carregar todos os dados de pré-computação...");
-    const [
-        allPeopleSnapshot,
-        allDesignationsSnapshot,
-        historicoAnoSnapshot
-    ] = await Promise.all([
-        db.collection('pessoas').get(),
+const [
+    allPeopleSnapshot,
+    allDesignationsSnapshot,
+    historicoAnoSnapshot
+] = await Promise.all([
+    db.collection('pessoas').where('naCongregacao', '==', true).get(),
         db.collection('designacoes').get(),
         db.collection('historico').where('ano', '==', ano).get()
     ]);
@@ -3643,8 +3646,9 @@ loadNacionalidades();
         const anoFirebase = await getAnoPainelFirebase();
         const pessoasRef = db.collection('pessoas');
         let query = pessoasRef
-            .where('fazDesignacoesReuniao', '==', true)
-            .where('designacoesReuniao', 'array-contains', designacao.nome);
+    .where('fazDesignacoesReuniao', '==', true)
+    .where('naCongregacao', '==', true)
+    .where('designacoesReuniao', 'array-contains', designacao.nome);
 
         if (genderPreference === 'masculino') {
             query = query.where('genero', '==', 'Masculino');
