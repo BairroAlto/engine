@@ -1076,6 +1076,18 @@ body.sidebar-collapsed .column:first-child {
     min-width: 380px; 
 }
 
+/* Estilo para quando a pessoa não faz designações */
+.status-nao {
+    color: #dc3545 !important; /* Vermelho */
+    font-weight: bold;
+}
+
+.badge-reuniao-disabled {
+    background-color: #f8d7da !important; /* Vermelho claro */
+    color: #721c24 !important; /* Texto vinho escuro para contraste */
+    border: 1px solid #f5c6cb;
+}
+
 
 
     </style>
@@ -1800,16 +1812,25 @@ addRangeAusenciaBtn.addEventListener('click', () => { hasChanges = true; /* rest
             });
         }
 
-        function filterPessoasList() {
-            const filterText = filterPessoasInput.value.toLowerCase().trim();
-            const listItems = pessoasListUl.getElementsByTagName('li');
-            for (let i = 0; i < listItems.length; i++) {
-                const li = listItems[i];
-                if (li.textContent === 'Nenhuma pessoa encontrada.') continue;
-                const itemText = li.textContent.toLowerCase();
-                li.style.display = itemText.includes(filterText) ? '' : 'none';
-            }
-        }
+   function filterPessoasList() {
+    // Normaliza o texto digitado (remove acentos e passa para minúsculo)
+    const filterText = removerAcentos(filterPessoasInput.value.toLowerCase().trim());
+    
+    const listItems = pessoasListUl.getElementsByTagName('li');
+    
+    for (let i = 0; i < listItems.length; i++) {
+        const li = listItems[i];
+        
+        // Ignora a mensagem de "Nenhuma pessoa encontrada"
+        if (li.textContent === 'Nenhuma pessoa encontrada.') continue;
+        
+        // Normaliza o nome da pessoa na lista para comparação
+        const itemText = removerAcentos(li.textContent.toLowerCase());
+        
+        // Compara as strings normalizadas
+        li.style.display = itemText.includes(filterText) ? '' : 'none';
+    }
+}
 
         // --- Funções de Carregamento de Dados ---
         function loadAllPessoasData() {
@@ -1984,11 +2005,43 @@ function loadAllDesignacoes() {
 
         function populateDisponibilidadeTab(data) { document.getElementById('detail-ausencias').textContent = formatAusencias(data.ausencias); }
         
-        function populatePermissoesTab(data) {
-            document.getElementById('detail-fazDesignacoesReuniao').textContent = formatBoolean(data.fazDesignacoesReuniao);
-            formatArrayForDisplay(data.designacoesReuniao, 'detail-designacoesReuniao');
-            document.getElementById('detail-rule').textContent = data.rule || '-';
-        }
+    function populatePermissoesTab(data) {
+    const fazReuniaoSpan = document.getElementById('detail-fazDesignacoesReuniao');
+    const designacoesContainer = document.getElementById('detail-designacoesReuniao');
+    
+    // Define o texto Sim/Não
+    const statusText = formatBoolean(data.fazDesignacoesReuniao);
+    fazReuniaoSpan.textContent = statusText;
+
+    // Lógica de cores para o "Não"
+    if (data.fazDesignacoesReuniao === false) {
+        fazReuniaoSpan.classList.add('status-nao');
+    } else {
+        fazReuniaoSpan.classList.remove('status-nao');
+    }
+
+    // Lógica para os cards (badges) de designação
+    designacoesContainer.innerHTML = '';
+    const arr = data.designacoesReuniao || [];
+    
+    if (arr.length > 0) {
+        arr.forEach(item => {
+            const span = document.createElement('span');
+            span.textContent = item;
+            
+            // Se "Faz Desig. Reunião" for Não, aplica o estilo vermelho claro nos cards
+            if (data.fazDesignacoesReuniao === false) {
+                span.classList.add('badge-reuniao-disabled');
+            }
+            
+            designacoesContainer.appendChild(span);
+        });
+    } else {
+        designacoesContainer.textContent = 'Nenhum';
+    }
+
+    document.getElementById('detail-rule').textContent = data.rule || '-';
+}
 
 function enterEditMode(tabId) {
     if (!selectedPersonData || !dataLoaded.horarios || !dataLoaded.designacoes) {
@@ -2860,6 +2913,11 @@ function updatePregacaoFieldsState() {
         desigGroup.style.pointerEvents = fazDirigenteCB.checked ? "auto" : "none";
         desigGroup.querySelectorAll('input').forEach(i => i.disabled = !fazDirigenteCB.checked);
     }
+}
+
+// Função para remover acentos e caracteres especiais
+function removerAcentos(str) {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
     </script>
