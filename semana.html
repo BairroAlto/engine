@@ -7,20 +7,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <link rel="stylesheet" href="style_sidebar.css">
+    
     <style>
         /* Estilos Gerais */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; color: #333; }
-
-        /* Estilos da Sidebar */
-        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding-top: 20px; height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; }
-        .logo { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #34495e; }
-        .logo h2 { margin: 0; }
-        .nav-list { list-style: none; padding: 0; }
-        .nav-item a { color: white; text-decoration: none; display: flex; align-items: center; padding: 15px 20px; transition: background-color 0.3s; }
-        .nav-item a i { margin-right: 15px; width: 20px; text-align: center; }
-        .nav-item a:hover { background-color: #34495e; }
-        .nav-item.active a { background-color: #1abc9c; }
 
         /* Estilos do Conteúdo Principal */
         .content { margin-left: 250px; padding: 30px; flex-grow: 1; width: calc(100% - 250px); }
@@ -205,21 +197,8 @@
 </head>
 <body>
 
-    <div class="sidebar">
-        <div class="logo"><h2>Sistema de Escala</h2></div>
-        <nav>
-            <ul class="nav-list">
-                <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
-                <li class="nav-item active"><a href="semana.html"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
-                <li class="nav-item"><a href="fimdesemana.html"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
-                <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
-                <li class="nav-item"><a href="estatisticas.html"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
-                <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
-                <li class="nav-item"><a href="iniciar.html"><i class="fas fa-play"></i><span>Iniciar</span></a></li>
-                <li class="nav-item"><a href="criar.html"><i class="fas fa-plus"></i><span>Criar</span></a></li>
-            </ul>
-        </nav>
-    </div>
+<div id="sidebar-placeholder"></div>
+
 
     <main class="content">
         <h1>Reunião da Semana</h1>
@@ -459,6 +438,7 @@
     <!-- ===== FIM: HTML DE TODOS OS POPUPS AVANÇADOS ===== -->
 
 
+<script src="main.js"></script>
 
     <script>
         // Configuração do Firebase
@@ -2509,13 +2489,17 @@ async function openEditDesignationPopup(uniqueId) {
 
 
             
-          async function populateSingleEditDropdown(selectElement, historicoDoc, fullDesigData, generoPreferencia, idiomaPreferencia) {
+async function populateSingleEditDropdown(selectElement, historicoDoc, fullDesigData, generoPreferencia, idiomaPreferencia) {
     selectElement.innerHTML = '<option value="">Selecione...</option>';
     const roleIndex = parseInt(selectElement.dataset.roleIndex);
     const meetingDate = historicoDoc.dia;
     
     const eligiblePeople = [];
     for (const [personId, person] of allPeopleDataMap.entries()) {
+        
+        // NOVO FILTRO: A pessoa deve estar na congregação
+        if (person.naCongregacao !== true) continue;
+
         // Filtro 1: A pessoa faz designações na reunião e tem esta designação específica?
         if (!person.fazDesignacoesReuniao || !person.designacoesReuniao?.includes(fullDesigData.nome)) continue;
         
