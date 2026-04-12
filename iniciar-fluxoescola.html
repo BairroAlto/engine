@@ -899,6 +899,38 @@
     }
 }
 
+/* Estilos compactos para o resumo no Popup */
+.popup-designation-item {
+    margin-bottom: 8px;    /* Reduzido de 15px para 8px */
+    padding: 6px 10px;     /* Reduzido o preenchimento interno */
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+
+.popup-designation-name {
+    font-weight: bold;
+    font-size: 15px;       /* Tamanho de fonte ligeiramente menor */
+    margin-bottom: 2px;    /* Reduzido de 5px para 2px */
+    color: #34495e;
+}
+
+.popup-participant-list {
+    list-style: none;
+    padding-left: 15px;    /* Reduzido o recuo à esquerda */
+    margin: 0;             /* Remove margens extras da lista */
+}
+
+.popup-participant-item {
+    margin-bottom: 1px;    /* Reduzido de 3px para 1px */
+    font-size: 14px;
+    color: #555;
+}
+
+/* Garante que o container da lista não tenha scroll desnecessário */
+.popup-designation-list {
+    margin-bottom: 10px;
+}
 
     </style>
 </head>
@@ -1897,67 +1929,115 @@ const validateAllSelections = async () => {
     const validationList = document.getElementById('validation-list');
     const alertContainer = document.getElementById('validation-alert-container');
 
-    // Reset de cores e ícones
+    // 1. Reset
     document.querySelectorAll('.form-select').forEach(el => el.classList.remove('invalid-selection', 'warning-selection', 'info-selection'));
     if(iconError) iconError.style.display = 'none';
     if(iconWarning) iconWarning.style.display = 'none';
     if(iconInfo) iconInfo.style.display = 'none';
     validationList.innerHTML = '';
 
-    const currentSelections = new Map();
+    const currentSelections = new Map(); 
     const ano = await getAnoPainelFirebase();
     const mes = parseInt(document.getElementById('mes').value);
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
 
-    const [lastW, nextW, stats] = await Promise.all([
+    // Contexto da Reunião Atual
+    const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+    const horariosData = await getHorariosFromFirebase(ano);
+    const dataPlaneadaString = getMeetingDayOfMonth(ano, diasSemana, horariosData['dia-semana']);
+    const dataDaReuniaoPlaneada = new Date(dataPlaneadaString + "T12:00:00");
+
+    const [lastW, nextW, stats, pairHistory] = await Promise.all([
         getParticipantsLastWeek(ano, mes, semanaNumero),
         getParticipantsNextWeek(ano, mes, semanaNumero),
-        getParticipationHistorySummary()
+        getParticipationHistorySummary(),
+        getPairHistoryForYear(ano) 
     ]);
 
-    const allSelects = document.querySelectorAll('.form-select');
+    const allSelects = Array.from(document.querySelectorAll('.form-select')).filter(select => select.closest('.lab-popup') === null);
+    const assignedPeopleThisWeek = new Set(allSelects.map(s => s.value).filter(v => v));
     let hasViolations = false;
+
+    console.log(`%c--- VALIDAÇÃO: ${dataPlaneadaString} ---`, "background: #34495e; color: white; padding: 5px;");
 
     allSelects.forEach(select => {
         if (!select.value) return;
         const personId = select.value;
         const personName = select.options[select.selectedIndex].text;
 
-        // VERMELHO: Duplicados
+        // Duplicação e Semanas Adjacentes (Vermelho)
         if (currentSelections.has(personId)) {
-            hasViolations = true;
-            iconError.style.display = 'block';
+            hasViolations = true; iconError.style.display = 'block';
             select.classList.add('invalid-selection');
-            document.getElementById(currentSelections.get(personId))?.classList.add('invalid-selection');
+            const originalEl = document.getElementById(currentSelections.get(personId));
+            if (originalEl) originalEl.classList.add('invalid-selection');
             const li = document.createElement('li');
-            li.textContent = `⚠️ ${personName} está duplicado!`;
+            li.innerHTML = `⚠️ <b>${personName}</b> está duplicado nesta semana.`;
             li.style.color = '#c0392b';
             validationList.appendChild(li);
         } else {
             currentSelections.set(personId, select.id);
         }
 
-        // LARANJA: Semana passada/seguinte
         if (lastW.has(personId) || nextW.has(personId)) {
-            hasViolations = true;
-            iconWarning.style.display = 'block';
-            if (!select.classList.contains('invalid-selection')) select.classList.add('warning-selection');
+            hasViolations = true; iconError.style.display = 'block';
+            select.classList.add('invalid-selection');
+            const periodo = lastW.has(personId) ? "PASSADA" : "PRÓXIMA";
             const li = document.createElement('li');
-            li.textContent = `🔸 ${personName} participou recentemente.`;
-            li.style.color = '#f39c12';
+            li.innerHTML = `⚠️ <b>${personName}</b> participa na semana ${periodo}.`;
+            li.style.color = '#c0392b';
             validationList.appendChild(li);
         }
+    });
 
-        // AZUL: Informação histórica
-        const pStats = stats.get(personId);
-        if (!pStats || pStats.totalCount <= 1) {
-            hasViolations = true;
-            iconInfo.style.display = 'block';
-            if (!select.classList.contains('invalid-selection') && !select.classList.contains('warning-selection')) select.classList.add('info-selection');
-            const li = document.createElement('li');
-            li.textContent = `ℹ️ Primeira vez de ${personName}.`;
-            li.style.color = '#2980b9';
-            validationList.appendChild(li);
+    // 3. ANÁLISE DE PARES (Paula & Lucivânia)
+    document.querySelectorAll('.active-designation-container').forEach(container => {
+        const selectsInCard = Array.from(container.querySelectorAll('.form-select')).filter(s => s.value && !s.closest('.lab-popup'));
+        
+        if (selectsInCard.length === 2) {
+            const p1Id = selectsInCard[0].value;
+            const p2Id = selectsInCard[1].value;
+            const p1Name = selectsInCard[0].options[selectsInCard[0].selectedIndex].text;
+            const p2Name = selectsInCard[1].options[selectsInCard[1].selectedIndex].text;
+
+            const pairKey = [p1Id, p2Id].sort().join('_');
+            const history = pairHistory.get(pairKey) || [];
+            
+            console.group(`Análise Par: ${p1Name} & ${p2Name}`);
+
+            const repeticaoRecente = history.find(h => {
+                if (!h.dia) return false;
+                const dataNoPassado = new Date(h.dia + "T12:00:00");
+                const diffTime = dataDaReuniaoPlaneada - dataNoPassado;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                console.log(`Comparando ${dataPlaneadaString} com ${h.dia} -> ${diffDays} dias.`);
+                
+                // Retorna verdadeiro se a colaboração foi entre 1 e 180 dias atrás
+                return diffDays > 0 && diffDays <= 180;
+            });
+
+            if (repeticaoRecente) {
+                // Verificar se existem outros candidatos livres para um dos dois lugares
+                const alternativas1 = getEligiblePeopleForDropdown(selectsInCard[0]).filter(id => !assignedPeopleThisWeek.has(id));
+                const alternativas2 = getEligiblePeopleForDropdown(selectsInCard[1]).filter(id => !assignedPeopleThisWeek.has(id));
+
+                if (alternativas1.length > 0 || alternativas2.length > 0) {
+                    console.error("❌ Repetição detetada e existem alternativas.");
+                    hasViolations = true; iconError.style.display = 'block';
+                    selectsInCard[0].classList.add('invalid-selection');
+                    selectsInCard[1].classList.add('invalid-selection');
+
+                    const li = document.createElement('li');
+                    const dataFormatada = new Date(repeticaoRecente.dia + "T12:00:00").toLocaleDateString('pt-PT');
+                    li.innerHTML = `⚠️ <b>Repetição Recente:</b> ${p1Name} e ${p2Name} trabalharam juntos em ${dataFormatada}. Como há mais irmãos livres, mude a dupla.`;
+                    li.style.color = '#c0392b';
+                    validationList.appendChild(li);
+                } else {
+                    console.warn("⚠️ Repetição detetada mas não há alternativas livres.");
+                }
+            }
+            console.groupEnd();
         }
     });
 
@@ -3546,11 +3626,15 @@ async function openLabPopup(designationContainer) {
         }
     };
 
-    const closePopup = () => {
-        labPopup.style.display = 'none';
-        document.body.classList.remove('popup-open');
-        applyBtn.onclick = null;
-    };
+  const closePopup = () => {
+    labPopup.style.display = 'none';
+    document.body.classList.remove('popup-open');
+    applyBtn.onclick = null;
+    
+    // LIMPEZA ADICIONADA: Remove os clones para não causar erro de duplicação
+    selectionContainer.innerHTML = '<h3><i class="fas fa-user-check"></i> Seleção Atual</h3>';
+    suggestionsContainer.innerHTML = '';
+};
     
     closeBtn.onclick = closePopup;
 }
@@ -5788,32 +5872,35 @@ const saveParticipationHistoryForIndividuals = async (historicoData) => {
 
 const getPairHistoryForYear = async (ano) => {
     const pairHistory = new Map();
+    // Busca o histórico do ano atual
     const historicoSnapshot = await db.collection('historico')
-        .where('ano', '==', ano)
+        .where('ano', '==', parseInt(ano))
         .where('parte', '==', 'escola')
         .get();
 
     historicoSnapshot.forEach(doc => {
         const data = doc.data();
-        data.designacoes?.forEach(desig => {
-            const participantes = Object.values(desig.participantes || {});
-            const papeis = desig.participantes || {};
-            if (participantes.length >= 2) {
-                // Gera todas as combinações de pares dentro da designação (para triplas, etc.)
-                for (let i = 0; i < participantes.length; i++) {
-                    for (let j = i + 1; j < participantes.length; j++) {
-                        const pairKey = [participantes[i], participantes[j]].sort().join('_');
-                        if (!pairHistory.has(pairKey)) {
-                            pairHistory.set(pairKey, []);
+        if (data.designacoes && data.dia) { // Garantir que o documento tem data
+            data.designacoes.forEach(desig => {
+                const participantes = Object.values(desig.participantes || {});
+                if (participantes.length >= 2) {
+                    for (let i = 0; i < participantes.length; i++) {
+                        for (let j = i + 1; j < participantes.length; j++) {
+                            const pairKey = [participantes[i], participantes[j]].sort().join('_');
+                            if (!pairHistory.has(pairKey)) {
+                                pairHistory.set(pairKey, []);
+                            }
+                            // ADICIONADO: Guardar explicitamente o dia da colaboração
+                            pairHistory.get(pairKey).push({
+                                designacaoId: desig.designacaoId,
+                                dia: data.dia, 
+                                roles: desig.participantes
+                            });
                         }
-                        pairHistory.get(pairKey).push({
-                            designacaoId: desig.designacaoId,
-                            roles: papeis
-                        });
                     }
                 }
-            }
-        });
+            });
+        }
     });
     return pairHistory;
 };
