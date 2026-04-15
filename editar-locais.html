@@ -12,42 +12,71 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
     <style>
-        main.content { color: #2c3e50; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 700px; margin: 40px auto 0 auto; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #2c3e50; font-weight: bold; }
-        .form-group input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-        .btn-salvar { background-color: #2980b9; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
-        .btn-salvar:hover { background-color: #3498db; }
-        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; }
+        main.content { color: #2c3e50; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
-        /* Estilos para a lista de locais */
+        /* Estilos base */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #2c3e50; font-weight: bold; font-size: 14px;}
+        
+        /* Estilo unificado para Input e Select (baseado na página de Designações) */
+        .form-group input[type="text"], 
+        .form-group select { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #eee; 
+            border-radius: 8px; 
+            font-size: 14px; 
+            box-sizing: border-box; 
+            transition: 0.3s;
+            background-color: white;
+            color: #2c3e50;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group select:focus { 
+            border-color: #3498db; 
+            outline: none; 
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.1); 
+        }
+
+        .btn-salvar { background-color: #2980b9; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; font-weight: bold; margin-top: 10px;}
+        .btn-salvar:hover { background-color: #3498db; }
+        .btn-voltar { display: inline-block; margin-bottom: 20px; background-color: #7f8c8d; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; transition: 0.3s; }
+        .btn-voltar:hover { background-color: #95a5a6; }
+        
+        /* Lista de locais */
         .list-container { max-width: 700px; margin: 0 auto; }
         .panel-card { background-color: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
         .panel-card h2 { color: #2c3e50; margin-top: 0; margin-bottom: 15px; font-size: 20px; }
-        .local-list { margin-top: 15px; }
-        .local-item { display: flex; align-items: center; padding: 12px 10px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 8px; justify-content: space-between; }
+        .local-item { display: flex; align-items: center; padding: 12px 15px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 10px; justify-content: space-between; transition: 0.2s;}
+        .local-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #3498db;}
         .local-info { display: flex; flex-direction: column; text-align: left; flex-grow: 1; margin-left: 15px; }
-        .local-name { font-weight: bold; color: #34495e; }
-        .local-tag {
-            font-size: 0.9em;
-            padding: 3px 8px;
-            border-radius: 12px; /* Deixa a tag mais arredondada */
-            display: inline-block;
-            margin-top: 4px;
-            font-weight: bold;
-            line-height: 1.2;
+        .local-name { font-weight: bold; color: #34495e; font-size: 16px; }
+        .local-tag { font-size: 0.75em; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-top: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;}
+        
+        .edit-btn.inline { background: #f8f9fa; border: 1px solid #ddd; color: #3498db; cursor: pointer; font-size: 16px; width: 40px; height: 40px; border-radius: 50%; transition: 0.3s; display: flex; align-items: center; justify-content: center;}
+        .edit-btn.inline:hover { color: white; background-color: #3498db; border-color: #3498db; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); z-index: 1000; align-items: center; justify-content: center;
         }
-        .edit-btn.inline { background: none; border: none; color: #3498db; cursor: pointer; font-size: 19px; padding: 5px; }
-        .edit-btn.inline:hover { color: #2980b9; }
+        .modal-content {
+            background-color: #fff; padding: 30px; border-radius: 12px; width: 90%; max-width: 450px;
+            position: relative; animation: slideDown 0.3s ease; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .close-modal { position: absolute; top: 20px; right: 20px; font-size: 20px; color: #95a5a6; cursor: pointer; }
+        
+        @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     </style>
 </head>
 <body>
     
-   <div id="sidebar-placeholder"></div>
+    <div id="sidebar-placeholder"></div>
 
     <main class="content">
-        <a href="criar.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <a href="index.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</a>
         <h1>Editar Locais</h1>
         
         <div class="list-container">
@@ -57,19 +86,29 @@
             </div>
         </div>
         
-        <div class="card" id="edit-form-card" style="display: none;">
-            <form id="editar-local-form">
-                <div class="form-group">
-                    <label for="nome-local">Nome do Local</label>
-                    <input type="text" id="nome-local" required>
-                </div>
-                <div class="form-group">
-                    <label for="tag-local">Tag</label>
-                    <input list="tags-list" id="tag-local" placeholder="Selecione ou digite uma nova tag">
-                    <datalist id="tags-list"></datalist>
-                </div>
-                <button type="submit" class="btn-salvar">Salvar Alterações</button>
-            </form>
+        <!-- MODAL DE EDIÇÃO -->
+        <div id="modal-editar" class="modal-overlay">
+            <div class="modal-content">
+                <span class="close-modal" id="btn-fechar-modal"><i class="fas fa-times"></i></span>
+                <h2 style="margin-top:0">Editar Local</h2>
+                
+                <form id="editar-local-form">
+                    <div class="form-group">
+                        <label for="nome-local">Nome do Local</label>
+                        <input type="text" id="nome-local" required placeholder="Ex: Hospital Central">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tag-local">Tag / Categoria</label>
+                        <select id="tag-local">
+                            <option value="">Nenhuma Tag</option>
+                            <!-- Tags carregadas dinamicamente aqui -->
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-salvar"><i class="fas fa-save"></i> Salvar Alterações</button>
+                </form>
+            </div>
         </div>
     </main>
 
@@ -82,45 +121,55 @@
                 return;
             }
 
-            const mainContent = document.querySelector('.content');
-            const editFormCard = document.getElementById('edit-form-card');
+            const modalEditar = document.getElementById('modal-editar');
+            const btnFecharModal = document.getElementById('btn-fechar-modal');
             const editForm = document.getElementById('editar-local-form');
             const listaLocaisDiv = document.getElementById('lista-locais');
-            const tagsDatalist = document.getElementById('tags-list');
+            const tagSelect = document.getElementById('tag-local');
             
             let idAtualEmEdicao = null;
             
-            // --- INÍCIO DA LÓGICA DE CORES PARA TAGS ---
+            // Cores para as Tags
             const tagColorMap = {};
             const colorPalette = [
-                { bg: '#e8eaf6', text: '#3f51b5' }, // Indigo
-                { bg: '#e0f2f1', text: '#00796b' }, // Teal
-                { bg: '#fce4ec', text: '#d81b60' }, // Pink
-                { bg: '#fff3e0', text: '#ef6c00' }, // Orange
-                { bg: '#e3f2fd', text: '#1976d2' }, // Blue
-                { bg: '#f9fbe7', text: '#afb42b' }, // Lime
-                { bg: '#ede7f6', text: '#5e35b1' }, // Deep Purple
-                { bg: '#efebe9', text: '#6d4c41' }  // Brown
+                { bg: '#E3F2FD', text: '#1976D2' }, { bg: '#F1F8E9', text: '#388E3C' },
+                { bg: '#FFF3E0', text: '#F57C00' }, { bg: '#FCE4EC', text: '#C2185B' },
+                { bg: '#F3E5F5', text: '#7B1FA2' }, { bg: '#E0F7FA', text: '#0097A7' },
+                { bg: '#EFEBE9', text: '#5D4037' }, { bg: '#ECEFF1', text: '#455A64' }
             ];
             let nextColorIndex = 0;
-            // --- FIM DA LÓGICA DE CORES ---
 
-            async function carregarTags() {
-                try {
-                    const snapshot = await db.collection('locais').get();
-                    const tags = new Set();
-                    snapshot.forEach(doc => { if (doc.data().tag) { tags.add(doc.data().tag); } });
-                    tagsDatalist.innerHTML = '';
-                    tags.forEach(tag => {
-                        const option = document.createElement('option');
-                        option.value = tag;
-                        tagsDatalist.appendChild(option);
-                    });
-                } catch (error) { console.error("Erro ao carregar tags: ", error); }
+            function fecharModal() {
+                modalEditar.style.display = 'none';
+                editForm.reset();
+                idAtualEmEdicao = null;
             }
 
+            btnFecharModal.addEventListener('click', fecharModal);
+            window.addEventListener('click', (e) => { if (e.target === modalEditar) fecharModal(); });
+
+            // Função para carregar as tags existentes no Dropdown
+            async function carregarTagsDropdown() {
+                try {
+                    const snapshot = await db.collection('locais').get();
+                    const tagsSet = new Set();
+                    snapshot.forEach(doc => { if (doc.data().tag) tagsSet.add(doc.data().tag); });
+                    
+                    // Limpa mas mantém a opção padrão
+                    tagSelect.innerHTML = '<option value="">Nenhuma Tag</option>';
+                    
+                    tagsSet.forEach(tag => {
+                        const option = document.createElement('option');
+                        option.value = tag;
+                        option.textContent = tag;
+                        tagSelect.appendChild(option);
+                    });
+                } catch (error) { console.error("Erro ao carregar tags:", error); }
+            }
+
+            // Renderiza a lista principal
             async function renderizarLocais() {
-                listaLocaisDiv.innerHTML = 'Carregando...';
+                listaLocaisDiv.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
                 try {
                     const snapshot = await db.collection('locais').orderBy('nome').get();
                     listaLocaisDiv.innerHTML = '';
@@ -134,83 +183,79 @@
                         const data = doc.data();
                         let tagHtml = '';
 
-                        // --- LÓGICA PARA APLICAR A COR NA TAG ---
                         if (data.tag) {
-                            if (!tagColorMap[data.tag]) { // Se a tag ainda não tem cor
+                            if (!tagColorMap[data.tag]) {
                                 tagColorMap[data.tag] = colorPalette[nextColorIndex % colorPalette.length];
                                 nextColorIndex++;
                             }
-                            const colorPair = tagColorMap[data.tag];
-                            tagHtml = `<span class="local-tag" style="background-color: ${colorPair.bg}; color: ${colorPair.text};">${data.tag}</span>`;
+                            const colors = tagColorMap[data.tag];
+                            tagHtml = `<span class="local-tag" style="background-color: ${colors.bg}; color: ${colors.text};">${data.tag}</span>`;
                         }
-                        // --- FIM DA LÓGICA DE COR ---
 
                         const itemHtml = `
-                            <div class="local-item" data-id="${doc.id}">
-                                <i class="fas fa-map-marker-alt" style="color: #3498db;"></i>
+                            <div class="local-item">
+                                <i class="fas fa-map-marker-alt" style="color: #3498db; font-size: 1.2em;"></i>
                                 <div class="local-info">
                                     <span class="local-name">${data.nome}</span>
                                     ${tagHtml}
                                 </div>
-                                <button class="edit-btn inline"><i class="fas fa-edit"></i></button>
+                                <button class="edit-btn inline" onclick="abrirEdicao('${doc.id}')" title="Editar"><i class="fas fa-edit"></i></button>
                             </div>`;
                         listaLocaisDiv.innerHTML += itemHtml;
                     });
                 } catch (error) {
-                    console.error("Erro ao carregar locais: ", error);
                     listaLocaisDiv.innerHTML = 'Erro ao carregar locais.';
                 }
             }
 
-            async function carregarDadosFormulario(id) {
+            // Abre o modal e preenche os campos
+            window.abrirEdicao = async function(id) {
                 try {
                     const doc = await db.collection('locais').doc(id).get();
                     if (doc.exists) {
                         const data = doc.data();
                         document.getElementById('nome-local').value = data.nome || '';
-                        document.getElementById('tag-local').value = data.tag || '';
+                        
+                        // Garante que as tags estejam atualizadas antes de selecionar
+                        await carregarTagsDropdown();
+                        tagSelect.value = data.tag || '';
                         
                         idAtualEmEdicao = id;
-                        editFormCard.style.display = 'block';
-                        editFormCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        modalEditar.style.display = 'flex';
                     }
-                } catch (error) { console.error("Erro ao buscar dados do local:", error); }
-            }
-            
-            await carregarTags();
-            await renderizarLocais();
+                } catch (error) { console.error(error); }
+            };
 
-            mainContent.addEventListener('click', function(e) {
-                const editButton = e.target.closest('.edit-btn.inline');
-                if (editButton) {
-                    const localItemId = e.target.closest('.local-item').dataset.id;
-                    carregarDadosFormulario(localItemId);
-                }
-            });
-
+            // Salvar alterações
             editForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 if (!idAtualEmEdicao) return;
 
-                const localAtualizado = {
+                const btnSubmit = editForm.querySelector('.btn-salvar');
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Aguarde...';
+
+                const dados = {
                     nome: document.getElementById('nome-local').value.trim(),
-                    tag: document.getElementById('tag-local').value.trim(),
+                    tag: tagSelect.value,
                     dataModificacao: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
                 try {
-                    await db.collection('locais').doc(idAtualEmEdicao).update(localAtualizado);
-                    alert('Local atualizado com sucesso!');
-                    editForm.reset();
-                    editFormCard.style.display = 'none';
-                    idAtualEmEdicao = null;
-                    await renderizarLocais(); // Renderiza de novo para mostrar a tag atualizada com a cor certa
-                    await carregarTags();
+                    await db.collection('locais').doc(idAtualEmEdicao).update(dados);
+                    fecharModal();
+                    await renderizarLocais();
                 } catch (error) {
-                    console.error("Erro ao atualizar local:", error);
-                    alert("Ocorreu um erro ao salvar as alterações.");
+                    alert("Erro ao salvar.");
+                } finally {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
                 }
             });
+
+            // Inicialização
+            await carregarTagsDropdown();
+            await renderizarLocais();
         });
     </script>
 </body>
