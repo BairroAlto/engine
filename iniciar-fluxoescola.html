@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script>
+
+       <script>
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
@@ -24,6 +25,7 @@
         }
         const db = firebase.firestore();
     </script>
+
     <style>
 
 .lupa-icon {
@@ -932,6 +934,289 @@
     margin-bottom: 10px;
 }
 
+.search-suggestions {
+    display: none; /* Escondido por padrão */
+    position: absolute;
+    border: 1px solid #ddd;
+    border-top: none;
+    background-color: white;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 2000; /* Deve ficar sobre os outros elementos */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.suggestion-item {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.suggestion-item:hover {
+    background-color: #f1f1f1;
+}
+
+/* Garante que o input do formulário tenha a classe para aplicar estilos */
+#pesquisaPessoa {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+            .week-info {
+                margin-bottom: 20px;
+                padding: 15px;
+                background-color: #f8f9fa;
+                border-radius: 4px;
+                border: 1px solid #e9ecef;
+            }
+            .week-info p {
+                margin: 0;
+                color: #2c3e50;
+                font-size: 16px;
+                text-align: center;
+                line-height: 1.5em;
+            }
+                    /* Styles for Statistics Table */
+
+
+        .estatisticas-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .estatisticas-table th,
+        .estatisticas-table td {
+            border: 1px solid #ddd;
+            padding: 10px 12px;
+            text-align: left;
+        }
+
+        .estatisticas-table thead th {
+            background-color: #34495e;
+            color: white;
+            z-index: 10;
+        }
+        
+        .estatisticas-table thead th:first-child {
+            min-width: 200px;
+        }
+
+        .estatisticas-table tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .estatisticas-table tbody tr:hover {
+            background-color: #e9ecef;
+        }
+        
+        .estatisticas-table td:not(:first-child) {
+            text-align: center;
+        }
+
+    .estatisticas-filtros-container {
+    display: flex;
+    flex-wrap: wrap; /* <-- ADICIONE ESTA LINHA */
+    gap: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+    align-items: flex-end;
+}
+
+        .estatisticas-filtros-container .form-group {
+            margin-bottom: 0;
+        }
+
+        .estatisticas-filtros-container select {
+            width: 180px; /* Largura fixa para os selects */
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+
+/* 1. Trava o scroll da página de fundo */
+body.popup-open {
+    overflow: hidden;
+}
+
+/* 2. Define a estrutura do popup: um cabeçalho fixo e um corpo que cresce */
+#estatisticasPopup .popup-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+/* 3. Garante que o cabeçalho do popup não encolha */
+#estatisticasPopup .popup-header {
+    flex-shrink: 0;
+}
+
+/* 4. A MÁGICA: O corpo do popup é a área de scroll */
+#estatisticasPopup .popup-body {
+    flex-grow: 1;       /* Ocupa todo o espaço vertical restante */
+    overflow-y: auto;   /* Adiciona a barra de rolagem AQUI */
+    padding: 15px;      /* Adiciona algum espaçamento interno para o conteúdo */
+}
+
+/* 5. Garante que o container da tabela NÃO tenha scroll ou altura limitada */
+#estatisticasTableContainer {
+    max-height: none;
+    overflow: visible;
+}
+
+/* 6. IMPORTANTE: Garante que o cabeçalho da tabela NÃO seja 'sticky' para evitar conflitos */
+.estatisticas-table thead th {
+   position: static; /* Ou simplesmente remova qualquer regra 'position: sticky' */
+}
+
+
+.tabs {
+    display: flex;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 20px;
+}
+
+/* Botão de cada aba */
+.tab-button {
+    padding: 12px 20px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-size: 16px;
+    color: #555;
+    position: relative;
+    top: 2px; /* Alinha com a borda inferior */
+    border-bottom: 2px solid transparent;
+}
+
+.tab-button:hover {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+/* Estilo da aba ativa */
+.tab-button.active {
+    border-bottom: 2px solid #3498db;
+    font-weight: bold;
+    color: #3498db;
+}
+
+/* Container do conteúdo das abas */
+.tab-content-container {
+    padding-top: 10px;
+}
+
+/* Esconde as abas inativas */
+.tab-content {
+    display: none;
+}
+
+/* Mostra a aba ativa */
+.tab-content.active {
+    display: block;
+}
+
+/* Estilos para as colunas da aba "Mais/Menos" */
+.mais-menos-container {
+    display: flex;
+    gap: 20px;
+    justify-content: space-around;
+}
+
+.rank-column {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+}
+.rank-column h4 {
+    text-align: center;
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+.rank-column ol {
+    padding-left: 20px;
+    margin: 0;
+}
+.rank-column ol li {
+    padding: 8px 5px;
+    font-size: 15px;
+}
+.rank-column ol li:nth-child(odd) {
+    background-color: #f9f9f9;
+}
+
+/* Cores específicas para cada coluna */
+.col-mais { background-color: rgba(46, 204, 113, 0.08); border-left: 4px solid #2ecc71; }
+.col-menos { background-color: rgba(231, 76, 60, 0.08); border-left: 4px solid #e74c3c; }
+.col-antiga { background-color: rgba(243, 156, 18, 0.08); border-left: 4px solid #f39c12; }
+
+/* Classe para destacar valores baixos na aba "Dirigentes" */
+.low-participation {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.form-select.warning-selection {
+    border: 2px solid #f39c12; /* Laranja/Amarelo */
+    background-color: #fef9e7;
+}
+
+/* Estilo para a borda azul no dropdown do participante */
+.form-select.info-selection {
+    border: 2px solid #3498db; /* Azul */
+    background-color: #eaf5fb; /* Azul muito claro */
+}
+
+/* Estilo para o ícone de alerta ficar azul quando SÓ existem avisos informativos */
+#validation-alert-icon.info-only {
+    color: #3498db; /* Azul */
+}
+
+#validation-alert-container {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column-reverse; /* Empilha de baixo para cima */
+    gap: 10px;
+    align-items: center;
+}
+
+#validation-alert-container i {
+    font-size: 30px;
+    cursor: pointer;
+    background-color: white;
+    border-radius: 50%;
+    padding: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+}
+
+#validation-alert-container i:hover {
+    transform: scale(1.2);
+}
+
+/* Garante que a borda vermelha apareça no select */
+.form-select.invalid-selection {
+    border: 2px solid #e74c3c !important;
+    background-color: #fbeae5 !important;
+}
+
+/* Esconde a seção de escolha manual de designações */
+#designacoesSection h4, #designacoesList {
+    display: none;
+}
+
     </style>
 </head>
 <body>
@@ -1238,290 +1523,6 @@
      <div id="sidebar-placeholder"></div>
 
     <main class="content">
-        <style>
-
-            /* =================================================================== */
-/* ============= CSS PARA SUGESTÕES DE PESQUISA DE PERFIL ============ */
-/* =================================================================== */
-.search-suggestions {
-    display: none; /* Escondido por padrão */
-    position: absolute;
-    border: 1px solid #ddd;
-    border-top: none;
-    background-color: white;
-    width: 100%;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 2000; /* Deve ficar sobre os outros elementos */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.suggestion-item {
-    padding: 10px;
-    cursor: pointer;
-}
-
-.suggestion-item:hover {
-    background-color: #f1f1f1;
-}
-
-/* Garante que o input do formulário tenha a classe para aplicar estilos */
-#pesquisaPessoa {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 16px;
-}
-
-            .week-info {
-                margin-bottom: 20px;
-                padding: 15px;
-                background-color: #f8f9fa;
-                border-radius: 4px;
-                border: 1px solid #e9ecef;
-            }
-            .week-info p {
-                margin: 0;
-                color: #2c3e50;
-                font-size: 16px;
-                text-align: center;
-                line-height: 1.5em;
-            }
-                    /* Styles for Statistics Table */
-
-
-        .estatisticas-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 14px;
-        }
-
-        .estatisticas-table th,
-        .estatisticas-table td {
-            border: 1px solid #ddd;
-            padding: 10px 12px;
-            text-align: left;
-        }
-
-        .estatisticas-table thead th {
-            background-color: #34495e;
-            color: white;
-            z-index: 10;
-        }
-        
-        .estatisticas-table thead th:first-child {
-            min-width: 200px;
-        }
-
-        .estatisticas-table tbody tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-
-        .estatisticas-table tbody tr:hover {
-            background-color: #e9ecef;
-        }
-        
-        .estatisticas-table td:not(:first-child) {
-            text-align: center;
-        }
-
-    .estatisticas-filtros-container {
-    display: flex;
-    flex-wrap: wrap; /* <-- ADICIONE ESTA LINHA */
-    gap: 20px;
-    margin-bottom: 20px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #eee;
-    align-items: flex-end;
-}
-
-        .estatisticas-filtros-container .form-group {
-            margin-bottom: 0;
-        }
-
-        .estatisticas-filtros-container select {
-            width: 180px; /* Largura fixa para os selects */
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-
-/* 1. Trava o scroll da página de fundo */
-body.popup-open {
-    overflow: hidden;
-}
-
-/* 2. Define a estrutura do popup: um cabeçalho fixo e um corpo que cresce */
-#estatisticasPopup .popup-content {
-    display: flex;
-    flex-direction: column;
-    max-height: 90vh;
-}
-
-/* 3. Garante que o cabeçalho do popup não encolha */
-#estatisticasPopup .popup-header {
-    flex-shrink: 0;
-}
-
-/* 4. A MÁGICA: O corpo do popup é a área de scroll */
-#estatisticasPopup .popup-body {
-    flex-grow: 1;       /* Ocupa todo o espaço vertical restante */
-    overflow-y: auto;   /* Adiciona a barra de rolagem AQUI */
-    padding: 15px;      /* Adiciona algum espaçamento interno para o conteúdo */
-}
-
-/* 5. Garante que o container da tabela NÃO tenha scroll ou altura limitada */
-#estatisticasTableContainer {
-    max-height: none;
-    overflow: visible;
-}
-
-/* 6. IMPORTANTE: Garante que o cabeçalho da tabela NÃO seja 'sticky' para evitar conflitos */
-.estatisticas-table thead th {
-   position: static; /* Ou simplesmente remova qualquer regra 'position: sticky' */
-}
-
-
-.tabs {
-    display: flex;
-    border-bottom: 2px solid #ddd;
-    margin-bottom: 20px;
-}
-
-/* Botão de cada aba */
-.tab-button {
-    padding: 12px 20px;
-    cursor: pointer;
-    border: none;
-    background-color: transparent;
-    font-size: 16px;
-    color: #555;
-    position: relative;
-    top: 2px; /* Alinha com a borda inferior */
-    border-bottom: 2px solid transparent;
-}
-
-.tab-button:hover {
-    background-color: #f5f5f5;
-    color: #333;
-}
-
-/* Estilo da aba ativa */
-.tab-button.active {
-    border-bottom: 2px solid #3498db;
-    font-weight: bold;
-    color: #3498db;
-}
-
-/* Container do conteúdo das abas */
-.tab-content-container {
-    padding-top: 10px;
-}
-
-/* Esconde as abas inativas */
-.tab-content {
-    display: none;
-}
-
-/* Mostra a aba ativa */
-.tab-content.active {
-    display: block;
-}
-
-/* Estilos para as colunas da aba "Mais/Menos" */
-.mais-menos-container {
-    display: flex;
-    gap: 20px;
-    justify-content: space-around;
-}
-
-.rank-column {
-    flex: 1;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-}
-.rank-column h4 {
-    text-align: center;
-    margin-top: 0;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
-}
-.rank-column ol {
-    padding-left: 20px;
-    margin: 0;
-}
-.rank-column ol li {
-    padding: 8px 5px;
-    font-size: 15px;
-}
-.rank-column ol li:nth-child(odd) {
-    background-color: #f9f9f9;
-}
-
-/* Cores específicas para cada coluna */
-.col-mais { background-color: rgba(46, 204, 113, 0.08); border-left: 4px solid #2ecc71; }
-.col-menos { background-color: rgba(231, 76, 60, 0.08); border-left: 4px solid #e74c3c; }
-.col-antiga { background-color: rgba(243, 156, 18, 0.08); border-left: 4px solid #f39c12; }
-
-/* Classe para destacar valores baixos na aba "Dirigentes" */
-.low-participation {
-    color: #e74c3c;
-    font-weight: bold;
-}
-
-.form-select.warning-selection {
-    border: 2px solid #f39c12; /* Laranja/Amarelo */
-    background-color: #fef9e7;
-}
-
-/* Estilo para a borda azul no dropdown do participante */
-.form-select.info-selection {
-    border: 2px solid #3498db; /* Azul */
-    background-color: #eaf5fb; /* Azul muito claro */
-}
-
-/* Estilo para o ícone de alerta ficar azul quando SÓ existem avisos informativos */
-#validation-alert-icon.info-only {
-    color: #3498db; /* Azul */
-}
-
-#validation-alert-container {
-    position: fixed;
-    bottom: 25px;
-    right: 25px;
-    z-index: 2000;
-    display: flex;
-    flex-direction: column-reverse; /* Empilha de baixo para cima */
-    gap: 10px;
-    align-items: center;
-}
-
-#validation-alert-container i {
-    font-size: 30px;
-    cursor: pointer;
-    background-color: white;
-    border-radius: 50%;
-    padding: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    transition: transform 0.2s;
-}
-
-#validation-alert-container i:hover {
-    transform: scale(1.2);
-}
-
-/* Garante que a borda vermelha apareça no select */
-.form-select.invalid-selection {
-    border: 2px solid #e74c3c !important;
-    background-color: #fbeae5 !important;
-}
-
-        </style>
 
         <div class="card">
             <h1>Iniciar Fluxo Escola</h1>
@@ -1664,17 +1665,135 @@ body.popup-open {
 
  <script>
         
+        // --- FUNÇÕES AUXILIARES DE TRATAMENTO DE TEXTO ---
+
+
+
+
+// --- FUNÇÃO PARA CARREGAR O JSON E MONTAR AS DESIGNAÇÕES ---
+
+async function processarMwbAutomatico() {
+    const ano = await getAnoPainelFirebase();
+    const mesOriginal = document.getElementById('mes').value;
+    const mesFormatado = mesOriginal.padStart(2, '0');
+    const caminhoJson = `js/mwb/${ano}/${mesFormatado}.json`;
+
+    // Pegamos a data que o sistema já calculou no cabeçalho
+    const infoSemana = document.getElementById('weekDisplay').innerText;
+    // Extrai o que está entre parênteses: "3 Ago - 9 Ago"
+    const dataMatch = infoSemana.match(/\((.*?)\)/);
+    if (!dataMatch) return;
+    
+    const tituloProcurado = formatarDataParaTituloJSON(dataMatch[1]);
+    console.log("Procurando no JSON por:", tituloProcurado);
+
+    try {
+        const response = await fetch(caminhoJson);
+        const data = await response.json();
+
+        // Encontra a semana correta no JSON
+        const semana = data.artigos.find(a => a.titulo.toUpperCase() === tituloProcurado);
+
+        if (!semana) {
+            console.error("Semana não encontrada no arquivo JSON.");
+            return;
+        }
+
+        // Extrai apenas os subtemas (que são as designações)
+        // Ignoramos os primeiros subtemas de cântico/comentários se necessário
+        const itensMwb = semana.conteudo
+            .filter(c => c.tipo === "subtema" && /^\d+\./.test(c.texto))
+            .map(c => limparNomeDesignacao(c.texto));
+
+        console.log("Designações encontradas no MWB:", itensMwb);
+
+        // Agora buscamos os IDs dessas designações no Firebase
+        await montarDesignacoesAutomaticas(itensMwb);
+
+    } catch (err) {
+        console.error("Erro ao carregar o arquivo MWB:", err);
+        alert("Não foi possível encontrar o arquivo de programação para esta data.");
+    }
+}
+
+async function montarDesignacoesAutomaticas(listaNomesMwb) {
+    const designacoesRef = db.collection('designacoes');
+    const containerAtivas = document.getElementById('activeDesignationsContainer');
+    const containerLeitura = document.getElementById('leituraBibliaDesignationContainer');
+    
+    // Limpamos o que existir de escalas anteriores
+    containerAtivas.innerHTML = '';
+    containerLeitura.innerHTML = '';
+
+    // Buscamos os dados da semana para os dropdowns
+    const ano = await getAnoPainelFirebase();
+    const horariosData = await getHorariosFromFirebase(ano);
+    const diaSemanaReuniaoString = horariosData['dia-semana'];
+    const diasSemanaDisplay = document.getElementById('weekDisplay').innerHTML;
+    const diasSemanaMatch = diasSemanaDisplay.match(/\((.*?)\)/);
+    const diasSemana = diasSemanaMatch ? diasSemanaMatch[1] : null;
+
+    // 1. Sempre adicionamos a Leitura da Bíblia primeiro (pois ela é fixa no seu sistema)
+    // Buscamos o objeto da Leitura da Bíblia no Firebase
+    const snapLeitura = await designacoesRef.where('nome', '==', 'Leitura da Bíblia').limit(1).get();
+    if (!snapLeitura.empty) {
+        const docL = snapLeitura.docs[0];
+        updateActiveDesignationDisplay({id: docL.id, ...docL.data()}, 1, 1, {}, diasSemana, diaSemanaReuniaoString, {});
+    }
+
+    // 2. Adicionamos as outras baseadas no JSON
+    let ordemManual = 2;
+    for (const nomeMwb of listaNomesMwb) {
+        const snapshot = await designacoesRef.where('nome', '==', nomeMwb).where('status', '==', true).limit(1).get();
+        
+        if (!snapshot.empty) {
+            const doc = snapshot.docs[0];
+            const designacaoData = doc.data();
+            
+            // Ativa o display automaticamente
+            updateActiveDesignationDisplay(
+                { id: doc.id, ...designacaoData },
+                ordemManual++, 
+                1, // Quantidade 1 por padrão
+                {}, 
+                diasSemana, 
+                diaSemanaReuniaoString, 
+                {}
+            );
+        } else {
+            console.warn(`Designação "${nomeMwb}" não encontrada no banco de dados.`);
+        }
+    }
+}
+
         document.addEventListener('DOMContentLoaded', function() {
         
-            // Firebase configuration
-            const firebaseConfig = {
-                apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
-                authDomain: "escalas-6e0f9.firebaseapp.com",
-                projectId: "escalas-6e0f9",
-                storageBucket: "escalas-6e0f9.firebasestorage.app",
-                messagingSenderId: "19118998563",
-                appId: "1:19118998563:web:5412be658ae34bd45add96"
-            };
+            // Função para definir o mês com base na última designação de escola gravada
+const loadLastMonthFromFirebase = async () => {
+    const selectMes = document.getElementById('mes');
+    try {
+        // Garantimos que usamos a variável db definida no escopo
+        const snapshot = await db.collection('historico')
+            .where('parte', '==', 'escola')
+            .orderBy('timestamp', 'desc')
+            .limit(1)
+            .get();
+
+        if (!snapshot.empty) {
+            const data = snapshot.docs[0].data();
+            if (data.mes) {
+                selectMes.value = data.mes; 
+                console.log(`[AUTO-MES] Mês ${data.mes} selecionado.`);
+                return; 
+            }
+        }
+    } catch (error) {
+        console.warn("[AUTO-MES] Erro ao carregar mês anterior.", error);
+    }
+    const currentMonth = new Date().getMonth() + 1;
+    selectMes.value = currentMonth;
+};
+
 
             
 
@@ -1686,6 +1805,137 @@ body.popup-open {
             // Set current month as default
             const currentMonth = new Date().getMonth() + 1;
             document.getElementById('mes').value = currentMonth;
+
+            // --- NOVAS FUNÇÕES PARA O MWB AUTOMÁTICO (COLE AQUI) ---
+
+function mapearNomeDesignacao(texto) {
+    // Remove o número e o ponto do início (ex: "4. Iniciar conversas" -> "Iniciar conversas")
+    let nomeLimpo = texto.replace(/^\d+\.\s*/, '').trim();
+
+    // MAPA DE TRADUÇÃO: Nome no JSON (Oficial) -> Nome no seu Firebase
+    const dePara = {
+        "Iniciar conversas": "Iniciar Conversas",
+        "Cultivar o interesse": "Cultivar Interesse",
+        "Fazer discípulos": "Fazer Discípulos",
+        "Discurso": "Discurso (X minutos)",
+        "Estudo bíblico de congregação": "Estudo Bíblico",
+        "Leitura da Bíblia": "Leitura da Bíblia",
+        "Explicar as suas crenças": "Explicar Crenças - Discurso"
+    };
+
+    return dePara[nomeLimpo] || nomeLimpo;
+}
+
+function formatarDataParaTituloJSON(diasSemanaStr) {
+    const mesesFull = {
+        "Jan": "JANEIRO", "Fev": "FEVEREIRO", "Mar": "MARÇO", "Abr": "ABRIL", 
+        "Maio": "MAIO", "Jun": "JUNHO", "Jul": "JULHO", "Ago": "AGOSTO", 
+        "Set": "SETEMBRO", "Out": "OUTUBRO", "Nov": "NOVEMBRO", "Dez": "DEZEMBRO"
+    };
+    let dataLimpa = diasSemanaStr.split(' 20')[0]; 
+    let partes = dataLimpa.split(' - ');
+    if (partes.length < 2) return "";
+    let inicio = partes[0].trim().split(' ');
+    let fim = partes[1].trim().split(' ');
+    let diaInicio = inicio[0];
+    let diaFim = fim[0];
+    let mesFim = mesesFull[fim[1]] || fim[1].toUpperCase();
+    return `${diaInicio} A ${diaFim} DE ${mesFim}`;
+}
+
+// 3. Função Principal de Processamento
+const processarMwbAutomatico = async () => {
+    console.log("%c[MWB] 🚀 Iniciando processamento automático...", "color: #3498db; font-weight: bold;");
+    
+    try {
+        const ano = await getAnoPainelFirebase();
+        const mesOriginal = document.getElementById('mes').value;
+        const mesFormatado = mesOriginal.padStart(2, '0');
+        const caminhoJson = `js/mwb/${ano}/${mesFormatado}.json`;
+
+        console.log(`[MWB] 📁 A carregar ficheiro: ${caminhoJson}`);
+
+        const infoSemana = document.getElementById('weekDisplay').innerText;
+        const dataMatch = infoSemana.match(/\((.*?)\)/);
+        
+        if (!dataMatch) {
+            console.error("[MWB] ❌ Não foi possível extrair a data do cabeçalho.");
+            return;
+        }
+        
+        const tituloProcurado = formatarDataParaTituloJSON(dataMatch[1]);
+        console.log(`[MWB] 🔍 A procurar semana no JSON: "${tituloProcurado}"`);
+
+        const response = await fetch(caminhoJson);
+        if (!response.ok) throw new Error(`Ficheiro não encontrado: ${caminhoJson}`);
+        
+        const data = await response.json();
+        const semana = data.artigos.find(a => a.titulo.toUpperCase() === tituloProcurado);
+
+        if (!semana) {
+            console.warn(`[MWB] ⚠️ Semana "${tituloProcurado}" não encontrada no JSON.`);
+            return;
+        }
+
+        console.log("%c[MWB] ✅ Semana encontrada!", "color: #2ecc71;");
+
+        // CORREÇÃO AQUI: Extraímos o texto bruto e passamos para a montagem
+        const itensMwb = semana.conteudo
+            .filter(c => c.tipo === "subtema" && /^\d+\./.test(c.texto))
+            .map(c => c.texto); // Pegamos o texto original "4. Iniciar conversas"
+
+        await montarDesignacoesAutomaticas(itensMwb);
+
+    } catch (err) {
+        console.error("[MWB] ❌ Erro fatal:", err);
+    }
+};
+
+const montarDesignacoesAutomaticas = async (listaNomesMwb) => {
+    console.log("%c[FIREBASE] 📡 Iniciando busca mapeada...", "color: #f39c12; font-weight: bold;");
+    
+    const designacoesRef = db.collection('designacoes');
+    document.getElementById('activeDesignationsContainer').innerHTML = '';
+    document.getElementById('leituraBibliaDesignationContainer').innerHTML = '';
+
+    const ano = await getAnoPainelFirebase();
+    const horariosData = await getHorariosFromFirebase(ano);
+    const diaSemanaReuniaoString = horariosData['dia-semana'];
+    const diasSemanaDisplay = document.getElementById('weekDisplay').innerHTML;
+    const diasSemanaMatch = diasSemanaDisplay.match(/\((.*?)\)/);
+    const diasSemana = diasSemanaMatch ? diasSemanaMatch[1] : null;
+
+    let ordemManual = 1;
+
+    for (const nomeBruto of listaNomesMwb) {
+        const nomeMapeado = mapearNomeDesignacao(nomeBruto);
+        console.log(`[FIREBASE] 🔎 Original: "${nomeBruto}" -> Busca: "${nomeMapeado}"`);
+
+        const snapshot = await designacoesRef
+            .where('nome', '==', nomeMapeado)
+            .where('parte', '==', 'escola')
+            .where('status', '==', true)
+            .limit(1)
+            .get();
+        
+        if (!snapshot.empty) {
+            const doc = snapshot.docs[0];
+            console.log(`%c   -> ✨ ENCONTRADO: ${nomeMapeado}`, "color: #2ecc71;");
+
+            updateActiveDesignationDisplay(
+                { id: doc.id, ...doc.data() }, 
+                ordemManual++, 
+                1, 
+                {}, 
+                diasSemana, 
+                diaSemanaReuniaoString, 
+                {}
+            );
+        } else {
+            console.log(`%c   -> ⏭️ IGNORADO: "${nomeMapeado}" não encontrado no Firebase.`, "color: #95a5a6;");
+        }
+    }
+};
 
 
  // ======================================================================== //
@@ -1783,6 +2033,8 @@ document.body.addEventListener('change', (event) => {
         validateAllSelections();
     }
 });
+
+
 
 // ======================================================================== //
 // ============= FIM: LÓGICA DE SINCRONIZAÇÃO DE GÊNERO (COM LOGGING) =============== //
@@ -1929,7 +2181,7 @@ const validateAllSelections = async () => {
     const validationList = document.getElementById('validation-list');
     const alertContainer = document.getElementById('validation-alert-container');
 
-    // 1. Reset
+    // 1. Reset de Interface
     document.querySelectorAll('.form-select').forEach(el => el.classList.remove('invalid-selection', 'warning-selection', 'info-selection'));
     if(iconError) iconError.style.display = 'none';
     if(iconWarning) iconWarning.style.display = 'none';
@@ -1941,31 +2193,31 @@ const validateAllSelections = async () => {
     const mes = parseInt(document.getElementById('mes').value);
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
 
-    // Contexto da Reunião Atual
-    const diasSemana = getDiasSemana(ano, mes, semanaNumero);
-    const horariosData = await getHorariosFromFirebase(ano);
-    const dataPlaneadaString = getMeetingDayOfMonth(ano, diasSemana, horariosData['dia-semana']);
-    const dataDaReuniaoPlaneada = new Date(dataPlaneadaString + "T12:00:00");
-
-    const [lastW, nextW, stats, pairHistory] = await Promise.all([
+    // --- MELHORIA: Carregar contexto da semana UMA ÚNICA VEZ ---
+    const [horariosData, lastW, nextW, thisMonthParticipants, stats, pairHistory] = await Promise.all([
+        getHorariosFromFirebase(ano),
         getParticipantsLastWeek(ano, mes, semanaNumero),
         getParticipantsNextWeek(ano, mes, semanaNumero),
+        getParticipantsThisMonth(ano, mes),
         getParticipationHistorySummary(),
-        getPairHistoryForYear(ano) 
+        getPairHistoryForYear(ano)
     ]);
+
+    const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+    const dataReuniaoStr = getMeetingDayOfMonth(ano, diasSemana, horariosData['dia-semana']);
+    const dataReuniaoObj = new Date(dataReuniaoStr + "T12:00:00");
 
     const allSelects = Array.from(document.querySelectorAll('.form-select')).filter(select => select.closest('.lab-popup') === null);
     const assignedPeopleThisWeek = new Set(allSelects.map(s => s.value).filter(v => v));
     let hasViolations = false;
 
-    console.log(`%c--- VALIDAÇÃO: ${dataPlaneadaString} ---`, "background: #34495e; color: white; padding: 5px;");
-
+    // --- FASE 1: VALIDAÇÃO INDIVIDUAL (DUPLICADOS / SEMANAS ADJACENTES) ---
     allSelects.forEach(select => {
         if (!select.value) return;
         const personId = select.value;
         const personName = select.options[select.selectedIndex].text;
 
-        // Duplicação e Semanas Adjacentes (Vermelho)
+        // Vermelho: Duplicado
         if (currentSelections.has(personId)) {
             hasViolations = true; iconError.style.display = 'block';
             select.classList.add('invalid-selection');
@@ -1979,65 +2231,76 @@ const validateAllSelections = async () => {
             currentSelections.set(personId, select.id);
         }
 
+        // Vermelho: Semana Passada ou Próxima
         if (lastW.has(personId) || nextW.has(personId)) {
             hasViolations = true; iconError.style.display = 'block';
             select.classList.add('invalid-selection');
-            const periodo = lastW.has(personId) ? "PASSADA" : "PRÓXIMA";
             const li = document.createElement('li');
-            li.innerHTML = `⚠️ <b>${personName}</b> participa na semana ${periodo}.`;
+            li.innerHTML = `⚠️ <b>${personName}</b> participou na semana anterior ou seguinte.`;
             li.style.color = '#c0392b';
             validationList.appendChild(li);
         }
+
+        // Laranja: Já participou este mês (e há alternativas livres)
+        if (!select.classList.contains('invalid-selection') && thisMonthParticipants.has(personId)) {
+            const candidatos = getEligiblePeopleForDropdown(select);
+            const alternativasFrescas = candidatos.filter(id => !thisMonthParticipants.has(id) && !assignedPeopleThisWeek.has(id));
+
+            if (alternativasFrescas.length > 0) {
+                hasViolations = true; iconWarning.style.display = 'block';
+                select.classList.add('warning-selection');
+                const li = document.createElement('li');
+                li.innerHTML = `🔸 <b>${personName}</b> já teve designação este mês. Há ${alternativasFrescas.length} participante(s) disponível(eis) que ainda não fizeram nada este mês.`;
+                li.style.color = '#f39c12';
+                validationList.appendChild(li);
+            }
+        }
     });
 
-    // 3. ANÁLISE DE PARES (Paula & Lucivânia)
-    document.querySelectorAll('.active-designation-container').forEach(container => {
+    // --- FASE 2: VALIDAÇÃO DE PARES (REPETIÇÃO 180 DIAS) ---
+    const containers = document.querySelectorAll('.active-designation-container');
+    containers.forEach(container => {
         const selectsInCard = Array.from(container.querySelectorAll('.form-select')).filter(s => s.value && !s.closest('.lab-popup'));
-        
         if (selectsInCard.length === 2) {
             const p1Id = selectsInCard[0].value;
             const p2Id = selectsInCard[1].value;
-            const p1Name = selectsInCard[0].options[selectsInCard[0].selectedIndex].text;
-            const p2Name = selectsInCard[1].options[selectsInCard[1].selectedIndex].text;
-
             const pairKey = [p1Id, p2Id].sort().join('_');
             const history = pairHistory.get(pairKey) || [];
-            
-            console.group(`Análise Par: ${p1Name} & ${p2Name}`);
 
             const repeticaoRecente = history.find(h => {
-                if (!h.dia) return false;
-                const dataNoPassado = new Date(h.dia + "T12:00:00");
-                const diffTime = dataDaReuniaoPlaneada - dataNoPassado;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                console.log(`Comparando ${dataPlaneadaString} com ${h.dia} -> ${diffDays} dias.`);
-                
-                // Retorna verdadeiro se a colaboração foi entre 1 e 180 dias atrás
+                const diffDays = Math.ceil(Math.abs(dataReuniaoObj - new Date(h.dia + "T12:00:00")) / (1000 * 60 * 60 * 24));
                 return diffDays > 0 && diffDays <= 180;
             });
 
-            if (repeticaoRecente) {
-                // Verificar se existem outros candidatos livres para um dos dois lugares
+            if (repeticaoRecente && !selectsInCard[0].classList.contains('invalid-selection')) {
                 const alternativas1 = getEligiblePeopleForDropdown(selectsInCard[0]).filter(id => !assignedPeopleThisWeek.has(id));
                 const alternativas2 = getEligiblePeopleForDropdown(selectsInCard[1]).filter(id => !assignedPeopleThisWeek.has(id));
 
                 if (alternativas1.length > 0 || alternativas2.length > 0) {
-                    console.error("❌ Repetição detetada e existem alternativas.");
                     hasViolations = true; iconError.style.display = 'block';
                     selectsInCard[0].classList.add('invalid-selection');
                     selectsInCard[1].classList.add('invalid-selection');
-
                     const li = document.createElement('li');
-                    const dataFormatada = new Date(repeticaoRecente.dia + "T12:00:00").toLocaleDateString('pt-PT');
-                    li.innerHTML = `⚠️ <b>Repetição Recente:</b> ${p1Name} e ${p2Name} trabalharam juntos em ${dataFormatada}. Como há mais irmãos livres, mude a dupla.`;
+                    li.innerHTML = `⚠️ <b>Par Repetido:</b> ${selectsInCard[0].options[selectsInCard[0].selectedIndex].text} e ${selectsInCard[1].options[selectsInCard[1].selectedIndex].text} trabalharam juntos recentemente.`;
                     li.style.color = '#c0392b';
                     validationList.appendChild(li);
-                } else {
-                    console.warn("⚠️ Repetição detetada mas não há alternativas livres.");
                 }
             }
-            console.groupEnd();
+        }
+    });
+
+    // --- FASE 3: INFORMAÇÃO (AZUL) ---
+    allSelects.forEach(select => {
+        if (!select.value || select.classList.contains('invalid-selection') || select.classList.contains('warning-selection')) return;
+        const personId = select.value;
+        const pStats = stats.get(personId);
+        if (!pStats || pStats.totalCount <= 1) {
+            hasViolations = true; iconInfo.style.display = 'block';
+            select.classList.add('info-selection');
+            const li = document.createElement('li');
+            li.textContent = `ℹ️ ${select.options[select.selectedIndex].text} tem pouca participação histórica.`;
+            li.style.color = '#2980b9';
+            validationList.appendChild(li);
         }
     });
 
@@ -2935,6 +3198,12 @@ function analyzeBoardAndGetCandidates(emptySelects, context) {
             if (isValid && participantsLastWeek.has(personId)) { // Considera a regra da semana passada
                 isValid = false;
             }
+             // NOVO: Regra de Regularidade no Foguetão (Fase 1)
+            const lastPartDate = context.lastParticipationMap.get(personId);
+            if (isValid && isPersonOnCooldown(personData, lastPartDate, context.diaDaReuniao)) {
+                isValid = false;
+            }
+
             if (isValid && nonSchoolAssignmentsThisWeek.has(personId)) {
                 // Validação de bloqueio
                 const otherDesignationIds = nonSchoolAssignmentsThisWeek.get(personId);
@@ -3725,40 +3994,58 @@ loadNacionalidades();
             };
 
 
-     const loadPeopleOptionsIntoSelects = async (designacao, container, preferences = {}, diasSemana, diaSemanaReuniaoString, genderPreference = 'masculino feminino') => {
+  const loadPeopleOptionsIntoSelects = async (designacao, container, preferences = {}, diasSemana, diaSemanaReuniaoString, genderPreference = 'masculino feminino') => {
     try {
         const anoFirebase = await getAnoPainelFirebase();
         const pessoasRef = db.collection('pessoas');
         let query = pessoasRef
-    .where('fazDesignacoesReuniao', '==', true)
-    .where('naCongregacao', '==', true)
-    .where('designacoesReuniao', 'array-contains', designacao.nome);
+            .where('fazDesignacoesReuniao', '==', true)
+            .where('naCongregacao', '==', true)
+            .where('designacoesReuniao', 'array-contains', designacao.nome);
 
         if (genderPreference === 'masculino') {
             query = query.where('genero', '==', 'Masculino');
         } else if (genderPreference === 'feminino') {
             query = query.where('genero', '==', 'Feminino');
         }
+        
         const selectedLanguages = Array.from(document.querySelectorAll('#nacionalidades input[name="nacionalidades"]:checked'))
             .map(checkbox => checkbox.value);
 
-        // --- MUDANÇA CRÍTICA AQUI: Trocamos .then() por await ---
         const snapshot = await query.get();
 
+        // Tenta descobrir a data exata da reunião
+        let designationDateFormatted = getMeetingDayOfMonth(anoFirebase, diasSemana, diaSemanaReuniaoString);
+        
+        // FALLBACK DE SEGURANÇA: Se não conseguir calcular o dia exato da reunião, 
+        // usamos o meio do mês para garantir que a regra dos meses funciona na mesma.
+        if (!designationDateFormatted) {
+            const mesSelecionado = document.getElementById('mes').value;
+            designationDateFormatted = `${anoFirebase}-${String(mesSelecionado).padStart(2, '0')}-15`;
+        }
+
         const eligiblePeopleList = [];
+        
         snapshot.forEach(doc => {
             const pessoa = doc.data();
             let isAbsent = false;
-            const designationDateFormatted = getMeetingDayOfMonth(anoFirebase, diasSemana, diaSemanaReuniaoString);
-            if (designationDateFormatted && pessoa.ausencias && Array.isArray(pessoa.ausencias)) {
+            
+            if (pessoa.ausencias && Array.isArray(pessoa.ausencias)) {
                 isAbsent = pessoa.ausencias.includes(designationDateFormatted);
             }
+            
             const temPrivilegiosNecessarios = designacao.quemFaz.some(
                 privilegio => pessoa.privilegiosCongregacao && pessoa.privilegiosCongregacao.includes(privilegio)
             );
+            
             let languageMatches = selectedLanguages.length === 0 || selectedLanguages.includes(pessoa.idioma);
 
-            if (languageMatches && temPrivilegiosNecessarios && !isAbsent) {
+            // VERIFICAÇÃO DE REGULARIDADE
+           const lastPartDate = window.globalLastParticipationMap.get(doc.id); // Adicionado window.
+            const isOnCooldown = isPersonOnCooldown(pessoa, lastPartDate, designationDateFormatted);
+
+            // A pessoa só entra na lista se NÃO estiver de castigo (!isOnCooldown)
+            if (languageMatches && temPrivilegiosNecessarios && !isAbsent && !isOnCooldown) {
                 eligiblePeopleList.push({ id: doc.id, data: pessoa });
             }
         });
@@ -3771,6 +4058,7 @@ loadNacionalidades();
                 eligiblePeopleList.forEach(person => {
                     const pessoaData = person.data;
                     let podeAssumirEstePapel = false;
+                    
                     if (participantIndex === 0) {
                         if (pessoaData.personalidade === '+ à vontade' || (Array.isArray(designacao.personalidade) && designacao.personalidade.includes('- à vontade'))) {
                             podeAssumirEstePapel = true;
@@ -3778,6 +4066,7 @@ loadNacionalidades();
                     } else {
                         podeAssumirEstePapel = true;
                     }
+                    
                     if (podeAssumirEstePapel) {
                         const option = document.createElement('option');
                         option.value = person.id;
@@ -3788,19 +4077,19 @@ loadNacionalidades();
             });
         });
 
-        console.log("[loadPeopleOptionsIntoSelects] END - Designation:", designacao.nome, ", Gender Preference:", genderPreference);
+        console.log("[loadPeopleOptionsIntoSelects] Concluído para:", designacao.nome);
 
         const firstSelect = container.querySelector('.form-select');
         if (firstSelect && firstSelect.value) {
             handleGenderSync(firstSelect);
         }
-        // --- FIM DA MUDANÇA CRÍTICA ---
 
     } catch (error) {
         console.error('Erro ao carregar pessoas elegíveis:', error);
     }
 };
 
+     
 
          const getAnoPainelFirebase = async () => {
     const painelAnoRef = db.collection('painel').doc('ano');
@@ -4054,132 +4343,27 @@ loadNacionalidades();
 
             // Handle "Seguinte" button click (VERSÃO COM PAINEL CUSTOMIZADO)
 document.getElementById('btnSeguinte').addEventListener('click', async function() {
-    const tipoReuniao = document.getElementById('tipo').value;
-    const btnSeguinte = this;
-    
-    // Lista de eventos que requerem verificação de data na base de dados
-    const specialEventTypes = ['memorial', 'assembleia', 'congresso', 'visita-servo'];
+                const tipoReuniao = document.getElementById('tipo').value;
+                const btnSeguinte = this;
 
-    if (specialEventTypes.includes(tipoReuniao)) {
-        const originalText = btnSeguinte.textContent;
-        btnSeguinte.textContent = "A verificar...";
-        btnSeguinte.disabled = true;
-
-        const ano = await getAnoPainelFirebase();
-        
-        const eventNameMap = {
-            'memorial': 'Memorial',
-            'assembleia': 'Assembleia',
-            'congresso': 'Congresso',
-            'visita-servo': 'Visita do Servo'
-        };
-        const eventNameForQuery = eventNameMap[tipoReuniao];
-        
-        if (eventNameForQuery) {
-            // Procura no ano atual E no próximo ano
-            const snapshot = await db.collection('eventos')
-                .where('nome', '==', eventNameForQuery)
-                .where('ano', 'in', [ano, ano + 1]) 
-                .get();
-
-            let overlapFound = false;
-
-            if (!snapshot.empty) {
-                const mes = parseInt(document.getElementById('mes').value);
-                const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
-                const { monday: weekStart, sunday: weekEnd } = getWeekMondaySunday(ano, mes, semanaNumero);
-                
-                for (const doc of snapshot.docs) {
-                    const eventData = doc.data();
-                    
-                    if (eventData.data) {
-                        let eventDate;
-                        const rawDate = eventData.data;
-                        
-                        // Suporte para formatos DD/MM/YYYY e YYYY-MM-DD
-                        if (rawDate.includes('/')) {
-                            const parts = rawDate.split('/');
-                            eventDate = new Date(parts[2], parts[1] - 1, parts[0]);
-                        } else {
-                            eventDate = new Date(rawDate + 'T12:00:00');
-                        }
-                        // Define hora neutra para comparar apenas os dias
-                        eventDate.setHours(12, 0, 0, 0); 
-
-                        // Verifica se a data do evento cai dentro da semana
-                        if (eventDate >= weekStart && eventDate <= weekEnd) {
-                            overlapFound = true;
-                            break; 
-                        }
-                    } 
-                    // Suporte para eventos com data de início e fim
-                    else if (eventData.data_inicio && eventData.data_fim) {
-                        const eventStart = new Date(eventData.data_inicio + 'T00:00:00');
-                        const eventEnd = new Date(eventData.data_fim + 'T23:59:59');
-                        if (eventStart <= weekEnd && eventEnd >= weekStart) {
-                            overlapFound = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            btnSeguinte.textContent = originalText;
-            btnSeguinte.disabled = false;
-
-            if (overlapFound) {
-                // === LÓGICA ALTERADA AQUI ===
-                
-                // Se for Visita do Servo, permitimos continuar para baixo (mostrar designações)
-                // Não fazemos return aqui.
-                if (tipoReuniao === 'visita-servo') {
-                    console.log("Visita do Servo encontrada. Continuando para mostrar designações...");
-                    // O código sairá deste bloco 'if' e executará a parte final da função
-                } 
-                else {
-                    // Para Memorial, Assembleia e Congresso, mantemos o comportamento de gravar e sair
-                    const confirmed = await showSpecialEventConfirmation(tipoReuniao);
-                    if (confirmed) {
-                        const success = await saveSpecialEvent();
-                        if (success) {
-                            alert(`Evento de ${eventNameForQuery} gravado com sucesso!`);
-                            window.location.reload();
-                        }
-                    }
-                    return; // IMPORTANTE: Pára a execução aqui para estes eventos
+                if (tipoReuniao === 'normal') {
+                    btnSeguinte.disabled = true;
+                    btnSeguinte.textContent = "Carregando Programação...";
+                    await processarMwbAutomatico();
+                    btnSeguinte.disabled = false;
+                    btnSeguinte.textContent = "Seguinte";
                 }
 
-            } else {
-                // ERRO: Data não coincide. Mostra popup de aviso e pára.
-                const popup = document.getElementById('eventMismatchPopup');
-                const eventNameSpan = document.getElementById('mismatchEventName');
-                const closeBtn = document.getElementById('closeMismatchPopup');
-                const cancelBtn = document.getElementById('cancelMismatch');
-
-                eventNameSpan.textContent = eventNameForQuery;
-                popup.style.display = 'flex';
-
-                const closeHandler = () => { popup.style.display = 'none'; };
-                closeBtn.onclick = closeHandler;
-                cancelBtn.onclick = closeHandler;
-                return; // Pára a execução se a data não bater certo
-            }
-        }
-    }
-
-    // Código original para mostrar a secção de designações
-    // (Agora a Visita do Servo chegará aqui se a data estiver correta)
-    const designacoesSection = document.getElementById('designacoesSection');
-    const leituraBibliaSection = document.getElementById('leituraBibliaSection');
-    const iniciarFluxoButton = document.querySelector('#fluxoSemanalForm button[type="submit"].btn-submit');
-    
-    designacoesSection.classList.add('active');
-    leituraBibliaSection.style.display = 'block';
-    iniciarFluxoButton.style.display = 'block';
-    
-    // Smooth scroll para as designações
-    designacoesSection.scrollIntoView({ behavior: 'smooth' });
-});
+                const designacoesSection = document.getElementById('designacoesSection');
+                const leituraBibliaSection = document.getElementById('leituraBibliaSection');
+                const iniciarFluxoButton = document.querySelector('#fluxoSemanalForm button[type="submit"].btn-submit');
+                
+                designacoesSection.classList.add('active');
+                leituraBibliaSection.style.display = 'block';
+                iniciarFluxoButton.style.display = 'block';
+                
+                designacoesSection.scrollIntoView({ behavior: 'smooth' });
+            });
 
             // ======================================================================== //
             // ============= FIM: NOVAS FUNÇÕES PARA LÓGICA DO MEMORIAL =============== //
@@ -4226,15 +4410,6 @@ const getNonSchoolAssignmentsForWeek = async (ano, mes, semanaNumero) => {
 
 
             // Call updateWeekDisplay initially and when month changes
-     
-     
-
-
-
-
-
-            
-
             const activeDesignationsDisplay = {};
 
 
@@ -4350,9 +4525,10 @@ const scoreAndRankCandidates = async (candidateIds, designationName, ano, partic
         select.value = '';
     });
 
-    const context = {
+const context = {
         allPeopleData, allDesignationsData, assignedPeopleThisWeek, participantsLastWeek, participantsNextWeek,
-        participantsThisMonth, participationStats, pairHistory, ano, diaDaReuniao, nonSchoolAssignmentsThisWeek
+        participantsThisMonth, participationStats, pairHistory, ano, diaDaReuniao, nonSchoolAssignmentsThisWeek,
+        lastParticipationMap: globalLastParticipationMap // NOVO: Passado para o contexto do foguetão
     };
 
     // ==================================================================
@@ -4482,8 +4658,14 @@ function emergencyFillSelect(select, context) {
         }
 
         // Violação de Ausência
-        if (personData.ausencias?.includes(context.diaDaReuniao)) {
+    if (personData.ausencias?.includes(context.diaDaReuniao)) {
             violationScore += 3; // Penalidade média
+        }
+
+        // NOVO: Violação de Regularidade em modo Emergência
+        const lastPartDate = context.lastParticipationMap.get(personId);
+        if (isPersonOnCooldown(personData, lastPartDate, context.diaDaReuniao)) {
+            violationScore += 10; // Penalidade ALTÍSSIMA para tentar não usar irmãos que pediram espaçamento
         }
 
         // Adiciona pontuação baseada na participação (para desempatar)
@@ -4681,19 +4863,19 @@ async function getNextWeekContext(currentAno, currentMes, currentSemana) {
 const getParticipantsThisMonth = async (ano, mes) => {
     const historicoRef = db.collection('historico');
     const q = historicoRef
-        .where("ano", "==", ano)
-        .where("mes", "==", mes)
-        .where("quando", "==", "Semana");
+        .where("ano", "==", parseInt(ano))
+        .where("mes", "==", parseInt(mes))
+        .where("parte", "==", "escola");
         
     const snapshot = await q.get();
     const participants = new Set();
     
     snapshot.forEach(doc => {
-        const historicoData = doc.data();
-        if (historicoData.designacoes) {
-            historicoData.designacoes.forEach(desig => {
+        const data = doc.data();
+        if (data.designacoes) {
+            data.designacoes.forEach(desig => {
                 if (desig.participantes) {
-                    Object.values(desig.participantes).forEach(personId => participants.add(personId.toString()));
+                    Object.values(desig.participantes).forEach(pId => participants.add(pId));
                 }
             });
         }
@@ -5579,6 +5761,10 @@ function checkPairRepetition(person1Id, person2Id, designationId, context) {
                 if (designation.parte === 'escola' && !personData.fazDesignacoesReuniao) isValid = false;
                 if (strictMode && participantsLastWeek.has(personId)) isValid = false;
 
+                 // NOVO: Regra de Regularidade no Foguetão (Indivíduos)
+                const lastPartDate = context.lastParticipationMap.get(personId);
+                if (isPersonOnCooldown(personData, lastPartDate, diaDaReuniao)) isValid = false;
+
                 if (isValid && nonSchoolAssignmentsThisWeek.has(personId)) {
                     const otherDesignationIds = nonSchoolAssignmentsThisWeek.get(personId);
                     let isBlocked = true;
@@ -5624,7 +5810,13 @@ function checkPairRepetition(person1Id, person2Id, designationId, context) {
                         if (!personData || assignedPeopleThisWeek.has(personId) || participantsNextWeek.has(personId) || (personData.ausencias && personData.ausencias.includes(diaDaReuniao))) {
                             isValidPair = false; break;
                         }
-                        if (strictMode && participantsLastWeek.has(personId)) {
+                     if (strictMode && participantsLastWeek.has(personId)) {
+                            isValidPair = false; break;
+                        }
+                        
+                        // NOVO: Regra de Regularidade no Foguetão (Pares)
+                        const lastPartDate = context.lastParticipationMap.get(personId);
+                        if (isPersonOnCooldown(personData, lastPartDate, diaDaReuniao)) {
                             isValidPair = false; break;
                         }
                         if (designation.quemFaz && designation.quemFaz.length > 0) {
@@ -6228,6 +6420,9 @@ numSelect.addEventListener('change', (e) => {
 
 async function initializePage() {
     try {
+        // CARREGA A ÚLTIMA PARTICIPAÇÃO PARA A REGRA DE REGULARIDADE
+        await loadGlobalLastParticipation();
+
         // 1. Define o Mês correto (baseado no histórico ou sistema)
         await loadLastMonthFromFirebase();
 
@@ -6298,52 +6493,74 @@ initializePage();
             let temporaryPreferences = {}; // Objeto para guardar as preferências temporárias
 let participantSelections = {};
 let participationStatsCache = { ano: null, data: null };
-
-            // Initial load of designacoes
+let globalLastParticipationMap = new Map();    // Initial load of designacoes
 
         });
 
 
-// Função para definir o mês com base na última designação de escola gravada
-const loadLastMonthFromFirebase = async () => {
-    const selectMes = document.getElementById('mes');
-    
+  // 1. Função para carregar a última data de todos (USANDO WINDOW PARA EVITAR ERROS)
+window.globalLastParticipationMap = new Map();
+
+async function loadGlobalLastParticipation() {
     try {
-        // 1. Consulta o Firebase:
-        // - Coleção: historico
-        // - Filtro: apenas registos de 'escola'
-        // - Ordem: timestamp descendente (do mais novo para o mais velho)
-        // - Limite: apenas 1 (o último)
+        console.log("[REGULARIDADE] A carregar histórico para verificar datas da última participação...");
+        window.globalLastParticipationMap.clear();
+        
+        // Vai buscar todo o histórico apenas da Escola
         const snapshot = await db.collection('historico')
-            .where('parte', '==', 'escola')
-            .orderBy('timestamp', 'desc')
-            .limit(1)
-            .get();
-
-        if (!snapshot.empty) {
-            // 2. Se encontrou registos
-            const data = snapshot.docs[0].data();
+                                 .where('parte', '==', 'escola')
+                                 .get();
+                                 
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (!data.dia) return; // Ignora se não tiver data
             
-            // O campo 'mes' no firebase deve ser um número (ex: 1, 2, ... 12)
-            if (data.mes) {
-                // Atribui ao dropdown. Como o HTML é <option value="1">, funciona direto.
-                selectMes.value = data.mes; 
-                console.log(`[AUTO-MES] Último registo encontrado: Mês ${data.mes}. Dropdown atualizado.`);
-                return; 
-            }
-        } else {
-            console.log("[AUTO-MES] Nenhum histórico de escola encontrado.");
-        }
+            data.designacoes?.forEach(desig => {
+                Object.values(desig.participantes || {}).forEach(personId => {
+                    const currentLastDate = window.globalLastParticipationMap.get(personId);
+                    // Se ainda não tem data, ou se a data deste documento for mais recente, atualiza
+                    if (!currentLastDate || new Date(data.dia) > new Date(currentLastDate)) {
+                        window.globalLastParticipationMap.set(personId, data.dia);
+                    }
+                });
+            });
+        });
+        console.log("[REGULARIDADE] Datas da última participação carregadas com sucesso.");
     } catch (error) {
-        // Este erro acontece geralmente se faltar o Índice no Firebase
-        console.warn("[AUTO-MES] Erro ao procurar último mês (Provável falta de índice composto 'parte + timestamp').", error);
+        console.error("[REGULARIDADE] Erro ao carregar histórico:", error);
     }
+}
 
-    // 3. FALLBACK: Se algo falhar ou não houver dados, usa o mês atual do sistema
-    const currentMonth = new Date().getMonth() + 1;
-    selectMes.value = currentMonth;
-    console.log(`[AUTO-MES] Usando mês atual do sistema: ${currentMonth}`);
-};
+// 2. Função que calcula se a pessoa está "bloqueada" pela sua regularidade
+function isPersonOnCooldown(personData, lastDateStr, meetingDateStr) {
+    if (!personData.regularidade || personData.regularidade === 'Regularmente') return false; 
+    if (!lastDateStr) return false; 
+    if (!meetingDateStr) return false;
+
+    const match = personData.regularidade.match(/(\d+)/);
+    if (!match) return false;
+    const monthsCooldown = parseInt(match[1]);
+
+    const safeLastDate = lastDateStr.includes('T') ? lastDateStr : `${lastDateStr}T12:00:00`;
+    const safeMeetingDate = meetingDateStr.includes('T') ? meetingDateStr : `${meetingDateStr}T12:00:00`;
+
+    const lastDate = new Date(safeLastDate);
+    const meetingDate = new Date(safeMeetingDate);
+
+    const eligibleDate = new Date(lastDate);
+    eligibleDate.setMonth(eligibleDate.getMonth() + monthsCooldown);
+
+    const isOnCooldown = meetingDate < eligibleDate;
+
+    console.log(`[FILTRO REGULARIDADE] ${personData.nomePessoa}: Regra=${monthsCooldown}m | Última=${lastDateStr} | Reunião=${meetingDateStr} | Fica Livre a=${eligibleDate.toISOString().split('T')[0]} | BLOQUEADO? = ${isOnCooldown}`);
+
+    return isOnCooldown;
+}
+   
+// ========================================================================
+// === FIM: LÓGICA DE REGULARIDADE ========================================
+// ========================================================================
+
 
 
 // =================================================================== //
