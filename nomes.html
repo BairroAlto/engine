@@ -1344,20 +1344,38 @@ body.sidebar-collapsed .column:first-child {
                     </div>
 
                     <!-- Aba Permissões -->
-                    <div id="permissoes-tab" class="tab-content">
+                   <div id="permissoes-tab" class="tab-content">
                         <div class="display-mode">
                             <h4>Permissões e Designações de Reunião</h4>
                             <div class="data-item"><strong>Faz Desig. Reunião:</strong> <span id="detail-fazDesignacoesReuniao">-</span></div>
+                            <!-- NOVO: Campo de Regularidade na visualização -->
+                            <div class="data-item"><strong>Frequência (escola):</strong> <span id="detail-regularidade">-</span></div>
                             <div class="data-item"><strong>Designações Reunião:</strong> <div id="detail-designacoesReuniao" class="array-data">-</div></div>
                             <div class="data-item"><strong>Regra (Rule):</strong> <span id="detail-rule">-</span></div>
                         </div>
                          <div class="edit-mode" style="display: none;">
                              <h4>Editar Permissões de Reunião</h4>
-                             <div class="form-group">
-                                 <label class="boolean-checkbox-label">
+                             
+                             <!-- MODIFICADO: Container Flex para colocar checkbox e dropdown na mesma linha -->
+                             <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background-color: #f8f9fa; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px;">
+                                 <label class="boolean-checkbox-label" style="margin-bottom: 0; background-color: white;">
                                      <input type="checkbox" id="edit-fazDesignacoesReuniao"> Faz Designações Reunião
                                  </label>
+                                 
+                                 <!-- NOVO: Dropdown de Regularidade alinhado à direita -->
+                                 <div style="display: flex; align-items: center; gap: 10px;">
+                                     <label for="edit-regularidade" style="margin-bottom: 0; font-weight: 600; font-size: 0.9rem;">Frequência (escola):</label>
+                                     <select id="edit-regularidade" style="width: auto; padding: 8px 12px; min-width: 150px;">
+                                         <option value="Regularmente">Regularmente</option>
+                                         <option value="2 em 2 meses">2 em 2 meses</option>
+                                         <option value="3 em 3 meses">3 em 3 meses</option>
+                                         <option value="4 em 4 meses">4 em 4 meses</option>
+                                         <option value="5 em 5 meses">5 em 5 meses</option>
+                                         <option value="6 em 6 meses">6 em 6 meses</option>
+                                     </select>
+                                 </div>
                              </div>
+
                              <div class="form-group">
                                  <label>Designações que pode fazer (Reunião):</label>
                                  <div class="checkbox-group" id="edit-designacoesReuniao-group">
@@ -2005,43 +2023,48 @@ function loadAllDesignacoes() {
 
         function populateDisponibilidadeTab(data) { document.getElementById('detail-ausencias').textContent = formatAusencias(data.ausencias); }
         
-    function populatePermissoesTab(data) {
-    const fazReuniaoSpan = document.getElementById('detail-fazDesignacoesReuniao');
-    const designacoesContainer = document.getElementById('detail-designacoesReuniao');
-    
-    // Define o texto Sim/Não
-    const statusText = formatBoolean(data.fazDesignacoesReuniao);
-    fazReuniaoSpan.textContent = statusText;
+  function populatePermissoesTab(data) {
+        const fazReuniaoSpan = document.getElementById('detail-fazDesignacoesReuniao');
+        const designacoesContainer = document.getElementById('detail-designacoesReuniao');
+        
+        // Define o texto Sim/Não
+        const statusText = formatBoolean(data.fazDesignacoesReuniao);
+        fazReuniaoSpan.textContent = statusText;
 
-    // Lógica de cores para o "Não"
-    if (data.fazDesignacoesReuniao === false) {
-        fazReuniaoSpan.classList.add('status-nao');
-    } else {
-        fazReuniaoSpan.classList.remove('status-nao');
+        // NOVO: Mostra a regularidade (se não existir, o padrão é Regularmente)
+        document.getElementById('detail-regularidade').textContent = data.regularidade || 'Regularmente';
+
+        // Lógica de cores para o "Não"
+        if (data.fazDesignacoesReuniao === false) {
+            fazReuniaoSpan.classList.add('status-nao');
+        } else {
+            fazReuniaoSpan.classList.remove('status-nao');
+        }
+
+        // Lógica para os cards (badges) de designação
+        designacoesContainer.innerHTML = '';
+        const arr = data.designacoesReuniao || [];
+        
+        if (arr.length > 0) {
+            arr.forEach(item => {
+                const span = document.createElement('span');
+                span.textContent = item;
+                
+                // Se "Faz Desig. Reunião" for Não, aplica o estilo vermelho claro nos cards
+                if (data.fazDesignacoesReuniao === false) {
+                    span.classList.add('badge-reuniao-disabled');
+                }
+                
+                designacoesContainer.appendChild(span);
+            });
+        } else {
+            designacoesContainer.textContent = 'Nenhum';
+        }
+
+        document.getElementById('detail-rule').textContent = data.rule || '-';
     }
 
-    // Lógica para os cards (badges) de designação
-    designacoesContainer.innerHTML = '';
-    const arr = data.designacoesReuniao || [];
-    
-    if (arr.length > 0) {
-        arr.forEach(item => {
-            const span = document.createElement('span');
-            span.textContent = item;
-            
-            // Se "Faz Desig. Reunião" for Não, aplica o estilo vermelho claro nos cards
-            if (data.fazDesignacoesReuniao === false) {
-                span.classList.add('badge-reuniao-disabled');
-            }
-            
-            designacoesContainer.appendChild(span);
-        });
-    } else {
-        designacoesContainer.textContent = 'Nenhum';
-    }
 
-    document.getElementById('detail-rule').textContent = data.rule || '-';
-}
 
 function enterEditMode(tabId) {
     if (!selectedPersonData || !dataLoaded.horarios || !dataLoaded.designacoes) {
@@ -2301,10 +2324,13 @@ weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horar
         }).filter(Boolean);
         updateAusenciasDisplay();
 
-    } else if (tabId === 'permissoes-tab') {
+} else if (tabId === 'permissoes-tab') {
         const fazReuniaoCB = document.getElementById('edit-fazDesignacoesReuniao');
         fazReuniaoCB.checked = data.fazDesignacoesReuniao || false;
         fazReuniaoCB.onclick = updateReuniaoFieldsState;
+
+        // NOVO: Preenche o dropdown de regularidade no modo de edição
+        document.getElementById('edit-regularidade').value = data.regularidade || 'Regularmente';
 
         document.getElementById('edit-rule').value = data.rule || '';
         
@@ -2409,9 +2435,10 @@ weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horar
     }
 
     // 4. Coletar dados da Aba Designações/Permissões
-    if (document.getElementById('edit-fazDesignacoesReuniao')) {
+ if (document.getElementById('edit-fazDesignacoesReuniao')) {
         Object.assign(dataToUpdate, {
-            fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked, 
+            fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked,
+            regularidade: document.getElementById('edit-regularidade').value, // NOVO: Guarda a regularidade
             designacoesReuniao: Array.from(document.querySelectorAll('#edit-designacoesReuniao-group input:checked')).map(cb => cb.value),
             rule: document.getElementById('edit-rule').value.trim() || null
         });
@@ -2822,29 +2849,7 @@ function switchTab(tabId) {
         });
     });
 
-    function updateReuniaoFieldsState() {
-    const mainCheckbox = document.getElementById('edit-fazDesignacoesReuniao');
-    const groupDiv = document.getElementById('edit-designacoesReuniao-group');
-    
-    if (!mainCheckbox || !groupDiv) return;
-
-    const isChecked = mainCheckbox.checked;
-    const checkboxes = groupDiv.querySelectorAll('input[type="checkbox"]');
-
-    if (isChecked) {
-        groupDiv.style.opacity = "1";
-        groupDiv.style.pointerEvents = "auto";
-        checkboxes.forEach(cb => cb.disabled = false);
-    } else {
-        groupDiv.style.opacity = "0.5";
-        groupDiv.style.pointerEvents = "none"; // Impede cliques
-        checkboxes.forEach(cb => {
-            cb.disabled = true;
-            cb.checked = false; // Opcional: desmarca tudo se desativar a função
-        });
-    }
-}
-
+   
 function updatePregacaoFieldsState() {
     // 1. Controle dos Horários (via "Faz Designações?")
     const fazPregacaoCB = document.getElementById('edit-fazDesignacoesPregacao');
@@ -2889,11 +2894,23 @@ function updateTitleBackground(naCongregacao) {
 function updateReuniaoFieldsState() {
     const mainCB = document.getElementById('edit-fazDesignacoesReuniao');
     const groupDiv = document.getElementById('edit-designacoesReuniao-group');
+    const regSelect = document.getElementById('edit-regularidade'); // NOVO: Pega o dropdown
+    
     if (!mainCB || !groupDiv) return;
+    
     const isChecked = mainCB.checked;
+    
+    // Atualiza a lista de checkboxes
     groupDiv.style.opacity = isChecked ? "1" : "0.5";
     groupDiv.style.pointerEvents = isChecked ? "auto" : "none";
     groupDiv.querySelectorAll('input').forEach(cb => cb.disabled = !isChecked);
+
+    // NOVO: Atualiza o dropdown de regularidade
+    if (regSelect) {
+        regSelect.disabled = !isChecked;
+        regSelect.style.opacity = isChecked ? "1" : "0.5";
+        regSelect.style.cursor = isChecked ? "pointer" : "not-allowed";
+    }
 }
 
 // Bloqueio na aba Pregação
