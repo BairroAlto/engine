@@ -184,18 +184,31 @@
 
     <div class="controls-card">
         <div class="control-group">
-            <div><label for="year-select">Ano:</label><select id="year-select"></select></div>
-            <div><label for="month-select">Mês:</label><select id="month-select"></select></div>
-            <div>
-                <label for="day-select">Dia da Semana:</label>
-                <select id="day-select">
-                    <option value="0">Domingo</option><option value="1">Segunda-feira</option><option value="2">Terça-feira</option><option value="3">Quarta-feira</option><option value="4">Quinta-feira</option><option value="5">Sexta-feira</option><option value="6">Sábado</option>
-                </select>
-            </div>
-            
-            <!-- NOVO CAMPO SALA -->
-            <div>
-                <label for="sala-select">Sala:</label>
+   <div><label for="year-select">Ano:</label><select id="year-select"></select></div>
+<div><label for="month-select">Mês:</label><select id="month-select"></select></div>
+<div>
+    <label for="day-select">D/Semana:</label>
+    <select id="day-select">
+        <option value="0">Domingo</option>
+        <option value="1">Segunda-feira</option>
+        <option value="2">Terça-feira</option>
+        <option value="3">Quarta-feira</option>
+        <option value="4">Quinta-feira</option>
+        <option value="5">Sexta-feira</option>
+        <option value="6">Sábado</option>
+    </select>
+</div>
+
+<!-- NOVO CAMPO HORA -->
+<div>
+    <label for="hora-select">Hora:</label>
+    <select id="hora-select">
+        <option value="">A carregar...</option>
+    </select>
+</div>
+
+<div>
+    <label for="sala-select">Sala:</label>
                 <select id="sala-select">
                     <option value="salao-principal" selected>Salão Principal</option>
                     <option value="segunda-sala">Segunda Sala</option>
@@ -222,43 +235,67 @@
 
     <div id="people-modal" class="modal"><div class="modal-content"><span class="close-btn">×</span><h2>Selecionar Pessoa</h2><input type="text" id="person-search-input" placeholder="Pesquisar por nome..."><div class="modal-body"><div id="modal-people-list" class="modal-list-container"></div><div id="modal-history-display" class="modal-history-container"></div></div></div></div>
     <div id="locations-modal" class="modal"><div class="modal-content"><span class="close-btn">×</span><h2>Gerir Locais</h2><div class="modal-body" style="flex-direction: column; max-height: none;"><label for="new-location-input"><strong>Nome do Novo Local:</strong></label><input type="text" id="new-location-input" placeholder="Ex: Praça Central" style="padding: 10px; font-size: 16px;"><button id="save-location-btn" class="btn-action btn-save" style="margin-top: 10px;">Gravar Novo Local</button><div id="location-feedback"></div></div></div></div>
-<div id="load-schedule-modal" class="modal">
-    <div class="modal-content" style="max-width: 600px;">
+ <div id="load-schedule-modal" class="modal">
+    <div class="modal-content" style="max-width: 650px;">
         <span class="close-btn">×</span>
-        <h2>Carregar Escala Antiga</h2>
-        <div class="modal-body" style="flex-direction: column; max-height: none; gap: 15px;">
-            <div class="control-group" style="gap: 15px; display: grid; grid-template-columns: 1fr 1fr;">
+        <h2 style="margin-bottom: 20px; color: #2c3e50; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-calendar-alt"></i> Carregar Escala Antiga
+        </h2>
+        
+        <div class="modal-body" style="flex-direction: column; max-height: none; gap: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                
+                <!-- Filtro Ano -->
                 <div>
-                    <label for="load-year-select">Ano:</label>
-                    <select id="load-year-select" style="width: 100%;"></select>
+                    <label for="load-year-select" style="font-weight: bold; display: block; margin-bottom: 5px;">Ano:</label>
+                    <select id="load-year-select" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;"></select>
                 </div>
+
+                <!-- Filtro Mês -->
                 <div>
-                    <label for="load-month-select">Mês:</label>
-                    <select id="load-month-select" style="width: 100%;"></select>
+                    <label for="load-month-select" style="font-weight: bold; display: block; margin-bottom: 5px;">Mês:</label>
+                    <select id="load-month-select" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;"></select>
                 </div>
+
+                <!-- Filtro Dia da Semana -->
                 <div>
-                    <label for="load-day-select">Dia da Semana:</label>
-                    <select id="load-day-select" style="width: 100%;">
-                        <option value="0">domingo</option>
-                        <option value="1">segunda-feira</option>
-                        <option value="2">terça-feira</option>
-                        <option value="3">quarta-feira</option>
-                        <option value="4">quinta-feira</option>
-                        <option value="5">sexta-feira</option>
-                        <option value="6">sábado</option>
+                    <label for="load-day-select" style="font-weight: bold; display: block; margin-bottom: 5px;">Dia da Semana:</label>
+                    <select id="load-day-select" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="0">Domingo</option>
+                        <option value="1">Segunda-feira</option>
+                        <option value="2">Terça-feira</option>
+                        <option value="3">Quarta-feira</option>
+                        <option value="4">Quinta-feira</option>
+                        <option value="5">Sexta-feira</option>
+                        <option value="6">Sábado</option>
                     </select>
                 </div>
+
+                <!-- Filtro Hora (Dinamizado via JS) -->
                 <div>
-                    <label for="load-sala-select">Sala:</label>
-                    <select id="load-sala-select" style="width: 100%;">
+                    <label for="load-hora-select" style="font-weight: bold; display: block; margin-bottom: 5px;">Hora:</label>
+                    <select id="load-hora-select" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="">Selecione o dia primeiro...</option>
+                    </select>
+                </div>
+
+                <!-- Filtro Sala (Campo Duplo para GRID) -->
+                <div style="grid-column: span 2;">
+                    <label for="load-sala-select" style="font-weight: bold; display: block; margin-bottom: 5px;">Sala:</label>
+                    <select id="load-sala-select" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
                         <option value="salao-principal">Salão Principal</option>
                         <option value="segunda-sala">Segunda Sala</option>
                         <option value="terceira-sala">Terceira Sala</option>
                     </select>
                 </div>
             </div>
-            <button id="load-old-schedule-btn" class="btn-action" style="margin-top: 20px; background-color: #9b59b6; width: 100%; justify-content: center;">
-                <i class="fas fa-search"></i> Localizar e Carregar
+
+            <div style="margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 13px; color: #666;">
+                <i class="fas fa-info-circle"></i> O sistema irá procurar no histórico por documentos que correspondam exatamente a estes 5 critérios.
+            </div>
+
+            <button id="load-old-schedule-btn" class="btn-action" style="background-color: #9b59b6; width: 100%; justify-content: center; padding: 15px; font-size: 18px;">
+                <i class="fas fa-search"></i> Localizar e Carregar Escala
             </button>
         </div>
     </div>
@@ -288,7 +325,18 @@
             const peopleModal = document.getElementById('people-modal');
             const locationsModal = document.getElementById('locations-modal');
             const loadScheduleModal = document.getElementById('load-schedule-modal');
-            
+            // Mapeamento dos dias para as chaves e pastas do Firebase
+const mapaDiasFirebase = {
+    "0": { nome: "domingo", pasta: "dias-fimdesemana-horarios" },
+    "1": { nome: "segunda", pasta: "dias-semana-horarios" },
+    "2": { nome: "terca",   pasta: "dias-semana-horarios" },
+    "3": { nome: "quarta",  pasta: "dias-semana-horarios" },
+    "4": { nome: "quinta",  pasta: "dias-semana-horarios" },
+    "5": { nome: "sexta",   pasta: "dias-semana-horarios" },
+    "6": { nome: "sabado",  pasta: "dias-fimdesemana-horarios" }
+};
+
+
             let locations = [], allEligiblePeople = [], fullHistory = [], activePersonInput = null;
             let lockedDates = new Set(), loadedDocIds = new Set();
             let loadedScheduleContext = { year: null, month: null };
@@ -444,37 +492,35 @@
                 doc.save(`escala_carrinhos_${monthYear.replace(/ /g, '_')}.pdf`);
             }
     
-      async function verificarEscalaExistente() {
+  async function verificarEscalaExistente() {
     const year = parseInt(yearSelect.value, 10);
     const monthText = monthSelect.options[monthSelect.selectedIndex].text;
-    const salaValue = document.getElementById('sala-select').value; // <--- NOVO
+    const salaValue = document.getElementById('sala-select').value;
+    const horaValue = document.getElementById('hora-select').value; // <--- NOVO
     
-    const diasMapa = {
-        "0": "domingo", "1": "segunda-feira", "2": "terça-feira", 
-        "3": "quarta-feira", "4": "quinta-feira", "5": "sexta-feira", "6": "sábado"
-    };
-    const dayText = diasMapa[daySelect.value];
+    const infoDia = mapaDiasFirebase[daySelect.value];
+    const dayText = infoDia.nome;
 
     if (updateBtn.style.display === 'inline-flex') return;
+    if (!horaValue) return; // Espera as horas carregarem
 
     try {
         const snapshot = await db.collection('historicoPregacao')
             .where('ano', '==', year)
             .where('mes', '==', monthText)
             .where('diadasemana', '==', dayText)
-            .where('sala', '==', salaValue) // <--- CONSULTA INCLUI SALA
+            .where('sala', '==', salaValue)
+            .where('hora', '==', horaValue) // <--- CONSULTA INCLUI HORA
             .limit(1)
             .get();
 
         if (!snapshot.empty) {
             scheduleContainer.innerHTML = `
                 <div style="text-align: center; padding: 25px; border: 2px solid #f39c12; border-radius: 8px; background-color: #fef9e7; margin-top: 20px;">
-                    <p style="color: #d35400; font-weight: bold; font-size: 18px; margin-bottom: 10px;">
-                        <i class="fas fa-exclamation-triangle"></i> A escala de ${dayText} (${salaValue}) para ${monthText} de ${year} já existe.
+                    <p style="color: #d35400; font-weight: bold; font-size: 18px;">
+                        <i class="fas fa-exclamation-triangle"></i> Já existe escala para ${dayText} às ${horaValue} nesta sala.
                     </p>
-                    <p style="color: #7f8c8d;">Escolha outra sala ou use o botão de calendário para editar.</p>
                 </div>`;
-            
             generateBtn.disabled = true;
             generateBtn.style.opacity = "0.5";
             saveBtn.style.display = 'none';
@@ -489,20 +535,31 @@
 }
 
     function setupEventListeners() {
-    // Botões principais de ação
-    document.getElementById('sala-select').addEventListener('change', verificarEscalaExistente);
-
+    // --- 1. BOTÕES DE AÇÃO PRINCIPAIS ---
     document.getElementById('download-pdf-btn')?.addEventListener('click', handlePdfDownload);
     generateBtn.addEventListener('click', handleGenerateClick);
     saveBtn.addEventListener('click', handleSaveClick);
     updateBtn.addEventListener('click', handleUpdateClick);
-    
-    // --- NOVO: Listeners para verificar se a escala já existe ao mudar as seleções ---
-    yearSelect.addEventListener('change', verificarEscalaExistente);
-    monthSelect.addEventListener('change', verificarEscalaExistente);
-    daySelect.addEventListener('change', verificarEscalaExistente);
 
-    // Modal de Pessoas
+    // --- 2. LISTENERS DA PÁGINA PRINCIPAL (FILTROS) ---
+    // Quando muda o Ano: Limpa memória, recarrega horas e verifica escala
+    yearSelect.addEventListener('change', () => {
+        dateEventTypes.clear();
+        lockedDates.clear();
+        carregarHorasDinamicas();
+    });
+
+    // Quando muda o Mês: Apenas verifica se já existe escala
+    monthSelect.addEventListener('change', verificarEscalaExistente);
+
+    // Quando muda o Dia da Semana: Recarrega as horas (que por sua vez chama a verificação)
+    daySelect.addEventListener('change', carregarHorasDinamicas);
+
+    // Quando muda a Hora ou a Sala: Verifica se essa combinação específica já existe
+    document.getElementById('hora-select').addEventListener('change', verificarEscalaExistente);
+    document.getElementById('sala-select').addEventListener('change', verificarEscalaExistente);
+
+    // --- 3. MODAL DE PESSOAS ---
     if (peopleModal) {
         peopleModal.querySelector('.close-btn')?.addEventListener('click', closePeopleModal);
         peopleModal.querySelector('#person-search-input')?.addEventListener('input', (e) => {
@@ -515,53 +572,87 @@
         });
     }
 
-    // Modal de Locais (Settings)
+    // --- 4. MODAL DE CONFIGURAÇÕES (LOCAIS) ---
     if (locationsModal) {
         document.getElementById('settings-btn')?.addEventListener('click', openLocationsModal);
         locationsModal.querySelector('.close-btn')?.addEventListener('click', closeLocationsModal);
         locationsModal.querySelector('#save-location-btn')?.addEventListener('click', handleSaveLocation);
     }
 
-    // Modal de Carregamento de Escala Antiga
+    // --- 5. MODAL DE CARREGAR ESCALA ANTIGA (ROXO) ---
     if (loadScheduleModal) {
         document.getElementById('load-schedule-btn')?.addEventListener('click', openLoadScheduleModal);
         loadScheduleModal.querySelector('.close-btn')?.addEventListener('click', closeLoadScheduleModal);
         loadScheduleModal.querySelector('#load-old-schedule-btn')?.addEventListener('click', handleLoadOldSchedule);
+
+        // LISTENERS DINÂMICOS PARA O MODAL (Correção das Horas)
+        document.getElementById('load-day-select').addEventListener('change', carregarHorasDinamicasModal);
+        document.getElementById('load-year-select').addEventListener('change', carregarHorasDinamicasModal);
     }
 
-    // Fechar modais ao clicar fora deles
+    // Fechar modais ao clicar fora
     window.addEventListener('click', (event) => {
         if (event.target == peopleModal) closePeopleModal();
         if (event.target == locationsModal) closeLocationsModal();
         if (event.target == loadScheduleModal) closeLoadScheduleModal();
     });
 
-    // Delegação de eventos no contentor da escala (inputs de pessoas, botões de grupo, cadeados)
+    // --- 6. GESTÃO DO CONTENTOR DA ESCALA (EVENTOS E CLIQUES) ---
+    
+    // Captura mudanças nos Dropdowns de Evento (Assembleia, Congresso, etc.)
+    scheduleContainer.addEventListener('change', (event) => {
+        if (event.target.classList.contains('event-select')) {
+            const select = event.target;
+            const val = select.value;
+            const dateSection = select.closest('.date-section');
+            const dateString = dateSection.dataset.dateString;
+            const lockBtn = dateSection.querySelector('.lock-btn');
+            const lockIcon = lockBtn.querySelector('i');
+            const groupContainer = dateSection.querySelector('.group-container');
+
+            // Salva na memória global para não perder ao clicar em "Gerar"
+            dateEventTypes.set(dateString, val);
+
+            if (val === 'assembleia' || val === 'congresso') {
+                lockedDates.add(dateString);
+                lockBtn.classList.add('locked');
+                lockIcon.classList.replace('fa-eye', 'fa-eye-slash');
+                groupContainer.innerHTML = ''; // Limpa grupos se for evento bloqueante
+            } else {
+                lockedDates.delete(dateString);
+                lockBtn.classList.remove('locked');
+                lockIcon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+    });
+
+    // Captura Cliques (Pessoas, Cadeados, Adicionar/Remover Grupos)
     scheduleContainer.addEventListener('click', (event) => {
-        // Selecionar pessoa
+        // Abrir seleção de pessoa
         if (event.target.classList.contains('person-input')) {
             openPeopleModal(event.target);
         }
         
-        // Bloquear/Desbloquear data (Cadeado)
+        // Alternar estado do Cadeado (Olho) manualmente
         const lockBtn = event.target.closest('.lock-btn');
         if (lockBtn) {
             toggleLockState(lockBtn);
         }
         
-        // Remover um grupo específico
+        // Remover Grupo
         if (event.target.classList.contains('remove-group-btn')) {
             event.target.closest('.group-card')?.remove();
         }
 
-        // Adicionar um grupo manualmente num dia específico
+        // Adicionar Grupo Manualmente
         const addBtn = event.target.closest('.add-group-btn');
         if (addBtn) {
             handleAddGroupManually(addBtn);
         }
     });
 }
-                
+
+          
              
     
             function openPeopleModal(inputElement) {
@@ -589,7 +680,11 @@
 function openLoadScheduleModal() { 
     populateYearSelect(document.getElementById('load-year-select')); 
     populateMonthSelect(document.getElementById('load-month-select'), false); 
+    
     loadScheduleModal.style.display = 'block'; 
+    
+    // Carrega as horas assim que abre com os valores padrão
+    carregarHorasDinamicasModal(); 
 }
 
             function closeLoadScheduleModal() { loadScheduleModal.style.display = 'none'; }
@@ -1067,6 +1162,7 @@ scheduleContainer.addEventListener('change', (event) => {
                     diadasemana: diaDaSemanaTexto,
                     evento: eventValue,
                     sala: salaParaSalvar,
+                    hora: document.getElementById('hora-select').value,
                     oque: "pregacao",
                     tipo: "pregacao",
                     parte: "testemunho publico",
@@ -1093,6 +1189,7 @@ scheduleContainer.addEventListener('change', (event) => {
                 diadasemana: diaDaSemanaTexto,
                 evento: eventValue,
                 sala: salaParaSalvar,
+                hora: document.getElementById('hora-select').value,
                 oque: "pregacao",
                 tipo: "pregacao",
                 parte: "testemunho publico",
@@ -1207,23 +1304,56 @@ scheduleContainer.addEventListener('change', (event) => {
     }
 }
 
+    async function carregarHorasDinamicasModal() {
+    const year = parseInt(document.getElementById('load-year-select').value, 10);
+    const dayValue = document.getElementById('load-day-select').value;
+    const horaSelect = document.getElementById('load-hora-select');
     
+    const infoDia = mapaDiasFirebase[dayValue];
+    
+    horaSelect.innerHTML = '<option value="">A carregar...</option>';
+
+    try {
+        const snapshot = await db.collection('horarios')
+            .where('ano', '==', year)
+            .where('tipo', '==', 'pregacao')
+            .limit(1)
+            .get();
+
+        if (snapshot.empty) {
+            horaSelect.innerHTML = '<option value="">Sem configuração</option>';
+            return;
+        }
+
+        const dados = snapshot.docs[0].data();
+        const listaHoras = dados[infoDia.pasta] ? dados[infoDia.pasta][infoDia.nome] : null;
+
+        if (listaHoras && Array.isArray(listaHoras) && listaHoras.length > 0) {
+            horaSelect.innerHTML = ''; 
+            listaHoras.forEach(hora => {
+                const option = document.createElement('option');
+                option.value = hora;
+                option.textContent = hora;
+                horaSelect.appendChild(option);
+            });
+        } else {
+            horaSelect.innerHTML = '<option value="">Sem horas</option>';
+        }
+    } catch (error) {
+        console.error("Erro no modal:", error);
+    }
+}
 
     
 async function initialize() { 
     populateYearSelect(yearSelect); 
     populateMonthSelect(monthSelect); 
-    
-    // Carrega dados do Firebase (locais, pessoas, etc)
     await fetchInitialData(); 
-    
-    // Configura os cliques dos botões
     setupEventListeners(); 
-    
-    // Atualiza a lista de locais
     updateLocationsDatalist(); 
     
-    // VERIFICAÇÃO INICIAL: Bloqueia o botão se o que estiver selecionado já existir
+    // ADICIONE ESTAS DUAS LINHAS AQUI:
+    await carregarHorasDinamicas(); 
     await verificarEscalaExistente(); 
 }
             
@@ -1365,6 +1495,73 @@ function gerarSemanaIndexPorData(dataObjeto) {
     
     return `(${diaInicio} ${mesInicio} - ${diaFim} ${mesFim} ${ano})`;
 }
+
+async function carregarHorasDinamicas() {
+    const year = parseInt(yearSelect.value, 10);
+    const dayValue = document.getElementById('day-select').value;
+    const horaSelect = document.getElementById('hora-select');
+    
+    const infoDia = mapaDiasFirebase[dayValue];
+    
+    console.log(`[DEBUG] Iniciando carga de horas para: Ano ${year}, Dia ${infoDia.nome}`);
+    horaSelect.innerHTML = '<option value="">A carregar...</option>';
+
+    try {
+        // Log da Query
+        console.log(`[DEBUG] Procurando no Firebase: Coleção 'horarios' onde ano == ${year} e tipo == 'pregacao'`);
+        
+        const snapshot = await db.collection('horarios')
+            .where('ano', '==', year)
+            .where('tipo', '==', 'pregacao')
+            .limit(1)
+            .get();
+
+        if (snapshot.empty) {
+            console.error(`[DEBUG] ERRO: Nenhum documento encontrado em 'horarios' para o ano ${year} com tipo 'pregacao'.`);
+            horaSelect.innerHTML = '<option value="">Sem config no DB</option>';
+            return;
+        }
+
+        const dados = snapshot.docs[0].data();
+        console.log("[DEBUG] Documento encontrado! Estrutura completa dos dados:", dados);
+
+        // Verifica se a "pasta" (dias-semana ou dias-fimdesemana) existe
+        const pasta = dados[infoDia.pasta];
+        if (!pasta) {
+            console.error(`[DEBUG] ERRO: A chave '${infoDia.pasta}' não existe no documento.`);
+            horaSelect.innerHTML = '<option value="">Pasta não encontrada</option>';
+            return;
+        }
+
+        // Verifica se o "dia" existe dentro da pasta
+        const listaHoras = pasta[infoDia.nome];
+        console.log(`[DEBUG] Buscando horas em: ${infoDia.pasta} -> ${infoDia.nome}`);
+
+        if (listaHoras && Array.isArray(listaHoras) && listaHoras.length > 0) {
+            console.log(`[DEBUG] Sucesso! ${listaHoras.length} horas encontradas:`, listaHoras);
+            horaSelect.innerHTML = ''; 
+            listaHoras.forEach(hora => {
+                const option = document.createElement('option');
+                option.value = hora;
+                option.textContent = hora;
+                horaSelect.appendChild(option);
+            });
+        } else {
+            console.warn(`[DEBUG] AVISO: O campo '${infoDia.nome}' está vazio ou não é uma lista.`);
+            horaSelect.innerHTML = '<option value="">Sem horas para este dia</option>';
+        }
+        
+        verificarEscalaExistente();
+
+    } catch (error) {
+        console.error("[DEBUG] ERRO CRÍTICO no Firebase:", error);
+        horaSelect.innerHTML = '<option value="">Erro de conexão</option>';
+    }
+}
+
+// Listeners para atualizar as horas quando mudar o dia ou o ano
+document.getElementById('day-select').addEventListener('change', carregarHorasDinamicas);
+yearSelect.addEventListener('change', carregarHorasDinamicas);
 
 
 
