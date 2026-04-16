@@ -7,78 +7,677 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <style>
-        /* Todos os seus estilos CSS foram mantidos aqui... */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; }
-        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding: 20px 0; height: 100vh; position: fixed; }
-        .logo { text-align: center; padding: 20px 0; border-bottom: 1px solid #34495e; }
-        .logo h2 { margin: 0; }
-        .nav-list { list-style: none; padding: 20px 0; }
-        .nav-item { padding: 10px 20px; }
-        .nav-item a { color: white; text-decoration: none; display: flex; align-items: center; }
-        .nav-item i { margin-right: 10px; width: 20px; text-align: center; }
-        .nav-item:hover { background-color: #34495e; }
-        .content { margin-left: 250px; padding: 30px; flex-grow: 1; }
-        h1 { color: #2c3e50; margin-bottom: 30px; font-size: 28px; }
-        .card { background-color: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .card h2 { color: #2c3e50; margin-bottom: 15px; font-size: 20px; }
-        @media (max-width: 768px) {
-            .sidebar { width: 70px; }
-            .sidebar .logo span, .sidebar nav ul li a span { display: none; }
-            .content { margin-left: 70px; }
-        }
-    </style>
+    <link rel="stylesheet" href="style_sidebar.css">
+
+   <style>
+    /* Estilos Gerais */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; color: #333; }
+
+    .content { margin-left: 250px; padding: 30px; flex-grow: 1; width: calc(100% - 250px); }
+    h1 { color: #2c3e50; margin-bottom: 30px; font-size: 28px; }
+    .card { background-color: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    
+    /* Container de Filtros e Botões na mesma linha */
+    #filters-container { 
+        display: flex; 
+        gap: 15px; 
+        flex-wrap: wrap; 
+        margin-bottom: 20px; 
+        align-items: flex-end; 
+    }
+    .filter-group { display: flex; flex-direction: column; }
+    .filter-group label { font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #555; }
+    .filter-group select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; background-color: #fff; min-width: 150px; }
+
+    /* Estilos dos Botões de Ação */
+    .action-buttons-container { margin-left: auto; display: flex; gap: 10px; }
+    .action-button { 
+        padding: 10px 20px; 
+        font-size: 15px; 
+        font-weight: bold; 
+        border-radius: 4px; 
+        border: none; 
+        cursor: pointer; 
+        transition: all 0.3s; 
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    #btn-pdf-pregacao { background-color: #e74c3c; } /* Vermelho */
+    #edit-button { background-color: #3498db; }      /* Azul */
+    #create-button { background-color: #2ecc71; }    /* Verde */
+    
+    .action-button:hover { opacity: 0.85; }
+
+    /* Estilos de Exibição da Escala (Mantidos) */
+    .week-section { margin-bottom: 40px; }
+    .week-title { background-color: #34495e; color: white; padding: 10px 20px; border-radius: 4px; font-size: 16px; margin-bottom: 15px; }
+    .part-header { font-size: 18px; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; padding: 10px 15px; color: white; border-radius: 6px; }
+    .style-campo .part-header { background-color: #8e44ad; } 
+    .style-campo-content { border-left: 3px solid #8e44ad; margin-left: 5px; padding-left: 15px; }
+    .style-testemunho .part-header { background-color: #27ae60; }
+    .style-testemunho-content { border-left: 3px solid #27ae60; margin-left: 5px; padding-left: 15px; }
+    .sub-part { margin-bottom: 20px; }
+    .level-3-header { font-weight: bold; color: #fff; background: #444; display: inline-block; padding: 2px 10px; border-radius: 4px; margin-bottom: 8px; font-size: 14px; text-transform: capitalize; }
+    .data-row { margin-bottom: 4px; color: #555; font-size: 15px; }
+    .data-row strong { color: #2c3e50; }
+    .loading-spinner { text-align: center; padding: 20px; font-size: 24px; color: #3498db; display: none; }
+
+    @media (max-width: 1024px) {
+        .action-buttons-container { margin-left: 0; width: 100%; }
+    }
+    @media (max-width: 768px) {
+        .sidebar { width: 70px; }
+        .content { margin-left: 70px; width: calc(100% - 70px); }
+    }
+    .edit-icon {
+    color: #3498db;
+    cursor: pointer;
+    margin-left: 10px;
+    font-size: 14px;
+    transition: transform 0.2s;
+}
+.edit-icon:hover { transform: scale(1.2); color: #2980b9; }
+
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    width: 90%;
+    max-width: 400px;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Estilo para botão Editar quando ativo */
+#edit-button.active-edit {
+    background-color: #e67e22; /* Laranja quando ativo */
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Container para alinhar texto à esquerda e lápis à direita */
+.edit-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.edit-icon {
+    color: #4db3ff; /* Azul mais claro igual ao da imagem */
+    cursor: pointer;
+    font-size: 16px;
+    transition: color 0.2s, transform 0.2s;
+    padding: 2px 5px;
+}
+
+.edit-icon:hover {
+    color: #3498db;
+    transform: scale(1.1);
+}
+
+/* Ajuste específico para o cabeçalho da semana */
+.week-title {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Lápis fica logo após o texto na semana */
+}
+
+</style>
+
+
 </head>
 <body>
-    <div class="sidebar">
-        <div class="logo">
-            <h2>Sistema de Escala</h2>
+
+    <div id="sidebar-placeholder"></div>
+
+  <main class="content">
+    <h1>Escala de Pregação</h1>
+
+    <div class="card">
+        <div id="filters-container">
+            <div class="filter-group">
+                <label>Ano</label>
+                <select id="filter-ano"><option value="">Carregando...</option></select>
+            </div>
+            <div class="filter-group">
+                <label>Mês</label>
+                <select id="filter-mes"><option value="">Selecione o Ano</option></select>
+            </div>
+            <div class="filter-group">
+                <label>Semana</label>
+                <select id="filter-semana"><option value="">Selecione o Mês</option></select>
+            </div>
+            <div class="filter-group">
+                <label>Parte</label>
+                <select id="filter-parte">
+                    <option value="todas">Todas as Partes</option>
+                    <option value="dirigencia saida">Serviço de Campo</option>
+                    <option value="testemunho publico">Testemunho Público</option>
+                </select>
+            </div>
+
+            <!-- BOTÕES AGORA DENTRO DO FILTERS-CONTAINER -->
+            <div class="action-buttons-container">
+                <button id="btn-pdf-pregacao" class="action-button">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button id="edit-button" class="action-button">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button id="create-button" class="action-button">
+                    <i class="fas fa-plus"></i> Criar
+                </button>
+            </div>
         </div>
-        <nav>
-            <ul class="nav-list">
-                <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
-                <li class="nav-item"><a href="semana.html"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
-                <li class="nav-item"><a href="fimdesemana.html"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
-                <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
-                <li class="nav-item"><a href="estatisticas.html"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
-                <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
-                <li class="nav-item"><a href="iniciar.html"><i class="fas fa-play"></i><span>Iniciar</span></a></li>
-                <li class="nav-item"><a href="criar.html"><i class="fas fa-plus"></i><span>Criar</span></a></li>
-            </ul>
-        </nav>
     </div>
 
-    <main class="content">
-        <h1>Pregação</h1>
-        <div class="card">
-            <h2>Escala de Carrinhos</h2>
-            <p>Aqui será exibida a escala do testemunho público com carrinhos.</p>
-        </div>
-        <div class="card">
-            <h2>Grupos de Serviço de Campo</h2>
-            <p>Aqui serão exibidos os grupos, horários e locais de encontro para o serviço de campo.</p>
-        </div>
-    </main>
+    <div id="loading" class="loading-spinner"><i class="fas fa-spinner fa-spin"></i></div>
+    <div id="schedule-display"></div>
+</main>
 
+<!-- Popup de Edição -->
+<div id="edit-popup-overlay" class="modal-overlay" style="display: none; background: rgba(0,0,0,0.85);">
+    <div class="modal-content" style="background: #1a1a1a; color: #ccc; border-radius: 8px; padding: 25px; width: 400px; border: 1px solid #333;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 id="popup-title" style="color: #eee; font-size: 24px; margin: 0;">Editar</h2>
+            <button id="close-popup" style="background:none; border:none; color:#777; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        
+        <form id="edit-form">
+            <input type="hidden" id="edit-doc-id">
+            <input type="hidden" id="edit-type">
+
+            <div id="participant-fields">
+                <!-- Dropdowns serão inseridos aqui dinamicamente -->
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 25px;">
+                <button type="button" id="btn-save-edit" style="background-color: #27ae60; color: white; border: none; padding: 12px 30px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 18px;">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
-        // Configuração do Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A", // Substitua pela sua chave de API real
-            authDomain: "escalas-6e0f9.firebaseapp.com",
-            projectId: "escalas-6e0f9",
-            storageBucket: "escalas-6e0f9.firebasestorage.app",
-            messagingSenderId: "19118998563",
-            appId: "1:19118998563:web:5412be658ae34bd45add96"
-        };
+        // Configuração Firebase...
+     // Configuração Firebase...
+const firebaseConfig = {
+    apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A",
+    authDomain: "escalas-6e0f9.firebaseapp.com",
+    projectId: "escalas-6e0f9",
+    storageBucket: "escalas-6e0f9.firebasestorage.app",
+    messagingSenderId: "19118998563",
+    appId: "1:19118998563:web:5412be658ae34bd45add96"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-        // Inicializa o Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+const monthMap = { 1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro" };
+const monthRevMap = Object.fromEntries(Object.entries(monthMap).map(([k, v]) => [v, parseInt(k)]));
 
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("Página de Pregação carregada.");
+let cacheHistorico = [];
+let cacheHistoricoPregacao = [];
+let personMap = new Map();
+let anoPredefinido = null;
+let isEditMode = false;
+
+document.addEventListener('DOMContentLoaded', async function() {
+    fetch('sidebar.html').then(res => res.text()).then(html => document.getElementById("sidebar-placeholder").innerHTML = html);
+    await loadInitialData();
+
+    // Listener do PDF
+    document.getElementById('btn-pdf-pregacao').addEventListener('click', generatePDF);
+});
+
+async function loadInitialData() {
+    document.getElementById('loading').style.display = 'block';
+    try {
+        const painelDoc = await db.collection('painel').doc('ano').get();
+        if (painelDoc.exists) anoPredefinido = painelDoc.data().ano;
+
+        const pessoasSnap = await db.collection('pessoas').get();
+        pessoasSnap.forEach(doc => personMap.set(doc.id, doc.data().nomePessoa));
+
+        const [hSnap, hpSnap] = await Promise.all([
+            db.collection('historico').where('tipo', '==', 'pregacao').get(),
+            db.collection('historicoPregacao').get()
+        ]);
+
+        // --- AQUI ESTÁ A CORREÇÃO: Guardar o ID junto com os dados ---
+        cacheHistorico = hSnap.docs.map(doc => ({
+            id: doc.id, 
+            ...doc.data()
+        }));
+
+        cacheHistoricoPregacao = hpSnap.docs.map(doc => ({
+            id: doc.id, 
+            ...doc.data()
+        }));
+        
+        console.log("Caches carregados com IDs!");
+        populateYears();
+    } catch (error) { 
+        console.error("Erro ao carregar dados:", error); 
+    }
+    document.getElementById('loading').style.display = 'none';
+}
+
+function populateYears() {
+    const years = new Set();
+    cacheHistorico.forEach(d => years.add(d.ano));
+    cacheHistoricoPregacao.forEach(d => years.add(d.ano));
+    if (anoPredefinido) years.add(parseInt(anoPredefinido));
+
+    const select = document.getElementById('filter-ano');
+    select.innerHTML = '<option value="">Ano</option>';
+    Array.from(years).sort((a,b)=>b-a).forEach(y => select.add(new Option(y, y)));
+    
+    if (anoPredefinido && [...select.options].some(opt => opt.value == anoPredefinido)) {
+        select.value = anoPredefinido;
+        populateMonths();
+    }
+    select.onchange = populateMonths;
+}
+
+function populateMonths() {
+    const year = parseInt(document.getElementById('filter-ano').value);
+    if (!year) return;
+    const months = new Set();
+    cacheHistorico.filter(d => d.ano === year).forEach(d => months.add(monthMap[d.mes]));
+    cacheHistoricoPregacao.filter(d => d.ano === year).forEach(d => months.add(typeof d.mes === 'string' ? d.mes : monthMap[d.mes]));
+    
+    const select = document.getElementById('filter-mes');
+    select.innerHTML = '<option value="">Mês</option>';
+    Array.from(months).sort((a,b)=>monthRevMap[a]-monthRevMap[b]).forEach(m => select.add(new Option(m,m)));
+
+    const mesAtualNome = monthMap[new Date().getMonth() + 1];
+    if ([...select.options].some(opt => opt.value === mesAtualNome)) {
+        select.value = mesAtualNome;
+        populateWeeks();
+    }
+    select.onchange = populateWeeks;
+}
+
+function populateWeeks() {
+    const year = parseInt(document.getElementById('filter-ano').value);
+    const mesName = document.getElementById('filter-mes').value;
+    const weeks = new Set();
+    cacheHistorico.filter(d => d.ano === year && monthMap[d.mes] === mesName).forEach(d => weeks.add(d.semanaindex));
+    cacheHistoricoPregacao.filter(d => d.ano === year && (d.mes === mesName || monthMap[d.mes] === mesName)).forEach(d => weeks.add(d.semanaindex));
+    const select = document.getElementById('filter-semana');
+    select.innerHTML = '<option value="todas">Todas as Semanas</option>';
+    Array.from(weeks).sort((a,b)=>parseInt(a.match(/\d+/))-parseInt(b.match(/\d+/))).forEach(w => select.add(new Option(w,w)));
+    select.onchange = renderSchedule;
+    renderSchedule();
+}
+
+function renderSchedule() {
+    const year = parseInt(document.getElementById('filter-ano').value);
+    const mesName = document.getElementById('filter-mes').value;
+    const week = document.getElementById('filter-semana').value;
+    const part = document.getElementById('filter-parte').value;
+    const display = document.getElementById('schedule-display');
+
+    if (!year || !mesName) {
+        display.innerHTML = '<p style="text-align:center; padding:20px;">Selecione os filtros acima.</p>';
+        return;
+    }
+
+    // Filtragem dos dados nos caches
+    let hData = cacheHistorico.filter(d => d.ano === year && monthMap[d.mes] === mesName && (week === 'todas' || d.semanaindex === week));
+    let hpData = cacheHistoricoPregacao.filter(d => d.ano === year && (d.mes === mesName || monthMap[d.mes] === mesName) && (week === 'todas' || d.semanaindex === week));
+
+    // Identificar semanas únicas presentes nos dados
+    const weeksFound = Array.from(new Set([...hData.map(d => d.semanaindex), ...hpData.map(d => d.semanaindex)]));
+    weeksFound.sort((a,b) => parseInt(a.match(/\d+/)) - parseInt(b.match(/\d+/)));
+
+    // Lógica do Lápis: Só aparece se uma semana específica estiver selecionada E o modo edição estiver ON
+    const isSpecificWeek = week !== 'todas';
+    const showPencils = isEditMode && isSpecificWeek;
+
+    // Helper atualizado para o Lápis
+    const getPencilHtml = (id, type) => {
+        return showPencils ? `<i class="fas fa-pencil-alt edit-icon" onclick="openEditPopup('${id}', '${type}')"></i>` : '';
+    };
+
+    let html = '';
+    weeksFound.forEach(wk => {
+        // 1. Título da Semana com Lápis logo ao lado
+        html += `
+            <div class="week-section">
+                <div class="week-title">
+                    ${wk} ${getPencilHtml('id_semana', 'semana')} 
+                </div>`;
+
+        // ... (lógica de evento especial) ...
+
+        // A) SERVIÇO DE CAMPO
+        if (part === 'todas' || part === 'dirigencia saida') {
+            const docs = hData.filter(d => d.semanaindex === wk);
+            if (docs.length > 0) {
+                html += `
+                <div class="style-campo">
+                    <div class="part-header"><i class="fas fa-users"></i> Serviço de Campo</div>
+                    <div class="style-campo-content">`;
+                
+                docs.forEach(doc => {
+                    (doc.designacoes || []).forEach(desig => {
+                        const dirId = desig.participantes?.dirigente || desig.participantes?.participante;
+                        html += `
+                        <div class="sub-part">
+                            <div class="edit-container">
+                                <p class="data-row"><strong>Dirigente:</strong> ${desig.dia || ''} - ${desig.hora || ''}</p>
+                                ${getPencilHtml(doc.id, 'campo')}
+                            </div>
+                            <p class="data-row" style="margin-left: 10px;"> ${personMap.get(dirId) || '---'}</p>
+                        </div>`;
+                    });
+                });
+                html += `</div></div>`;
+            }
+        }
+
+        // B) TESTEMUNHO PÚBLICO
+      if (part === 'todas' || part === 'testemunho publico') {
+    const docs = hpData.filter(d => d.semanaindex === wk);
+    if (docs.length > 0) {
+        html += `
+        <div class="style-testemunho" style="margin-top:25px;">
+            <div class="part-header"><i class="fas fa-store"></i> Testemunho Público</div>
+            <div class="style-testemunho-content">`;
+        
+        docs.sort((a,b)=>a.grupo-b.grupo).forEach(doc => {
+            // --- NOVA LÓGICA PARA EQUIPA DINÂMICA ---
+            let nomesEquipa = [];
+            
+            // Verifica Pessoa 1
+            const p1 = doc.Pessoa1?.nome || personMap.get(doc.Pessoa1?.id);
+            if (p1) nomesEquipa.push(p1);
+            
+            // Verifica Pessoa 2
+            const p2 = doc.Pessoa2?.nome || personMap.get(doc.Pessoa2?.id);
+            if (p2) nomesEquipa.push(p2);
+            
+            // Verifica Pessoa 3 (Caso exista)
+            const p3 = doc.Pessoa3?.nome || personMap.get(doc.Pessoa3?.id);
+            if (p3) nomesEquipa.push(p3);
+
+            // Junta os nomes encontrados com " - "
+            const equipaFormatada = nomesEquipa.length > 0 ? nomesEquipa.join(' - ') : '---';
+
+            html += `
+            <div class="sub-part">
+                <div class="level-3-header edit-container" style="display: flex;">
+                    <span>${doc.diadasemana || ''} ${doc.hora || ''}</span>
+                    ${getPencilHtml(doc.id, 'publico')}
+                </div>
+                <p class="data-row"><strong>Equipa:</strong> ${equipaFormatada}</p>
+                <p class="data-row"><strong>Local:</strong> ${doc.local || '---'}</p>
+            </div>`;
         });
+        html += `</div></div>`;
+    }
+}
+        html += `</div>`;
+    });
+
+    display.innerHTML = html || '<p style="text-align:center;">Nenhum registo.</p>';
+}
+
+async function generatePDF() {
+    const ano = document.getElementById('filter-ano').value;
+    const mes = document.getElementById('filter-mes').value;
+    if (!ano || !mes) { alert("Selecione Ano e Mês"); return; }
+
+    const element = document.getElementById('schedule-display');
+    
+    // Container temporário para formatar o PDF
+    const tempContainer = document.createElement('div');
+    tempContainer.style.padding = "5px";
+    tempContainer.style.width = "790px"; // Largura para A4
+    tempContainer.style.backgroundColor = "white";
+    tempContainer.style.fontFamily = "Arial, sans-serif";
+
+    // 1. Título do PDF menor e com menos margem
+    const title = document.createElement('h2');
+    title.style.textAlign = 'center';
+    title.style.fontSize = '18px';
+    title.style.margin = '0 0 10px 0';
+    title.style.paddingBottom = '5px';
+    title.style.borderBottom = '2px solid #333';
+    title.innerText = `ESCALA DE PREGAÇÃO - ${mes.toUpperCase()} ${ano}`;
+    tempContainer.appendChild(title);
+
+    // 2. Grid de 2 Colunas
+    const gridWrapper = document.createElement('div');
+    gridWrapper.style.display = "grid";
+    gridWrapper.style.gridTemplateColumns = "1fr 1fr";
+    gridWrapper.style.gap = "10px";
+    gridWrapper.style.alignItems = "start"; // Importante para não esticar colunas
+    
+    const weeks = element.querySelectorAll('.week-section');
+    weeks.forEach(week => {
+        const weekClone = week.cloneNode(true);
+        
+        // --- COMPACTAÇÃO DA SEMANA ---
+        weekClone.style.fontSize = "9.5px"; // Fonte levemente menor
+        weekClone.style.marginBottom = "5px";
+        weekClone.style.breakInside = "avoid"; // Impede quebrar a semana entre páginas
+
+        // Ajustar Título da Semana (Azul)
+        const wkTitle = weekClone.querySelector('.week-title');
+        if(wkTitle) {
+            wkTitle.style.padding = "4px 8px";
+            wkTitle.style.fontSize = "11px";
+            wkTitle.style.marginBottom = "6px";
+        }
+
+        // Ajustar Cabeçalhos (Roxo/Verde)
+        const headers = weekClone.querySelectorAll('.part-header');
+        headers.forEach(h => {
+            h.style.padding = "3px 8px";
+            h.style.fontSize = "10px";
+            h.style.marginBottom = "4px";
+        });
+
+        // Compactar o conteúdo do Testemunho Público
+        const subParts = weekClone.querySelectorAll('.sub-part');
+        subParts.forEach(sp => {
+            sp.style.marginBottom = "4px"; // Reduz distância entre horários
+        });
+
+        const level3 = weekClone.querySelectorAll('.level-3-header');
+        level3.forEach(lh => {
+            lh.style.fontSize = "8.5px";
+            lh.style.padding = "1px 5px";
+            lh.style.marginBottom = "2px";
+        });
+
+        const dataRows = weekClone.querySelectorAll('.data-row');
+        dataRows.forEach(dr => {
+            dr.style.marginBottom = "0px"; // Tira o espaço entre Equipa e Local
+            dr.style.fontSize = "9px";
+        });
+
+        gridWrapper.appendChild(weekClone);
+    });
+
+    tempContainer.appendChild(gridWrapper);
+
+    const opt = {
+        margin: 8, // Margem da folha
+        filename: `Escala_Pregacao_${mes}_${ano}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Gerar o PDF
+    html2pdf().set(opt).from(tempContainer).save();
+}
+
+
+// Toggle do botão Editar
+document.getElementById('edit-button').addEventListener('click', function() {
+    const week = document.getElementById('filter-semana').value;
+    if (week === 'todas') {
+        alert("Por favor, selecione uma semana específica para editar.");
+        return;
+    }
+    
+    isEditMode = !isEditMode;
+    this.classList.toggle('active-edit', isEditMode);
+    renderSchedule();
+});
+
+// Abrir Popup
+window.openEditPopup = function(id, type) {
+    console.group("🚀 Debug: Abertura do Popup");
+    console.log("ID solicitado:", id);
+    console.log("Tipo:", type);
+
+    const overlay = document.getElementById('edit-popup-overlay');
+    const fieldsContainer = document.getElementById('participant-fields');
+    const title = document.getElementById('popup-title');
+    
+    document.getElementById('edit-doc-id').value = id;
+    document.getElementById('edit-type').value = type;
+    fieldsContainer.innerHTML = ''; 
+
+    let currentParticipants = [];
+    let registroEncontrado = null;
+    
+    // 1. Localizar os dados no Cache com LOGS
+    if (type === 'campo') {
+        title.innerText = "Editar Serviço de Campo";
+        registroEncontrado = cacheHistorico.find(d => d.id === id);
+        
+        console.log("Objeto encontrado no cacheHistorico:", registroEncontrado);
+
+        if (registroEncontrado && registroEncontrado.designacoes) {
+            // Assume-se a primeira designação do array
+            const desig = registroEncontrado.designacoes[0];
+            currentParticipants = Object.values(desig.participantes || {});
+            console.log("Participantes extraídos (Campo):", currentParticipants);
+        }
+    } else {
+        title.innerText = "Editar Testemunho Público";
+        registroEncontrado = cacheHistoricoPregacao.find(d => d.id === id);
+        
+        console.log("Objeto encontrado no cacheHistoricoPregacao:", registroEncontrado);
+
+        if (registroEncontrado) {
+            if (registroEncontrado.Pessoa1?.id) currentParticipants.push(registroEncontrado.Pessoa1.id);
+            if (registroEncontrado.Pessoa2?.id) currentParticipants.push(registroEncontrado.Pessoa2.id);
+            if (registroEncontrado.Pessoa3?.id) currentParticipants.push(registroEncontrado.Pessoa3.id);
+            console.log("Participantes extraídos (Público):", currentParticipants);
+        }
+    }
+
+    if (!registroEncontrado) {
+        console.error("❌ Erro: Registro não encontrado no cache!");
+    }
+
+    // 2. Gerar campos e validar seleção
+    const numFields = Math.max(2, currentParticipants.length);
+    console.log(`Gerando ${numFields} dropdowns...`);
+
+    for (let i = 0; i < numFields; i++) {
+        const div = document.createElement('div');
+        div.className = 'filter-group';
+        div.style.marginBottom = '15px';
+        
+        const label = document.createElement('label');
+        label.innerText = `Participante ${i + 1}`;
+        label.style.display = 'block';
+        label.style.marginBottom = '5px';
+        label.style.color = '#888';
+
+        const select = document.createElement('select');
+        select.className = 'edit-select-person';
+        select.style.width = '100%';
+        select.style.padding = '10px';
+        select.style.background = '#222';
+        select.style.color = '#fff';
+        select.style.border = '1px solid #444';
+
+        select.innerHTML = '<option value="">Selecione...</option>';
+        
+        const idParaSelecionar = currentParticipants[i];
+        
+        Array.from(personMap.entries()).sort((a,b) => a[1].localeCompare(b[1])).forEach(([pId, pNome]) => {
+            const opt = new Option(pNome, pId);
+            if (idParaSelecionar === pId) {
+                opt.selected = true;
+                console.log(`✅ Dropdown ${i+1}: Selecionado ${pNome} (ID: ${pId})`);
+            }
+            select.add(opt);
+        });
+
+        if (!idParaSelecionar) {
+            console.log(`⚪ Dropdown ${i+1}: Ficou vazio (sem dado prévio)`);
+        }
+
+        div.appendChild(label);
+        div.appendChild(select);
+        fieldsContainer.appendChild(div);
+    }
+
+    overlay.style.display = 'flex';
+    console.groupEnd();
+};
+
+// Fechar Popup
+document.getElementById('close-popup').onclick = () => {
+    document.getElementById('edit-popup-overlay').style.display = 'none';
+};
+
+// Salvar no Firebase (Exemplo Simplificado)
+document.getElementById('btn-save-edit').onclick = async function() {
+    const id = document.getElementById('edit-doc-id').value;
+    const type = document.getElementById('edit-type').value;
+    const selects = document.querySelectorAll('.edit-select-person');
+    const selectedIds = Array.from(selects).map(s => s.value);
+
+    try {
+        if (type === 'publico') {
+            await db.collection('historicoPregacao').doc(id).update({
+                "Pessoa1.id": selectedIds[0] || "",
+                "Pessoa1.nome": personMap.get(selectedIds[0]) || "",
+                "Pessoa2.id": selectedIds[1] || "",
+                "Pessoa2.nome": personMap.get(selectedIds[1]) || "",
+                // Se houver Pessoa3 na sua estrutura:
+                "Pessoa3.id": selectedIds[2] || "",
+                "Pessoa3.nome": personMap.get(selectedIds[2]) || ""
+            });
+        } else {
+            // Lógica para Serviço de Campo (ajustar conforme sua estrutura de designacoes)
+            alert("Lógica de salvar Campo precisa ser mapeada conforme seu objeto designacoes");
+        }
+        
+        document.getElementById('edit-popup-overlay').style.display = 'none';
+        await loadInitialData(); // Recarrega caches do Firebase
+        renderSchedule(); // Redesenha a tela
+    } catch (e) {
+        console.error(e);
+        alert("Erro ao salvar.");
+    }
+};
+
     </script>
 </body>
 </html>
