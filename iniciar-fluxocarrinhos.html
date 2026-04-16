@@ -117,6 +117,49 @@
             align-items: center;
         }
 
+        /* Container para alinhar o título e os botões de ação no topo */
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+}
+
+.top-right-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Ajuste no grupo de controles para permitir o botão à direita */
+.control-group {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end; /* Alinha labels e selects pela base */
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+/* Força o botão Gerar Escala para a direita */
+#generate-schedule-btn {
+    margin-left: auto;
+}
+
+/* Ajuste nos selects para manter consistência */
+.control-group select {
+    min-width: 150px;
+}
+
+.event-select {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    margin-right: 10px;
+    background-color: #f8f9fa;
+    color: #2c3e50;
+    cursor: pointer;
+}
+
     </style>
 </head>
 
@@ -127,25 +170,46 @@
 <body>
    <div id="sidebar-placeholder"></div>
 
-    <main class="content">
+   <main class="content">
+    <div class="header-container">
         <h1>Atribuição para Carrinhos</h1>
-        <div class="controls-card">
-            <div class="control-group">
-                <div><label for="year-select">Ano:</label><select id="year-select"></select></div>
-                <div><label for="month-select">Mês:</label><select id="month-select"></select></div>
-                <div>
-                    <label for="day-select">Dia da Semana:</label>
-                    <select id="day-select">
-                        <option value="0">Domingo</option><option value="1">Segunda-feira</option><option value="2">Terça-feira</option><option value="3">Quarta-feira</option><option value="4">Quinta-feira</option><option value="5">Sexta-feira</option><option value="6">Sábado</option>
-                    </select>
-                </div>
-                <button id="generate-schedule-btn" class="btn-action"><i class="fas fa-rocket"></i> Gerar Escala</button>
-                <button id="save-schedule-btn" class="btn-action btn-save" style="display: none;"><i class="fas fa-save"></i> Salvar Escala</button>
-                <button id="update-schedule-btn" class="btn-action" style="display: none; background-color: #f39c12;"><i class="fas fa-pencil-alt"></i> Guardar Edição</button>
-                <button id="load-schedule-btn" class="btn-action" style="background-color: #9b59b6;" title="Carregar Escala Antiga"><i class="fas fa-calendar-alt"></i></button>
-                <button id="settings-btn" class="btn-action" style="background-color: #7f8c8d;" title="Gerir Locais"><i class="fas fa-cog"></i></button>
-                <button id="download-pdf-btn" class="btn-action" style="background-color: #c0392b;" title="Descarregar PDF"><i class="fas fa-file-pdf"></i></button>
+        
+        <!-- Botões movidos para o canto superior direito -->
+        <div class="top-right-actions">
+            <button id="load-schedule-btn" class="btn-action" style="background-color: #9b59b6;" title="Carregar Escala Antiga"><i class="fas fa-calendar-alt"></i></button>
+            <button id="settings-btn" class="btn-action" style="background-color: #7f8c8d;" title="Gerir Locais"><i class="fas fa-cog"></i></button>
+            <button id="download-pdf-btn" class="btn-action" style="background-color: #c0392b;" title="Descarregar PDF"><i class="fas fa-file-pdf"></i></button>
+        </div>
+    </div>
+
+    <div class="controls-card">
+        <div class="control-group">
+            <div><label for="year-select">Ano:</label><select id="year-select"></select></div>
+            <div><label for="month-select">Mês:</label><select id="month-select"></select></div>
+            <div>
+                <label for="day-select">Dia da Semana:</label>
+                <select id="day-select">
+                    <option value="0">Domingo</option><option value="1">Segunda-feira</option><option value="2">Terça-feira</option><option value="3">Quarta-feira</option><option value="4">Quinta-feira</option><option value="5">Sexta-feira</option><option value="6">Sábado</option>
+                </select>
             </div>
+            
+            <!-- NOVO CAMPO SALA -->
+            <div>
+                <label for="sala-select">Sala:</label>
+                <select id="sala-select">
+                    <option value="salao-principal" selected>Salão Principal</option>
+                    <option value="segunda-sala">Segunda Sala</option>
+                    <option value="terceira-sala">Terceira Sala</option>
+                </select>
+            </div>
+
+            <button id="generate-schedule-btn" class="btn-action"><i class="fas fa-rocket"></i> Gerar Escala</button>
+            <button id="save-schedule-btn" class="btn-action btn-save" style="display: none;"><i class="fas fa-save"></i> Salvar Escala</button>
+            <button id="update-schedule-btn" class="btn-action" style="display: none; background-color: #f39c12;"><i class="fas fa-pencil-alt"></i> Guardar Edição</button>
+        </div>
+               
+               
+           </div>
             <div class="auto-generate-info">
                 <i class="fas fa-info-circle"></i> O sistema irá calcular automaticamente o número ideal de grupos por dia para distribuir os publicadores disponíveis de forma equilibrada pelo mês. Dias bloqueados são tidos em conta.
             </div>
@@ -158,7 +222,47 @@
 
     <div id="people-modal" class="modal"><div class="modal-content"><span class="close-btn">×</span><h2>Selecionar Pessoa</h2><input type="text" id="person-search-input" placeholder="Pesquisar por nome..."><div class="modal-body"><div id="modal-people-list" class="modal-list-container"></div><div id="modal-history-display" class="modal-history-container"></div></div></div></div>
     <div id="locations-modal" class="modal"><div class="modal-content"><span class="close-btn">×</span><h2>Gerir Locais</h2><div class="modal-body" style="flex-direction: column; max-height: none;"><label for="new-location-input"><strong>Nome do Novo Local:</strong></label><input type="text" id="new-location-input" placeholder="Ex: Praça Central" style="padding: 10px; font-size: 16px;"><button id="save-location-btn" class="btn-action btn-save" style="margin-top: 10px;">Gravar Novo Local</button><div id="location-feedback"></div></div></div></div>
-    <div id="load-schedule-modal" class="modal"><div class="modal-content" style="max-width: 500px;"><span class="close-btn">×</span><h2>Carregar Escala Antiga</h2><div class="modal-body" style="flex-direction: column; max-height: none;"><div class="control-group" style="gap: 15px;"><div><label for="load-year-select">Ano:</label><select id="load-year-select"></select></div><div><label for="load-month-select">Mês:</label><select id="load-month-select"></select></div></div><button id="load-old-schedule-btn" class="btn-action" style="margin-top: 20px; background-color: #9b59b6;">Carregar</button></div></div></div>
+<div id="load-schedule-modal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <span class="close-btn">×</span>
+        <h2>Carregar Escala Antiga</h2>
+        <div class="modal-body" style="flex-direction: column; max-height: none; gap: 15px;">
+            <div class="control-group" style="gap: 15px; display: grid; grid-template-columns: 1fr 1fr;">
+                <div>
+                    <label for="load-year-select">Ano:</label>
+                    <select id="load-year-select" style="width: 100%;"></select>
+                </div>
+                <div>
+                    <label for="load-month-select">Mês:</label>
+                    <select id="load-month-select" style="width: 100%;"></select>
+                </div>
+                <div>
+                    <label for="load-day-select">Dia da Semana:</label>
+                    <select id="load-day-select" style="width: 100%;">
+                        <option value="0">domingo</option>
+                        <option value="1">segunda-feira</option>
+                        <option value="2">terça-feira</option>
+                        <option value="3">quarta-feira</option>
+                        <option value="4">quinta-feira</option>
+                        <option value="5">sexta-feira</option>
+                        <option value="6">sábado</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="load-sala-select">Sala:</label>
+                    <select id="load-sala-select" style="width: 100%;">
+                        <option value="salao-principal">Salão Principal</option>
+                        <option value="segunda-sala">Segunda Sala</option>
+                        <option value="terceira-sala">Terceira Sala</option>
+                    </select>
+                </div>
+            </div>
+            <button id="load-old-schedule-btn" class="btn-action" style="margin-top: 20px; background-color: #9b59b6; width: 100%; justify-content: center;">
+                <i class="fas fa-search"></i> Localizar e Carregar
+            </button>
+        </div>
+    </div>
+</div>
 
     <script>
         const firebaseConfig = {
@@ -172,7 +276,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
     
-        document.addEventListener('DOMContentLoaded', () => {
+       
             const yearSelect = document.getElementById('year-select');
             const monthSelect = document.getElementById('month-select');
             const daySelect = document.getElementById('day-select');
@@ -188,7 +292,9 @@
             let locations = [], allEligiblePeople = [], fullHistory = [], activePersonInput = null;
             let lockedDates = new Set(), loadedDocIds = new Set();
             let loadedScheduleContext = { year: null, month: null };
-    
+    let dateEventTypes = new Map();
+
+
             // --- FUNÇÃO DE DATA ATUALIZADA ---
             function getSchedulingDates(year, month, targetDayOfWeek) {
                 const dates = [];
@@ -228,15 +334,7 @@
                 
                 return dates;
             }
-    
-    
-            async function initialize() { 
-                populateYearSelect(yearSelect); 
-                populateMonthSelect(monthSelect); 
-                await fetchInitialData(); 
-                setupEventListeners(); 
-                updateLocationsDatalist(); 
-            }
+
     
             async function fetchInitialData() { 
                 loader.style.display = 'block'; 
@@ -346,64 +444,125 @@
                 doc.save(`escala_carrinhos_${monthYear.replace(/ /g, '_')}.pdf`);
             }
     
-        function setupEventListeners() { 
-                document.getElementById('download-pdf-btn')?.addEventListener('click', handlePdfDownload);
-                generateBtn.addEventListener('click', handleGenerateClick); 
-                saveBtn.addEventListener('click', handleSaveClick); 
-                updateBtn.addEventListener('click', handleUpdateClick); 
-                
-                if (peopleModal) { 
-                    peopleModal.querySelector('.close-btn')?.addEventListener('click', closePeopleModal); 
-                    peopleModal.querySelector('#person-search-input')?.addEventListener('input', (e) => {
-                        const groupCard = activePersonInput?.closest('.group-card');
-                        const partnerIds = groupCard ? Array.from(groupCard.querySelectorAll('.person-input'))
-                            .filter(inp => inp !== activePersonInput)
-                            .map(inp => inp.dataset.personId)
-                            .filter(Boolean) : [];
-                        populatePeopleListInModal(e.target.value, partnerIds);
-                    });
-                } 
-                if (locationsModal) { 
-                    document.getElementById('settings-btn')?.addEventListener('click', openLocationsModal); 
-                    locationsModal.querySelector('.close-btn')?.addEventListener('click', closeLocationsModal); 
-                    locationsModal.querySelector('#save-location-btn')?.addEventListener('click', handleSaveLocation); 
-                } 
-                if (loadScheduleModal) { 
-                    document.getElementById('load-schedule-btn')?.addEventListener('click', openLoadScheduleModal); 
-                    loadScheduleModal.querySelector('.close-btn')?.addEventListener('click', closeLoadScheduleModal); 
-                    loadScheduleModal.querySelector('#load-old-schedule-btn')?.addEventListener('click', handleLoadOldSchedule); 
-                } 
-                window.addEventListener('click', (event) => { 
-                    if (event.target == peopleModal) closePeopleModal(); 
-                    if (event.target == locationsModal) closeLocationsModal(); 
-                    if (event.target == loadScheduleModal) closeLoadScheduleModal(); 
-                }); 
-                
-                // Listener do contentor da escala (com a nova lógica)
-                scheduleContainer.addEventListener('click', (event) => { 
-                    // Abre o modal de pessoas
-                    if (event.target.classList.contains('person-input')) {
-                        openPeopleModal(event.target);
-                    }
-                    
-                    // Bloqueia/desbloqueia uma data
-                    const lockBtn = event.target.closest('.lock-btn'); 
-                    if (lockBtn) {
-                        toggleLockState(lockBtn);
-                    }
-                    
-                    // Remove um grupo
-                    if (event.target.classList.contains('remove-group-btn')) { 
-                        event.target.closest('.group-card')?.remove(); 
-                    }
+      async function verificarEscalaExistente() {
+    const year = parseInt(yearSelect.value, 10);
+    const monthText = monthSelect.options[monthSelect.selectedIndex].text;
+    const salaValue = document.getElementById('sala-select').value; // <--- NOVO
+    
+    const diasMapa = {
+        "0": "domingo", "1": "segunda-feira", "2": "terça-feira", 
+        "3": "quarta-feira", "4": "quinta-feira", "5": "sexta-feira", "6": "sábado"
+    };
+    const dayText = diasMapa[daySelect.value];
 
-                    // Adiciona um grupo manualmente
-                    const addBtn = event.target.closest('.add-group-btn');
-                    if (addBtn) {
-                        handleAddGroupManually(addBtn);
-                    }
-                }); 
-            } // <-- A chaveta de fecho crucial está aqui.
+    if (updateBtn.style.display === 'inline-flex') return;
+
+    try {
+        const snapshot = await db.collection('historicoPregacao')
+            .where('ano', '==', year)
+            .where('mes', '==', monthText)
+            .where('diadasemana', '==', dayText)
+            .where('sala', '==', salaValue) // <--- CONSULTA INCLUI SALA
+            .limit(1)
+            .get();
+
+        if (!snapshot.empty) {
+            scheduleContainer.innerHTML = `
+                <div style="text-align: center; padding: 25px; border: 2px solid #f39c12; border-radius: 8px; background-color: #fef9e7; margin-top: 20px;">
+                    <p style="color: #d35400; font-weight: bold; font-size: 18px; margin-bottom: 10px;">
+                        <i class="fas fa-exclamation-triangle"></i> A escala de ${dayText} (${salaValue}) para ${monthText} de ${year} já existe.
+                    </p>
+                    <p style="color: #7f8c8d;">Escolha outra sala ou use o botão de calendário para editar.</p>
+                </div>`;
+            
+            generateBtn.disabled = true;
+            generateBtn.style.opacity = "0.5";
+            saveBtn.style.display = 'none';
+        } else {
+            scheduleContainer.innerHTML = `<p>Selecione o mês, o dia e clique em "Gerar Escala" para começar.</p>`;
+            generateBtn.disabled = false;
+            generateBtn.style.opacity = "1";
+        }
+    } catch (error) {
+        console.error("Erro ao verificar duplicados:", error);
+    }
+}
+
+    function setupEventListeners() {
+    // Botões principais de ação
+    document.getElementById('sala-select').addEventListener('change', verificarEscalaExistente);
+
+    document.getElementById('download-pdf-btn')?.addEventListener('click', handlePdfDownload);
+    generateBtn.addEventListener('click', handleGenerateClick);
+    saveBtn.addEventListener('click', handleSaveClick);
+    updateBtn.addEventListener('click', handleUpdateClick);
+    
+    // --- NOVO: Listeners para verificar se a escala já existe ao mudar as seleções ---
+    yearSelect.addEventListener('change', verificarEscalaExistente);
+    monthSelect.addEventListener('change', verificarEscalaExistente);
+    daySelect.addEventListener('change', verificarEscalaExistente);
+
+    // Modal de Pessoas
+    if (peopleModal) {
+        peopleModal.querySelector('.close-btn')?.addEventListener('click', closePeopleModal);
+        peopleModal.querySelector('#person-search-input')?.addEventListener('input', (e) => {
+            const groupCard = activePersonInput?.closest('.group-card');
+            const partnerIds = groupCard ? Array.from(groupCard.querySelectorAll('.person-input'))
+                .filter(inp => inp !== activePersonInput)
+                .map(inp => inp.dataset.personId)
+                .filter(Boolean) : [];
+            populatePeopleListInModal(e.target.value, partnerIds);
+        });
+    }
+
+    // Modal de Locais (Settings)
+    if (locationsModal) {
+        document.getElementById('settings-btn')?.addEventListener('click', openLocationsModal);
+        locationsModal.querySelector('.close-btn')?.addEventListener('click', closeLocationsModal);
+        locationsModal.querySelector('#save-location-btn')?.addEventListener('click', handleSaveLocation);
+    }
+
+    // Modal de Carregamento de Escala Antiga
+    if (loadScheduleModal) {
+        document.getElementById('load-schedule-btn')?.addEventListener('click', openLoadScheduleModal);
+        loadScheduleModal.querySelector('.close-btn')?.addEventListener('click', closeLoadScheduleModal);
+        loadScheduleModal.querySelector('#load-old-schedule-btn')?.addEventListener('click', handleLoadOldSchedule);
+    }
+
+    // Fechar modais ao clicar fora deles
+    window.addEventListener('click', (event) => {
+        if (event.target == peopleModal) closePeopleModal();
+        if (event.target == locationsModal) closeLocationsModal();
+        if (event.target == loadScheduleModal) closeLoadScheduleModal();
+    });
+
+    // Delegação de eventos no contentor da escala (inputs de pessoas, botões de grupo, cadeados)
+    scheduleContainer.addEventListener('click', (event) => {
+        // Selecionar pessoa
+        if (event.target.classList.contains('person-input')) {
+            openPeopleModal(event.target);
+        }
+        
+        // Bloquear/Desbloquear data (Cadeado)
+        const lockBtn = event.target.closest('.lock-btn');
+        if (lockBtn) {
+            toggleLockState(lockBtn);
+        }
+        
+        // Remover um grupo específico
+        if (event.target.classList.contains('remove-group-btn')) {
+            event.target.closest('.group-card')?.remove();
+        }
+
+        // Adicionar um grupo manualmente num dia específico
+        const addBtn = event.target.closest('.add-group-btn');
+        if (addBtn) {
+            handleAddGroupManually(addBtn);
+        }
+    });
+}
+                
+             
     
             function openPeopleModal(inputElement) {
                 const modalHistoryDisplay = peopleModal.querySelector('#modal-history-display');
@@ -427,7 +586,12 @@
             
             function openLocationsModal() { locationsModal.querySelector('#new-location-input').value = ''; locationsModal.querySelector('#location-feedback').textContent = ''; locationsModal.style.display = 'block'; locationsModal.querySelector('#new-location-input').focus(); }
             function closeLocationsModal() { locationsModal.style.display = 'none'; }
-            function openLoadScheduleModal() { populateYearSelect(loadScheduleModal.querySelector('#load-year-select')); populateMonthSelect(loadScheduleModal.querySelector('#load-month-select'), false); loadScheduleModal.style.display = 'block'; }
+function openLoadScheduleModal() { 
+    populateYearSelect(document.getElementById('load-year-select')); 
+    populateMonthSelect(document.getElementById('load-month-select'), false); 
+    loadScheduleModal.style.display = 'block'; 
+}
+
             function closeLoadScheduleModal() { loadScheduleModal.style.display = 'none'; }
     
             function populatePeopleListInModal(searchText = '', partnerIds = []) {
@@ -526,26 +690,51 @@
                 }
             }
             
-         async function handleLoadOldSchedule() {
-    const year = parseInt(loadScheduleModal.querySelector('#load-year-select').value, 10);
-    const monthSelectEl = loadScheduleModal.querySelector('#load-month-select');
-    const month = monthSelectEl.options[monthSelectEl.selectedIndex].text;
+  async function handleLoadOldSchedule() {
+    // 1. Captura os valores dos novos campos do modal
+    const year = parseInt(document.getElementById('load-year-select').value, 10);
+    const monthSelectEl = document.getElementById('load-month-select');
+    const monthText = monthSelectEl.options[monthSelectEl.selectedIndex].text;
+    
+    const daySelectEl = document.getElementById('load-day-select');
+    const dayText = daySelectEl.options[daySelectEl.selectedIndex].text.toLowerCase().trim();
+    
+    const salaValue = document.getElementById('load-sala-select').value;
 
-     loadedScheduleContext.year = year;    // <-- ADICIONE ESTA LINHA
-    loadedScheduleContext.month = month;  // <-- ADICIONE ESTA LINHA
+    // Guarda o contexto completo para caso o utilizador adicione novos grupos na edição
+    loadedScheduleContext = { 
+        year: year, 
+        month: monthText,
+        day: dayText,
+        sala: salaValue
+    };
 
     loader.style.display = 'block';
+    loader.querySelector('p').textContent = 'A localizar escala exata...';
     scheduleContainer.innerHTML = '';
     closeLoadScheduleModal();
+
     try {
-        const snapshot = await db.collection('historicoPregacao').where('ano', '==', year).where('mes', '==', month).get();
+        // CONSULTA CIRÚRGICA: 4 Filtros
+        const snapshot = await db.collection('historicoPregacao')
+            .where('ano', '==', year)
+            .where('mes', '==', monthText)
+            .where('diadasemana', '==', dayText)
+            .where('sala', '==', salaValue)
+            .get();
+
         if (snapshot.empty) {
-            scheduleContainer.innerHTML = `<p>Nenhuma escala encontrada para ${month} de ${year}.</p>`;
+            scheduleContainer.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <p style="color: #e74c3c; font-weight: bold;">Nenhuma escala encontrada para os critérios:</p>
+                    <p>${dayText} em ${monthText}/${year} - Sala: ${salaValue}</p>
+                </div>`;
+            generateBtn.disabled = false;
+            generateBtn.style.opacity = "1";
             return;
         }
-        loadedDocIds.clear();
 
-        // Estrutura de dados temporária para agrupar os documentos por data
+        loadedDocIds.clear();
         const docsByDate = new Map();
 
         snapshot.forEach(doc => {
@@ -556,15 +745,12 @@
             if (!docsByDate.has(dateString)) {
                 docsByDate.set(dateString, []);
             }
-            // Adiciona o documento inteiro à lista daquela data
             docsByDate.get(dateString).push({ docId: doc.id, ...data });
         });
 
-        // Converte o Map para o formato que a função renderSchedule espera
         const finalSchedule = Array.from(docsByDate.entries()).map(([dateString, docs]) => {
             return {
                 displayDate: dateString,
-                // Mapeia cada documento para um objeto de grupo separado
                 groups: docs.map(docData => {
                     const people = [];
                     for (let i = 1; i <= 3; i++) {
@@ -584,17 +770,23 @@
             };
         });
 
+        // Ordena e Renderiza
         finalSchedule.sort((a, b) => parsePtBrDate(a.displayDate) - parsePtBrDate(b.displayDate));
         renderSchedule(finalSchedule);
+        
         saveBtn.style.display = 'none';
         updateBtn.style.display = 'inline-flex';
+        generateBtn.disabled = false;
+        generateBtn.style.opacity = "1";
+
     } catch (error) {
-        console.error("Erro ao carregar escala antiga:", error);
-        scheduleContainer.innerHTML = `<p style="color:red;">Ocorreu um erro.</p>`;
+        console.error("Erro ao carregar escala:", error);
+        scheduleContainer.innerHTML = `<p style="color:red; text-align: center;">Erro ao aceder ao banco de dados.</p>`;
     } finally {
         loader.style.display = 'none';
     }
 }
+       
     
            function handleGenerateClick() {
                 loader.style.display = 'block';
@@ -672,56 +864,127 @@
                 }, 50);
             }
             
-           function renderSchedule(schedule) {
-                scheduleContainer.innerHTML = '';
-                schedule.forEach(daySchedule => {
-                    const displayDate = daySchedule.date ? daySchedule.date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : daySchedule.displayDate;
-                    const isLocked = lockedDates.has(displayDate);
-                    const dateSection = document.createElement('div');
-                    dateSection.className = 'date-section';
-    
-                    let groupsHTML = '';
-                    if (daySchedule.groups && daySchedule.groups.length > 0) {
-                        daySchedule.groups.forEach((group, index) => {
-                            let peopleInputs = '';
-                            for (let i = 0; i < 3; i++) {
-                                const person = group.people[i];
-                                peopleInputs += `<input type="text" class="person-input" value="${person?.nomePessoa || ''}" data-person-id="${person?.id || ''}" placeholder="Pessoa ${i + 1}" readonly>`;
-                            }
-                            groupsHTML += `
-                                <div class="group-card" data-group-index="${index}" data-doc-id="${group.docId || ''}">
-                                    <div class="group-card-header">
-                                        <h4>Grupo ${index + 1}</h4>
-                                        <div class="group-card-controls">
-                                            <span class="partnership-count" title="Vezes que este grupo exato esteve junto">0</span>
-                                            <button class="remove-group-btn" title="Remover Grupo">×</button>
-                                        </div>
-                                    </div>
-                                    ${peopleInputs}
-                                    <input list="locations-datalist" class="location-input" placeholder="Atribuir local..." value="${group.location || ''}">
-                                </div>`;
-                        });
-                    }
-                    
-                    // --- ALTERAÇÃO PRINCIPAL AQUI ---
-                    dateSection.innerHTML = `
-                        <div class="date-header-container">
-                            <h3 class="date-header">${displayDate}</h3>
-                            <div class="date-header-controls">
-                                <button class="add-group-btn" title="Adicionar Grupo Manualmente">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                              <button class="lock-btn ${isLocked ? 'locked' : ''}" data-date-string="${displayDate}">
-        <i class="fas ${isLocked ? 'fa-eye-slash' : 'fa-eye'}"></i>
-    </button>
+     function renderSchedule(schedule) {
+    scheduleContainer.innerHTML = '';
+    schedule.forEach(daySchedule => {
+        const displayDate = daySchedule.date ? daySchedule.date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : daySchedule.displayDate;
+        
+        // --- LÓGICA DE MEMÓRIA DE EVENTO ---
+        // 1. Tenta pegar da memória (escolha manual do utilizador)
+        // 2. Se não houver, tenta pegar dos dados carregados do Firebase
+        // 3. Se não houver, assume 'normal'
+        let currentEvent = dateEventTypes.get(displayDate) || (daySchedule.groups && daySchedule.groups[0] && daySchedule.groups[0].evento) || 'normal';
+        
+        // Salva na memória para garantir consistência
+        dateEventTypes.set(displayDate, currentEvent);
+
+        // Se for Assembleia ou Congresso, mantém bloqueado
+        if (currentEvent === 'assembleia' || currentEvent === 'congresso') {
+            lockedDates.add(displayDate);
+        }
+
+        const isLocked = lockedDates.has(displayDate);
+        const dateSection = document.createElement('div');
+        dateSection.className = 'date-section';
+        dateSection.dataset.dateString = displayDate;
+
+        let groupsHTML = '';
+        // Só renderiza grupos se NÃO for uma data bloqueada
+        if (daySchedule.groups && daySchedule.groups.length > 0 && !isLocked) {
+            daySchedule.groups.forEach((group, index) => {
+                let peopleInputs = '';
+                for (let i = 0; i < 3; i++) {
+                    const person = group.people[i];
+                    peopleInputs += `<input type="text" class="person-input" value="${person?.nomePessoa || ''}" data-person-id="${person?.id || ''}" placeholder="Pessoa ${i + 1}" readonly>`;
+                }
+                groupsHTML += `
+                    <div class="group-card" data-group-index="${index}" data-doc-id="${group.docId || ''}">
+                        <div class="group-card-header">
+                            <h4>Grupo ${index + 1}</h4>
+                            <div class="group-card-controls">
+                                <span class="partnership-count" title="Vezes que este grupo exato esteve junto">0</span>
+                                <button class="remove-group-btn" title="Remover Grupo">×</button>
                             </div>
                         </div>
-                        <div class="group-container">${groupsHTML}</div>`;
-                    scheduleContainer.appendChild(dateSection);
-                });
-                updateLocationsDatalist();
-                updatePartnershipCounts();
-            }
+                        ${peopleInputs}
+                        <input list="locations-datalist" class="location-input" placeholder="Atribuir local..." value="${group.location || ''}">
+                    </div>`;
+            });
+        }
+
+        dateSection.innerHTML = `
+            <div class="date-header-container">
+                <h3 class="date-header">${displayDate}</h3>
+                <div class="date-header-controls">
+                    <select class="event-select">
+                        <option value="normal" ${currentEvent === 'normal' ? 'selected' : ''}>Normal</option>
+                        <option value="assembleia" ${currentEvent === 'assembleia' ? 'selected' : ''}>Assembleia</option>
+                        <option value="congresso" ${currentEvent === 'congresso' ? 'selected' : ''}>Congresso</option>
+                        <option value="visita-servo" ${currentEvent === 'visita-servo' ? 'selected' : ''}>Visita do Servo</option>
+                        <option value="evento-especial" ${currentEvent === 'evento-especial' ? 'selected' : ''}>Evento Especial</option>
+                    </select>
+                    <button class="add-group-btn" title="Adicionar Grupo Manualmente">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button class="lock-btn ${isLocked ? 'locked' : ''}" data-date-string="${displayDate}">
+                        <i class="fas ${isLocked ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="group-container">${groupsHTML}</div>`;
+        
+        scheduleContainer.appendChild(dateSection);
+    });
+    updateLocationsDatalist();
+    updatePartnershipCounts();
+}
+
+       
+                    
+       // Listener para capturar mudanças nos dropdowns de Evento
+scheduleContainer.addEventListener('change', (event) => {
+    if (event.target.classList.contains('event-select')) {
+        const select = event.target;
+        const val = select.value; // 'normal', 'assembleia', 'congresso', etc.
+        const dateSection = select.closest('.date-section');
+        const dateString = dateSection.dataset.dateString;
+        const lockBtn = dateSection.querySelector('.lock-btn');
+        const lockIcon = lockBtn.querySelector('i');
+        const groupContainer = dateSection.querySelector('.group-container');
+
+        // 1. Salva a escolha na memória global (para persistir se clicar em "Gerar Escala" de novo)
+        dateEventTypes.set(dateString, val);
+
+        // 2. Lógica de Bloqueio Automático
+        if (val === 'assembleia' || val === 'congresso') {
+            // Adiciona aos bloqueados
+            lockedDates.add(dateString);
+            
+            // Atualiza o visual do botão de bloqueio (Olho cortado)
+            lockBtn.classList.add('locked');
+            lockIcon.classList.remove('fa-eye');
+            lockIcon.classList.add('fa-eye-slash');
+
+            // Limpa os grupos da tela, pois Assembleia/Congresso não permitem pregação
+            groupContainer.innerHTML = '';
+            
+            console.log(`[EVENTO] ${dateString} bloqueado devido a ${val.toUpperCase()}.`);
+        } else {
+            // Se mudar de um evento bloqueante para um "trabalhável" (Normal, Visita, etc.)
+            // Removemos o bloqueio automático para permitir geração de grupos
+            lockedDates.delete(dateString);
+            
+            // Atualiza o visual do botão de bloqueio (Olho aberto)
+            lockBtn.classList.remove('locked');
+            lockIcon.classList.remove('fa-eye-slash');
+            lockIcon.classList.add('fa-eye');
+            
+            console.log(`[EVENTO] ${dateString} definido como ${val.toUpperCase()}.`);
+        }
+    }
+});
+
+
 
 
             function handleAddGroupManually(buttonElement) {
@@ -777,125 +1040,191 @@
                 });
             }
     
-      async function handleSaveClick() { 
+ async function handleSaveClick() { 
     loader.style.display = 'block';
-    loader.querySelector('p').textContent = 'A salvar...';
     const batch = db.batch();
 
-    // REGRA CORRIGIDA: Usa o mês e ano selecionados nos menus como a "etiqueta" para todos os grupos.
     const anoParaSalvar = parseInt(yearSelect.value, 10);
     const mesParaSalvar = monthSelect.options[monthSelect.selectedIndex].text;
+    const salaParaSalvar = document.getElementById('sala-select').value;
 
-    document.querySelectorAll('.group-card').forEach(card => {
-        const personInputs = card.querySelectorAll('.person-input');
-        let personCount = 0;
-        personInputs.forEach(input => { if (input.value) personCount++; });
+    // Iteramos por cada DATA (date-section), não apenas pelos grupos
+    document.querySelectorAll('.date-section').forEach(section => {
+        const dateString = section.querySelector('.date-header').textContent;
+        const eventValue = section.querySelector('.event-select').value;
+        const dataObjeto = parsePtBrDate(dateString);
+        const diaDaSemanaTexto = dateString.split(',')[0].toLowerCase().trim();
+        
+        const groups = section.querySelectorAll('.group-card');
 
-        if (personCount > 0) {
-            const dateString = card.closest('.date-section').querySelector('.date-header').textContent;
-            const locationInput = card.querySelector('.location-input');
-            
-            const assignment = {
-                data: dateString,
-                local: locationInput.value || '',
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                ano: anoParaSalvar,         // <-- USA A ETIQUETA GLOBAL
-                mes: mesParaSalvar,         // <-- USA A ETIQUETA GLOBAL
-                diadasemana: dateString.split(',')[0],
-                grupo: parseInt(card.dataset.groupIndex) + 1,
-            };
-            
-            personInputs.forEach((input, index) => {
-                if (input.value) {
-                    assignment[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
-                }
+        if (groups.length > 0) {
+            // Caso A: Existem grupos. Gravamos cada grupo normalmente.
+            groups.forEach(card => {
+                const personInputs = card.querySelectorAll('.person-input');
+                const assignment = {
+                    data: dateString,
+                    semanaindex: gerarSemanaIndexPorData(dataObjeto),
+                    diadasemana: diaDaSemanaTexto,
+                    evento: eventValue,
+                    sala: salaParaSalvar,
+                    oque: "pregacao",
+                    tipo: "pregacao",
+                    parte: "testemunho publico",
+                    local: card.querySelector('.location-input').value || '',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    ano: anoParaSalvar,
+                    mes: mesParaSalvar,
+                    grupo: parseInt(card.dataset.groupIndex) + 1
+                };
+
+                personInputs.forEach((input, index) => {
+                    if (input.value) {
+                        assignment[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
+                    }
+                });
+                batch.set(db.collection('historicoPregacao').doc(), assignment);
             });
-            
-            batch.set(db.collection('historicoPregacao').doc(), assignment);
+        } else {
+            // Caso B: Não há grupos (Data Bloqueada ou Evento Especial)
+            // Gravamos um documento "vazio" apenas para registar o evento na base de dados
+            const assignmentVazio = {
+                data: dateString,
+                semanaindex: gerarSemanaIndexPorData(dataObjeto),
+                diadasemana: diaDaSemanaTexto,
+                evento: eventValue,
+                sala: salaParaSalvar,
+                oque: "pregacao",
+                tipo: "pregacao",
+                parte: "testemunho publico",
+                local: "N/A (Bloqueado)",
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                ano: anoParaSalvar,
+                mes: mesParaSalvar,
+                grupo: 0 // Indica que não há grupos
+            };
+            batch.set(db.collection('historicoPregacao').doc(), assignmentVazio);
         }
     });
 
     try {
         await batch.commit();
-        alert('Escala salva com sucesso!');
-        scheduleContainer.innerHTML = '<p>A escala foi salva. Pode gerar uma nova ou carregar uma antiga.</p>';
-        saveBtn.style.display = 'none';
-        lockedDates.clear();
-        await fetchInitialData();
+        alert('Escala (incluindo eventos) salva com sucesso!');
+        location.reload(); // Recarrega para limpar memória
     } catch (error) {
-        console.error("Erro ao salvar escala:", error);
-        alert('Falha ao salvar a escala.');
+        console.error("Erro:", error);
+        alert('Erro ao salvar.');
     } finally {
         loader.style.display = 'none';
     }
 }
+
+   
     
-  async function handleUpdateClick() {
+ async function handleUpdateClick() {
     loader.style.display = 'block';
-    loader.querySelector('p').textContent = 'A guardar alterações...';
     const batch = db.batch();
     const visibleDocIds = new Set();
+    const salaAtual = document.getElementById('sala-select').value;
 
-    document.querySelectorAll('.group-card').forEach(card => {
-        const docId = card.dataset.docId;
-        const personInputs = card.querySelectorAll('.person-input');
-        let personCount = 0;
-        personInputs.forEach(input => { if (input.value) personCount++; });
+    document.querySelectorAll('.date-section').forEach(section => {
+        const dateString = section.querySelector('.date-header').textContent;
+        const eventValue = section.querySelector('.event-select').value;
+        const dataObjeto = parsePtBrDate(dateString);
+        const diaDaSemanaTexto = dateString.split(',')[0].toLowerCase().trim();
+        
+        const groups = section.querySelectorAll('.group-card');
 
-        if (docId) {
-            // Lógica existente para ATUALIZAR um grupo (não muda)
-            visibleDocIds.add(docId);
-            if (personCount > 0) {
-                 const locationInput = card.querySelector('.location-input');
-                 const updateData = { local: locationInput.value || '', Pessoa1: firebase.firestore.FieldValue.delete(), Pessoa2: firebase.firestore.FieldValue.delete(), Pessoa3: firebase.firestore.FieldValue.delete() };
-                 personInputs.forEach((input, index) => {
-                    if (input.value) updateData[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
+        if (groups.length > 0) {
+            groups.forEach(card => {
+                const docId = card.dataset.docId;
+                const personInputs = card.querySelectorAll('.person-input');
+                
+                const assignment = {
+                    data: dateString,
+                    semanaindex: gerarSemanaIndexPorData(dataObjeto),
+                    diadasemana: diaDaSemanaTexto,
+                    evento: eventValue,
+                    sala: salaAtual,
+                    oque: "pregacao",
+                    tipo: "pregacao",
+                    parte: "testemunho publico",
+                    local: card.querySelector('.location-input').value || '',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                personInputs.forEach((input, index) => {
+                    if (input.value) {
+                        assignment[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
+                    }
                 });
-                batch.update(db.collection('historicoPregacao').doc(docId), updateData);
-            }
-        } else if (personCount > 0) {
-            // Lógica CORRIGIDA para CRIAR um novo grupo durante a edição
-            const dateString = card.closest('.date-section').querySelector('.date-header').textContent;
-            const locationInput = card.querySelector('.location-input');
-            
-            const assignment = {
-                data: dateString,
-                local: locationInput.value || '',
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                // Usa o mês/ano que foi "lembrado" quando a escala foi carregada
-                ano: loadedScheduleContext.year,
-                mes: loadedScheduleContext.month,
-                diadasemana: dateString.split(',')[0],
-                grupo: parseInt(card.dataset.groupIndex) + 1,
-            };
-            personInputs.forEach((input, index) => {
-                if (input.value) {
-                    assignment[`Pessoa${index + 1}`] = { id: input.getAttribute('data-person-id'), nome: input.value };
+
+                if (docId) {
+                    visibleDocIds.add(docId);
+                    // Deleta campos de pessoas antigos para garantir limpeza
+                    assignment.Pessoa1 = assignment.Pessoa1 || firebase.firestore.FieldValue.delete();
+                    assignment.Pessoa2 = assignment.Pessoa2 || firebase.firestore.FieldValue.delete();
+                    assignment.Pessoa3 = assignment.Pessoa3 || firebase.firestore.FieldValue.delete();
+                    batch.update(db.collection('historicoPregacao').doc(docId), assignment);
+                } else {
+                    assignment.ano = loadedScheduleContext.year;
+                    assignment.mes = loadedScheduleContext.month;
+                    assignment.grupo = parseInt(card.dataset.groupIndex) + 1;
+                    batch.set(db.collection('historicoPregacao').doc(), assignment);
                 }
             });
-            batch.set(db.collection('historicoPregacao').doc(), assignment);
+        } else {
+            // Se a seção está vazia mas não temos um docId (é um bloqueio novo na edição)
+            const assignmentVazio = {
+                data: dateString,
+                semanaindex: gerarSemanaIndexPorData(dataObjeto),
+                diadasemana: diaDaSemanaTexto,
+                evento: eventValue,
+                sala: salaAtual,
+                oque: "pregacao",
+                tipo: "pregacao",
+                parte: "testemunho publico",
+                ano: loadedScheduleContext.year,
+                mes: loadedScheduleContext.month,
+                grupo: 0
+            };
+            batch.set(db.collection('historicoPregacao').doc(), assignmentVazio);
         }
     });
 
+    // Deleta os documentos que não estão mais na tela
     loadedDocIds.forEach(docId => {
-        if (!visibleDocIds.has(docId)) {
-            batch.delete(db.collection('historicoPregacao').doc(docId));
-        }
+        if (!visibleDocIds.has(docId)) batch.delete(db.collection('historicoPregacao').doc(docId));
     });
 
     try {
         await batch.commit();
-        alert('Edições guardadas com sucesso!');
-        scheduleContainer.innerHTML = '<p>As suas alterações foram guardadas.</p>';
-        updateBtn.style.display = 'none';
-        loadedDocIds.clear();
-        await fetchInitialData();
+        alert('Atualização concluída!');
+        location.reload();
     } catch (error) {
-        console.error("Erro ao guardar edições:", error);
-        alert('Falha ao guardar as edições.');
+        console.error("Erro:", error);
     } finally {
         loader.style.display = 'none';
     }
+}
+
+    
+
+    
+async function initialize() { 
+    populateYearSelect(yearSelect); 
+    populateMonthSelect(monthSelect); 
+    
+    // Carrega dados do Firebase (locais, pessoas, etc)
+    await fetchInitialData(); 
+    
+    // Configura os cliques dos botões
+    setupEventListeners(); 
+    
+    // Atualiza a lista de locais
+    updateLocationsDatalist(); 
+    
+    // VERIFICAÇÃO INICIAL: Bloqueia o botão se o que estiver selecionado já existir
+    await verificarEscalaExistente(); 
 }
             
             function populateMonthSelect(selectElement, setSelected = true) {
@@ -1012,6 +1341,33 @@ function parsePtBrDate(dateString) {
     return new Date(year, monthIndex, day);
 }
 
+// Função auxiliar para gerar o semanaindex idêntico ao da Escola
+function gerarSemanaIndexPorData(dataObjeto) {
+    const mesesAbreviados = ["Jan", "Fev", "Mar", "Abr", "Maio", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    
+    // 1. Encontrar a Segunda-feira daquela semana
+    const diaDaSemana = dataObjeto.getDay();
+    const diferencaParaSegunda = diaDaSemana === 0 ? 6 : diaDaSemana - 1;
+    
+    const segundaFeira = new Date(dataObjeto);
+    segundaFeira.setDate(dataObjeto.getDate() - diferencaParaSegunda);
+    
+    // 2. Encontrar o Domingo (Segunda + 6 dias)
+    const domingo = new Date(segundaFeira);
+    domingo.setDate(segundaFeira.getDate() + 6);
+    
+    // 3. Extrair os componentes para o formato: (4 Ago - 10 Ago 2025)
+    const diaInicio = segundaFeira.getDate();
+    const mesInicio = mesesAbreviados[segundaFeira.getMonth()];
+    const diaFim = domingo.getDate();
+    const mesFim = mesesAbreviados[domingo.getMonth()];
+    const ano = domingo.getFullYear();
+    
+    return `(${diaInicio} ${mesInicio} - ${diaFim} ${mesFim} ${ano})`;
+}
+
+
+
             function generateDefinitiveSchedule(people, dailyGroupPlan) {
                 // Baralhar a lista de pessoas para garantir aleatoriedade
                 const shuffle = arr => arr.sort(() => 0.5 - Math.random());
@@ -1126,6 +1482,7 @@ function parsePtBrDate(dateString) {
             }
             
             initialize();
+             document.addEventListener('DOMContentLoaded', () => {
         });
     </script>
 
