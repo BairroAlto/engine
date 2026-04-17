@@ -56,33 +56,29 @@
         .option-item-horizontal:has(input:checked) { background-color: #3498db; color: white; border-color: #2980b9; }
         .option-item-horizontal input[type="radio"] { display: none; }
 
-        /* --- NOVO ESTILO PARA A SEÇÃO DE HORÁRIOS --- */
-        #horarios-anexo-section {
+        /* --- ESTILOS UNIFICADOS PARA SEÇÕES DE ANEXO --- */
+        .anexo-section {
             background-color: #f2f5f7;
-            border-left: 4px solid #3498db;
             padding: 15px;
             margin-top: 10px;
             border-radius: 5px;
         }
-        #horarios-anexo-section h4 {
+        .anexo-section h4 {
             margin-top: 0;
             margin-bottom: 15px;
             color: #2c3e50;
             font-size: 16px;
         }
-        #horarios-anexo-section .horarios-container {
+        .anexo-section .anexo-container {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
         }
-        #horarios-anexo-section .horarios-group h5 {
-            width: 100%;
-            font-size: 14px;
-            color: #7f8c8d;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 5px;
-        }
+        #horarios-anexo-section { border-left: 4px solid #3498db; }
+        #locais-anexo-section { border-left: 4px solid #f39c12; }
+.checkbox-item:has(input[value="Estudante"]) { 
+    background-color: #eceff1; /* Um cinza azulado muito claro */
+}
 
     </style>
 </head>
@@ -122,16 +118,19 @@
                 <div class="form-group"><label for="tipo">Tipo</label><select id="tipo" required><option value="reuniao">Reunião</option><option value="pregacao">Pregação</option></select></div>
                 <div class="form-group"><label for="parte">Parte</label><select id="parte" required><option value="escola">Escola</option><option value="resto da semana">Resto da Semana</option><option value="fim de semana">Fim de Semana</option><option value="tecnicas">Técnicas</option><option value="pregacao">Pregação</option><option value="dirigencia saida">Dirigência Saída</option></select></div>
                 
-                <!-- INÍCIO DA NOVA SEÇÃO DE HORÁRIOS ANEXADOS -->
-                <div id="horarios-anexo-section" style="display: none;">
-                    <h4>Escolha aqui um horário para anexar ao Dirigente <span class="help-text">(Opcional)</span></h4>
-                    <div class="horarios-container" id="horarios-container">
-                        <!-- Os horários serão inseridos aqui pelo JavaScript -->
-                    </div>
+                <!-- SEÇÃO DE ANEXO DE HORÁRIOS -->
+                <div id="horarios-anexo-section" class="anexo-section" style="display: none;">
+                    <h4>Anexar Horário <span class="help-text">(Opcional)</span></h4>
+                    <div class="anexo-container" id="horarios-container"></div>
                 </div>
-                <!-- FIM DA NOVA SEÇÃO -->
+                
+                <!-- SEÇÃO DE ANEXO DE LOCAIS -->
+                <div id="locais-anexo-section" class="anexo-section" style="display: none;">
+                    <h4>Anexar Local <span class="help-text">(Opcional)</span></h4>
+                    <div class="anexo-container" id="locais-container"></div>
+                </div>
 
-                <div class="form-group"><label for="anexo">Anexo <span class="help-text">(Anexar a um Cabeçalho para aparecer na Escala)</span></label><select id="anexo"><option value="">Carregando Anexos...</option></select></div>
+                <div class="form-group" style="margin-top: 20px;"><label for="anexo">Anexo <span class="help-text">(Anexar a um Cabeçalho para aparecer na Escala)</span></label><select id="anexo"><option value="">Carregando Anexos...</option></select></div>
                 
                 <div class="form-group">
                     <label for="descricao">Descrição <span class="help-text">(Necessidades Locais, Orador, etc...)</span></label>
@@ -150,7 +149,7 @@
                 </div>
                 
                 <div class="form-group"><label for="emoji">Emoji (Opcional)</label><input type="text" id="emoji" maxlength="2"></div>
-                <div class="form-group"><label>Quem faz?</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label></div></div>
+                <div class="form-group"><label>Quem faz?</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Estudante">Estudante</label></div></div>
                 <div class="form-group switch-group"><label for="status">Desligado/Ligado</label><label class="switch"><input type="checkbox" id="status"><span class="slider round"></span></label></div>
                 <button type="submit" class="btn-salvar">Salvar Alterações</button>
             </form>
@@ -163,28 +162,24 @@
         document.addEventListener('DOMContentLoaded', async function() {
             if (typeof db === 'undefined') { alert("Erro de configuração do banco de dados."); return; }
 
+            // --- Seletores de Elementos ---
             const mainContent = document.querySelector('.content');
             const editFormCard = document.getElementById('edit-form-card');
             const editForm = document.getElementById('editar-designacao-form');
             const listaReuniaoDiv = document.getElementById('lista-reuniao');
             const listaPregacaoDiv = document.getElementById('lista-pregacao');
-
-            // --- Seletores para a nova funcionalidade ---
             const parteSelect = document.getElementById('parte');
             const horariosSection = document.getElementById('horarios-anexo-section');
-            let horariosCarregados = false; // Flag para carregar os horários apenas uma vez
-
-            let idAtualEmEdicao = null;
-
+            const locaisSection = document.getElementById('locais-anexo-section');
             const descricaoSelect = document.getElementById('descricao');
             const anexadoDiscursosGroup = document.getElementById('anexado-discursos-group');
+            
+            let idAtualEmEdicao = null;
+            let horariosCarregados = false;
+            let locaisCarregados = false;
 
-            descricaoSelect.addEventListener('change', function() {
-                anexadoDiscursosGroup.style.display = (this.value === 'sim') ? 'block' : 'none';
-                if (this.value !== 'sim') {
-                    document.getElementById('anexado-discursos').value = 'nao';
-                }
-            });
+            // --- Funções de Carregamento ---
+            function capitalize(string) { return string.charAt(0).toUpperCase() + string.slice(1); }
 
             async function carregarAnexos() {
                 const anexoSelect = document.getElementById('anexo');
@@ -192,72 +187,71 @@
                 try {
                     const snapshot = await db.collection('cabecalhos').get();
                     snapshot.forEach(doc => {
-                        const anexo = doc.data();
                         const option = document.createElement('option');
                         option.value = doc.id;
-                        option.textContent = anexo.nome;
+                        option.textContent = doc.data().nome;
                         anexoSelect.appendChild(option);
                     });
                 } catch (error) { console.error("Erro ao carregar anexos: ", error); }
             }
-            
-            // --- FUNÇÕES PARA A NOVA SEÇÃO DE HORÁRIOS ---
-            function capitalize(string) { return string.charAt(0).toUpperCase() + string.slice(1); }
 
             async function carregarHorariosPregacao(horarioSalvo = null) {
-                if (horariosCarregados) { // Se já carregou, apenas atualiza a seleção
-                     document.querySelectorAll('input[name="horario_anexado"]').forEach(radio => {
-                        radio.checked = (radio.value === horarioSalvo);
-                    });
+                if (horariosCarregados) {
+                    document.querySelectorAll('input[name="horario_anexado"]').forEach(radio => radio.checked = (radio.value === horarioSalvo));
                     return;
                 }
                 const container = document.getElementById('horarios-container');
-                container.innerHTML = '';
+                container.innerHTML = 'Carregando...';
                 try {
                     const snapshot = await db.collection('horarios').where('tipo', '==', 'pregacao').get();
                     if (snapshot.empty) { container.textContent = 'Nenhum horário de pregação encontrado.'; return; }
-                    let semanaHTML = '<div class="horarios-group" style="width: 100%;"><h5>-- Durante a Semana</h5>';
-                    let fimDeSemanaHTML = '<div class="horarios-group" style="width: 100%;"><h5>-- Durante Fim de Semana</h5>';
+                    let horariosHTML = '';
                     snapshot.forEach(doc => {
                         const data = doc.data();
                         if (data['dias-semana-horarios']) {
                             for (const dia in data['dias-semana-horarios']) {
                                 data['dias-semana-horarios'][dia].forEach(hora => {
                                     const valor = `${capitalize(dia)} ${hora}`;
-                                    const checked = valor === horarioSalvo ? 'checked' : '';
-                                    semanaHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}" ${checked}>${valor}</label>`;
+                                    horariosHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}" ${valor === horarioSalvo ? 'checked' : ''}>${valor}</label>`;
                                 });
                             }
                         }
                         if (data['dias-fimdesemana-horarios']) {
                             for (const dia in data['dias-fimdesemana-horarios']) {
-                                let diaFormatado = dia === 'sabado' ? 'Sábado' : capitalize(dia);
+                                let diaF = dia === 'sabado' ? 'Sábado' : capitalize(dia);
                                 data['dias-fimdesemana-horarios'][dia].forEach(hora => {
-                                    const valor = `${diaFormatado} ${hora}`;
-                                    const checked = valor === horarioSalvo ? 'checked' : '';
-                                    fimDeSemanaHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}" ${checked}>${valor}</label>`;
+                                    const valor = `${diaF} ${hora}`;
+                                    horariosHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}" ${valor === horarioSalvo ? 'checked' : ''}>${valor}</label>`;
                                 });
                             }
                         }
                     });
-                    semanaHTML += '</div>';
-                    fimDeSemanaHTML += '</div>';
-                    container.innerHTML = semanaHTML + fimDeSemanaHTML;
+                    container.innerHTML = horariosHTML;
                     horariosCarregados = true;
                 } catch (error) { console.error("Erro ao carregar horários: ", error); container.textContent = 'Erro ao carregar horários.'; }
             }
 
-            parteSelect.addEventListener('change', function() {
-                if (this.value === 'dirigencia saida') {
-                    horariosSection.style.display = 'block';
-                    carregarHorariosPregacao(); // Carrega os horários sem pré-seleção
-                } else {
-                    horariosSection.style.display = 'none';
+            async function carregarLocais(localSalvo = null) {
+                if (locaisCarregados) {
+                    document.querySelectorAll('input[name="local_anexado"]').forEach(radio => radio.checked = (radio.value === localSalvo));
+                    return;
                 }
-            });
+                const container = document.getElementById('locais-container');
+                container.innerHTML = 'Carregando...';
+                try {
+                    const snapshot = await db.collection('locais').where('tag', '==', 'Dirigência Saída').get();
+                    if (snapshot.empty) { container.innerHTML = 'Nenhum local com a tag "Dirigência Saída" encontrado.'; return; }
+                    let locaisHTML = '';
+                    snapshot.forEach(doc => {
+                        const valor = doc.data().nome;
+                        locaisHTML += `<label class="option-item-horizontal"><input type="radio" name="local_anexado" value="${valor}" ${valor === localSalvo ? 'checked' : ''}>${valor}</label>`;
+                    });
+                    container.innerHTML = locaisHTML;
+                    locaisCarregados = true;
+                } catch (error) { console.error("Erro ao carregar locais: ", error); container.textContent = 'Erro ao carregar locais.'; }
+            }
 
-            // --- FIM DAS FUNÇÕES DA NOVA SEÇÃO ---
-
+            // --- Funções de Renderização e Lógica do Formulário ---
             async function renderizarListas() {
                 listaReuniaoDiv.innerHTML = 'Carregando...';
                 listaPregacaoDiv.innerHTML = 'Carregando...';
@@ -288,7 +282,6 @@
                     const doc = await db.collection('designacoes').doc(id).get();
                     if (doc.exists) {
                         const data = doc.data();
-                        // Preenchimento dos campos existentes
                         document.getElementById('nome-designacao').value = data.nome || '';
                         document.getElementById('numero-participantes').value = data.numeroParticipantes || '1';
                         document.getElementById('feito-por').value = data.feitoPor || 'Masculino';
@@ -303,19 +296,18 @@
                         document.getElementById('anexado-discursos').value = data.anexadoDiscursos || 'nao';
                         anexadoDiscursosGroup.style.display = (data.descricao === 'sim') ? 'block' : 'none';
 
-                        document.querySelectorAll('input[name="quem_faz"]').forEach(cb => cb.checked = false);
-                        if (data.quemFaz && Array.isArray(data.quemFaz)) { data.quemFaz.forEach(p => { const cb = document.querySelector(`input[name="quem_faz"][value="${p}"]`); if (cb) cb.checked = true; }); }
-                        document.querySelectorAll('input[name="personalidade"]').forEach(radio => radio.checked = false);
-                        if (data.personalidade) { const rb = document.querySelector(`input[name="personalidade"][value="${data.personalidade}"]`); if (rb) rb.checked = true; }
+                        document.querySelectorAll('input[name="quem_faz"]').forEach(cb => cb.checked = data.quemFaz && data.quemFaz.includes(cb.value));
+                        document.querySelectorAll('input[name="personalidade"]').forEach(radio => radio.checked = (radio.value === data.personalidade));
                         
-                        // --- LÓGICA PARA EXIBIR E PREENCHER A SEÇÃO DE HORÁRIOS ---
                         if (data.parte === 'dirigencia saida') {
                             horariosSection.style.display = 'block';
+                            locaisSection.style.display = 'block';
                             await carregarHorariosPregacao(data.horarioAnexado || null);
+                            await carregarLocais(data.localAnexado || null);
                         } else {
                             horariosSection.style.display = 'none';
+                            locaisSection.style.display = 'none';
                         }
-                        // --- FIM DA LÓGICA ---
 
                         idAtualEmEdicao = id;
                         editFormCard.style.display = 'block';
@@ -324,8 +316,23 @@
                 } catch (error) { console.error("Erro ao buscar dados da designação:", error); }
             }
             
-            await carregarAnexos();
-            await renderizarListas();
+            // --- Event Listeners ---
+            descricaoSelect.addEventListener('change', function() {
+                anexadoDiscursosGroup.style.display = (this.value === 'sim') ? 'block' : 'none';
+                if (this.value !== 'sim') { document.getElementById('anexado-discursos').value = 'nao'; }
+            });
+
+            parteSelect.addEventListener('change', function() {
+                if (this.value === 'dirigencia saida') {
+                    horariosSection.style.display = 'block';
+                    locaisSection.style.display = 'block';
+                    carregarHorariosPregacao();
+                    carregarLocais();
+                } else {
+                    horariosSection.style.display = 'none';
+                    locaisSection.style.display = 'none';
+                }
+            });
 
             mainContent.addEventListener('click', function(e) {
                 const editButton = e.target.closest('.edit-btn.inline');
@@ -337,37 +344,58 @@
                 if (!idAtualEmEdicao) return;
                 if (!document.querySelector('input[name="quem_faz"]:checked')) { alert('O campo "Quem faz?" é obrigatório.'); return; }
 
-                const personalidadeSelecionada = document.querySelector('input[name="personalidade"]:checked');
-                const horarioAnexadoSelecionado = document.querySelector('input[name="horario_anexado"]:checked');
+                const personalidadeSel = document.querySelector('input[name="personalidade"]:checked');
+                const horarioAnexadoSel = document.querySelector('input[name="horario_anexado"]:checked');
+                const localAnexadoSel = document.querySelector('input[name="local_anexado"]:checked');
+const valorHorarioCompleto = horarioAnexadoSel ? horarioAnexadoSel.value : "";
 
-                const designacaoAtualizada = {
-                    nome: document.getElementById('nome-designacao').value,
-                    numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
-                    feitoPor: document.getElementById('feito-por').value,
-                    preferencia: document.getElementById('preferencia').value,
-                    personalidade: personalidadeSelecionada ? personalidadeSelecionada.value : "",
-                    quando: document.getElementById('quando').value,
-                    tipo: document.getElementById('tipo').value,
-                    parte: document.getElementById('parte').value,
-                    // --- SALVANDO O HORÁRIO ANEXADO ---
-                    horarioAnexado: horarioAnexadoSelecionado ? horarioAnexadoSelecionado.value : "",
-                    anexo: document.getElementById('anexo').value,
-                    descricao: document.getElementById('descricao').value,
-                    anexadoDiscursos: document.getElementById('anexado-discursos').value,
-                    emoji: document.getElementById('emoji').value,
-                    status: document.getElementById('status').checked,
-                    quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
-                    dataModificacao: firebase.firestore.FieldValue.serverTimestamp()
-                };
+let diaAnexado = "";
+    let horaAnexada = "";
+
+    // NOVO: Verifica se um horário foi selecionado antes de dividir
+    if (valorHorarioCompleto) {
+        const ultimoEspaco = valorHorarioCompleto.lastIndexOf(' ');
+        if (ultimoEspaco !== -1) {
+            diaAnexado = valorHorarioCompleto.substring(0, ultimoEspaco);
+            horaAnexada = valorHorarioCompleto.substring(ultimoEspaco + 1);
+        }
+    }
+
+
+
+              const designacaoAtualizada = {
+        nome: document.getElementById('nome-designacao').value,
+        numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
+        feitoPor: document.getElementById('feito-por').value,
+        preferencia: document.getElementById('preferencia').value,
+        personalidade: personalidadeSel ? personalidadeSel.value : "",
+        quando: document.getElementById('quando').value,
+        tipo: document.getElementById('tipo').value,
+        parte: document.getElementById('parte').value,
+        horarioAnexado: valorHorarioCompleto, // Mantém o campo original
+        localAnexado: localAnexadoSel ? localAnexadoSel.value : "",
+        dia: diaAnexado,     // NOVO CAMPO
+        hora: horaAnexada,   // NOVO CAMPO
+        anexo: document.getElementById('anexo').value,
+        descricao: document.getElementById('descricao').value,
+        anexadoDiscursos: document.getElementById('anexado-discursos').value,
+        emoji: document.getElementById('emoji').value,
+        status: document.getElementById('status').checked,
+        quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
+        dataModificacao: firebase.firestore.FieldValue.serverTimestamp()
+    };
 
                 try {
                     await db.collection('designacoes').doc(idAtualEmEdicao).update(designacaoAtualizada);
-                    alert('Designação atualizada com sucesso!');
                     editFormCard.style.display = 'none';
                     idAtualEmEdicao = null;
                     await renderizarListas();
                 } catch (error) { console.error("Erro ao atualizar:", error); alert("Erro ao salvar."); }
             });
+
+            // --- Carregamento Inicial ---
+            await carregarAnexos();
+            await renderizarListas();
         });
     </script>
 </body>
