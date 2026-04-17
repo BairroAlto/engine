@@ -184,7 +184,7 @@ input:checked + .slider:before { transform: translateX(26px); }
 .checkbox-item:has(input[value="Pioneiro Auxiliar"]) { background-color: #ffecb3; }
 .checkbox-item:has(input[value="Publicador"]) { background-color: #ffcdd2; }
 .checkbox-item:has(input[value="Publicador não Batizado"]) { background-color: #f8bbd0; }
-
+.checkbox-item:has(input[value="Estudante"]) { background-color: #eceff1; }
 .help-text { font-style: italic; font-size: 0.7em; color: #7f8c8d; font-weight: normal; margin-left: 8px; }
 .checkbox-group-horizontal { display: flex; gap: 10px; flex-wrap: wrap; }
 .option-item-horizontal { display: flex; align-items: center; padding: 8px 16px; border-radius: 20px; background-color: #ecf0f1; border: 1px solid #bdc3c7; cursor: pointer; transition: background-color 0.3s; }
@@ -355,7 +355,7 @@ input:checked + .slider:before { transform: translateX(26px); }
 
                     <!-- Aba 3: Participantes -->
                     <div id="tab-3" class="tab-pane">
-                        <div class="form-group"><label>Quem faz?</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label></div></div>
+                        <div class="form-group"><label>Quem faz?</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Estudante">Estudante</label></div></div>
                         
                         <div class="form-navigation">
                             <button type="button" class="btn-nav prev prev-btn" data-prev-tab="2">Anterior</button>
@@ -509,25 +509,44 @@ input:checked + .slider:before { transform: translateX(26px); }
                 const personalidadeSel = document.querySelector('input[name="personalidade"]:checked');
                 const horarioAnexadoSel = document.querySelector('input[name="horario_anexado"]:checked');
                 const localAnexadoSel = document.querySelector('input[name="local_anexado"]:checked'); // Pega o local selecionado
+const valorHorarioCompleto = horarioAnexadoSel ? horarioAnexadoSel.value : "";
+
+// NOVO: Prepara as variáveis para o dia e a hora
+let diaAnexado = "";
+let horaAnexada = "";
+
+// NOVO: Verifica se um horário foi realmente selecionado antes de tentar dividir
+if (valorHorarioCompleto) {
+    const ultimoEspaco = valorHorarioCompleto.lastIndexOf(' ');
+    if (ultimoEspaco !== -1) {
+        // Pega o texto antes do último espaço (ex: "Sábado" ou "Terça-feira")
+        diaAnexado = valorHorarioCompleto.substring(0, ultimoEspaco); 
+        // Pega o texto depois do último espaço (ex: "09:30")
+        horaAnexada = valorHorarioCompleto.substring(ultimoEspaco + 1);
+    }
+}
+
 
                 const designacao = {
                     nome: document.getElementById('nome-designacao').value,
-                    numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
-                    feitoPor: document.getElementById('feito-por').value,
-                    preferencia: document.getElementById('preferencia').value,
-                    personalidade: personalidadeSel ? personalidadeSel.value : "",
-                    quando: document.getElementById('quando').value,
-                    tipo: document.getElementById('tipo').value,
-                    parte: document.getElementById('parte').value,
-                    horarioAnexado: horarioAnexadoSel ? horarioAnexadoSel.value : "",
-                    localAnexado: localAnexadoSel ? localAnexadoSel.value : "", // Adiciona o local ao objeto
-                    anexo: document.getElementById('anexo').value,
-                    descricao: document.getElementById('descricao').value,
-                    anexadoDiscursos: document.getElementById('anexado-discursos').value,
-                    emoji: document.getElementById('emoji').value,
-                    status: document.getElementById('status').checked,
-                    quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
-                    dataCriacao: new Date()
+    numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
+    feitoPor: document.getElementById('feito-por').value,
+    preferencia: document.getElementById('preferencia').value,
+    personalidade: personalidadeSel ? personalidadeSel.value : "",
+    quando: document.getElementById('quando').value,
+    tipo: document.getElementById('tipo').value,
+    parte: document.getElementById('parte').value,
+    horarioAnexado: valorHorarioCompleto, // Mantém o campo original para referência
+    localAnexado: localAnexadoSel ? localAnexadoSel.value : "",
+    dia: diaAnexado,     // NOVO CAMPO
+    hora: horaAnexada,   // NOVO CAMPO
+    anexo: document.getElementById('anexo').value,
+    descricao: document.getElementById('descricao').value,
+    anexadoDiscursos: document.getElementById('anexado-discursos').value,
+    emoji: document.getElementById('emoji').value,
+    status: document.getElementById('status').checked,
+    quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
+    dataCriacao: new Date()
                 };
 
                 function showPopupAndRedirect(url) {
