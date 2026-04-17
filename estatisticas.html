@@ -8,20 +8,16 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style_sidebar.css">
+
     <style>
         /* Estilos Gerais */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; }
 
         /* Estilos da Sidebar */
-        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding-top: 20px; height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; overflow-y: auto; }
-        .logo { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #34495e; }
-        .logo h2 { margin: 0; }
-        .nav-list { list-style: none; padding: 0; }
-        .nav-item a { color: white; text-decoration: none; display: flex; align-items: center; padding: 15px 20px; transition: background-color 0.3s; }
-        .nav-item a i { margin-right: 15px; width: 20px; text-align: center; }
-        .nav-item a:hover { background-color: #34495e; }
-        .nav-item.active a { background-color: #1abc9c; }
+
+
 
         /* Estilos do Conteúdo Principal */
         .content { margin-left: 250px; padding: 30px; flex-grow: 1; width: calc(100% - 250px); }
@@ -161,19 +157,7 @@
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="logo"><h2>Sistema de Escala</h2></div>
-        <nav><ul class="nav-list">
-            <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
-            <li class="nav-item"><a href="semana.html"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
-            <li class="nav-item"><a href="fimdesemana.html"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
-            <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
-            <li class="nav-item active"><a href="estatisticas.html"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
-            <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
-            <li class="nav-item"><a href="iniciar.html"><i class="fas fa-play"></i><span>Iniciar</span></a></li>
-            <li class="nav-item"><a href="criar.html"><i class="fas fa-plus"></i><span>Criar</span></a></li>
-        </ul></nav>
-    </div>
+<div id="sidebar-placeholder"></div>
 
     <!-- Conteúdo Principal -->
   <main class="content">
@@ -286,7 +270,9 @@
         </div>
     </template>
 
+    <script src="main.js"></script>
  <script>
+    
     // Configuração do Firebase
     const firebaseConfig = { 
         apiKey: "AIzaSyD1fkxq6USO5RX22TlsPQFEaVSZoTj_t2A", 
@@ -797,6 +783,60 @@
             clone.querySelector('label[for="sync-filters-checkbox"]').setAttribute('for', `sync-checkbox-${index}`);
             wrapper.appendChild(clone);
         });
+
+
+        // --- LÓGICA DA ABA COMPARAÇÃO (ADICIONAR ESTE BLOCO) ---
+
+const compSearchInput = document.getElementById('comparison-search-input');
+const compSearchResults = document.getElementById('comparison-search-results');
+
+if (compSearchInput) {
+    compSearchInput.addEventListener('input', () => {
+        const q = compSearchInput.value.toLowerCase();
+        if (q.length < 2) {
+            compSearchResults.style.display = 'none';
+            return;
+        }
+        // Filtra pessoas que ainda não foram selecionadas para a comparação
+        const f = [...pessoasMap.entries()]
+            .filter(([i, d]) => d.nomePessoa.toLowerCase().includes(q) && !selectedPeopleForComparison.includes(i))
+            .sort((a, b) => a[1].nomePessoa.localeCompare(b[1].nomePessoa));
+
+        compSearchResults.innerHTML = f.slice(0, 10).map(([i, d]) => 
+            `<div class="search-result-item" data-person-id="${i}">${d.nomePessoa}</div>`
+        ).join('');
+        compSearchResults.style.display = 'block';
+    });
+}
+
+if (compSearchResults) {
+    compSearchResults.addEventListener('click', (e) => {
+        if (e.target.classList.contains('search-result-item')) {
+            const personId = e.target.dataset.personId;
+            if (!selectedPeopleForComparison.includes(personId)) {
+                selectedPeopleForComparison.push(personId);
+                updateComparacaoDashboard();
+            }
+            compSearchInput.value = '';
+            compSearchResults.style.display = 'none';
+        }
+    });
+}
+
+// Lógica para o botão de remover pessoa do card de comparação
+const compCardsContainer = document.getElementById('comparison-cards-container');
+if (compCardsContainer) {
+    compCardsContainer.addEventListener('click', (e) => {
+        // Verifica se clicou no botão de remover ou no ícone dentro dele
+        const removeBtn = e.target.closest('.remove-person-btn');
+        if (removeBtn) {
+            const personId = removeBtn.dataset.personId;
+            selectedPeopleForComparison = selectedPeopleForComparison.filter(id => id !== personId);
+            updateComparacaoDashboard();
+        }
+    });
+}
+
 
         const populateAllFilters = async () => {
             try {
