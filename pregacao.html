@@ -225,6 +225,7 @@
         <form id="edit-form">
             <input type="hidden" id="edit-doc-id">
             <input type="hidden" id="edit-type">
+               <input type="hidden" id="edit-doc-index">
 
             <div id="participant-fields">
                 <!-- Dropdowns serão inseridos aqui dinamicamente -->
@@ -423,7 +424,10 @@ function populateWeeks() {
     const select = document.getElementById('filter-semana');
     select.innerHTML = '<option value="todas">Todas as Semanas</option>';
     Array.from(weeks).sort((a,b)=>parseInt(a.match(/\d+/))-parseInt(b.match(/\d+/))).forEach(w => select.add(new Option(w,w)));
+    // --- ADICIONA ESTAS DUAS LINHAS AQUI ---
     select.onchange = renderSchedule;
+    document.getElementById('filter-parte').onchange = renderSchedule; // Esta é a linha que falta!
+    
     renderSchedule();
 }
 
@@ -451,9 +455,9 @@ function renderSchedule() {
     const isSpecificWeek = week !== 'todas';
     const showPencils = isEditMode && isSpecificWeek;
 
-    const getPencilHtml = (id, type) => {
-        return showPencils ? `<i class="fas fa-pencil-alt edit-icon" onclick="openEditPopup('${id}', '${type}')"></i>` : '';
-    };
+const getPencilHtml = (id, type, index = 0) => {
+    return showPencils ? `<i class="fas fa-pencil-alt edit-icon" onclick="openEditPopup('${id}', '${type}', ${index})"></i>` : '';
+};
 
     weeksFound.forEach(wk => {
         html += `
@@ -473,21 +477,22 @@ function renderSchedule() {
                     <div class="part-header"><i class="fas fa-users"></i> Serviço de Campo</div>
                     <div class="style-campo-content">`;
                 
-                docs.forEach(doc => {
-                    (doc.designacoes || []).forEach(desig => {
-                        const dirId = desig.participantes?.dirigente || desig.participantes?.participante;
-                        html += `
-                   <div class="sub-part">
-    <div class="edit-container">
-        <p class="data-row" data-local="${desig.local || ''}">
-            <strong>Dirigente:</strong> ${desig.dia || ''} - ${desig.hora || ''}
-        </p>
-        ${getPencilHtml(doc.id, 'campo')}
-    </div>
-    <p class="data-row" style="margin-left: 10px;"> ${personMap.get(dirId) || '---'}</p>
-</div>`;
-                    });
-                });
+docs.forEach(doc => {
+    (doc.designacoes || []).forEach((desig, idx) => { // 'idx' é a posição (0, 1, 2...)
+        const dirId = desig.participantes?.dirigente || desig.participantes?.participante;
+        html += `
+        <div class="sub-part">
+            <div class="edit-container">
+                <p class="data-row">
+                    <strong>Dirigente:</strong> ${desig.dia || ''} - ${desig.hora || ''}
+                </p>
+                <!-- O terceiro parâmetro é o idx desta linha específica -->
+                ${getPencilHtml(doc.id, 'campo', idx)} 
+            </div>
+            <p class="data-row" style="margin-left: 10px;"> ${personMap.get(dirId) || '---'}</p>
+        </div>`;
+    });
+});
                 html += `</div></div>`;
             }
         }
@@ -737,33 +742,44 @@ document.getElementById('edit-button').addEventListener('click', function() {
 });
 
 // Abrir Popup
-window.openEditPopup = function(id, type) {
-    console.log("Abrindo popup para:", id, "Tipo:", type);
+window.openEditPopup = function(id, type, index = 0) {
+    console.log("Abrindo popup para:", id, "Tipo:", type, "Index:", index);
     
     const overlay = document.getElementById('edit-popup-overlay');
     const fieldsContainer = document.getElementById('participant-fields');
     const title = document.getElementById('popup-title');
     const editForm = document.getElementById('edit-form');
     
-    // Configurar o fecho no "X"
-    const closeBtn = document.getElementById('close-popup');
-    if (closeBtn) closeBtn.onclick = () => overlay.style.display = 'none';
-    
+    // Configura campos ocultos para a gravação
     document.getElementById('edit-doc-id').value = id;
     document.getElementById('edit-type').value = type;
+    if(document.getElementById('edit-doc-index')) {
+        document.getElementById('edit-doc-index').value = index;
+    }
+    
     fieldsContainer.innerHTML = ''; 
 
+    // --- LÓGICA PARA EDIÇÃO DO CABEÇALHO DA SEMANA ---
     if (type === 'semana') {
         title.innerText = "Editar Detalhes da Semana";
         const refDoc = cacheHistoricoPregacao.find(d => d.semanaindex === id) || cacheHistorico.find(d => d.semanaindex === id);
+        
         let dataFormatada = "";
         if (refDoc?.timestamp) {
             const d = refDoc.timestamp.toDate ? refDoc.timestamp.toDate() : new Date(refDoc.timestamp.seconds * 1000);
             dataFormatada = d.toISOString().split('T')[0];
         }
+
         const gridWrapper = document.createElement('div');
         gridWrapper.style = "display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between;";
-        const fields = [{ label: 'Texto Cabeçalho', id: 'edit-semanaindex', type: 'text', value: id }, { label: 'Data Base', id: 'edit-data-base', type: 'date', value: dataFormatada }, { label: 'Dia da Semana', id: 'edit-diadasemana', type: 'select', value: refDoc?.diadasemana || '', options: ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'] }, { label: 'Hora', id: 'edit-hora', type: 'time', value: refDoc?.hora || '' }];
+        
+        const fields = [
+            { label: 'Texto Cabeçalho', id: 'edit-semanaindex', type: 'text', value: id },
+            { label: 'Data Base', id: 'edit-data-base', type: 'date', value: dataFormatada },
+            { label: 'Dia da Semana', id: 'edit-diadasemana', type: 'select', value: refDoc?.diadasemana || '', options: ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'] },
+            { label: 'Hora', id: 'edit-hora', type: 'time', value: refDoc?.hora || '' }
+        ];
+
         fields.forEach(f => {
             const div = document.createElement('div'); div.style = "width: 48%; margin-bottom: 5px;";
             div.innerHTML = `<label style="color: #888; font-size: 11px; display: block; margin-bottom: 3px;">${f.label}</label>`;
@@ -779,16 +795,19 @@ window.openEditPopup = function(id, type) {
         });
         fieldsContainer.appendChild(gridWrapper);
 
-    } else {
+    } 
+    // --- LÓGICA PARA EDIÇÃO DE LINHAS (CAMPO OU PÚBLICO) ---
+    else {
         const originalTitle = type === 'publico' ? "Editar Testemunho Público" : "Editar Serviço de Campo";
         title.innerText = originalTitle;
         title.setAttribute('data-original', originalTitle);
         
         let currentParticipants = [];
         let extra = { data: '', dia: '', hora: '', local: '' };
-        let tagAlvo = type === 'publico' ? "Testemunho Público" : "Dirigência Saída";
+        let tagAlvo = "";
 
         if (type === 'publico') {
+            tagAlvo = "Testemunho Público";
             let reg = cacheHistoricoPregacao.find(d => d.id === id);
             if (reg) {
                 if (reg.Pessoa1?.id) currentParticipants.push(reg.Pessoa1.id);
@@ -800,57 +819,57 @@ window.openEditPopup = function(id, type) {
                     const d = reg.timestamp.toDate ? reg.timestamp.toDate() : new Date(reg.timestamp.seconds * 1000);
                     dataInput = d.toISOString().split('T')[0];
                 }
-                // BUSCA O LOCAL PREDEFINIDO DO TESTEMUNHO PÚBLICO
                 extra = { data: dataInput, dia: reg.diadasemana || '', hora: reg.hora || '', local: reg.local || '' };
             }
         } else {
+            tagAlvo = "Dirigência Saída";
             let reg = cacheHistorico.find(d => d.id === id);
-            if (reg?.designacoes?.length > 0) {
-                const d = reg.designacoes[0];
+            // IMPORTANTE: Pega apenas a designação do índice clicado
+            if (reg?.designacoes && reg.designacoes[index]) {
+                const d = reg.designacoes[index];
                 currentParticipants = [d.participantes?.dirigente || d.participantes?.participante];
-                // BUSCA O LOCAL PREDEFINIDO DO SERVIÇO DE CAMPO (DO ARRAY DESIGNACOES)
                 extra = { data: d.data || '', dia: d.dia || '', hora: d.hora || '', local: d.local || '' };
             }
         }
 
-        // --- CONTENTOR 1: PARTICIPANTES ---
+        // 1. Renderiza Dropdowns de Participantes
         const partContainer = document.createElement('div');
         partContainer.id = "participant-rows-container";
         const numP = type === 'campo' ? 1 : 3;
+        
         for (let i = 0; i < numP; i++) {
             const row = document.createElement('div');
             row.style = "display: flex; align-items: center; gap: 8px; margin-bottom: 8px;";
-            row.innerHTML = `<div style="flex:1"><label style="color: #888; font-size: 11px;">${type === 'campo' ? 'Dirigente' : 'Part. '+(i+1)}</label><select class="edit-select-person" id="select-edit-p${i}" style="width:100%; padding:7px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; font-size:13px;"></select></div><button type="button" onclick="suggestPersonForEdit(${i})" style="padding:7px 10px; background:#34495e; color:#3498db; border:1px solid #444; border-radius:4px; cursor:pointer; margin-top:14px;"><i class="fas fa-rocket"></i></button>`;
+            row.innerHTML = `
+                <div style="flex:1">
+                    <label style="color: #888; font-size: 11px;">${type === 'campo' ? 'Dirigente' : 'Participante '+(i+1)}</label>
+                    <select class="edit-select-person" id="select-edit-p${i}" style="width:100%; padding:7px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; font-size:13px;"></select>
+                </div>
+                <button type="button" onclick="suggestPersonForEdit(${i})" style="padding:7px 10px; background:#34495e; color:#3498db; border:1px solid #444; border-radius:4px; cursor:pointer; margin-top:14px;"><i class="fas fa-rocket"></i></button>`;
             partContainer.appendChild(row);
-            const sel = row.querySelector('select'); sel.add(new Option("Selecione...", ""));
+            
+            const sel = row.querySelector('select');
+            sel.add(new Option("Selecione...", ""));
             fullPeopleCache.filter(p => p.fazDesignacoesPregacao).sort((a,b)=>a.nomePessoa.localeCompare(b.nomePessoa)).forEach(p => {
-                const opt = new Option(p.nomePessoa, p.id); if (currentParticipants[i] === p.id) opt.selected = true; sel.add(opt);
+                const opt = new Option(p.nomePessoa, p.id);
+                if (currentParticipants[i] === p.id) opt.selected = true;
+                sel.add(opt);
             });
         }
         fieldsContainer.appendChild(partContainer);
 
-        // --- CONTENTOR 2: DETALHES (Engrenagem) ---
+        // 2. Renderiza Campos Avançados (Data, Hora, Local)
         const advContainer = document.createElement('div');
         advContainer.id = "advanced-fields";
         advContainer.style = "display: none; flex-wrap: wrap; gap: 10px; justify-content: space-between;";
         
-        // Filtrar locais com base na TAG e garantir que o predefinido está lá
-        const locaisOpcoes = cacheLocais
-            .filter(l => l.tag === tagAlvo)
-            .map(l => l.nome)
-            .sort();
+        const locaisOpcoes = cacheLocais.filter(l => l.tag === tagAlvo).map(l => l.nome).sort();
 
         const advFields = [
             { label: 'Data', id: 'edit-extra-data', type: 'date', value: extra.data },
             { label: 'Dia', id: 'edit-extra-dia', type: 'select', value: extra.dia, options: ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'] },
             { label: 'Hora', id: 'edit-extra-hora', type: 'time', value: extra.hora },
-            { 
-                label: 'Local', 
-                id: 'edit-extra-local', 
-                type: 'select', 
-                value: extra.local, // ESTE É O VALOR QUE VEM DO FIREBASE
-                options: locaisOpcoes 
-            }
+            { label: 'Local', id: 'edit-extra-local', type: 'select', value: extra.local, options: locaisOpcoes }
         ];
 
         advFields.forEach(f => {
@@ -862,7 +881,6 @@ window.openEditPopup = function(id, type) {
                 input.add(new Option("Selecione...", ""));
                 f.options.forEach(opt => {
                     const o = new Option(opt, opt);
-                    // LÓGICA DE SELEÇÃO PREDEFINIDA
                     if (f.value === opt) o.selected = true; 
                     input.add(o);
                 });
@@ -875,7 +893,7 @@ window.openEditPopup = function(id, type) {
         fieldsContainer.appendChild(advContainer);
     }
 
-    // Gerar Rodapé
+    // 3. Gerar Rodapé de Botões (Engrenagem e Guardar)
     let footer = editForm.querySelector('.footer-buttons') || document.createElement('div');
     footer.className = 'footer-buttons';
     footer.style = "display: flex; align-items: center; margin-top: 15px; gap: 10px;";
@@ -885,6 +903,7 @@ window.openEditPopup = function(id, type) {
         <button type="button" id="btn-toggle-view" onclick="toggleEditView()" style="background:#444; color:#3498db; border:none; padding:10px 15px; border-radius:6px; cursor:pointer;"><i class="fas fa-cog"></i></button>
         <button id="btn-save-main" type="button" onclick="handleSaveEdit()" style="background:#27ae60; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold; flex: 1; font-size: 14px;">Guardar Alterações</button>
     `;
+    
     overlay.style.display = 'flex';
 };
 
@@ -967,21 +986,27 @@ async function handleSaveEdit() {
             await db.collection('historicoPregacao').doc(originalId).update(up);
 
         } else if (type === 'campo') {
-            const sel = document.getElementById('select-edit-p0');
-            const docRef = db.collection('historico').doc(originalId);
-            const snap = await docRef.get();
-            if (snap.exists) {
-                let desigs = snap.data().designacoes || [];
-                if (desigs.length > 0) {
-                    desigs[0].participantes = { dirigente: sel.value };
-                    desigs[0].data = nData;
-                    desigs[0].dia = nDia;
-                    desigs[0].hora = nHora;
-                    desigs[0].local = nLocal;
-                }
-                await docRef.update({ designacoes: desigs });
-            }
+  const sel = document.getElementById('select-edit-p0');
+    const index = parseInt(document.getElementById('edit-doc-index').value); // Recupera o índice
+    
+    const docRef = db.collection('historico').doc(originalId);
+    const snap = await docRef.get();
+    
+    if (snap.exists) {
+        let desigs = snap.data().designacoes || [];
+        
+        // ATUALIZA APENAS O ITEM NO ÍNDICE SELECIONADO
+        if (desigs[index]) {
+            desigs[index].participantes = { dirigente: sel.value };
+            desigs[index].data = document.getElementById('edit-extra-data').value;
+            desigs[index].dia = document.getElementById('edit-extra-dia').value;
+            desigs[index].hora = document.getElementById('edit-extra-hora').value;
+            desigs[index].local = document.getElementById('edit-extra-local').value;
         }
+        
+        await docRef.update({ designacoes: desigs });
+    }
+}
 
         document.getElementById('edit-popup-overlay').style.display = 'none';
         await loadInitialData();
