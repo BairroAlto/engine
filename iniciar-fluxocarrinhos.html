@@ -1305,7 +1305,6 @@ scheduleContainer.addEventListener('change', (event) => {
 
     try {
         await batch.commit();
-        alert('Atualização concluída!');
         location.reload();
     } catch (error) {
         console.error("Erro:", error);
