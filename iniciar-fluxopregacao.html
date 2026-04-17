@@ -1669,7 +1669,7 @@ const generateStatisticsTable = async () => {
         if (ano) historicoQuery = historicoQuery.where('ano', '==', ano);
         if (mes) historicoQuery = historicoQuery.where('mes', '==', mes);
 
-       let pessoasQuery = db.collection('pessoas').where('fazDesignacoesPregacao', '==', true);
+    let pessoasQuery = db.collection('pessoas').where('fazDesignacoesDirigente', '==', true);
         if (genero) pessoasQuery = pessoasQuery.where('genero', '==', genero);
         if (idioma) pessoasQuery = pessoasQuery.where('idioma', '==', idioma);
         
@@ -1909,7 +1909,7 @@ async function loadNuncaTab() {
         const designacaoNome = document.getElementById('nuncaFiltroDesignacao').value;
         const contentDiv = document.getElementById('nuncaContent');
         contentDiv.innerHTML = `<div style="text-align: center; padding: 20px; columns: 1;"><i class="fas fa-spinner fa-spin"></i> A processar dados...</div>`;
-let pessoasQuery = db.collection('pessoas').where('fazDesignacoesPregacao', '==', true);  
+let pessoasQuery = db.collection('pessoas').where('fazDesignacoesDirigente', '==', true);
       if (genero) pessoasQuery = pessoasQuery.where('genero', '==', genero);
         if (idioma) pessoasQuery = pessoasQuery.where('idioma', '==', idioma);
         if (designacaoNome) pessoasQuery = pessoasQuery.where('designacoesReuniao', 'array-contains', designacaoNome);
@@ -2244,7 +2244,7 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
             ? designacao.quemFaz 
             : ["Publicador", "Pioneiro", "Pioneiro Regular", "Servo Ministerial", "Ancião"];
 
-        let query = db.collection('pessoas').where('fazDesignacoesPregacao', '==', true);
+        let query = db.collection('pessoas').where('fazDesignacoesDirigente', '==', true);
         if (idiomas.length > 0) query = query.where('idioma', 'in', idiomas);
         if (genderPreference === 'masculino') query = query.where('genero', '==', 'Masculino');
         if (genderPreference === 'feminino') query = query.where('genero', '==', 'Feminino');
@@ -2617,7 +2617,7 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
     const ano = await getAnoPainelFirebase();
 
    const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
-        db.collection('pessoas').where('fazDesignacoesPregacao', '==', true).get(),
+        db.collection('pessoas').where('fazDesignacoesDirigente', '==', true).get(),
         db.collection('designacoes').get(),
         db.collection('historico').where('ano', '==', ano).get()
     ]);
