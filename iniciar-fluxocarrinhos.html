@@ -496,13 +496,18 @@ const mapaDiasFirebase = {
     const year = parseInt(yearSelect.value, 10);
     const monthText = monthSelect.options[monthSelect.selectedIndex].text;
     const salaValue = document.getElementById('sala-select').value;
-    const horaValue = document.getElementById('hora-select').value; // <--- NOVO
+    const horaValue = document.getElementById('hora-select').value;
     
     const infoDia = mapaDiasFirebase[daySelect.value];
     const dayText = infoDia.nome;
 
+    console.log(`%c🔍 [REGRA 8] Verificando conflitos para: ${dayText}, ${horaValue} (${salaValue})`, "color: #8e44ad; font-weight: bold;");
+
     if (updateBtn.style.display === 'inline-flex') return;
-    if (!horaValue) return; // Espera as horas carregarem
+    if (!horaValue) {
+        console.log("%c⏳ Aguardando carregamento das horas...", "color: #7f8c8d;");
+        return;
+    }
 
     try {
         const snapshot = await db.collection('historicoPregacao')
@@ -510,11 +515,12 @@ const mapaDiasFirebase = {
             .where('mes', '==', monthText)
             .where('diadasemana', '==', dayText)
             .where('sala', '==', salaValue)
-            .where('hora', '==', horaValue) // <--- CONSULTA INCLUI HORA
+            .where('hora', '==', horaValue)
             .limit(1)
             .get();
 
         if (!snapshot.empty) {
+            console.warn(`%c⚠️ [CONFLITO] Já existe uma escala salva para ${dayText} às ${horaValue} nesta sala. Gerador bloqueado.`, "background: #fff3cd; color: #856404; padding: 2px;");
             scheduleContainer.innerHTML = `
                 <div style="text-align: center; padding: 25px; border: 2px solid #f39c12; border-radius: 8px; background-color: #fef9e7; margin-top: 20px;">
                     <p style="color: #d35400; font-weight: bold; font-size: 18px;">
@@ -525,6 +531,7 @@ const mapaDiasFirebase = {
             generateBtn.style.opacity = "0.5";
             saveBtn.style.display = 'none';
         } else {
+            console.log("%c✅ [OK] Sem conflitos encontrados. O Foguetão está pronto.", "color: #27ae60;");
             scheduleContainer.innerHTML = `<p>Selecione o mês, o dia e clique em "Gerar Escala" para começar.</p>`;
             generateBtn.disabled = false;
             generateBtn.style.opacity = "1";
@@ -883,81 +890,85 @@ function openLoadScheduleModal() {
 }
        
     
-           function handleGenerateClick() {
-                loader.style.display = 'block';
-                saveBtn.style.display = 'none';
-                updateBtn.style.display = 'none';
-                loadedDocIds.clear();
-                loader.querySelector('p').textContent = 'A avaliar publicadores e a planear a escala...';
+   async function handleGenerateClick() {
+    console.group("%c🚀 FLUXO DE GERAÇÃO: O FOGUETÃO", "background: #2c3e50; color: white; padding: 10px; border-radius: 5px;");
     
-                setTimeout(() => {
-                    try {
-                        // --- CHAMADA À FUNÇÃO DE DATA ATUALIZADA ---
-                        const allTargetDates = getSchedulingDates(
-                            parseInt(yearSelect.value, 10), 
-                            parseInt(monthSelect.value, 10), 
-                            parseInt(daySelect.value, 10)
-                        );
-                        
-                        if (allTargetDates.length === 0) {
-                            throw new Error("Nenhum dia correspondente encontrado no período da escala.");
-                        }
-                        const unlockedTargetDates = allTargetDates.filter(date => !lockedDates.has(date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })));
-                        if (unlockedTargetDates.length === 0) {
-                            throw new Error("Todos os dias aplicáveis estão bloqueados. Desbloqueie pelo menos um para gerar a escala.");
-                        }
-                        
-                        const totalPeople = allEligiblePeople.length;
-                        const totalGroupsToForm = Math.floor(totalPeople / 2);
-                        const numAvailableDays = unlockedTargetDates.length;
-                        
-                        let daysToUse = unlockedTargetDates;
-                        if (totalGroupsToForm > 1) { 
-                            const maxDaysPossible = Math.floor(totalGroupsToForm / 2);
-                            const effectiveDaysCount = Math.min(numAvailableDays, maxDaysPossible);
-                            if (effectiveDaysCount > 0) {
-                                daysToUse = unlockedTargetDates.slice(0, effectiveDaysCount);
-                            } else {
-                                daysToUse = (totalGroupsToForm > 0) ? unlockedTargetDates.slice(0, 1) : [];
-                            }
-                        }
-    
-                        const baseGroupsPerDay = daysToUse.length > 0 ? Math.floor(totalGroupsToForm / daysToUse.length) : 0;
-                        let extraGroups = daysToUse.length > 0 ? totalGroupsToForm % daysToUse.length : 0;
-    
-                        // --- LINHA CORRIGIDA ---
-                        const dailyGroupPlan = daysToUse.map(date => {
-                            let groupsForThisDay = baseGroupsPerDay;
-                            if (extraGroups > 0) {
-                                groupsForThisDay++;
-                                extraGroups--;
-                            }
-                            return { date: date, groupCount: groupsForThisDay };
-                        }); // <-- O parêntesis extra foi removido daqui
-                        
-                        const generatedSchedule = generateDefinitiveSchedule(allEligiblePeople, dailyGroupPlan);
-                        
-                        const finalSchedule = allTargetDates.map(date => {
-                            const dateString = date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-                            if (lockedDates.has(dateString)) {
-                                return { date: date, groups: [] };
-                            }
-                            const generatedDay = generatedSchedule.find(d => d.date?.getTime() === date.getTime());
-                            // Se o dia não foi usado para grupos, retorna uma estrutura vazia para ele aparecer na lista
-                            return generatedDay || { date: date, groups: [] };
-                        });
-    
-                        renderSchedule(finalSchedule.filter(Boolean));
-                        saveBtn.style.display = 'inline-flex';
-    
-                    } catch (error) {
-                        console.error("Erro na Geração da Escala:", error);
-                        scheduleContainer.innerHTML = `<p class="error" style="color: red; text-align: center;"><b>Ocorreu um erro:</b> ${error.message}</p>`;
-                    } finally {
-                        loader.style.display = 'none';
-                    }
-                }, 50);
+    loader.style.display = 'block';
+    saveBtn.style.display = 'none';
+    updateBtn.style.display = 'none';
+    scheduleContainer.innerHTML = '';
+
+    const selectedYear = parseInt(yearSelect.value, 10);
+    const selectedMonthIndex = parseInt(monthSelect.value, 10);
+    const selectedMonthNum = selectedMonthIndex + 1;
+    const selectedMonthText = monthSelect.options[monthSelect.selectedIndex].text;
+    const selectedDayValue = daySelect.value;
+    const selectedHour = document.getElementById('hora-select').value;
+    const diaTextoProcurado = mapaDiasFirebase[selectedDayValue].nome;
+
+    try {
+        // REGRA 7: MAPEAMENTO E BLOQUEIOS
+        console.group("📅 [REGRA 7] Mapeamento de Datas e Bloqueios");
+        const allTargetDates = getSchedulingDates(selectedYear, selectedMonthIndex, parseInt(selectedDayValue));
+        
+        const unlockedTargetDates = allTargetDates.filter(date => {
+            const ds = date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+            const isLocked = lockedDates.has(ds);
+            const event = dateEventTypes.get(ds);
+            
+            if(isLocked || event === 'assembleia' || event === 'congresso') {
+                console.log(`%c🚫 Data Ignorada: ${ds} (Motivo: Bloqueio ou Evento Especial)`, "color: #e74c3c;");
+                return false;
             }
+            return true;
+        });
+        console.groupEnd();
+
+        // REGRA 6: CÁLCULO DE CAPACIDADE
+        console.group("📊 [REGRA 6] Cálculo de Capacidade");
+        const totalPeople = allEligiblePeople.length;
+        const totalGroupsToForm = Math.floor(totalPeople / 2);
+        console.log(`Publicadores Aptos: ${totalPeople}`);
+        console.log(`Capacidade Total: ${totalGroupsToForm} grupos.`);
+        
+        const dailyGroupPlan = unlockedTargetDates.map(date => ({ date: date, groupCount: 0 }));
+        let groupsToDistribute = totalGroupsToForm;
+        let i = 0;
+        while(groupsToDistribute > 0 && dailyGroupPlan.length > 0) {
+            dailyGroupPlan[i % dailyGroupPlan.length].groupCount++;
+            groupsToDistribute--;
+            i++;
+        }
+        console.log("Distribuição planejada por dia disponível:", dailyGroupPlan.map(p => `${p.date.getDate()}: ${p.groupCount} grp`));
+        console.groupEnd();
+
+        // REGRA 1: SINCRONIZAÇÃO DE DIRIGENTES (Busca no Firebase)
+        console.log("%c📡 [REGRA 1] Sincronizando com Dirigentes de Saída...", "color: #3498db; font-weight: bold;");
+        const dirigentesSincronizados = await buscarDirigentesPredefinidos(selectedYear, selectedMonthNum, diaTextoProcurado, selectedHour);
+
+        // CHAMADA DO CÉREBRO
+        const generatedSchedule = generateDefinitiveSchedule(allEligiblePeople, dailyGroupPlan, dirigentesSincronizados);
+        
+        // RENDERIZAÇÃO
+        const finalSchedule = allTargetDates.map(date => {
+            const generatedDay = generatedSchedule.find(d => d.date?.getTime() === date.getTime());
+            return generatedDay || { date: date, groups: [] };
+        });
+
+        renderSchedule(finalSchedule);
+        saveBtn.style.display = 'inline-flex';
+        
+        console.log("%c✅ ESCALA GERADA COM SUCESSO!", "background: #27ae60; color: white; padding: 5px;");
+
+    } catch (error) {
+        console.error("❌ ERRO NO FOGUETÃO:", error);
+    } finally {
+        console.groupEnd();
+        loader.style.display = 'none';
+    }
+}
+
+
             
      function renderSchedule(schedule) {
     scheduleContainer.innerHTML = '';
@@ -1205,7 +1216,6 @@ scheduleContainer.addEventListener('change', (event) => {
 
     try {
         await batch.commit();
-        alert('Escala (incluindo eventos) salva com sucesso!');
         location.reload(); // Recarrega para limpar memória
     } catch (error) {
         console.error("Erro:", error);
@@ -1564,123 +1574,204 @@ document.getElementById('day-select').addEventListener('change', carregarHorasDi
 yearSelect.addEventListener('change', carregarHorasDinamicas);
 
 
-
-            function generateDefinitiveSchedule(people, dailyGroupPlan) {
-                // Baralhar a lista de pessoas para garantir aleatoriedade
-                const shuffle = arr => arr.sort(() => 0.5 - Math.random());
-                shuffle(people);
-    
-                // 1. Particionar as pessoas
-                const pools = partitionPeople(people);
-                
-                // 2. Preparar os dias para receber as pessoas
-                const dailyAssignments = dailyGroupPlan.map(plan => ({
-                    date: plan.date,
-                    // O alvo de pessoas para o dia. Ex: 3 grupos -> 6 pessoas
-                    targetPersonCount: plan.groupCount * 2, 
-                    people: [],
-                    groups: []
-                })).filter(day => day.targetPersonCount > 0); // Só consideramos dias que terão grupos
-    
-                // Função auxiliar para encontrar o melhor dia para alocar uma unidade
-                // "Melhor" = o dia que tem espaço e está mais vazio (proporcionalmente)
-                const findBestDayForUnit = (unitSize) => {
-                    let bestDay = null;
-                    let lowestFillRatio = Infinity;
-    
-                    // Ordena os dias para dar preferência aos mais vazios
-                    const sortedDays = dailyAssignments.sort((a, b) => (a.people.length / a.targetPersonCount) - (b.people.length / b.targetPersonCount));
-    
-                    for (const day of sortedDays) {
-                        if (day.people.length + unitSize <= day.targetPersonCount + 1) { // Permite alguma flexibilidade
-                           return day;
-                        }
-                    }
-                    // Se nenhum dia tiver espaço ideal, retorna o primeiro dia (o mais vazio) como recurso final
-                    return sortedDays.length > 0 ? sortedDays[0] : null;
-                };
-    
-                // 3. FASE 1: Distribuir Unidades de Agendamento pelos Dias
-    
-                // a. Distribuir famílias primeiro (são as unidades maiores)
-                shuffle(pools.familyUnits).forEach(family => {
-                    const day = findBestDayForUnit(family.length);
-                    if (day) {
-                        day.people.push(...family);
-                        // Famílias são um grupo coeso por si só
-                        day.groups.push({ people: family, location: '' });
-                    }
-                });
-    
-                // b. Distribuir casais. Esta é a regra principal.
-                shuffle(pools.coupleUnits).forEach(couple => {
-                    const day = findBestDayForUnit(2); // Um casal ocupa 2 lugares
-                    if (day) {
-                        day.people.push(...couple); // Ambos são adicionados ao mesmo dia
-                    }
-                });
-    
-                // c. Distribuir todos os solteiros restantes
-                const allSingles = [...pools.singleMen, ...pools.singleWomen];
-                shuffle(allSingles).forEach(person => {
-                    const day = findBestDayForUnit(1);
-                    if (day) {
-                        day.people.push(person);
-                    }
-                });
-    
-                // 4. FASE 2: Formar Grupos Dentro de Cada Dia
-    
-                dailyAssignments.forEach(day => {
-                    // Pega apenas as pessoas que não estão numa família (que já formam um grupo)
-                    const peopleToGroup = day.people.filter(p => 
-                        !day.groups.some(g => g.people.some(gp => gp.id === p.id))
-                    );
-    
-                    const men = peopleToGroup.filter(p => p.genero === 'Masculino');
-                    const women = peopleToGroup.filter(p => p.genero === 'Feminino');
-    
-                    // Formar grupos de homens
-                    while (men.length >= 2) {
-                        day.groups.push({ people: [men.pop(), men.pop()], location: '' });
-                    }
-                    // Formar grupos de mulheres
-                    while (women.length >= 2) {
-                        day.groups.push({ people: [women.pop(), women.pop()], location: '' });
-                    }
-    
-                    // Lidar com sobras (formar trios)
-                    if (men.length > 0) {
-                        const man = men.pop();
-                        // Tenta adicionar a um grupo de 2 homens
-                        let targetGroup = day.groups.find(g => g.people.length === 2 && g.people.every(p => p.genero === 'Masculino'));
-                        if (targetGroup) targetGroup.people.push(man);
-                        // else { day.groups.push({ people: [man], location: '' }); } // Evitar grupos de 1 se possível
-                    }
-                     if (women.length > 0) {
-                        const woman = women.pop();
-                        // Tenta adicionar a um grupo de 2 mulheres
-                        let targetGroup = day.groups.find(g => g.people.length === 2 && g.people.every(p => p.genero === 'Feminino'));
-                        if (targetGroup) targetGroup.people.push(woman);
-                        // else { day.groups.push({ people: [woman], location: '' }); }
-                    }
-                });
-    
-                // 5. Formatar a saída para o renderizador
-                const finalSchedule = dailyGroupPlan.map(plan => {
-                    const assignedDay = dailyAssignments.find(d => d.date === plan.date);
-                    return {
-                        date: plan.date,
-                        groups: assignedDay ? assignedDay.groups : []
-                    };
-                });
-    
-                return finalSchedule;
-            }
             
             initialize();
              document.addEventListener('DOMContentLoaded', () => {
         });
+
+
+async function buscarDirigentesPredefinidos(ano, mes, diaTexto, hora) {
+    console.log(`%c🔍 [DIRIGENTES] Buscando na coleção 'historico'...`, "color: #3498db; font-weight: bold;");
+    const dirigentesMap = new Map(); 
+
+    try {
+        const snapshot = await db.collection('historico')
+            .where('tipo', '==', 'pregacao')
+            .where('oque', '==', 'pregacao')
+            .where('ano', '==', ano)
+            .where('mes', '==', mes)
+            .get();
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.designacoes) {
+                data.designacoes.forEach(desig => {
+                    const diaHistorico = desig.dia ? desig.dia.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
+                    const diaProcurado = diaTexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+                    if (diaHistorico === diaProcurado && desig.hora === hora) {
+                        // Verifica ambos os nomes de campo que vimos nas fotos
+                        const personId = desig.participantes ? (desig.participantes.participante || desig.participantes.dirigente) : null;
+                        if (personId) {
+                            dirigentesMap.set(data.semanaindex, personId);
+                        }
+                    }
+                });
+            }
+        });
+    } catch (e) { console.error("Erro busca:", e); }
+    return dirigentesMap;
+}
+
+
+// 1. FUNÇÃO AUXILIAR PARA CRIAR UNIDADES (FAMÍLIA, CASAL, INDIVIDUOS)
+function partitionIntoUnits(people) {
+    const units = [];
+    const processedIds = new Set();
+
+    // Primeiro: Casais (Tratados como unidade de 2 que viaja junto)
+    people.forEach(person => {
+        if (processedIds.has(person.id)) return;
+        if (person.casadoCom) {
+            const spouse = people.find(p => (p.id === person.casadoCom || p.nomePessoa === person.casadoCom) && !processedIds.has(p.id));
+            if (spouse) {
+                units.push({ type: 'couple', members: [person, spouse] });
+                processedIds.add(person.id);
+                processedIds.add(spouse.id);
+            }
+        }
+    });
+
+    // Segundo: Unidades Familiares (Restantes que têm o mesmo sobrenome/família)
+    people.forEach(person => {
+        if (processedIds.has(person.id)) return;
+        if (person.familia && person.familia.length > 0) {
+            const familyUnit = [person];
+            processedIds.add(person.id);
+            person.familia.forEach(memberName => {
+                const member = people.find(p => p.nomePessoa === memberName && !processedIds.has(p.id));
+                if (member) {
+                    familyUnit.push(member);
+                    processedIds.add(member.id);
+                }
+            });
+            units.push({ type: 'family', members: familyUnit });
+        }
+    });
+
+    // Terceiro: Solteiros
+    people.forEach(person => {
+        if (!processedIds.has(person.id)) {
+            units.push({ type: 'single', members: [person] });
+            processedIds.add(person.id);
+        }
+    });
+
+    return units;
+}
+
+// --- FUNÇÃO AUXILIAR: CALCULAR ESTATÍSTICA DE PARCERIA ---
+function getPairingStats(id1, id2) {
+    if (!id1 || !id2) return { count: 0, lastDate: null };
+    
+    // Filtra no histórico quantas vezes estas duas IDs aparecem no mesmo documento
+    const encounters = fullHistory.filter(h => {
+        const idsNoDoc = [h.Pessoa1?.id, h.Pessoa2?.id, h.Pessoa3?.id].filter(Boolean);
+        return idsNoDoc.includes(id1) && idsNoDoc.includes(id2);
+    });
+
+    return {
+        count: encounters.length,
+        lastDate: encounters.length > 0 ? encounters[0].data : null // O histórico já vem ordenado por data desc
+    };
+}
+
+// O CÉREBRO DO FOGUETÃO V4.1: (COM SINCRONIZAÇÃO DE DIRIGENTE VISÍVEL NO LOG)
+function generateDefinitiveSchedule(allPeople, dailyGroupPlan, dirigentesSincronizados) {
+    console.group("%c🧠 FOGUETÃO V4.1: DIRIGENTES & GÉNERO BLINDADO", "background: #27ae60; color: white; padding: 10px;");
+    
+    const shuffle = arr => arr.sort(() => 0.5 - Math.random());
+    
+    // 1. ORGANIZAR UNIDADES (CASAL E SOLTEIROS)
+    const allUnits = partitionIntoUnits(allPeople);
+    
+    // 2. DISTRIBUIÇÃO BALANCEADA PELOS DIAS
+    const dailyAssignments = dailyGroupPlan.map(plan => {
+        const indexSemana = gerarSemanaIndexPorData(plan.date);
+        const enforcedId = dirigentesSincronizados.get(indexSemana);
+        let peopleInDay = [];
+        let leaderName = "Nenhum (Sorteio Puro)";
+
+        // REGRA DE OURO DO DIRIGENTE:
+        // Se houver dirigente predefinido na escala de saída, ele entra PRIMEIRO no dia.
+        if (enforcedId) {
+            const unitIdx = allUnits.findIndex(u => u.members.some(m => m.id === enforcedId));
+            if (unitIdx !== -1) {
+                const unit = allUnits.splice(unitIdx, 1)[0];
+                peopleInDay.push(...unit.members);
+                const leader = unit.members.find(m => m.id === enforcedId);
+                leaderName = leader ? leader.nomePessoa : "ID não encontrada";
+            }
+        }
+
+        return { 
+            date: plan.date, 
+            people: peopleInDay, 
+            groups: [],
+            leaderInfo: leaderName // Para o Log
+        };
+    });
+
+    // Distribuir o resto das unidades (Casais e Solteiros)
+    shuffle(allUnits).forEach(unit => {
+        const bestDay = dailyAssignments.sort((a, b) => a.people.length - b.people.length)[0];
+        bestDay.people.push(...unit.members);
+    });
+
+    // 3. FORMAÇÃO DE GRUPOS PURISTAS (SEM MISTURA DE GÉNERO)
+    dailyAssignments.forEach(day => {
+        const pool = day.people;
+        const dayMen = shuffle(pool.filter(p => p.genero === 'Masculino'));
+        const dayWomen = shuffle(pool.filter(p => p.genero === 'Feminino'));
+
+        const formPureGroups = (genderPool) => {
+            const groups = [];
+            while (genderPool.length > 0) {
+                if (genderPool.length === 3) {
+                    groups.push(genderPool.splice(0, 3));
+                } else {
+                    const p1 = genderPool.pop();
+                    let bestIdx = -1;
+                    let lowestScore = Infinity;
+
+                    genderPool.forEach((p2, idx) => {
+                        const stats = getPairingStats(p1.id, p2.id);
+                        let score = stats.count * 20;
+                        const lastH = fullHistory.find(h => [h.Pessoa1?.id, h.Pessoa2?.id, h.Pessoa3?.id].includes(p1.id));
+                        if (lastH && [lastH.Pessoa1?.id, lastH.Pessoa2?.id, lastH.Pessoa3?.id].includes(p2.id)) score += 100;
+                        if (score < lowestScore) { lowestScore = score; bestIdx = idx; }
+                    });
+
+                    const pair = [p1];
+                    if (bestIdx !== -1) pair.push(genderPool.splice(bestIdx, 1)[0]);
+                    groups.push(pair);
+                }
+            }
+            return groups;
+        };
+
+        const maleGroups = formPureGroups(dayMen);
+        const femaleGroups = formPureGroups(dayWomen);
+        day.groups = [...maleGroups, ...femaleGroups].map(people => ({ people, location: '' }));
+
+        // LOG DE CONFERÊNCIA COM INFO DO DIRIGENTE
+        console.group(`%c📅 DIA: ${day.date.toLocaleDateString()}`, "color: #27ae60; font-weight: bold;");
+        console.log(`%c👤 Dirigente de Saída: ${day.leaderInfo}`, "color: #8e44ad; font-weight: bold;");
+        
+        day.groups.forEach((g, i) => {
+            const isMixed = new Set(g.people.map(p => p.genero)).size > 1;
+            console.log(
+                `Grupo ${i+1}: ${g.people.map(p => p.nomePessoa).join(" + ")} | %c| ${isMixed ? '⚠️ MISTO' : '✅ OK'}`,
+                isMixed ? "color: red;" : "color: green;"
+            );
+        });
+        console.groupEnd();
+    });
+
+    console.groupEnd();
+    return dailyAssignments;
+}
+
     </script>
 
 <script src="main.js"></script>
