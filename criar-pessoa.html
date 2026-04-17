@@ -65,7 +65,7 @@
         .checkbox-item:has(input[value="Pioneiro Auxiliar"]), .checkbox-item:has(input[value="Missionário"]) { background-color: #fff4e0; border-color: #ffd8b2; }
         .checkbox-item:has(input[value="Publicador"]) { background-color: #fdedec; border-color: #f5b7b1; }
         .checkbox-item:has(input[value="Publicador não Batizado"]) { background-color: #fce4ec; border-color: #f3bad6; }
-        .checkbox-item:has(input[value="Servo de Circuito"]) { background-color: #e5e7e9; border-color: #d7dbdd; }
+        .checkbox-item:has(input[value="Servo de Circuito"]), .checkbox-item:has(input[value="Orador Público"]) { background-color: #e5e7e9; border-color: #d7dbdd; }
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
         .section-header h2 { font-size: 24px; color: var(--text-color); font-weight: 600; margin: 0; }
         .designacoes-section { background-color: var(--bg-color); border-radius: var(--border-radius); padding: 25px; margin-top: 20px; border: 1px solid var(--border-color); }
@@ -92,6 +92,13 @@
         .suggestions-box div { padding: 10px; cursor: pointer; }
         .suggestions-box div:hover { background-color: #f0f0f0; }
         .form-warning { color: var(--danger-color); font-size: 13px; margin-top: 5px; font-weight: 500; }
+      .checkbox-item:has(input[value="Estudante"]) { 
+    background-color: #f4f6f7; 
+    border-color: #d5dbdb; 
+}
+      
+      
+      
         @media (max-width: 768px) { .form-row, .horarios-pregacao, .ausencias-inputs { grid-template-columns: 1fr; } .tab-content { padding: 20px; } .tabs { flex-wrap: wrap; } .tab-button { flex-grow: 1; text-align: center; } }
     </style>
 </head>
@@ -152,11 +159,22 @@
                         <div class="form-row"><div class="form-group"><label>Ativo</label><div class="switch-group"><label class="switch"><input type="checkbox" id="ativo" name="ativo" checked><span class="slider"></span></label><span id="ativo-label">Sim</span></div></div></div>
                         <div id="spiritual-info-content">
                             <div class="form-row"><div class="form-group"><label for="grupo">Grupo</label><select id="grupo" name="grupo" class="form-select"><option value="">Sem grupo</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option></select></div></div>
-                            <div class="form-group"><label>Privilégios Congregação</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Ancião"> Ancião</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Servo Ministerial"> Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Publicador"> Publicador</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Publicador não Batizado"> Publicador não Batizado</label></div></div>
+                            <div class="form-group"><label>Privilégios Congregação</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Ancião"> Ancião</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Servo Ministerial"> Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Publicador"> Publicador</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Publicador não Batizado"> Publicador não Batizado</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Estudante"> Estudante</label></div></div>
                             <div class="form-group"><label>Privilégios Pregação</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="privilegios-pregacao" value="Pioneiro Regular"> Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="privilegios-pregacao" value="Pioneiro Auxiliar"> Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="privilegios-pregacao" value="Pioneiro Especial"> Pioneiro Especial</label><label class="checkbox-item"><input type="checkbox" name="privilegios-pregacao" value="Missionário"> Missionário</label></div></div>
-                            <div class="form-group"><label>Privilégios Especiais</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="privilegios-especiais" value="Servo de Circuito"> Servo de Circuito</label></div></div>
+                            <div class="form-group"><label>Privilégios Especiais</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="privilegios-especiais" value="Servo de Circuito"> Servo de Circuito</label><label class="checkbox-item"><input type="checkbox" name="privilegios-especiais" value="Orador Público" id="orador-publico-checkbox"> Orador Público</label></div></div>
                         </div>
                     </div>
+
+                    <!-- NOVA SECÇÃO: INFORMAÇÃO EXTERNA -->
+                    <div class="form-subsection" id="informacao-externa-section" style="display: none;">
+                        <h3>Informação Externa</h3>
+                        <div class="form-group">
+                            <label for="congregacao-externa">Congregação</label>
+                            <input type="text" id="congregacao-externa" name="congregacao-externa">
+                            <div id="congregacao-suggestions" class="suggestions-box"></div>
+                        </div>
+                    </div>
+
                     <div class="form-subsection">
                         <h3>Informações Avançadas</h3>
                         <div class="form-row"><div class="form-group"><label for="casado-com">Casado Com (Opcional)</label><input type="text" id="casado-com" name="casado-com"><div id="pessoas-suggestions" class="suggestions-box"></div></div><div class="form-group"><label for="familia-search">Família (Opcional)</label><input type="text" id="familia-search" name="familia-search" placeholder="Pesquisar para adicionar membro..."><div id="familia-suggestions" class="suggestions-box"></div></div></div>
@@ -275,7 +293,14 @@
             const addAusenciaBtn = document.getElementById('add-ausencia-btn');
             const selectedAusenciasListDiv = document.getElementById('selected-ausencias-list');
 
+            // NOVAS VARIÁVEIS
+            const oradorPublicoCheckbox = document.getElementById('orador-publico-checkbox');
+            const informacaoExternaSection = document.getElementById('informacao-externa-section');
+            const congregacaoExternaInput = document.getElementById('congregacao-externa');
+            const congregacaoSuggestionsDiv = document.getElementById('congregacao-suggestions');
+
             let selectedAusencias = [], selectedFamilyMembers = [], allPessoas = [], editingPersonId = null;
+            let allCongregacoes = []; // NOVA
             let selectedSpouseId = null, originalSpouseId = null; 
             
             const nomeCurtoAviso = document.getElementById('nome-curto-aviso');
@@ -348,22 +373,31 @@
                 return horarios;
             }
             
+            // FUNÇÃO showSuggestions MODIFICADA
             function showSuggestions(suggestions, container, onSelect) {
                 container.innerHTML = '';
                 if (suggestions.length === 0) { container.style.display = 'none'; return; }
-                suggestions.forEach(person => {
+                suggestions.forEach(item => {
                     const div = document.createElement('div');
-                    div.textContent = person.nomePessoa;
-                    div.addEventListener('click', () => { onSelect(person); });
+                    // Lida com sugestões que são strings (congregações) ou objetos (pessoas)
+                    div.textContent = typeof item === 'object' ? item.nomePessoa : item;
+                    div.addEventListener('click', () => { onSelect(item); });
                     container.appendChild(div);
                 });
                 container.style.display = 'block';
             }
+
             function hideSuggestions(container) { container.style.display = 'none'; }
 
             const loadDataPromises = [
                 db.collection("nacionalidades").get().then(snapshot => snapshot.forEach(doc => idiomaSelect.add(new Option(doc.data().nome, doc.data().nome)))),
-                db.collection("pessoas").orderBy("nomePessoa").get().then(snapshot => { allPessoas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); }),
+                // CONSULTA A PESSOAS MODIFICADA
+                db.collection("pessoas").orderBy("nomePessoa").get().then(snapshot => { 
+                    allPessoas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+                    // Adicionado para obter congregações únicas
+                    const congregacoes = allPessoas.map(p => p.congregacao).filter(c => c);
+                    allCongregacoes = [...new Set(congregacoes)];
+                }),
                 db.collection("designacoes").where("tipo", "==", "reuniao").orderBy("ordem").orderBy("nome").get().then(snapshot => snapshot.forEach(doc => { const data = doc.data(); const checkbox = createDesignacaoCheckbox(data.nome, 'designacoes-reuniao-list'); if (data.parte === 'escola') listaDesignacoesEscolaDiv.appendChild(checkbox); else if (data.parte === 'resto da semana') listaDesignacoesRestoSemanaDiv.appendChild(checkbox); else if (data.parte === 'fim de semana') listaDesignacoesFimSemanaDiv.appendChild(checkbox); })),
                 db.collection("designacoes").where("tipo", "==", "pregacao").orderBy("nome").get().then(snapshot => snapshot.forEach(doc => listaDesignacoesPregacaoDiv.appendChild(createDesignacaoCheckbox(doc.data().nome, 'designacoes-pregacao-list')))),
                 db.collection("horarios").orderBy("ano", "desc").limit(1).get().then(snapshot => { if (snapshot.empty) return; const data = snapshot.docs[0].data(); const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"]; const weekendOrder = ["sabado", "domingo"]; const createDaySection = (day, times, container, type) => { if (!times || times.length === 0) return; const dayContainer = document.createElement('div'); dayContainer.className = 'day-container'; dayContainer.innerHTML = `<h4>${day.charAt(0).toUpperCase() + day.slice(1)}</h4>`; times.sort().forEach(time => dayContainer.appendChild(createTimeSlotCheckbox(time, day, type))); container.appendChild(dayContainer); }; if (data['dias-semana-horarios']) weekOrder.forEach(day => createDaySection(day, data['dias-semana-horarios'][day], horariosSemanaDiv, 'semana')); if (data['dias-fimdesemana-horarios']) weekendOrder.forEach(day => createDaySection(day, data['dias-fimdesemana-horarios'][day], horariosFimDeSemanaDiv, 'fim-de-semana')); })
@@ -388,6 +422,12 @@
                     (data.privilegiosCongregacao || []).forEach(p => { const cb = document.querySelector(`input[name="privilegios-congregacao"][value="${p}"]`); if (cb) cb.checked = true; });
                     (data.privilegiosPregacao || []).forEach(p => { const cb = document.querySelector(`input[name="privilegios-pregacao"][value="${p}"]`); if (cb) cb.checked = true; });
                     (data.privilegiosEspeciais || []).forEach(p => { const cb = document.querySelector(`input[name="privilegios-especiais"][value="${p}"]`); if (cb) cb.checked = true; });
+                    
+                    // LÓGICA ADICIONADA PARA ORADOR PÚBLICO
+                    if ((data.privilegiosEspeciais || []).includes('Orador Público')) {
+                        informacaoExternaSection.style.display = 'block';
+                        congregacaoExternaInput.value = data.congregacao || '';
+                    }
                 }
                 
                 originalSpouseId = data.casadoCom || null;
@@ -457,6 +497,30 @@
                 }
             }).catch(error => console.error("Erro ao carregar dados iniciais:", error));
             
+            // LÓGICA ADICIONADA PARA A NOVA SECÇÃO
+            function toggleInformacaoExterna() {
+                if (oradorPublicoCheckbox.checked) {
+                    informacaoExternaSection.style.display = 'block';
+                } else {
+                    informacaoExternaSection.style.display = 'none';
+                    congregacaoExternaInput.value = ''; // Limpa o campo ao esconder
+                }
+            }
+            oradorPublicoCheckbox.addEventListener('change', toggleInformacaoExterna);
+
+            congregacaoExternaInput.addEventListener('input', () => {
+                const inputText = congregacaoExternaInput.value.toLowerCase().trim();
+                if (!inputText) {
+                    hideSuggestions(congregacaoSuggestionsDiv);
+                    return;
+                }
+                const suggestions = allCongregacoes.filter(c => c.toLowerCase().includes(inputText));
+                showSuggestions(suggestions, congregacaoSuggestionsDiv, (selectedCongregacao) => {
+                    congregacaoExternaInput.value = selectedCongregacao;
+                    hideSuggestions(congregacaoSuggestionsDiv);
+                });
+            });
+
             function toggleSpiritualSection() { const isAtivo = ativoSwitch.checked; ativoLabel.textContent = isAtivo ? "Sim" : "Não"; toggleSectionInputs(spiritualInfoContent, !isAtivo); }
             ativoSwitch.addEventListener('change', toggleSpiritualSection);
             
@@ -466,14 +530,56 @@
             function toggleDesignacoesPregacaoSection() { toggleSectionInputs(designacoesPregacaoSection, !fazDesignacoesPregacaoSwitch.checked); }
             fazDesignacoesPregacaoSwitch.addEventListener('change', toggleDesignacoesPregacaoSection);
 
-            personalidadeMenosAvontadeCheckbox.onchange = () => { if (personalidadeMenosAvontadeCheckbox.checked) personalidadeMaisAvontadeCheckbox.checked = false; };
+          personalidadeMenosAvontadeCheckbox.onchange = () => { if (personalidadeMenosAvontadeCheckbox.checked) personalidadeMaisAvontadeCheckbox.checked = false; };
             personalidadeMaisAvontadeCheckbox.onchange = () => { if (personalidadeMaisAvontadeCheckbox.checked) personalidadeMenosAvontadeCheckbox.checked = false; };
 
+            // --- INÍCIO DO BLOCO MODIFICADO ---
+
             const checkboxesCongregacao = document.querySelectorAll('input[name="privilegios-congregacao"]');
-            checkboxesCongregacao.forEach(cb => { cb.addEventListener('change', (e) => { uncheckOtherCheckboxes(checkboxesCongregacao, e.target); }); });
+            const checkboxesEspeciais = document.querySelectorAll('input[name="privilegios-especiais"]');
+
+            // Função auxiliar para desmarcar um grupo de checkboxes
+            function uncheckGroup(checkboxes) {
+                checkboxes.forEach(cb => cb.checked = false);
+            }
+
+            // Adiciona listeners para os privilégios de CONGREGAÇÃO
+            checkboxesCongregacao.forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    // 1. Garante que só um privilégio de congregação é selecionado de cada vez (comportamento antigo)
+                    uncheckOtherCheckboxes(checkboxesCongregacao, e.target);
+
+                    // 2. Se um privilégio de congregação for selecionado, desmarca todos os especiais
+                    if (e.target.checked) {
+                        uncheckGroup(checkboxesEspeciais);
+                        
+                        // 3. Como desmarcámos os especiais programaticamente, o evento 'change' não é acionado.
+                        //    Temos que chamar manualmente a função que esconde a secção "Informação Externa".
+                        toggleInformacaoExterna();
+                    }
+                });
+            });
+
+            // Adiciona listeners para os privilégios ESPECIAIS
+            checkboxesEspeciais.forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    // Se um privilégio especial for selecionado, desmarca todos os de congregação
+                    if (e.target.checked) {
+                        uncheckGroup(checkboxesCongregacao);
+                    }
+                });
+            });
             
+            // Lógica para os privilégios de PREGAÇÃO (mantém-se igual)
             const checkboxesPregacao = document.querySelectorAll('input[name="privilegios-pregacao"]');
             checkboxesPregacao.forEach(cb => { cb.addEventListener('change', (e) => uncheckOtherCheckboxes(checkboxesPregacao, e.target)); });
+
+
+
+
+
+
+
 
             function handleSpouseSuggestions() {
                 const inputText = casadoComInput.value.toLowerCase().trim();
@@ -517,9 +623,11 @@
                 }
             });
 
+            // LISTENER DE CLIQUE MODIFICADO
             document.addEventListener('click', (e) => {
                 if (!pessoasSuggestionsDiv.contains(e.target) && e.target !== casadoComInput) hideSuggestions(pessoasSuggestionsDiv);
                 if (!familiaSuggestionsDiv.contains(e.target) && e.target !== familiaSearchInput) hideSuggestions(familiaSuggestionsDiv);
+                if (!congregacaoSuggestionsDiv.contains(e.target) && e.target !== congregacaoExternaInput) hideSuggestions(congregacaoSuggestionsDiv);
             });
 
             addSingleAusenciaBtn.addEventListener('click', () => {
@@ -551,6 +659,7 @@
                 if (!nome || (!generoMasculinoCheckbox.checked && !generoFemininoCheckbox.checked) || !idiomaSelect.value) { alert('Nome Curto, Gênero e Idioma são obrigatórios.'); return; }
                 if (casadoComInput.value.trim() === '') { selectedSpouseId = null; }
 
+                // OBJETO pessoaData MODIFICADO
                 const pessoaData = {
                     nomePessoa: nome,
                     nomeCompletoPessoa: nomeCompletoPessoaInput.value.trim(),
@@ -565,7 +674,8 @@
                     grupo: ativoSwitch.checked ? grupoSelect.value : '',
                     privilegiosCongregacao: ativoSwitch.checked ? getSingleCheckedValue('privilegios-congregacao') : [],
                     privilegiosPregacao: ativoSwitch.checked ? getSingleCheckedValue('privilegios-pregacao') : [],
-                    privilegiosEspeciais: ativoSwitch.checked ? getSingleCheckedValue('privilegios-especiais') : [],
+                    privilegiosEspeciais: ativoSwitch.checked ? getMultiCheckedValues('input[name="privilegios-especiais"]') : [],
+                    congregacao: oradorPublicoCheckbox.checked ? congregacaoExternaInput.value.trim() : null, // NOVA PROPRIEDADE
                     casadoCom: selectedSpouseId,
                     familia: selectedFamilyMembers.sort(),
                     dataNascimento: dataNascimentoInput.value || null,
