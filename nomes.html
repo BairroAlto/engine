@@ -1088,7 +1088,179 @@ body.sidebar-collapsed .column:first-child {
     border: 1px solid #f5c6cb;
 }
 
+.filter-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+#btn-open-filter:hover {
+    background-color: #e2e6ea !important;
+}
 
+.multi-select-container {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 8px;
+    max-height: 120px;
+    overflow-y: auto;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.multi-select-container .checkbox-item {
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    border: 1px solid transparent;
+    border-radius: 3px;
+}
+
+.multi-select-container .checkbox-item:hover {
+    background-color: #f1f3f5;
+}
+
+/* Quando o checkbox interno está marcado, destaca a linha */
+.multi-select-container .checkbox-item:has(input:checked) {
+    background-color: #e7f1ff;
+    border-color: #b8daff;
+}
+
+/* Grelha de 3 colunas para a primeira linha */
+.filter-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+/* Grelha de 2 colunas para a segunda linha */
+.filter-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+/* Estilo para as caixas de seleção no tema escuro */
+.multi-select-container {
+    background: #2b2b2b !important;
+    border: 1px solid #444 !important;
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+.multi-select-container .checkbox-item {
+    color: #eee;
+    padding: 5px 8px;
+    margin-bottom: 2px;
+}
+
+.multi-select-container .checkbox-item:hover {
+    background: #3d3d3d !important;
+}
+
+.multi-select-container .checkbox-item:has(input:checked) {
+    background: #007bff44 !important;
+    border-color: #007bff !important;
+}
+
+/* Responsividade para telemóveis */
+@media (max-width: 600px) {
+    .filter-grid-3, .filter-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Estilização do Popup de Filtros (Tema Escuro) --- */
+
+/* Fundo do Modal */
+#filter-modal .modal-content {
+    background-color: #1a1a1a !important; /* Cinza muito escuro */
+    color: #ffffff !important;
+    border: 1px solid #333;
+}
+
+/* Títulos das categorias */
+#filter-modal .form-group label {
+    color: #adb5bd !important; /* Cinza claro para os rótulos */
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Containers das listas (as caixas que estavam brancas) */
+.multi-select-container {
+    background-color: #2b2b2b !important; /* Fundo escuro para a lista */
+    border: 1px solid #444 !important;
+    border-radius: 6px;
+    padding: 5px;
+    max-height: 140px;
+    overflow-y: auto;
+}
+
+/* Estilo de cada item (cada linha com checkbox) */
+.multi-select-container .checkbox-item {
+    background-color: transparent !important;
+    color: #ffffff !important; /* Texto branco */
+    padding: 8px 12px !important;
+    margin-bottom: 2px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+    border: 1px solid transparent;
+    cursor: pointer;
+}
+
+/* Hover (passar o rato) */
+.multi-select-container .checkbox-item:hover {
+    background-color: #3d3d3d !important;
+}
+
+/* Estilo quando o item está selecionado */
+.multi-select-container .checkbox-item:has(input:checked) {
+    background-color: rgba(0, 123, 255, 0.15) !important; /* Azul subtil */
+    border-color: #007bff !important;
+}
+
+/* Corrigir o checkbox e o texto dentro dele */
+.multi-select-container .checkbox-item input[type="checkbox"] {
+    accent-color: #007bff; /* Cor do "v" do checkbox */
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+/* Scrollbar personalizada para as listas (opcional, para ficar mais bonito) */
+.multi-select-container::-webkit-scrollbar {
+    width: 6px;
+}
+.multi-select-container::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+.multi-select-container::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 10px;
+}
+
+/* Botões do Rodapé */
+#btn-apply-filters {
+    background-color: #28a745 !important;
+    border: none;
+    color: white;
+}
+
+#btn-reset-filters {
+    background-color: #444 !important;
+    border: none;
+    color: #ccc;
+}
 
     </style>
 </head>
@@ -1125,9 +1297,85 @@ body.sidebar-collapsed .column:first-child {
                     <i class="fas fa-user-plus"></i>
                 </a>
             </h2>
-            <div class="search-box-wrapper">
-                <input type="text" id="filter-pessoas-input" placeholder="Filtrar por nome...">
+          <div class="search-box-wrapper" style="display: flex; gap: 8px; align-items: center;">
+    <input type="text" id="filter-pessoas-input" placeholder="Filtrar por nome..." style="flex: 1;">
+    <button id="btn-open-filter" title="Filtros Avançados" style="background: #f1f3f5; border: 1px solid #ced4da; padding: 8px 12px; border-radius: 4px; cursor: pointer; color: #495057;">
+        <i class="fas fa-filter"></i>
+    </button>
+</div>
+
+<!-- [NOVO] Modal de Filtros -->
+<div id="filter-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;">
+    <div class="modal-content" style="background: #1e1e1e; color: white; padding: 25px; border-radius: 8px; width: 95%; max-width: 800px; max-height: 90vh; overflow-y: auto; border: 1px solid #333;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px;">
+            <h3 style="margin: 0;"><i class="fas fa-sliders-h"></i> Filtros de Pesquisa</h3>
+            <button id="btn-close-filter" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #aaa;">&times;</button>
+        </div>
+
+        <form id="advanced-filter-form">
+            <!-- LINHA 0: Status Principal -->
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="boolean-checkbox-label" style="background: #2c3e50; border: 1px solid #34495e; padding: 10px 15px; width: 100%; justify-content: center;">
+                    <input type="checkbox" id="f-naCongregacao" checked> <strong>Mostrar apenas "Na Congregação"</strong>
+                </label>
             </div>
+
+            <!-- LINHA 1: Gênero, Personalidade, Idiomas (3 Colunas) -->
+            <div class="filter-grid-3">
+                <div class="form-group">
+                    <label><i class="fas fa-venus-mars"></i> Gêneros:</label>
+                    <div id="f-genero-list" class="multi-select-container">
+                        <label class="checkbox-item"><input type="checkbox" value="Masculino"> Masculino</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Feminino"> Feminino</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-smile"></i> Personalidade:</label>
+                    <div id="f-personalidade-list" class="multi-select-container">
+                        <label class="checkbox-item"><input type="checkbox" value="- à vontade">- à vontade</label>
+                        <label class="checkbox-item"><input type="checkbox" value="+ à vontade">+ à vontade</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-language"></i> Idiomas:</label>
+                    <div id="f-idioma-list" class="multi-select-container"></div>
+                </div>
+            </div>
+
+            <!-- LINHA 2: Privilégios Congregação e Pregação (2 Colunas) -->
+            <div class="filter-grid-2">
+                <div class="form-group">
+                    <label><i class="fas fa-church"></i> Privilégios de Congregação:</label>
+                    <div id="f-privCong-list" class="multi-select-container"></div>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-bible"></i> Privilégios de Pregação:</label>
+                    <div id="f-privPreg-list" class="multi-select-container"></div>
+                </div>
+            </div>
+
+            <!-- LINHA 3: Privilégios Especiais (1 Coluna Larga) -->
+            <div class="form-group">
+                <label><i class="fas fa-star"></i> Privilégios Especiais:</label>
+                <div id="f-privEsp-list" class="multi-select-container" style="max-height: 100px;"></div>
+            </div>
+
+            <!-- LINHA 4: Funções Específicas -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #252525; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                <label class="checkbox-item"><input type="checkbox" id="f-fazDirigente"> Faz de Dirigente?</label>
+                <label class="checkbox-item"><input type="checkbox" id="f-fazCarrinhos"> Participa nos Carrinhos?</label>
+                <label class="checkbox-item"><input type="checkbox" id="f-fazReuniao"> Faz Desig. Reunião</label>
+            </div>
+
+            <div style="margin-top: 25px; display: flex; gap: 10px; position: sticky; bottom: 0; background: #1e1e1e; padding-top: 15px;">
+                <button type="button" id="btn-apply-filters" class="save-btn" style="flex: 2; background: #28a745;">Aplicar Filtros</button>
+                <button type="button" id="btn-reset-filters" class="cancel-btn" style="flex: 1; background: #6c757d;">Limpar Tudo</button>
+            </div>
+        </form>
+    </div>
+</div>
+
             <div class="content" style="padding: 0;">
                 <div id="list-loading" class="loading-indicator"><i class="fas fa-spinner fa-spin"></i> Carregando lista...</div>
                 <ul id="pessoas-list"></ul>
@@ -1574,8 +1822,25 @@ body.sidebar-collapsed .column:first-child {
         const sidebarToggleBtn = document.getElementById('sidebar-toggle');
         const bodyEl = document.body;
         const casadoComInput = document.getElementById('edit-casadoCom');
+const filterModal = document.getElementById('filter-modal');
+const btnOpenFilter = document.getElementById('btn-open-filter');
+const btnCloseFilter = document.getElementById('btn-close-filter');
+const btnApplyFilters = document.getElementById('btn-apply-filters');
+const btnResetFilters = document.getElementById('btn-reset-filters');
 
+
+
+// Variável para armazenar o estado dos filtros (inicia com Na Congregação = true)
+let activeAdvancedFilters = {
+    naCongregacao: true
+};
         // --- Variáveis de Estado ---
+let activeFilters = { 
+    naCongregacao: true, // Garante que começa filtrado
+    generos: [], personalidades: [], idiomas: [], 
+    privCongs: [], privPregas: [], privEsps: [],
+    fazDirigente: false, fazCarrinhos: false, fazReuniao: false 
+};
         let selectedPersonId = null;
         let chartInstances = {};
         let unfilteredHistoryItems = [];
@@ -1646,6 +1911,158 @@ addSingleAusenciaBtn.addEventListener('click', () => { hasChanges = true; /* res
 addRangeAusenciaBtn.addEventListener('click', () => { hasChanges = true; /* resto da sua logica */ });
 
 
+// Abrir Modal
+// Abrir e Popular
+btnOpenFilter.addEventListener('click', () => {
+    renderMultiSelect('f-idioma-list', [...new Set(allPessoasData.map(p => p.idioma).filter(Boolean))].sort());
+    renderMultiSelect('f-privCong-list', allPrivilegios.congregacao);
+    renderMultiSelect('f-privPreg-list', allPrivilegios.pregacao);
+    renderMultiSelect('f-privEsp-list', allPrivilegios.especiais);
+    filterModal.style.display = 'flex';
+});
+
+btnCloseFilter.addEventListener('click', () => filterModal.style.display = 'none');
+window.addEventListener('click', (e) => { if(e.target === filterModal) filterModal.style.display = 'none'; });
+
+// Popular selects com dados reais existentes
+function populateFilterOptions() {
+    const idiomas = [...new Set(allPessoasData.map(p => p.idioma).filter(Boolean))].sort();
+    const selectIdioma = document.getElementById('f-idioma');
+    const currentIdioma = selectIdioma.value;
+    selectIdioma.innerHTML = '<option value="">Todos</option>' + idiomas.map(i => `<option value="${i}">${i}</option>`).join('');
+    selectIdioma.value = currentIdioma;
+
+    // Popular Privilégios (usando as listas globais que você já tem)
+    const pop = (id, list) => {
+        const el = document.getElementById(id);
+        const cur = el.value;
+        el.innerHTML = '<option value="">Todos</option>' + list.map(v => `<option value="${v}">${v}</option>`).join('');
+        el.value = cur;
+    };
+    pop('f-privCong', allPrivilegios.congregacao);
+    pop('f-privPreg', allPrivilegios.pregacao);
+    pop('f-privEsp', allPrivilegios.especiais);
+}
+
+// Aplicar Filtros
+btnApplyFilters.addEventListener('click', () => {
+    activeAdvancedFilters = {
+        naCongregacao: document.getElementById('f-naCongregacao').checked,
+        genero: document.getElementById('f-genero').value,
+        personalidade: document.getElementById('f-personalidade').value,
+        idioma: document.getElementById('f-idioma').value,
+        privCong: document.getElementById('f-privCong').value,
+        privPreg: document.getElementById('f-privPreg').value,
+        privEsp: document.getElementById('f-privEsp').value,
+        fazDirigente: document.getElementById('f-fazDirigente').checked,
+        fazCarrinhos: document.getElementById('f-fazCarrinhos').checked,
+        fazReuniao: document.getElementById('f-fazReuniao').checked
+    };
+    filterPessoasList(); // Chama a função de filtragem
+    filterModal.style.display = 'none';
+    
+    // Feedback visual no botão de filtro se houver filtros ativos (além do padrão)
+    btnOpenFilter.style.color = Object.values(activeAdvancedFilters).filter(v => v === true || v !== "").length > 1 ? "#007bff" : "#495057";
+});
+
+// Resetar Filtros
+btnResetFilters.addEventListener('click', () => {
+    filterForm.reset();
+    document.getElementById('f-naCongregacao').checked = true; // Mantém o padrão
+    btnApplyFilters.click();
+});
+
+
+// Função para criar a lista de checkboxes dentro das divs
+function renderMultiSelect(containerId, options) {
+    const container = document.getElementById(containerId);
+    if (container.children.length > 0) return; // Não recriar se já existir
+
+    options.forEach(opt => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-item';
+        label.innerHTML = `<input type="checkbox" value="${opt}"> ${opt}`;
+        container.appendChild(label);
+    });
+}
+
+// Função auxiliar para pegar todos os valores marcados em uma div
+function getCheckedValues(containerId) {
+    const checkboxes = document.querySelectorAll(`#${containerId} input:checked`);
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+// Aplicar Filtros
+btnApplyFilters.addEventListener('click', () => {
+    activeFilters = {
+        naCongregacao: document.getElementById('f-naCongregacao').checked,
+        generos: getCheckedValues('f-genero-list'),
+        personalidades: getCheckedValues('f-personalidade-list'),
+        idiomas: getCheckedValues('f-idioma-list'),
+        privCongs: getCheckedValues('f-privCong-list'),
+        privPregas: getCheckedValues('f-privPreg-list'),
+        privEsps: getCheckedValues('f-privEsp-list'),
+        fazDirigente: document.getElementById('f-fazDirigente').checked,
+        fazCarrinhos: document.getElementById('f-fazCarrinhos').checked,
+        fazReuniao: document.getElementById('f-fazReuniao').checked
+    };
+    
+    filterPessoasList();
+    filterModal.style.display = 'none';
+    
+    // Altera cor do ícone se houver filtros ativos
+    const hasActive = Object.values(activeFilters).some(v => (Array.isArray(v) && v.length > 0) || (v === true && v !== activeFilters.naCongregacao));
+    btnOpenFilter.style.background = hasActive ? "#e7f1ff" : "#f1f3f5";
+    btnOpenFilter.style.color = hasActive ? "#007bff" : "#495057";
+});
+
+// Limpar
+btnResetFilters.addEventListener('click', () => {
+    document.getElementById('advanced-filter-form').reset();
+    document.querySelectorAll('.multi-select-container input').forEach(cb => cb.checked = false);
+    document.getElementById('f-naCongregacao').checked = true;
+    btnApplyFilters.click();
+});
+
+// Função de Filtragem Principal
+function filterPessoasList() {
+    const textSearch = removerAcentos(filterPessoasInput.value.toLowerCase().trim());
+    const listItems = pessoasListUl.getElementsByTagName('li');
+    const dataMap = allPessoasData.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
+
+    const f = activeFilters;
+
+    for (let li of listItems) {
+        if (li.textContent === 'Nenhuma pessoa encontrada.') continue;
+        const p = dataMap[li.dataset.id];
+        if (!p) continue;
+
+        // 1. Busca por texto
+        const matchesText = removerAcentos(p.nomePessoa.toLowerCase()).includes(textSearch);
+
+        // 2. Filtros de Seleção Múltipla (OU entre itens da mesma categoria)
+        const matchGen = f.generos.length === 0 || f.generos.includes(p.genero);
+        const matchPers = f.personalidades.length === 0 || f.personalidades.includes(p.personalidade);
+        const matchIdio = f.idiomas.length === 0 || f.idiomas.includes(p.idioma);
+        
+        // Filtros de Arrays (se a pessoa tem ALGUM dos privilégios selecionados)
+        const matchPrivC = f.privCongs.length === 0 || (p.privilegiosCongregacao || []).some(pc => f.privCongs.includes(pc));
+        const matchPrivP = f.privPregas.length === 0 || (p.privilegiosPregacao || []).some(pp => f.privPregas.includes(pp));
+        const matchPrivE = f.privEsps.length === 0 || (p.privilegiosEspeciais || []).some(pe => f.privEsps.includes(pe));
+
+        // 3. Filtros Booleanos (E estrito)
+        const matchNaCong = !f.naCongregacao || (p.naCongregacao === true || p.naCongregacao === "true");
+        const matchDirig = !f.fazDirigente || p.fazDesignacoesDirigente === true;
+        const matchCarr = !f.fazCarrinhos || p.fazDesignacoesPregacao === true;
+        const matchReun = !f.fazReuniao || p.fazDesignacoesReuniao === true;
+
+        if (matchesText && matchGen && matchPers && matchIdio && matchPrivC && matchPrivP && matchPrivE && matchNaCong && matchDirig && matchCarr && matchReun) {
+            li.style.display = '';
+        } else {
+            li.style.display = 'none';
+        }
+    }
+}
 
         // --- Funções de Sugestão ---
         function showSuggestions(suggestions, container, onSelect) {
@@ -1830,23 +2247,57 @@ addRangeAusenciaBtn.addEventListener('click', () => { hasChanges = true; /* rest
             });
         }
 
-   function filterPessoasList() {
-    // Normaliza o texto digitado (remove acentos e passa para minúsculo)
-    const filterText = removerAcentos(filterPessoasInput.value.toLowerCase().trim());
+function filterPessoasList() {
+    // 1. Pega o texto da busca por nome
+    const textSearch = removerAcentos((filterPessoasInput.value || "").toLowerCase().trim());
     
+    // 2. Seleciona todos os itens da lista <li>
     const listItems = pessoasListUl.getElementsByTagName('li');
     
-    for (let i = 0; i < listItems.length; i++) {
-        const li = listItems[i];
+    // 3. Cria um mapa dos dados para acesso rápido por ID
+    const dataMap = allPessoasData.reduce((acc, p) => { 
+        acc[p.id] = p; 
+        return acc; 
+    }, {});
+
+    const f = activeFilters; // Nossos filtros do modal
+
+    for (let li of listItems) {
+        // Ignora a mensagem de "vazio"
+        if (li.textContent.includes('Nenhuma pessoa')) continue;
         
-        // Ignora a mensagem de "Nenhuma pessoa encontrada"
-        if (li.textContent === 'Nenhuma pessoa encontrada.') continue;
+        const p = dataMap[li.dataset.id];
+        if (!p) continue;
+
+        // --- LÓGICA DE FILTRAGEM ---
+
+        // A. Busca por Nome
+        const matchesText = removerAcentos((p.nomePessoa || "").toLowerCase()).includes(textSearch);
+
+        // B. Gênero, Personalidade e Idioma (Seleção Múltipla - basta um ser verdadeiro)
+        const matchGen = f.generos.length === 0 || f.generos.includes(p.genero);
+        const matchPers = f.personalidades.length === 0 || f.personalidades.includes(p.personalidade);
+        const matchIdio = f.idiomas.length === 0 || f.idiomas.includes(p.idioma);
         
-        // Normaliza o nome da pessoa na lista para comparação
-        const itemText = removerAcentos(li.textContent.toLowerCase());
-        
-        // Compara as strings normalizadas
-        li.style.display = itemText.includes(filterText) ? '' : 'none';
+        // C. Privilégios (Verifica se a pessoa tem pelo menos UM dos selecionados)
+        const matchPrivC = f.privCongs.length === 0 || (p.privilegiosCongregacao || []).some(pc => f.privCongs.includes(pc));
+        const matchPrivP = f.privPregas.length === 0 || (p.privilegiosPregacao || []).some(pp => f.privPregas.includes(pp));
+        const matchPrivE = f.privEsps.length === 0 || (p.privilegiosEspeciais || []).some(pe => f.privEsps.includes(pe));
+
+        // D. Checkboxes Booleanos (E estrito - se marcado no filtro, TEM que ser true no perfil)
+        const matchNaCong = !f.naCongregacao || (p.naCongregacao === true || p.naCongregacao === "true");
+        const matchDirig = !f.fazDirigente || p.fazDesignacoesDirigente === true;
+        const matchCarr = !f.fazCarrinhos || p.fazDesignacoesPregacao === true;
+        const matchReun = !f.fazReuniao || p.fazDesignacoesReuniao === true;
+
+        // --- APLICAR RESULTADO ---
+        if (matchesText && matchGen && matchPers && matchIdio && 
+            matchPrivC && matchPrivP && matchPrivE && 
+            matchNaCong && matchDirig && matchCarr && matchReun) {
+            li.style.display = ''; // Mostra
+        } else {
+            li.style.display = 'none'; // Esconde
+        }
     }
 }
 
@@ -1958,6 +2409,7 @@ function loadAllDesignacoes() {
     });
     
     pessoasListUl.appendChild(li);
+     filterPessoasList(); 
 });
             }).catch(error => {
                 showLoading('list', false);
