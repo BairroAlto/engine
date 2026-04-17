@@ -1262,6 +1262,39 @@ body.sidebar-collapsed .column:first-child {
     color: #ccc;
 }
 
+/* Garante que o conteúdo do modal tenha espaço para os botões fixos */
+#filter-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0 !important; /* Deixamos o padding para o footer fixo */
+}
+
+#advanced-filter-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Forçar a visibilidade dos botões caso existam estilos globais a ocultá-los */
+#btn-apply-filters, #btn-reset-filters {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Estilo específico para os botões no tema escuro */
+#btn-apply-filters {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+#btn-reset-filters {
+    background-color: #444 !important;
+    color: #fff !important;
+}
+
     </style>
 </head>
 <body>
@@ -1368,10 +1401,20 @@ body.sidebar-collapsed .column:first-child {
                 <label class="checkbox-item"><input type="checkbox" id="f-fazReuniao"> Faz Desig. Reunião</label>
             </div>
 
-            <div style="margin-top: 25px; display: flex; gap: 10px; position: sticky; bottom: 0; background: #1e1e1e; padding-top: 15px;">
-                <button type="button" id="btn-apply-filters" class="save-btn" style="flex: 2; background: #28a745;">Aplicar Filtros</button>
-                <button type="button" id="btn-reset-filters" class="cancel-btn" style="flex: 1; background: #6c757d;">Limpar Tudo</button>
-            </div>
+           <div style="margin-top: 20px; 
+            padding-top: 15px; 
+            border-top: 1px solid #333; 
+            display: flex; 
+            gap: 10px; 
+            background: #1a1a1a; 
+            position: sticky; 
+            bottom: -25px; /* Ajuste para compensar o padding do modal */
+            margin-bottom: -25px; /* Ajuste para compensar o padding do modal */
+            padding-bottom: 25px;
+            z-index: 10;">
+    <button type="button" id="btn-apply-filters" class="save-btn" style="flex: 2; height: 45px; font-weight: bold;">Aplicar Filtros</button>
+    <button type="button" id="btn-reset-filters" class="cancel-btn" style="flex: 1; height: 45px;">Limpar Tudo</button>
+</div>
         </form>
     </div>
 </div>
