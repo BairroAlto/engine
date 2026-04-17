@@ -235,7 +235,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        document.addEventListener('DOMContentLoaded', function() {
+     
             // Lógica para as abas
             const tabs = document.querySelectorAll('.tab-button');
             const tabContents = document.querySelectorAll('.tab-content');
@@ -603,7 +603,14 @@
             }
             
             nomePessoaInput.addEventListener('input', validateNomeUnico);
-            casadoComInput.addEventListener('input', () => { selectedSpouseId = null; handleSpouseSuggestions(); });
+            casadoComInput.addEventListener('input', () => { 
+    const val = casadoComInput.value.trim();
+    if (val === "") {
+        selectedSpouseId = null;
+    }
+    handleSpouseSuggestions(); 
+});
+
             generoMasculinoCheckbox.onchange = () => { if (generoMasculinoCheckbox.checked) generoFemininoCheckbox.checked = false; handleSpouseSuggestions(); };
             generoFemininoCheckbox.onchange = () => { if (generoFemininoCheckbox.checked) generoMasculinoCheckbox.checked = false; handleSpouseSuggestions(); };
 
@@ -653,70 +660,115 @@
                 ausenciaEndDateInput.value = '';
             });
 
-            criarPessoaForm.onsubmit = (e) => {
-                e.preventDefault();
-                const nome = nomePessoaInput.value.trim();
-                if (!nome || (!generoMasculinoCheckbox.checked && !generoFemininoCheckbox.checked) || !idiomaSelect.value) { alert('Nome Curto, Gênero e Idioma são obrigatórios.'); return; }
-                if (casadoComInput.value.trim() === '') { selectedSpouseId = null; }
+         criarPessoaForm.onsubmit = async (e) => {
+    e.preventDefault();
+    
+    // Bloquear o botão para evitar cliques duplos
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gravando...';
 
-                // OBJETO pessoaData MODIFICADO
-                const pessoaData = {
-                    nomePessoa: nome,
-                    nomeCompletoPessoa: nomeCompletoPessoaInput.value.trim(),
-                    email: emailInput.value.trim(),
-                    telemovel: telemovelInput.value.trim(),
-                    morada: moradaInput.value.trim(),
-                    idioma: idiomaSelect.value,
-                    genero: generoMasculinoCheckbox.checked ? 'Masculino' : 'Feminino',
-                    personalidade: personalidadeMenosAvontadeCheckbox.checked ? '- à vontade' : (personalidadeMaisAvontadeCheckbox.checked ? '+ à vontade' : ''),
-                    naCongregacao: naCongregacaoSwitch.checked,
-                    ativo: ativoSwitch.checked,
-                    grupo: ativoSwitch.checked ? grupoSelect.value : '',
-                    privilegiosCongregacao: ativoSwitch.checked ? getSingleCheckedValue('privilegios-congregacao') : [],
-                    privilegiosPregacao: ativoSwitch.checked ? getSingleCheckedValue('privilegios-pregacao') : [],
-                    privilegiosEspeciais: ativoSwitch.checked ? getMultiCheckedValues('input[name="privilegios-especiais"]') : [],
-                    congregacao: oradorPublicoCheckbox.checked ? congregacaoExternaInput.value.trim() : null, // NOVA PROPRIEDADE
-                    casadoCom: selectedSpouseId,
-                    familia: selectedFamilyMembers.sort(),
-                    dataNascimento: dataNascimentoInput.value || null,
-                    dataBatismo: dataBatismoInput.value || null,
-                    fazDesignacoesReuniao: fazDesignacoesReuniaoSwitch.checked,
-                    designacoesReuniao: fazDesignacoesReuniaoSwitch.checked ? getMultiCheckedValues('input[name="designacoes-reuniao-list"]') : [],
-                    fazDesignacoesPregacao: fazDesignacoesPregacaoSwitch.checked,
-                    acompanhaCarrinhos: fazDesignacoesPregacaoSwitch.checked ? acompanhaCarrinhosSwitch.checked : false,
-                    designacoesPregacao: fazDesignacoesPregacaoSwitch.checked ? getMultiCheckedValues('input[name="designacoes-pregacao-list"]') : [],
-                    horariosPregacao: fazDesignacoesPregacaoSwitch.checked ? getSelectedHorarios() : { semana: {}, fimDeSemana: {} },
-                    ausencias: selectedAusencias.sort()
-                };
-                
-                const promise = editingPersonId ? db.collection("pessoas").doc(editingPersonId).update(pessoaData) : db.collection("pessoas").add(pessoaData);
-                promise.then((result) => {
-                    const currentPersonId = editingPersonId || result.id;
-                    const newSpouseId = selectedSpouseId;
-                    const spouseUpdatePromises = [];
-                    if (originalSpouseId && originalSpouseId !== newSpouseId) {
-                        spouseUpdatePromises.push(db.collection("pessoas").doc(originalSpouseId).update({ casadoCom: null }));
-                    }
-                    if (newSpouseId && newSpouseId !== originalSpouseId) {
-                        spouseUpdatePromises.push(db.collection("pessoas").doc(newSpouseId).update({ casadoCom: currentPersonId }));
-                    }
-                    if (spouseUpdatePromises.length === 0) {
-                        alert(`Pessoa ${editingPersonId ? 'atualizada' : 'criada'} com sucesso!`);
-                        window.location.href = 'nomes.html';
-                        return;
-                    }
-                    Promise.all(spouseUpdatePromises)
-                        .then(() => {
-                            alert(`Pessoa ${editingPersonId ? 'atualizada' : 'criada'} com sucesso! Vínculos de casamento atualizados.`);
-                            window.location.href = 'nomes.html';
-                        })
-                        .catch(error => {
-                            alert(`Pessoa salva, mas ocorreu um erro ao atualizar os cônjuges: ${error.message}`);
-                            window.location.href = 'nomes.html';
-                        });
-                }).catch(error => alert("Erro ao salvar: " + error.message));
-            };
+    const nome = nomePessoaInput.value.trim();
+    if (!nome || (!generoMasculinoCheckbox.checked && !generoFemininoCheckbox.checked) || !idiomaSelect.value) { 
+        alert('Nome Curto, Gênero e Idioma são obrigatórios.'); 
+        submitButton.disabled = false;
+        submitButton.textContent = editingPersonId ? 'Salvar Alterações' : 'Criar Pessoa';
+        return; 
+    }
+
+    // Se o campo estiver vazio, garante que o ID seja nulo
+    if (casadoComInput.value.trim() === '') { selectedSpouseId = null; }
+
+    const pessoaData = {
+        nomePessoa: nome,
+        nomeCompletoPessoa: nomeCompletoPessoaInput.value.trim(),
+        email: emailInput.value.trim(),
+        telemovel: telemovelInput.value.trim(),
+        morada: moradaInput.value.trim(),
+        idioma: idiomaSelect.value,
+        genero: generoMasculinoCheckbox.checked ? 'Masculino' : 'Feminino',
+        personalidade: personalidadeMenosAvontadeCheckbox.checked ? '- à vontade' : (personalidadeMaisAvontadeCheckbox.checked ? '+ à vontade' : ''),
+        naCongregacao: naCongregacaoSwitch.checked,
+        ativo: ativoSwitch.checked,
+        grupo: ativoSwitch.checked ? grupoSelect.value : '',
+        privilegiosCongregacao: ativoSwitch.checked ? getSingleCheckedValue('privilegios-congregacao') : [],
+        privilegiosPregacao: ativoSwitch.checked ? getSingleCheckedValue('privilegios-pregacao') : [],
+        privilegiosEspeciais: ativoSwitch.checked ? getMultiCheckedValues('input[name="privilegios-especiais"]') : [],
+        congregacao: oradorPublicoCheckbox.checked ? congregacaoExternaInput.value.trim() : null,
+        casadoCom: selectedSpouseId, // ID do cônjuge selecionado
+        familia: selectedFamilyMembers.sort(),
+        dataNascimento: dataNascimentoInput.value || null,
+        dataBatismo: dataBatismoInput.value || null,
+        fazDesignacoesReuniao: fazDesignacoesReuniaoSwitch.checked,
+        designacoesReuniao: fazDesignacoesReuniaoSwitch.checked ? getMultiCheckedValues('input[name="designacoes-reuniao-list"]') : [],
+        fazDesignacoesPregacao: fazDesignacoesPregacaoSwitch.checked,
+        acompanhaCarrinhos: fazDesignacoesPregacaoSwitch.checked ? acompanhaCarrinhosSwitch.checked : false,
+        designacoesPregacao: fazDesignacoesPregacaoSwitch.checked ? getMultiCheckedValues('input[name="designacoes-pregacao-list"]') : [],
+        horariosPregacao: fazDesignacoesPregacaoSwitch.checked ? getSelectedHorarios() : { semana: {}, fimDeSemana: {} },
+        ausencias: selectedAusencias.sort()
+    };
+    
+    try {
+        let currentPersonId = editingPersonId;
+
+        // 1. Criar ou Atualizar a pessoa principal
+        if (editingPersonId) {
+            await db.collection("pessoas").doc(editingPersonId).update(pessoaData);
+        } else {
+            const docRef = await db.collection("pessoas").add(pessoaData);
+            currentPersonId = docRef.id;
+        }
+
+        // 2. Lógica de Reciprocidade (Cônjuge)
+        const batch = db.batch();
+
+        // Se o cônjuge mudou (ou foi removido)
+        if (originalSpouseId !== selectedSpouseId) {
+            
+            // CASO A: Tinha um cônjuge antigo, agora não tem mais ou mudou
+            if (originalSpouseId) {
+                const oldSpouseRef = db.collection("pessoas").doc(originalSpouseId);
+                batch.update(oldSpouseRef, { casadoCom: null });
+            }
+
+            // CASO B: Selecionou um novo cônjuge
+            if (selectedSpouseId) {
+                const newSpouseRef = db.collection("pessoas").doc(selectedSpouseId);
+                // Faz o novo cônjuge apontar para esta pessoa
+                batch.update(newSpouseRef, { casadoCom: currentPersonId });
+
+                // OPCIONAL: Se o novo cônjuge estava casado com OUTRA pessoa antes, 
+                // você pode querer limpar o vínculo daquela terceira pessoa. 
+                // Por simplicidade, focamos na reciprocidade direta.
+            }
+        }
+
+        await batch.commit();
+
+        window.location.href = 'nomes.html';
+
+    } catch (error) {
+        console.error("Erro ao salvar:", error);
+        alert("Erro ao salvar: " + error.message);
+        submitButton.disabled = false;
+        submitButton.textContent = editingPersonId ? 'Salvar Alterações' : 'Criar Pessoa';
+    }
+};
+
+
+
+
+
+
+
+
+               document.addEventListener('DOMContentLoaded', function() {
         });
+
+
+
+
+
+        
     </script>
 
     <!-- Script que carrega o menu -->
