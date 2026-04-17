@@ -1320,11 +1320,10 @@ body.sidebar-collapsed .column:first-child {
     </div>
 
     <!-- Conteúdo Principal da Página -->
-    <div class="container">
+      <div class="container">
         <!-- Coluna 1: Lista de Pessoas -->
        <div class="column list-column">
          <h2>
-                <!-- MODIFICADO -->
               <span><i class="fas fa-users"></i> Pessoas</span>
                 <a href="criar-pessoa.html" class="add-person-btn" title="Adicionar Nova Pessoa">
                     <i class="fas fa-user-plus"></i>
@@ -1337,7 +1336,7 @@ body.sidebar-collapsed .column:first-child {
     </button>
 </div>
 
-<!-- [NOVO] Modal de Filtros -->
+<!-- Modal de Filtros -->
 <div id="filter-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;">
     <div class="modal-content" style="background: #1e1e1e; color: white; padding: 25px; border-radius: 8px; width: 95%; max-width: 800px; max-height: 90vh; overflow-y: auto; border: 1px solid #333;">
         
@@ -1354,7 +1353,6 @@ body.sidebar-collapsed .column:first-child {
                 </label>
             </div>
 
-            <!-- LINHA 1: Gênero, Personalidade, Idiomas (3 Colunas) -->
             <div class="filter-grid-3">
                 <div class="form-group">
                     <label><i class="fas fa-venus-mars"></i> Gêneros:</label>
@@ -1376,7 +1374,6 @@ body.sidebar-collapsed .column:first-child {
                 </div>
             </div>
 
-            <!-- LINHA 2: Privilégios Congregação e Pregação (2 Colunas) -->
             <div class="filter-grid-2">
                 <div class="form-group">
                     <label><i class="fas fa-church"></i> Privilégios de Congregação:</label>
@@ -1388,33 +1385,21 @@ body.sidebar-collapsed .column:first-child {
                 </div>
             </div>
 
-            <!-- LINHA 3: Privilégios Especiais (1 Coluna Larga) -->
             <div class="form-group">
                 <label><i class="fas fa-star"></i> Privilégios Especiais:</label>
                 <div id="f-privEsp-list" class="multi-select-container" style="max-height: 100px;"></div>
             </div>
 
-            <!-- LINHA 4: Funções Específicas -->
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #252525; padding: 15px; border-radius: 6px; margin-top: 15px;">
                 <label class="checkbox-item"><input type="checkbox" id="f-fazDirigente"> Faz de Dirigente?</label>
                 <label class="checkbox-item"><input type="checkbox" id="f-fazCarrinhos"> Participa nos Carrinhos?</label>
                 <label class="checkbox-item"><input type="checkbox" id="f-fazReuniao"> Faz Desig. Reunião</label>
             </div>
 
-           <div style="margin-top: 20px; 
-            padding-top: 15px; 
-            border-top: 1px solid #333; 
-            display: flex; 
-            gap: 10px; 
-            background: #1a1a1a; 
-            position: sticky; 
-            bottom: -25px; /* Ajuste para compensar o padding do modal */
-            margin-bottom: -25px; /* Ajuste para compensar o padding do modal */
-            padding-bottom: 25px;
-            z-index: 10;">
-    <button type="button" id="btn-apply-filters" class="save-btn" style="flex: 2; height: 45px; font-weight: bold;">Aplicar Filtros</button>
-    <button type="button" id="btn-reset-filters" class="cancel-btn" style="flex: 1; height: 45px;">Limpar Tudo</button>
-</div>
+           <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #333; display: flex; gap: 10px; background: #1a1a1a; position: sticky; bottom: -25px; margin-bottom: -25px; padding-bottom: 25px; z-index: 10;">
+                <button type="button" id="btn-apply-filters" class="save-btn" style="flex: 2; height: 45px; font-weight: bold;">Aplicar Filtros</button>
+                <button type="button" id="btn-reset-filters" class="cancel-btn" style="flex: 1; height: 45px;">Limpar Tudo</button>
+            </div>
         </form>
     </div>
 </div>
@@ -1443,11 +1428,10 @@ body.sidebar-collapsed .column:first-child {
                         <button class="tab-button" data-tab="disponibilidade-tab">Ausências</button>
                     </div>
 
-                    <!-- Aba Pessoal (MODIFICADA PARA O NOVO LAYOUT) -->
+                    <!-- Aba Pessoal -->
                     <div id="pessoal-tab" class="tab-content active">
                         <div class="display-mode">
                             <h4>Informações Pessoais</h4>
-                            <!-- Modo de visualização: Lista vertical simples -->
                             <div class="data-item"><strong>Nome Curto:</strong> <span id="detail-nomePessoa">-</span></div>
                             <div class="data-item"><strong>Nome Completo:</strong> <span id="detail-nomeCompletoPessoa">-</span></div>
                             <div class="data-item"><strong>Gênero:</strong> <span id="detail-genero">-</span></div>
@@ -1460,13 +1444,10 @@ body.sidebar-collapsed .column:first-child {
                             <div class="data-item"><strong>Casado(a) Com:</strong> <span id="detail-casadoCom">-</span></div>
                             <div class="data-item"><strong>Morada:</strong> <span id="detail-morada">-</span></div>
                             <div class="data-item"><strong>Personalidade:</strong> <span id="detail-personalidade">-</span></div>
-                            <div class="data-item"><strong>Na Congregação?:</strong> <span id="detail-naCongregacao">-</span></div>
                         </div>
                         
                         <div class="edit-mode" style="display: none;">
                             <h4>Editar Informações Pessoais</h4>
-                            
-                            <!-- Modo de edição: Layout de grade lado a lado -->
                             <div class="grid-row">
                                 <div class="form-group"><label for="edit-nomePessoa">Nome Curto:</label><input type="text" id="edit-nomePessoa"></div>
                                 <div class="form-group"><label for="edit-nomeCompletoPessoa">Nome Completo:</label><input type="text" id="edit-nomeCompletoPessoa"></div>
@@ -1491,14 +1472,8 @@ body.sidebar-collapsed .column:first-child {
                                     <div id="casado-com-suggestions" class="suggestions-box"></div>
                                 </div>
                             </div>
-
                             <div class="form-group"><label for="edit-morada">Morada:</label><input type="text" id="edit-morada"></div>
                             <div class="form-group"><label for="edit-personalidade">Personalidade:</label><select id="edit-personalidade"><option value="">Selecione</option><option value="- à vontade">- à vontade</option><option value="+ à vontade">+ à vontade</option></select></div>
-                            <div class="form-group">
-                                 <label class="boolean-checkbox-label">
-                                     <input type="checkbox" id="edit-naCongregacao"> Na Congregação?
-                                 </label>
-                             </div>
                         </div>
 
                         <div class="edit-controls">
@@ -1512,26 +1487,36 @@ body.sidebar-collapsed .column:first-child {
                     <div id="espiritual-tab" class="tab-content">
                         <div class="display-mode">
                             <h4>Informações Espirituais</h4>
+                            <!-- NOVO: Adicionado aqui para visualização -->
+                            <div class="data-item"><strong>Na Congregação?:</strong> <span id="detail-naCongregacao">-</span></div>
                             <div class="data-item"><strong>Ativo:</strong> <span id="detail-ativo">-</span></div>
                             <div class="data-item"><strong>Grupo:</strong> <span id="detail-grupo">-</span></div>
                             <div class="data-item"><strong>Privilégios Congregação:</strong> <div id="detail-privilegiosCongregacao" class="array-data">-</div></div>
                             <div class="data-item"><strong>Privilégios Pregação:</strong> <div id="detail-privilegiosPregacao" class="array-data">-</div></div>
                             <div class="data-item"><strong>Privilégios Especiais:</strong> <div id="detail-privilegiosEspeciais" class="array-data">-</div></div>
-                            
                             <div class="data-item" id="display-congregacao-item" style="display: none;"><strong>Congregação:</strong> <span id="detail-congregacao">-</span></div>
                         </div>
                         <div class="edit-mode" style="display: none;">
                             <h4>Editar Informações Espirituais</h4>
-                            <div class="form-group">
-                                <label class="boolean-checkbox-label">
-                                    <input type="checkbox" id="edit-ativo"> Ativo
-                                </label>
+                            
+                            <!-- NOVO: Grelha com Na Congregação à esquerda de Ativo -->
+                            <div class="grid-row">
+                                <div class="form-group">
+                                    <label class="boolean-checkbox-label">
+                                        <input type="checkbox" id="edit-naCongregacao"> Na Congregação?
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="boolean-checkbox-label">
+                                        <input type="checkbox" id="edit-ativo"> Ativo
+                                    </label>
+                                </div>
                             </div>
+
                             <div class="form-group">
                                 <label for="edit-grupo">Grupo:</label>
                                 <select id="edit-grupo">
                                     <option value="">Sem Grupo</option>
-                                    <!-- Opções de 1 a 15 -->
                                     <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option>
                                 </select>
                             </div>
@@ -1568,34 +1553,26 @@ body.sidebar-collapsed .column:first-child {
               <div id="pregacao-tab" class="tab-content">
     <div class="display-mode">
         <h4>Disponibilidade e Funções de Pregação</h4>
-        <!-- NOVO CAMPO GERAL -->
         <div class="data-item"><strong>Faz Designações:</strong> <span id="detail-fazDesignacoesPregacao">-</span></div>
-        <!-- CAMPO DIRIGENTE (RENOMEADO) -->
         <div class="data-item"><strong>Faz Desig. (Dirigente):</strong> <span id="detail-fazDesignacoesDirigente">-</span></div>
-        
         <div class="data-item"><strong>Designações Pregação:</strong> <div id="detail-designacoesPregacao" class="array-data">-</div></div>
         <div class="data-item"><strong>Horários Pregação:</strong> <pre><code id="detail-horariosPregacao">-</code></pre></div>
         <div class="data-item"><strong>Acompanha Carrinhos:</strong> <span id="detail-acompanhaCarrinhos">-</span></div>
     </div>
    <div class="edit-mode" style="display: none;">
     <h4>Editar Funções e Horários de Pregação</h4>
-
-    <!-- Deixe apenas o Dirigente no topo ou onde preferir -->
     <div class="form-group">
         <label class="boolean-checkbox-label">
             <input type="checkbox" id="edit-fazDesignacoesDirigente"> Faz de Dirigente?
         </label>
     </div>
-    
     <div class="form-group">
         <label>Designações que pode fazer (Pregação):</label>
         <div class="checkbox-group" id="edit-designacoesPregacao-group">
              <span class="loading-placeholder">Carregando opções...</span>
         </div>
     </div>
-        <!-- ... resto do código (horários e acompanha carrinhos) permanece igual ... -->
       <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
-
     <div class="form-group">
         <label>Horários de Pregação:</label>
         <div class="horarios-edit-container">
@@ -1609,9 +1586,6 @@ body.sidebar-collapsed .column:first-child {
             </div>
         </div>
     </div>
-
-
- <!-- NOVO BLOCO NO FUNDO: Faz Designações ao lado de Acompanha Carrinhos -->
     <div class="grid-row" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
         <div class="form-group">
             <label class="boolean-checkbox-label">
@@ -1625,8 +1599,6 @@ body.sidebar-collapsed .column:first-child {
         </div>
     </div>
 </div>
-
-
 <div class="edit-controls">
                             <button class="edit-btn" data-tab-target="pregacao-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
                             <button class="save-btn" data-tab-target="pregacao-tab"><i class="fas fa-save"></i> Gravar</button>
@@ -1634,26 +1606,21 @@ body.sidebar-collapsed .column:first-child {
                         </div>
                     </div>
 
-                    <!-- Aba Permissões -->
+                    <!-- Aba Designações de Reunião -->
                    <div id="permissoes-tab" class="tab-content">
                         <div class="display-mode">
                             <h4>Permissões e Designações de Reunião</h4>
                             <div class="data-item"><strong>Faz Desig. Reunião:</strong> <span id="detail-fazDesignacoesReuniao">-</span></div>
-                            <!-- NOVO: Campo de Regularidade na visualização -->
                             <div class="data-item"><strong>Frequência (escola):</strong> <span id="detail-regularidade">-</span></div>
                             <div class="data-item"><strong>Designações Reunião:</strong> <div id="detail-designacoesReuniao" class="array-data">-</div></div>
                             <div class="data-item"><strong>Regra (Rule):</strong> <span id="detail-rule">-</span></div>
                         </div>
                          <div class="edit-mode" style="display: none;">
                              <h4>Editar Permissões de Reunião</h4>
-                             
-                             <!-- MODIFICADO: Container Flex para colocar checkbox e dropdown na mesma linha -->
                              <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background-color: #f8f9fa; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px;">
                                  <label class="boolean-checkbox-label" style="margin-bottom: 0; background-color: white;">
                                      <input type="checkbox" id="edit-fazDesignacoesReuniao"> Faz Designações Reunião
                                  </label>
-                                 
-                                 <!-- NOVO: Dropdown de Regularidade alinhado à direita -->
                                  <div style="display: flex; align-items: center; gap: 10px;">
                                      <label for="edit-regularidade" style="margin-bottom: 0; font-weight: 600; font-size: 0.9rem;">Frequência (escola):</label>
                                      <select id="edit-regularidade" style="width: auto; padding: 8px 12px; min-width: 150px;">
@@ -1666,7 +1633,6 @@ body.sidebar-collapsed .column:first-child {
                                      </select>
                                  </div>
                              </div>
-
                              <div class="form-group">
                                  <label>Designações que pode fazer (Reunião):</label>
                                  <div class="checkbox-group" id="edit-designacoesReuniao-group">
@@ -1704,9 +1670,7 @@ body.sidebar-collapsed .column:first-child {
                             </div>
                             <div class="form-group">
                                 <label>Ausências Marcadas:</label>
-                                <div id="selected-ausencias-list">
-                                    <!-- Badges de ausência serão inseridos aqui -->
-                                </div>
+                                <div id="selected-ausencias-list"></div>
                             </div>
                         </div>
                         <div class="edit-controls">
@@ -1715,7 +1679,6 @@ body.sidebar-collapsed .column:first-child {
                             <button class="cancel-btn" data-tab-target="disponibilidade-tab"><i class="fas fa-times"></i> Cancelar</button>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -1723,17 +1686,14 @@ body.sidebar-collapsed .column:first-child {
         <!-- Coluna 3: Histórico -->
         <div class="column history-column">
             <h2><i class="fas fa-history"></i> Histórico</h2>
-            
             <div class="history-tabs">
                 <button class="history-tab-button active" data-tab="hist-tudo">Tudo</button>
                 <button class="history-tab-button" data-tab="hist-arquivo">Arquivo</button>
                 <button class="history-tab-button" data-tab="hist-estatisticas">Estatísticas</button>
                 <button class="history-tab-button" data-tab="hist-filtros">Filtros</button>
             </div>
-        
             <div class="content" style="padding: 0;">
                 <div id="history-loading" class="loading-indicator" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Carregando histórico...</div>
-                
                 <div id="history-content-container">
                     <div id="hist-tudo" class="history-tab-content active"></div>
                     <div id="hist-arquivo" class="history-tab-content">
@@ -1750,11 +1710,8 @@ body.sidebar-collapsed .column:first-child {
                            <div id="sub-hist-pregacao" class="sub-history-tab-content"></div>
                        </div>
                     </div>
-
-
                   <div id="hist-estatisticas" class="history-tab-content">
                         <div id="stats-content" style="padding: 20px;">
-                            <!-- Cards de Estatísticas -->
                             <div class="stat-card-container">
                                 <div class="stat-card">
                                     <h4>Total Desig. Reunião</h4>
@@ -1765,81 +1722,40 @@ body.sidebar-collapsed .column:first-child {
                                     <p id="total-pregacao-stat">-</p>
                                 </div>
                             </div>
-
                             <div class="stat-list-container">
                                 <h4><i class="fas fa-medal"></i> Designações Mais Realizadas</h4>
                                 <ul id="top-designacoes-list" class="stat-list"></ul>
                                 <button id="toggle-designacoes" class="toggle-list-btn" style="display: none;">Mostrar Todos (0)</button>
                             </div>
-
                             <div class="stat-list-container">
                                 <h4><i class="fas fa-handshake"></i> Parceiros Mais Frequentes</h4>
                                 <ul id="top-parceiros-list" class="stat-list"></ul>
                                 <button id="toggle-parceiros" class="toggle-list-btn" style="display: none;">Mostrar Todos (0)</button>
                             </div>
-                            
-                            <!-- Gráficos -->
-                            <div class="chart-container">
-                                <canvas id="designacoes-por-tipo-chart"></canvas>
-                            </div>
-                            <div class="chart-container">
-                                <canvas id="designacoes-por-ano-chart"></canvas>
-                            </div>
-                            <div class="chart-container">
-                                <canvas id="designacoes-por-mes-chart"></canvas>
-                            </div>
-                             <div class="chart-container">
-                                <canvas id="designacoes-por-semana-chart"></canvas>
-                            </div>
+                            <div class="chart-container"><canvas id="designacoes-por-tipo-chart"></canvas></div>
+                            <div class="chart-container"><canvas id="designacoes-por-ano-chart"></canvas></div>
+                            <div class="chart-container"><canvas id="designacoes-por-mes-chart"></canvas></div>
+                             <div class="chart-container"><canvas id="designacoes-por-semana-chart"></canvas></div>
                         </div>
-                        <div id="no-stats-message" class="history-item" style="display: none; text-align: center; padding: 40px;">
-                            Nenhuma estatística para mostrar com os filtros atuais.
-                        </div>
+                        <div id="no-stats-message" class="history-item" style="display: none; text-align: center; padding: 40px;">Nenhuma estatística para mostrar.</div>
                     </div>
-
-
                   <div id="hist-filtros" class="history-tab-content">
                         <div style="padding: 20px;">
-                            <div class="form-group">
-                                <label for="hist-filter-ano">Ano:</label>
-                                <select id="hist-filter-ano" class="filter-select"><option value="">Todos</option></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="hist-filter-mes">Mês:</label>
-                                <select id="hist-filter-mes" class="filter-select"><option value="">Todos</option></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="hist-filter-semana">Semana do Mês:</label>
-                                <select id="hist-filter-semana" class="filter-select"><option value="">Todas</option></select>
-                            </div>
-                             <div class="form-group">
-                                <label for="hist-filter-designacao">Designação:</label>
-                                <select id="hist-filter-designacao" class="filter-select"><option value="">Todas</option></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="hist-filter-tipo">Tipo:</label>
-                                <select id="hist-filter-tipo" class="filter-select">
-                                    <option value="">Todos</option>
-                                    <option value="reuniao">Reunião</option>
-                                    <option value="pregacao">Pregação</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="hist-filter-sala">Sala:</label>
-                                <select id="hist-filter-sala" class="filter-select"><option value="">Todas</option></select>
-                            </div>
-                            <button id="reset-history-filters" class="edit-btn" style="width: 100%; margin-top: 10px;">
-                                <i class="fas fa-times"></i> Limpar Filtros
-                            </button>
+                            <div class="form-group"><label for="hist-filter-ano">Ano:</label><select id="hist-filter-ano" class="filter-select"><option value="">Todos</option></select></div>
+                            <div class="form-group"><label for="hist-filter-mes">Mês:</label><select id="hist-filter-mes" class="filter-select"><option value="">Todos</option></select></div>
+                            <div class="form-group"><label for="hist-filter-semana">Semana do Mês:</label><select id="hist-filter-semana" class="filter-select"><option value="">Todas</option></select></div>
+                             <div class="form-group"><label for="hist-filter-designacao">Designação:</label><select id="hist-filter-designacao" class="filter-select"><option value="">Todas</option></select></div>
+                            <div class="form-group"><label for="hist-filter-tipo">Tipo:</label><select id="hist-filter-tipo" class="filter-select"><option value="">Todos</option><option value="reuniao">Reunião</option><option value="pregacao">Pregação</option></select></div>
+                            <div class="form-group"><label for="hist-filter-sala">Sala:</label><select id="hist-filter-sala" class="filter-select"><option value="">Todas</option></select></div>
+                            <button id="reset-history-filters" class="edit-btn" style="width: 100%; margin-top: 10px;"><i class="fas fa-times"></i> Limpar Filtros</button>
                         </div>
                     </div>
-
-                     <div id="no-history" style="display: none; padding: 30px; text-align: center; color: #6c757d;">Nenhum histórico encontrado para esta pessoa.</div>
+                     <div id="no-history" style="display: none; padding: 30px; text-align: center; color: #6c757d;">Nenhum histórico encontrado.</div>
                 </div>
             </div>
         </div>
     </div>
-    <!-- Script principal da página -->
+    
     <script>
      document.addEventListener('DOMContentLoaded', () => {
         // --- Seletores ---
@@ -2721,17 +2637,20 @@ function populateEditFields(tabId, data) {
         document.getElementById('edit-familia').value = Array.isArray(data.familia) ? data.familia.join(', ') : '';
         document.getElementById('edit-casadoCom').value = data.casadoCom ? (allPessoasNames[data.casadoCom] || '') : '';
 
-        const naCongregacaoCB = document.getElementById('edit-naCongregacao');
+
+    } else if (tabId === 'espiritual-tab') {
+
+         const naCongregacaoCB = document.getElementById('edit-naCongregacao');
+    if (naCongregacaoCB) {
         naCongregacaoCB.checked = typeof data.naCongregacao === 'boolean' ? data.naCongregacao : true;
-        
-        // Regra visual: Muda a cor do título ao clicar
         naCongregacaoCB.onclick = function() {
             updateTitleBackground(this.checked);
         };
+    }
 
-    } else if (tabId === 'espiritual-tab') {
         document.getElementById('edit-ativo').checked = typeof data.ativo === 'boolean' ? data.ativo : true;
         document.getElementById('edit-grupo').value = data.grupo || '';
+        
         
         const populatePrivilegeGroup = (groupDivId, privilegeType, currentPrivileges) => {
             const groupDiv = document.getElementById(groupDivId);
