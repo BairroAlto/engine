@@ -1422,13 +1422,11 @@ if(validationIcon && validationPanel && validationPanelClose) {
                 designacaoParaGuardar.hora = horaInput.value;
             }
             
-            const localSelect = container.querySelector('.local-select');
-            if (localSelect && localSelect.value) {
-                designacaoParaGuardar.local = localSelect.value
-                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-                    .toLowerCase()
-                    .replace(/\s+/g, '-');
-            }
+         const localSelect = container.querySelector('.local-select');
+if (localSelect && localSelect.value) {
+    // Grava exatamente o valor selecionado (que veio do Firebase -> locais -> nome)
+    designacaoParaGuardar.local = localSelect.value;
+}
 
             const designacaoInfo = allDesignations.get(designacaoId);
             if (designacaoInfo && designacaoInfo.anexadoDiscursos === true) {
@@ -1451,7 +1449,6 @@ if(validationIcon && validationPanel && validationPanelClose) {
         console.log("[DEBUG] Objeto final completo a ser guardado no Firestore:", historicoData);
 
         await db.collection("historico").add(historicoData);
-        alert("Fluxo de pregação criado com sucesso!");
         window.location.reload();
 
     } catch (error) {
