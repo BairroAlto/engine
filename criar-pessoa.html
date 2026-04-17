@@ -660,7 +660,7 @@
                 ausenciaEndDateInput.value = '';
             });
 
-         criarPessoaForm.onsubmit = async (e) => {
+      criarPessoaForm.onsubmit = async (e) => {
     e.preventDefault();
     
     // Bloquear o botão para evitar cliques duplos
@@ -675,7 +675,7 @@
         return; 
     }
 
-    // Se o campo estiver vazio, garante que o ID seja nulo
+    // Se o campo estiver vazio no input, garante que o ID seja nulo
     if (casadoComInput.value.trim() === '') { selectedSpouseId = null; }
 
     const pessoaData = {
@@ -694,7 +694,7 @@
         privilegiosPregacao: ativoSwitch.checked ? getSingleCheckedValue('privilegios-pregacao') : [],
         privilegiosEspeciais: ativoSwitch.checked ? getMultiCheckedValues('input[name="privilegios-especiais"]') : [],
         congregacao: oradorPublicoCheckbox.checked ? congregacaoExternaInput.value.trim() : null,
-        casadoCom: selectedSpouseId, // ID do cônjuge selecionado
+        casadoCom: selectedSpouseId, 
         familia: selectedFamilyMembers.sort(),
         dataNascimento: dataNascimentoInput.value || null,
         dataBatismo: dataBatismoInput.value || null,
@@ -718,33 +718,27 @@
             currentPersonId = docRef.id;
         }
 
-        // 2. Lógica de Reciprocidade (Cônjuge)
+        // 2. Lógica de Reciprocidade (Cônjuge) - Ponto 1
         const batch = db.batch();
 
-        // Se o cônjuge mudou (ou foi removido)
         if (originalSpouseId !== selectedSpouseId) {
-            
-            // CASO A: Tinha um cônjuge antigo, agora não tem mais ou mudou
+            // CASO A: Tinha um cônjuge antigo, agora não tem mais ou mudou (Limpa o antigo)
             if (originalSpouseId) {
                 const oldSpouseRef = db.collection("pessoas").doc(originalSpouseId);
                 batch.update(oldSpouseRef, { casadoCom: null });
             }
 
-            // CASO B: Selecionou um novo cônjuge
+            // CASO B: Selecionou um novo cônjuge (Cria o vínculo nele)
             if (selectedSpouseId) {
                 const newSpouseRef = db.collection("pessoas").doc(selectedSpouseId);
-                // Faz o novo cônjuge apontar para esta pessoa
                 batch.update(newSpouseRef, { casadoCom: currentPersonId });
-
-                // OPCIONAL: Se o novo cônjuge estava casado com OUTRA pessoa antes, 
-                // você pode querer limpar o vínculo daquela terceira pessoa. 
-                // Por simplicidade, focamos na reciprocidade direta.
             }
         }
 
         await batch.commit();
 
-        window.location.href = 'nomes.html';
+        // REDIRECIONAMENTO COM ID - Para abrir a ficha automaticamente no nomes.html
+        window.location.href = `nomes.html?id=${currentPersonId}`;
 
     } catch (error) {
         console.error("Erro ao salvar:", error);
