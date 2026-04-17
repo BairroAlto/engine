@@ -73,17 +73,20 @@
   .detail-column { flex: 1.8; min-width: 450px; }
 .history-column { flex: 1.7; min-width: 400px; }
 
-        .column h2 {
-            background-color: #343a40; /* Cabeçalho cinza escuro */
-            color: white;
-            padding: 16px 20px;
-            font-size: 1.15rem;
-            margin-bottom: 0;
-            font-weight: 600;
-            display: flex; /* Para alinhar ícone */
-            align-items: center;
-            gap: 10px; /* Espaço ícone-texto */
-        }
+.column h2 {
+    position: relative; /* Necessário para a "moldura" do nome se prender aqui */
+    background-color: #343a40;
+    color: white;
+    padding: 0 20px;
+    height: 60px;       /* Altura fixa para alinhar todas as colunas */
+    margin: 0;
+    display: flex;
+    align-items: center; /* Alinha o texto "Detalhes" verticalmente */
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+
         .column .content {
             padding: 20px;
             overflow-y: auto;
@@ -122,45 +125,33 @@
         }
         .loading-indicator i { margin-right: 8px; }
 
-        /* --- Coluna 2: Detalhes --- */
-        #detail-name {
-            text-align: center;
-            padding: 12px;
-            background-color: #e9ecef; /* Fundo cinza claro */
-            margin: -20px -20px 20px -20px; /* Ajuste para encostar nas bordas */
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #343a40;
-            border-bottom: 1px solid #dee2e6;
-        }
-        /* Abas */
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid #dee2e6; /* Borda mais grossa */
-            margin-bottom: 25px;
-            flex-wrap: wrap; /* Permite que as abas quebrem a linha em telas menores */
-        }
-        .tab-button {
-            padding: 12px 18px;
-            border: none;
-            background-color: transparent; /* Fundo transparente */
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            color: #6c757d; /* Cinza para inativo */
-            font-size: 0.95rem;
-            font-weight: 500;
-            transition: color 0.2s, border-color 0.2s;
-            margin-bottom: -2px; /* Alinha com a borda */
-        }
-        .tab-button:hover {
-             color: #0056b3; /* Azul escuro no hover */
-             border-bottom-color: #adb5bd; /* Cinza claro no hover */
-        }
-        .tab-button.active {
-            color: #007bff; /* Azul primário */
-            border-bottom-color: #007bff;
-            font-weight: 600;
-        }
+
+.tabs {
+    display: flex;
+    background-color: #f1f3f5;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0 10px;
+    margin: 0; /* Remove margens que afastam do header */
+}
+
+.tab-button {
+    padding: 12px 15px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 600;
+    color: #6c757d;
+    border-bottom: 3px solid transparent;
+}
+.tab-button:hover {
+    color: #0056b3;
+    background-color: #e9ecef;
+}
+
+.tab-button.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+}
         /* Conteúdo das Abas */
         .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
         .tab-content.active { display: block; }
@@ -919,13 +910,7 @@ body.sidebar-collapsed .column:first-child {
 }
 
 
-.column h2 {
-            /* ... estilos existentes ... */
-            display: flex;
-            align-items: center;
-            justify-content: space-between; /* Chave para o alinhamento */
-            gap: 10px; /* Removido para não interferir */
-        }
+
 
         /* [NOVO] Agrupa o ícone original e o texto para manter o espaçamento */
         .column h2 > span {
@@ -987,10 +972,7 @@ body.sidebar-collapsed .column:first-child {
         font-size: 15px; /* Reduz levemente a fonte base para melhor encaixe */
     }
     
-    .column h2 {
-        padding: 14px 16px;
-        font-size: 1.1rem; /* Reduz o tamanho do título das colunas */
-    }
+
     
     .column .content {
         padding: 15px; /* Reduz o padding interno das colunas */
@@ -1295,6 +1277,132 @@ body.sidebar-collapsed .column:first-child {
     color: #fff !important;
 }
 
+
+
+
+/* Estilo para centralizar o nome no meio da barra */
+.header-name-centered {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;        /* Ocupa a largura total da barra */
+    height: 100%;       /* Ocupa a altura total da barra */
+    
+    display: flex;      /* Usa flexbox próprio para centralizar o que estiver dentro */
+    align-items: center;    /* Centraliza verticalmente (na mesma linha de Detalhes) */
+    justify-content: center; /* Centraliza horizontalmente (no meio da barra) */
+    
+    pointer-events: none; /* Garante que você consiga clicar no que está atrás se precisar */
+    
+    /* Estilo do Texto */
+    font-weight: 500;
+    font-size: 1.1rem;
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+
+
+/* Remove o padding superior para as abas encostarem no header */
+.detail-column .content {
+    padding-top: 0 !important;
+}
+
+/* Ajusta a barra de abas para encostar no topo e alinhar com o histórico */
+.detail-column .tabs {
+    background-color: #f1f3f5; /* Mesmo fundo cinza do histórico para uniformidade */
+    margin: 0 -20px 20px -20px; /* Estica a barra cinza até as bordas laterais */
+    padding: 5px 10px 0 10px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Adiciona padding apenas dentro do conteúdo das abas para o texto não encostar nas bordas */
+.tab-content {
+    padding: 20px;
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* 1. Ajuste a barra para centralizar tudo o que estiver no "fluxo" */
+.detail-column h2 {
+    position: relative;      /* Necessário para a camada do nome se prender aqui */
+    background-color: #343a40;
+    color: white;
+    height: 56px;            /* Altura fixa para alinhar com as outras colunas */
+    margin: 0 !important;    /* Garante que não haja espaço abaixo */
+    padding: 0 20px;
+    display: flex;
+    align-items: center;     /* Centraliza verticalmente o texto "Detalhes" */
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+/* 2. "Tiramos" o título Detalhes do caminho para ele não empurrar o nome */
+.detail-column h2 > span:first-child {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 3. Refazemos o formato do Nome para ser um elemento simples no centro */
+#detail-name {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;      /* Centraliza verticalmente (mesma linha de Detalhes) */
+    justify-content: center;  /* Centraliza horizontalmente */
+    pointer-events: none;     /* Clique "atravessa" o nome para não bloquear ícones */
+    
+    font-weight: 500;
+    font-size: 1.15rem;
+    color: #ffffff;           /* Branco puro para destaque */
+    background-color: transparent !important; /* Remove fundos herdados */
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* 4. Colamos as abas no topo (removendo o gap) */
+.detail-column .content {
+    padding-top: 0 !important; /* Remove o espaço entre a barra e as abas */
+}
+
+.detail-column .tabs {
+    background-color: #f1f3f5;
+    margin: 0 -20px 20px -20px; /* Estica a barra cinza de ponta a ponta */
+    padding: 5px 10px 0 10px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* 1. Ajuste no cabeçalho da lista de pessoas */
+.list-column h2 {
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    height: 60px; /* Mantendo a altura padrão de 60px para alinhar com as outras */
+    background-color: #343a40;
+    color: white;
+}
+
+/* 2. O Boneco (Botão de adicionar) */
+.add-person-btn {
+    margin-left: auto; /* A mágica acontece aqui: empurra para a direita */
+    color: #adb5bd;    /* Cor cinza claro para não poluir */
+    text-decoration: none;
+    font-size: 1.1rem;
+    transition: color 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+}
+
+.add-person-btn:hover {
+    color: #ffffff;    /* Fica branco ao passar o mouse */
+}
+
     </style>
 </head>
 <body>
@@ -1411,15 +1519,30 @@ body.sidebar-collapsed .column:first-child {
         </div>
 
         <!-- Coluna 2: Detalhes da Pessoa Selecionada -->
-        <div class="column detail-column">
-            <h2><i class="fas fa-id-card"></i> Detalhes</h2>
-            <div class="content">
-                <div id="detail-loading" class="loading-indicator" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Carregando detalhes...</div>
-                 <div id="select-prompt">
-                    <i class="fas fa-arrow-left"></i> Selecione uma pessoa na lista à esquerda.
-                </div>
-                <div id="detail-content" style="display: none;">
-                    <h3 id="detail-name"></h3>
+<div class="column detail-column">
+    <h2>
+        <!-- Lado Esquerdo -->
+        <span><i class="fas fa-id-card"></i> Detalhes</span>
+        
+        <!-- O Nome Centralizado (A moldura vai centralizá-lo na linha) -->
+        <span id="detail-name" class="header-name-centered"></span>
+    </h2>
+    <div class="content">
+        <!-- Indicador de carregamento corrigido -->
+        <div id="detail-loading" class="loading-indicator" style="display: none;">
+            <i class="fas fa-spinner fa-spin"></i> Carregando detalhes...
+        </div>
+        
+        <!-- Mensagem de instrução corrigida (removendo os pontos "...") -->
+        <div id="select-prompt">
+            <i class="fas fa-arrow-left"></i> Selecione uma pessoa na lista à esquerda.
+        </div>
+        
+        <div id="detail-content" style="display: none;">
+            <!-- O h3 id="detail-name" foi removido daqui -->
+
+
+
                     <div class="tabs">
                         <button class="tab-button active" data-tab="pessoal-tab">Pessoal</button>
                         <button class="tab-button" data-tab="espiritual-tab">Espiritual</button>
@@ -2336,6 +2459,7 @@ function loadAllDesignacoes() {
    function loadPessoasList() {
     showLoading('list', true);
     pessoasListUl.innerHTML = '';
+    document.getElementById('detail-name').textContent = ''; 
     selectPromptDiv.style.display = 'block'; 
     detailContentDiv.style.display = 'none'; 
     detailLoadingDiv.style.display = 'none'; 
@@ -2395,6 +2519,7 @@ if (autoSelectId) {
         // --- Funções de Preenchimento e Lógica de Edição ---
         function loadPersonDetails(personId) {
             showLoading('detail', true);
+            document.getElementById('detail-name').textContent = ''; 
             db.collection('pessoas').doc(personId).get().then(doc => {
                 showLoading('detail', false);
                 if (doc.exists) {
@@ -3346,18 +3471,18 @@ function updatePregacaoFieldsState() {
 }
 
 function updateTitleBackground(naCongregacao) {
-    const titleH3 = document.getElementById('detail-name');
-    if (!titleH3) return;
+    const nameSpan = document.getElementById('detail-name');
+    if (!nameSpan) return;
 
-    // Esta verificação cobre: 
-    // 1. O booleano false
-    // 2. A string "false" (caso algum dado tenha sido salvo como texto)
+    // Se estiver fora da congregação, o fundo do NOME fica vermelho
     if (naCongregacao === false || naCongregacao === "false") { 
-        titleH3.style.backgroundColor = "#dc3545"; // Vermelho
-        titleH3.style.color = "white";
+        nameSpan.style.backgroundColor = "#dc3545"; 
+        nameSpan.style.color = "white";
+        nameSpan.style.padding = "2px 10px"; // Pequeno respiro no fundo vermelho
+        nameSpan.style.borderRadius = "4px";
     } else {
-        titleH3.style.backgroundColor = "#e9ecef"; // Cinza padrão
-        titleH3.style.color = "#343a40";
+        nameSpan.style.backgroundColor = "transparent"; 
+        nameSpan.style.color = "#ffffff"; // Branco quando está tudo OK
     }
 }
 
