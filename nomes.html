@@ -1585,7 +1585,7 @@ body.sidebar-collapsed .column:first-child {
         let allDesignacoes = { reuniao: [], pregacao: [] };
         let allHorarios = null;
         let allPrivilegios = {
-            congregacao: ["Ancião", "Servo Ministerial", "Publicador", "Publicador não Batizado"],
+            congregacao: ["Ancião", "Servo Ministerial", "Publicador", "Publicador não Batizado", "Estudante"],
             pregacao: ["Pioneiro Regular", "Pioneiro Auxiliar", "Pioneiro Especial", "Missionário"],
             especiais: ["Servo de Circuito", "Orador Público"]
         };
@@ -1864,40 +1864,46 @@ addRangeAusenciaBtn.addEventListener('click', () => { hasChanges = true; /* rest
         }
 
 function loadAllDesignacoes() {
-            return db.collection('designacoes').get().then(snapshot => {
-                allDesignacoes.reuniao = []; 
-                allDesignacoes.pregacao = [];
-                
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    allDesignationDetails[doc.id] = { 
-                        nome: data.nome || 'Desconhecida', 
-                        tipo: data.tipo || 'desconhecido', 
-                        quando: data.quando || 'desconhecido', 
-                        emoji: data.emoji || '🔹' 
-                    };
+    return db.collection('designacoes').get().then(snapshot => {
+        allDesignacoes.reuniao = []; 
+        allDesignacoes.pregacao = [];
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
 
-                    if (data.tipo === 'reuniao') {
-                        allDesignacoes.reuniao.push({ 
-                            nome: data.nome, 
-                            parte: data.parte || 'outros',
-                            ordem: typeof data.ordem === 'number' ? data.ordem : 999 // NOVO: Guarda a ordem
-                        });
-                    }
-                    else if (data.tipo === 'pregacao') {
-                        allDesignacoes.pregacao.push(data.nome);
-                    }
+            // --- NOVO FILTRO AQUI ---
+            // Se a designação tiver o campo status explicitamente como 'false', ignoramos
+            if (data.status === false) {
+                return; // Pula para o próximo documento no loop
+            }
+            // ------------------------
+
+            allDesignationDetails[doc.id] = { 
+                nome: data.nome || 'Desconhecida', 
+                tipo: data.tipo || 'desconhecido', 
+                quando: data.quando || 'desconhecido', 
+                emoji: data.emoji || '🔹' 
+            };
+
+            if (data.tipo === 'reuniao') {
+                allDesignacoes.reuniao.push({ 
+                    nome: data.nome, 
+                    parte: data.parte || 'outros',
+                    ordem: typeof data.ordem === 'number' ? data.ordem : 999 
                 });
-                
-                // A ordenação inicial aqui não é crítica, pois vamos reordenar na exibição,
-                // mas ajuda a manter a consistência.
-                allDesignacoes.reuniao.sort((a, b) => a.ordem - b.ordem);
-                allDesignacoes.pregacao.sort();
-                
-                dataLoaded.designacoes = true; 
-                dataLoaded.designationDetails = true;
-            });
-        }
+            }
+            else if (data.tipo === 'pregacao') {
+                allDesignacoes.pregacao.push(data.nome);
+            }
+        });
+        
+        allDesignacoes.reuniao.sort((a, b) => a.ordem - b.ordem);
+        allDesignacoes.pregacao.sort();
+        
+        dataLoaded.designacoes = true; 
+        dataLoaded.designationDetails = true;
+    });
+}
 
       function loadAllHorarios() {
     return db.collection("horarios").orderBy("ano", "desc").limit(1).get().then(snapshot => {
