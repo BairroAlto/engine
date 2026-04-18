@@ -2418,13 +2418,14 @@ function loadAllDesignacoes() {
                 emoji: data.emoji || '🔹' 
             };
 
-            if (data.tipo === 'reuniao') {
-                allDesignacoes.reuniao.push({ 
-                    nome: data.nome, 
-                    parte: data.parte || 'outros',
-                    ordem: typeof data.ordem === 'number' ? data.ordem : 999 
-                });
-            }
+          if (data.tipo === 'reuniao') {
+    allDesignacoes.reuniao.push({ 
+        nome: data.nome, 
+        parte: data.parte || 'outros',
+        ordem: typeof data.ordem === 'number' ? data.ordem : 999,
+        quemFaz: data.quemFaz || [] // <-- ADICIONE ESTA LINHA
+    });
+}
             else if (data.tipo === 'pregacao') {
                 allDesignacoes.pregacao.push(data.nome);
             }
@@ -2734,46 +2735,70 @@ function cancelEditMode() {
         }
 
 
-   function handlePrivilegeChange(e) {
-            const changedCheckbox = e.target;
-            if (changedCheckbox.type !== 'checkbox') return;
+function handlePrivilegeChange(e) {
+    const changedCheckbox = e.target;
+    if (changedCheckbox.type !== 'checkbox') return;
 
-            const checkboxType = changedCheckbox.dataset.type;
-            const isChecked = changedCheckbox.checked;
+    const checkboxType = changedCheckbox.dataset.type;
+    const isChecked = changedCheckbox.checked;
 
-            const congGroup = document.getElementById('edit-privilegios-congregacao-group');
-            const espGroup = document.getElementById('edit-privilegios-especiais-group');
-            const pregGroup = document.getElementById('edit-privilegios-pregacao-group');
+    const congGroup = document.getElementById('edit-privilegios-congregacao-group');
+    const espGroup = document.getElementById('edit-privilegios-especiais-group');
+    const pregGroup = document.getElementById('edit-privilegios-pregacao-group');
 
-            // Função para desmarcar um grupo
-            const uncheckGroup = (group) => group.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-
-            if (isChecked) {
-                // Se um de congregação é marcado, desmarca os outros do mesmo grupo e todos os especiais
-                if (checkboxType === 'congregacao') {
-                    congGroup.querySelectorAll('input').forEach(cb => { if(cb !== changedCheckbox) cb.checked = false; });
-                    uncheckGroup(espGroup);
-                }
-                // Se um especial é marcado, desmarca todos os de congregação
-                if (checkboxType === 'especiais') {
-                    uncheckGroup(congGroup);
-                }
-                // Se um de pregação é marcado, desmarca os outros do mesmo grupo
-                if (checkboxType === 'pregacao') {
-                    pregGroup.querySelectorAll('input').forEach(cb => { if(cb !== changedCheckbox) cb.checked = false; });
-                }
-            }
-
-            // Sempre verifica se o campo de congregação deve ser mostrado
-            const oradorPublicoCheckbox = espGroup.querySelector('input[value="Orador Público"]');
-            const congregacaoGroupDiv = document.getElementById('congregacao-externa-group');
-            if (oradorPublicoCheckbox && congregacaoGroupDiv) {
-                congregacaoGroupDiv.style.display = oradorPublicoCheckbox.checked ? 'block' : 'none';
-                if (!oradorPublicoCheckbox.checked) {
-                    document.getElementById('edit-congregacao').value = ''; // Limpa o campo se desmarcado
-                }
-            }
+    // Função auxiliar para desmarcar um grupo inteiro de checkboxes
+    const uncheckGroup = (group) => {
+        if (group) {
+            group.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
         }
+    };
+
+    // --- LÓGICA DE EXCLUSIVIDADE DE PRIVILÉGIOS ---
+    if (isChecked) {
+        // 1. Se marcar um privilégio de CONGREGAÇÃO (Ancião, Servo, etc)
+        if (checkboxType === 'congregacao') {
+            // Desmarca outros do mesmo grupo (Ancião tira Servo, etc)
+            congGroup.querySelectorAll('input').forEach(cb => { if(cb !== changedCheckbox) cb.checked = false; });
+            // Desmarca todos os ESPECIAIS (Servo de Circuito ou Orador Público)
+            uncheckGroup(espGroup);
+        }
+
+        // 2. Se marcar um privilégio ESPECIAL (Servo de Circuito ou Orador Público)
+        if (checkboxType === 'especiais') {
+            // Desmarca todos os de CONGREGAÇÃO
+            uncheckGroup(congGroup);
+        }
+
+        // 3. Se marcar um privilégio de PREGAÇÃO (Pioneiros)
+        if (checkboxType === 'pregacao') {
+            // Desmarca outros do mesmo grupo (Pioneiro Regular tira Auxiliar, etc)
+            pregGroup.querySelectorAll('input').forEach(cb => { if(cb !== changedCheckbox) cb.checked = false; });
+        }
+    }
+
+    // --- LÓGICA DE VISIBILIDADE DE CAMPOS ---
+
+    // A. Mostrar campo "Congregação" apenas se for Orador Público
+    const oradorPublicoCheckbox = espGroup.querySelector('input[value="Orador Público"]');
+    const congregacaoGroupDiv = document.getElementById('congregacao-externa-group');
+    if (oradorPublicoCheckbox && congregacaoGroupDiv) {
+        const deveMostrar = oradorPublicoCheckbox.checked;
+        congregacaoGroupDiv.style.display = deveMostrar ? 'block' : 'none';
+        if (!deveMostrar) {
+            document.getElementById('edit-congregacao').value = ''; // Limpa o texto se esconder
+        }
+    }
+
+    // B. Filtrar designações na aba "Designações" baseando-se no Servo de Circuito
+    // Chamamos a função que filtra os itens com a classe 'designacao-sc-reuniao'
+    if (typeof filtrarDesignacoesSCReuniao === 'function') {
+        filtrarDesignacoesSCReuniao();
+    }
+    
+    // Marca que houve alterações para o aviso de saída da página
+    hasChanges = true;
+}
+
 
 
 
@@ -2930,10 +2955,19 @@ weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horar
                 header.className = 'category-header';
                 header.textContent = categoryLabels[key];
                 desigReuniaoGroupDiv.appendChild(header);
-                items.sort((a, b) => a.ordem - b.ordem).forEach(desig => {
-                    const isChecked = currentDesigReuniao.includes(desig.nome);
-                    desigReuniaoGroupDiv.appendChild(createEditCheckbox(desig.nome, 'edit-designacao-reuniao', isChecked));
-                });
+               items.sort((a, b) => a.ordem - b.ordem).forEach(desig => {
+    const isChecked = currentDesigReuniao.includes(desig.nome);
+    const checkboxItem = createEditCheckbox(desig.nome, 'edit-designacao-reuniao', isChecked);
+    
+    // ADICIONE ESTE BLOCO:
+    if (desig.quemFaz && desig.quemFaz.includes("Servo de Circuito")) {
+        checkboxItem.classList.add('designacao-sc-reuniao');
+    }
+    
+    desigReuniaoGroupDiv.appendChild(checkboxItem);
+});
+// Chama a filtragem logo após criar os elementos
+filtrarDesignacoesSCReuniao();
             }
         });
 
@@ -2941,6 +2975,26 @@ weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horar
         updateReuniaoFieldsState();
     }
 }
+
+
+function filtrarDesignacoesSCReuniao() {
+    // Busca o checkbox de SC dentro do grupo de especiais
+    const checkSC = document.querySelector('#edit-privilegios-especiais-group input[value="Servo de Circuito"]');
+    const isSC = checkSC ? checkSC.checked : false;
+    
+    // Procura por itens na aba de designações que foram marcados como exclusivos de SC
+    document.querySelectorAll('.designacao-sc-reuniao').forEach(item => {
+        if (isSC) {
+            item.style.display = 'inline-flex'; // Mostra
+        } else {
+            item.style.display = 'none'; // Esconde
+            const cb = item.querySelector('input');
+            if (cb) cb.checked = false; // Desmarca se sumir para não salvar dados inválidos
+        }
+    });
+}
+
+
 
  async function saveTabData(tabId, saveButton) {
     if (!selectedPersonId) return;
