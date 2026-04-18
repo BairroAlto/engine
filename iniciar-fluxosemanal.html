@@ -581,6 +581,16 @@ body.popup-open {
     transform: scale(1.2);
 }
 
+#typeIconContainer i {
+    color: #2c3e50; /* Cor escura padrão */
+    transition: all 0.3s ease;
+}
+
+/* Quando a caixa entra em modo de aviso, o ícone também deve mudar de cor para contraste */
+.week-info.warning-state #typeIconContainer i {
+    color: #c0392b; 
+}
+
     </style>
 </head>
 
@@ -611,9 +621,11 @@ body.popup-open {
 
         <div class="card">
             <h1>Iniciar Fluxo Semanal</h1>
-            <div class="week-info">
-                <p id="weekDisplay">Carregando informações da semana...</p>
-            </div>
+          <div class="week-info" style="position: relative;"> <!-- Adicionado position relative -->
+    <p id="weekDisplay">Carregando informações da semana...</p>
+    <!-- Novo elemento para o ícone -->
+    <div id="typeIconContainer" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 22px;"></div>
+</div>
             <form id="fluxoSemanalForm">
                 <input type="hidden" id="semanaNumero" name="semanaNumero">
                 <div class="form-group">
@@ -1096,43 +1108,6 @@ const getTotalSemanasNoMes = (ano, mes) => {
     return count;
 };
 
-// 3. Função principal de atualização do display (A QUE ESTÁ A DAR ERRO)
-async function updateWeekDisplay() {
-    console.log("[DEBUG] updateWeekDisplay chamada.");
-    const weekDisplay = document.getElementById('weekDisplay');
-    const btn = document.getElementById('btnSeguinte');
-    
-    // Verifica se os elementos existem antes de tentar usar
-    if (!weekDisplay || !btn) return;
-
-    const mes = document.getElementById('mes').value;
-    const sala = document.getElementById('sala').value;
-    const ano = await getAnoPainelFirebase();
-    
-    const weekInfoContainer = weekDisplay.parentElement;
-
-    // Usa "resto da semana" para filtrar corretamente
-    const semanaCount = await countHistoricoSemanas(ano, mes, sala, "resto da semana");
-    const semana = semanaCount + 1;
-    
-    const totalSemanas = getTotalSemanasNoMes(ano, mes);
-
-    if (semana > totalSemanas && totalSemanas > 0) {
-        weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
-        btn.disabled = true;
-        if(weekInfoContainer) weekInfoContainer.classList.add('warning-state');
-    } 
-    else {
-        document.getElementById('semanaNumero').value = semana;
-        // getDiasSemana já deve estar no global também
-        const intervaloDias = getDiasSemana(ano, mes, semana); 
-        weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${intervaloDias})`;
-        btn.disabled = false;
-        if(weekInfoContainer) weekInfoContainer.classList.remove('warning-state');
-    }
-}
-
-  
 
 
 
@@ -2910,6 +2885,64 @@ async function gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRange
 }
 
 
+async function autoDetectEventType() {
+    console.log("[AUTO-DETECT] Verificando eventos agendados...");
+    
+    const tipoSelect = document.getElementById('tipo');
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const ano = await getAnoPainelFirebase();
+
+    // Obtém objetos Date reais para Segunda e Domingo da semana
+    const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
+
+    try {
+        // Busca eventos no Firebase para o ano em questão
+        const snapshot = await db.collection('eventos')
+            .where('ano', '==', ano)
+            .get();
+
+        let tipoDetectado = 'normal'; // Padrão
+
+        // Mapa de nomes (Firebase -> Value do seu HTML)
+        const mapaTipos = {
+            'Visita do Servo': 'visita-servo',
+            'Memorial': 'memorial',
+            'Assembleia': 'assembleia',
+            'Congresso': 'congresso',
+            'Evento Especial': 'evento-especial'
+        };
+
+        snapshot.forEach(doc => {
+            const eventData = doc.data();
+            
+            // Verifica o formato de data "YYYY-MM-DD" (conforme sua imagem do Firebase)
+            if (eventData.data) {
+                const dataEvento = new Date(eventData.data + 'T12:00:00');
+
+                // Verifica se o dia do evento cai dentro desta semana
+                if (dataEvento >= monday && dataEvento <= sunday) {
+                    if (mapaTipos[eventData.nome]) {
+                        tipoDetectado = mapaTipos[eventData.nome];
+                        console.log(`[AUTO-DETECT] Sucesso: Evento "${eventData.nome}" encontrado.`);
+                    }
+                }
+            }
+        });
+
+        // Aplica a alteração no Dropdown
+        tipoSelect.value = tipoDetectado;
+
+        // Se o usuário já estiver na parte das designações, recarrega a lista para aplicar filtros
+        if (document.getElementById('designacoesSection').classList.contains('active')) {
+             loadDesignacoes(); 
+        }
+
+    } catch (error) {
+        console.error("[AUTO-DETECT] Erro ao ler eventos:", error);
+    }
+}
+
     function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignmentsMap, designationsMap, nivelBloqueio) {
     const designacaoAtual = designationsMap.get(vaga.designacaoId);
     if (!designacaoAtual) return false;
@@ -3000,32 +3033,118 @@ async function gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRange
             const next = getRange(nextStart);
             return { current, previous, next };
         }
+
+
+
+
+// 1. Função isolada para atualizar APENAS o ícone (para evitar repetições desnecessárias)
+function updateTypeIcon() {
+    const tipoReuniao = document.getElementById('tipo').value;
+    const iconContainer = document.getElementById('typeIconContainer');
+    
+    const iconMap = {
+        'memorial': '<i class="fa-solid fa-wine-glass"></i>',
+        'evento-especial': '<i class="fa-solid fa-star"></i>',
+        'assembleia': '<i class="fa-solid fa-landmark"></i>',
+        'congresso': '<i class="fa-solid fa-users"></i>',
+        'visita-servo': '<i class="fa-solid fa-briefcase"></i>',
+        'normal': '' 
+    };
+
+    if (iconContainer) {
+        iconContainer.innerHTML = iconMap[tipoReuniao] || '';
+        console.log(`[DEBUG-ICON] Ícone atualizado para: ${tipoReuniao}`);
+    }
+}
+
+// 2. Versão corrigida do autoDetectEventType
+async function autoDetectEventType() {
+    console.log("[AUTO-DETECT] Verificando eventos agendados...");
+    
+    const tipoSelect = document.getElementById('tipo');
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const ano = await getAnoPainelFirebase();
+
+    const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
+
+    try {
+        const snapshot = await db.collection('eventos').where('ano', '==', ano).get();
+        let tipoDetectado = 'normal'; 
+
+        const mapaTipos = {
+            'Visita do Servo': 'visita-servo',
+            'Memorial': 'memorial',
+            'Assembleia': 'assembleia',
+            'Congresso': 'congresso',
+            'Evento Especial': 'evento-especial'
+        };
+
+        snapshot.forEach(doc => {
+            const eventData = doc.data();
+            if (eventData.data) {
+                const dataEvento = new Date(eventData.data + 'T12:00:00');
+                if (dataEvento >= monday && dataEvento <= sunday) {
+                    if (mapaTipos[eventData.nome]) {
+                        tipoDetectado = mapaTipos[eventData.nome];
+                    }
+                }
+            }
+        });
+
+        // Se o tipo detetado for diferente do atual, muda e atualiza o ícone
+        if (tipoSelect.value !== tipoDetectado) {
+            tipoSelect.value = tipoDetectado;
+            console.log(`[AUTO-DETECT] Mudando dropdown para: ${tipoDetectado}`);
+            updateTypeIcon(); // <--- ATUALIZA O ÍCONE AQUI!
+        }
+
+    } catch (error) {
+        console.error("[AUTO-DETECT] Erro ao ler eventos:", error);
+    }
+}
+
+// 3. Versão simplificada do updateWeekDisplay
 async function updateWeekDisplay() {
     const weekDisplay = document.getElementById('weekDisplay');
     const btn = document.getElementById('btnSeguinte');
     const mes = document.getElementById('mes').value;
-    const ano = await getAnoPainelFirebase();
     const sala = document.getElementById('sala').value;
-
+    
+    const ano = await getAnoPainelFirebase();
+    if (!weekDisplay || !btn) return;
     const weekInfoContainer = weekDisplay.parentElement;
 
-    // ALTERAÇÃO: Adicionado o parâmetro "resto da semana" à chamada da função
-    const semana = await countHistoricoSemanas(ano, mes, sala, "resto da semana") + 1;
-    
+    // Atualiza o ícone logo no início
+    updateTypeIcon();
+
+    const semanaCount = await countHistoricoSemanas(ano, mes, sala, "resto da semana");
+    const semana = semanaCount + 1;
     const totalSemanas = getTotalSemanasNoMes(ano, mes);
 
     if (semana > totalSemanas && totalSemanas > 0) {
-        weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
+        weekDisplay.innerHTML = "Mês completo para esta sala.";
         btn.disabled = true;
-        weekInfoContainer.classList.add('warning-state');
-    } 
-    else {
+        if(weekInfoContainer) weekInfoContainer.classList.add('warning-state');
+    } else {
         document.getElementById('semanaNumero').value = semana;
-        weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${getDiasSemana(ano, mes, semana)})`;
+        const intervaloDias = getDiasSemana(ano, mes, semana); 
+        weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${intervaloDias})`;
         btn.disabled = false;
-        weekInfoContainer.classList.remove('warning-state');
+        if(weekInfoContainer) weekInfoContainer.classList.remove('warning-state');
+
+        // Esta função agora vai atualizar o ícone se mudar o valor
+        await autoDetectEventType(); 
     }
 }
+
+
+
+
+
+
+
+
 
         const loadNacionalidades = async () => {
             const snapshot = await db.collection('nacionalidades').get();
@@ -4195,15 +4314,14 @@ const getWeekMondaySunday = (ano, mes, semanaNumero) => {
     if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7; 
 
     let diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
-    if (primeiroDiaMes.getDay() === 1) {
-        diasToAddForFirstMonday = 0;
-    }
+    if (primeiroDiaMes.getDay() === 1) diasToAddForFirstMonday = 0;
 
     const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
     const monday = new Date(primeiroSegundaMes);
     monday.setDate(monday.getDate() + (semanaNumero - 1) * 7);
+    
     const sunday = new Date(monday);
-    sunday.setDate(sunday.getDate() + 6); 
+    sunday.setDate(monday.getDate() + 6); 
 
     monday.setHours(0, 0, 0, 0);
     sunday.setHours(23, 59, 59, 999);
@@ -4348,6 +4466,18 @@ pesquisaInput.addEventListener('input', () => {
      // Inicia o processo
         initializePage();
          }); 
+
+         // Listener para mudança manual do Tipo de Reunião
+document.getElementById('tipo').addEventListener('change', function() {
+    console.log("[MANUAL] Tipo de reunião alterado manualmente para:", this.value);
+    
+    // 1. Atualiza logo o ícone
+    updateTypeIcon(); 
+    
+    // 2. Opcional: Re-executa a lógica da semana (caso queiras que o sistema 
+    // valide se é um evento especial que bloqueia designações, etc.)
+    // updateWeekDisplay(); 
+});
 
 
 </script>
