@@ -2476,25 +2476,42 @@ if (autoSelectId) {
 }
 
         // --- Funções de Preenchimento e Lógica de Edição ---
-        function loadPersonDetails(personId) {
-            showLoading('detail', true);
-            document.getElementById('detail-name').textContent = ''; 
-            db.collection('pessoas').doc(personId).get().then(doc => {
-                showLoading('detail', false);
-                if (doc.exists) {
-                    selectedPersonData = doc.data();
-                    detailContentDiv.style.display = 'block'; selectPromptDiv.style.display = 'none';
-                    detailNameH3.textContent = selectedPersonData.nomePessoa || 'Nome não encontrado';
-                    updateTitleBackground(selectedPersonData.naCongregacao);
-                    populatePessoalTab(selectedPersonData);
-                    populateEspiritualTab(selectedPersonData);
-                    populatePregacaoTab(selectedPersonData);
-                    populatePermissoesTab(selectedPersonData);
-                    populateDisponibilidadeTab(selectedPersonData);
-                    switchTab('pessoal-tab');
-                } else { console.error("Pessoa não encontrada"); }
-            }).catch(error => { console.error("Erro ao carregar detalhes:", error); });
+    function loadPersonDetails(personId) {
+    showLoading('detail', true);
+    
+    // Limpa o nome centralizado antes de carregar o novo
+    document.getElementById('detail-name').textContent = ''; 
+    
+    db.collection('pessoas').doc(personId).get().then(doc => {
+        showLoading('detail', false);
+        if (doc.exists) {
+            selectedPersonData = doc.data();
+            detailContentDiv.style.display = 'block'; 
+            selectPromptDiv.style.display = 'none';
+            
+            // Define o nome no centro da barra
+            document.getElementById('detail-name').textContent = selectedPersonData.nomePessoa || 'Nome não encontrado';
+            
+            // ATUALIZADO: Chama a função passando os dois status (Congregação e Ativo)
+            updateTitleBackground(selectedPersonData.naCongregacao, selectedPersonData.ativo);
+            
+            // Preenche os dados de visualização em cada aba
+            populatePessoalTab(selectedPersonData);
+            populateEspiritualTab(selectedPersonData);
+            populatePregacaoTab(selectedPersonData);
+            populatePermissoesTab(selectedPersonData);
+            populateDisponibilidadeTab(selectedPersonData);
+            
+            // Por padrão, abre a aba Pessoal ao selecionar
+            switchTab('pessoal-tab');
+        } else { 
+            console.error("Pessoa não encontrada"); 
         }
+    }).catch(error => { 
+        console.error("Erro ao carregar detalhes:", error); 
+        showLoading('detail', false);
+    });
+}
 
   function populatePessoalTab(data) {
     document.getElementById('detail-nomePessoa').textContent = data.nomePessoa || '-';
@@ -2776,21 +2793,26 @@ function populateEditFields(tabId, data) {
         document.getElementById('edit-familia').value = Array.isArray(data.familia) ? data.familia.join(', ') : '';
         document.getElementById('edit-casadoCom').value = data.casadoCom ? (allPessoasNames[data.casadoCom] || '') : '';
 
-
     } else if (tabId === 'espiritual-tab') {
+        const naCongregacaoCB = document.getElementById('edit-naCongregacao');
+        const ativoCB = document.getElementById('edit-ativo');
 
-         const naCongregacaoCB = document.getElementById('edit-naCongregacao');
-    if (naCongregacaoCB) {
+        // Preenche os valores iniciais dos checkboxes
         naCongregacaoCB.checked = typeof data.naCongregacao === 'boolean' ? data.naCongregacao : true;
-        naCongregacaoCB.onclick = function() {
-            updateTitleBackground(this.checked);
+        ativoCB.checked = typeof data.ativo === 'boolean' ? data.ativo : true;
+        
+        // ATUALIZADO: Lógica para mudar a barra e ícone em tempo real durante a edição
+        const refreshHeader = () => {
+            updateTitleBackground(naCongregacaoCB.checked, ativoCB.checked);
+            hasChanges = true; // Marca que houve alteração para o aviso de saída
         };
-    }
 
-        document.getElementById('edit-ativo').checked = typeof data.ativo === 'boolean' ? data.ativo : true;
+        naCongregacaoCB.onclick = refreshHeader;
+        ativoCB.onclick = refreshHeader;
+
         document.getElementById('edit-grupo').value = data.grupo || '';
         
-        
+        // Preenche os grupos de privilégios (Congregação, Pregação, Especiais)
         const populatePrivilegeGroup = (groupDivId, privilegeType, currentPrivileges) => {
             const groupDiv = document.getElementById(groupDivId);
             groupDiv.innerHTML = '';
@@ -2799,35 +2821,33 @@ function populateEditFields(tabId, data) {
                 groupDiv.appendChild(createEditCheckbox(priv, `edit-privilegio-${privilegeType}`, isChecked, privilegeType));
             });
         };
+        
         populatePrivilegeGroup('edit-privilegios-congregacao-group', 'congregacao', data.privilegiosCongregacao);
         populatePrivilegeGroup('edit-privilegios-pregacao-group', 'pregacao', data.privilegiosPregacao);
         populatePrivilegeGroup('edit-privilegios-especiais-group', 'especiais', data.privilegiosEspeciais);
 
+        // Lógica de exibição da congregação externa (para Oradores Públicos)
         const oradorPublicoChecked = (data.privilegiosEspeciais || []).includes('Orador Público');
         const congregacaoGroup = document.getElementById('congregacao-externa-group');
-        const congregacaoInput = document.getElementById('edit-congregacao');
-        
-        congregacaoInput.value = data.congregacao || '';
+        document.getElementById('edit-congregacao').value = data.congregacao || '';
         congregacaoGroup.style.display = oradorPublicoChecked ? 'block' : 'none';
 
+        // Evento para tratar exclusividade de privilégios (ex: ancião desmarca servo)
         const spiritualEditModeDiv = document.getElementById('espiritual-tab').querySelector('.edit-mode');
         spiritualEditModeDiv.removeEventListener('change', handlePrivilegeChange); 
         spiritualEditModeDiv.addEventListener('change', handlePrivilegeChange);
 
     } else if (tabId === 'pregacao-tab') {
-        // "Faz Designações?" controla Horários
         const fazPregacaoCB = document.getElementById('edit-fazDesignacoesPregacao');
         fazPregacaoCB.checked = data.fazDesignacoesPregacao || false;
         fazPregacaoCB.onclick = updatePregacaoFieldsState;
 
-        // "Faz de Dirigente?" controla Lista de Designações
         const fazDirigenteCB = document.getElementById('edit-fazDesignacoesDirigente');
         fazDirigenteCB.checked = data.fazDesignacoesDirigente || false;
         fazDirigenteCB.onclick = updatePregacaoFieldsState;
 
         document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false;
 
-        // Montagem das Designações
         const desigPregacaoGroupDiv = document.getElementById('edit-designacoesPregacao-group');
         desigPregacaoGroupDiv.innerHTML = '';
         const currentDesigPregacao = data.designacoesPregacao || [];
@@ -2835,42 +2855,38 @@ function populateEditFields(tabId, data) {
             desigPregacaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-pregacao', currentDesigPregacao.includes(desig)));
         });
         
-        // Montagem dos Horários
+        // Montagem dos horários baseados no banco
         const horariosSemanaDiv = document.getElementById('edit-horarios-semana');
         const horariosFimDeSemanaDiv = document.getElementById('edit-horarios-fim-de-semana');
         horariosSemanaDiv.innerHTML = '<h5>Semana</h5>'; 
         horariosFimDeSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
+        
         const currentHorarios = data.horariosPregacao || { semana: {}, fimDeSemana: {} };
         const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
         const weekendOrder = ["sabado", "domingo"];
         
-       const populateDay = (day, times, container) => {
-    // Se 'times' vier do Firebase como um Array, ele entra aqui
-    if (times && Array.isArray(times) && times.length > 0) {
-        const dayContainer = document.createElement('div');
-        dayContainer.className = 'day-container';
-        const dayTitle = document.createElement('h6');
-        dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
-        dayContainer.appendChild(dayTitle);
-        
-        const keyToUse = container.id === 'edit-horarios-semana' ? 'semana' : 'fimDeSemana';
-        const personTimesForThisDay = (currentHorarios[keyToUse] || {})[day] || [];
+        const populateDay = (day, times, container) => {
+            if (times && Array.isArray(times) && times.length > 0) {
+                const dayContainer = document.createElement('div');
+                dayContainer.className = 'day-container';
+                const dayTitle = document.createElement('h6');
+                dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
+                dayContainer.appendChild(dayTitle);
+                
+                const keyToUse = container.id === 'edit-horarios-semana' ? 'semana' : 'fimDeSemana';
+                const personTimesForThisDay = (currentHorarios[keyToUse] || {})[day] || [];
 
-        times.sort().forEach(time => {
-            const isChecked = personTimesForThisDay.includes(time);
-            dayContainer.appendChild(createTimeSlotCheckbox(time, day, isChecked));
-        });
-        container.appendChild(dayContainer);
-    }
-};
-// Limpa e reconstrói as colunas
-horariosSemanaDiv.innerHTML = '<h5>Semana</h5>'; 
-horariosFimDeSemanaDiv.innerHTML = '<h5>Fim de Semana</h5>';
+                times.sort().forEach(time => {
+                    const isChecked = personTimesForThisDay.includes(time);
+                    dayContainer.appendChild(createTimeSlotCheckbox(time, day, isChecked));
+                });
+                container.appendChild(dayContainer);
+            }
+        };
 
-weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv));
-weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimDeSemanaDiv));
+        weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv));
+        weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimDeSemanaDiv));
 
-        // Define estado inicial de bloqueio
         updatePregacaoFieldsState();
 
     } else if (tabId === 'disponibilidade-tab') {
@@ -2883,14 +2899,12 @@ weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horar
         }).filter(Boolean);
         updateAusenciasDisplay();
 
-} else if (tabId === 'permissoes-tab') {
+    } else if (tabId === 'permissoes-tab') {
         const fazReuniaoCB = document.getElementById('edit-fazDesignacoesReuniao');
         fazReuniaoCB.checked = data.fazDesignacoesReuniao || false;
         fazReuniaoCB.onclick = updateReuniaoFieldsState;
 
-        // NOVO: Preenche o dropdown de regularidade no modo de edição
         document.getElementById('edit-regularidade').value = data.regularidade || 'Regularmente';
-
         document.getElementById('edit-rule').value = data.rule || '';
         
         const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group');
@@ -2913,23 +2927,19 @@ weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horar
                 header.className = 'category-header';
                 header.textContent = categoryLabels[key];
                 desigReuniaoGroupDiv.appendChild(header);
-               items.sort((a, b) => a.ordem - b.ordem).forEach(desig => {
-    const isChecked = currentDesigReuniao.includes(desig.nome);
-    const checkboxItem = createEditCheckbox(desig.nome, 'edit-designacao-reuniao', isChecked);
-    
-    // ADICIONE ESTE BLOCO:
-    if (desig.quemFaz && desig.quemFaz.includes("Servo de Circuito")) {
-        checkboxItem.classList.add('designacao-sc-reuniao');
-    }
-    
-    desigReuniaoGroupDiv.appendChild(checkboxItem);
-});
-// Chama a filtragem logo após criar os elementos
-filtrarDesignacoesSCReuniao();
+                
+                items.sort((a, b) => a.ordem - b.ordem).forEach(desig => {
+                    const isChecked = currentDesigReuniao.includes(desig.nome);
+                    const checkboxItem = createEditCheckbox(desig.nome, 'edit-designacao-reuniao', isChecked);
+                    if (desig.quemFaz && desig.quemFaz.includes("Servo de Circuito")) {
+                        checkboxItem.classList.add('designacao-sc-reuniao');
+                    }
+                    desigReuniaoGroupDiv.appendChild(checkboxItem);
+                });
+                filtrarDesignacoesSCReuniao();
             }
         });
 
-        // Define estado inicial de bloqueio
         updateReuniaoFieldsState();
     }
 }
@@ -3482,19 +3492,39 @@ function updatePregacaoFieldsState() {
     }
 }
 
-function updateTitleBackground(naCongregacao) {
+function updateTitleBackground(naCongregacao, ativo) {
+    const detailHeader = document.querySelector('.detail-column h2');
     const nameSpan = document.getElementById('detail-name');
-    if (!nameSpan) return;
+    
+    if (!detailHeader) return;
 
-    // Se estiver fora da congregação, o fundo do NOME fica vermelho
+    // --- 1. Lógica da Cor de Fundo (Congregação) ---
     if (naCongregacao === false || naCongregacao === "false") { 
-        nameSpan.style.backgroundColor = "#dc3545"; 
-        nameSpan.style.color = "white";
-        nameSpan.style.padding = "2px 10px"; // Pequeno respiro no fundo vermelho
-        nameSpan.style.borderRadius = "4px";
+        detailHeader.style.backgroundColor = "#dc3545"; // Vermelho
     } else {
-        nameSpan.style.backgroundColor = "transparent"; 
-        nameSpan.style.color = "#ffffff"; // Branco quando está tudo OK
+        detailHeader.style.backgroundColor = "#343a40"; // Cinza original
+    }
+
+    // --- 2. Lógica do Ícone de Inativo ---
+    let icon = document.getElementById('header-inactive-icon');
+    
+    // Se a pessoa for inativa, criamos ou mostramos o ícone
+    if (ativo === false || ativo === "false") {
+        if (!icon) {
+            icon = document.createElement('i');
+            icon.id = 'header-inactive-icon';
+            icon.className = 'fa-solid fa-comment-slash';
+            icon.style.color = "white";
+            icon.style.opacity = "0.6"; // Opacidade conforme solicitado
+            icon.style.marginLeft = "auto"; // Empurra para a extremidade direita
+            icon.style.fontSize = "1.1rem";
+            icon.title = "Pessoa Não-Ativa";
+            detailHeader.appendChild(icon);
+        }
+        icon.style.display = 'block';
+    } else if (icon) {
+        // Se for ativa, escondemos o ícone se ele existir
+        icon.style.display = 'none';
     }
 }
 
