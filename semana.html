@@ -210,10 +210,14 @@
                 <div class="filter-group"><label for="filter-semana">Semana</label><select id="filter-semana"></select></div>
                 <div class="filter-group"><label for="filter-parte">Parte</label><select id="filter-parte"><option value="todas">Todas as Partes</option><option value="escola">Escola</option><option value="resto da semana">Vida e Ministério</option><option value="tecnicas">Técnicas</option></select></div>
                 <div class="filter-group"><label for="filter-sala">Sala</label><select id="filter-sala"><option value="todas">Todas as Salas</option><option value="salao-principal">Salão Principal</option><option value="segunda-sala">Segunda Sala</option><option value="terceira-sala">Terceira Sala</option></select></div>
-                <div class="action-buttons-container">
-                    <button id="edit-button" class="action-button">Editar</button>
-                    <button id="create-button" class="action-button">Criar</button>
-                </div>
+              <div class="action-buttons-container">
+    <!-- Novo botão de PDF -->
+    <button id="btn-pdf-semana" class="action-button" style="background-color: #e74c3c; border-color: #c0392b;">
+        <i class="fas fa-file-pdf"></i> PDF
+    </button>
+    <button id="edit-button" class="action-button">Editar</button>
+    <button id="create-button" class="action-button">Criar</button>
+</div>
             </div>
             <div id="schedule-display">
                 <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i></div>
@@ -1440,6 +1444,18 @@ async function saveNewDesignation() {
 
 
 
+            function renderIcon(iconValue) {
+    if (!iconValue) return '';
+
+    // Se o valor contiver "fa-", renderiza como ícone FontAwesome
+    if (iconValue.includes('fa-')) {
+        return `<i class="${iconValue}"></i>`;
+    } 
+    
+    // Caso contrário, assume que é um emoji ou texto simples
+    return `<span>${iconValue}</span>`;
+}
+
 
 async function findNextAvailableParticipant(selectElement, historicoDoc, fullDesigData) {
     console.clear(); 
@@ -1916,7 +1932,8 @@ function openCreatePairAnalysisPopup() {
                         const textColor = getContrastColor(bgColor);
                         lastHeaderColor = bgColor; 
                         const headerStyle = `style="background-color: ${bgColor}; color: ${textColor};"`;
-                        bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="header-icon">${headerData.icon || ''}</span><h4>${headerData.nome}</h4></div>`;
+                       const iconHtml = renderIcon(headerData.icon);
+bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="header-icon">${iconHtml}</span><h4>${headerData.nome}</h4></div>`;
                      }
                     lastHeaderId = currentHeaderId;
                 }
