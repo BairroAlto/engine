@@ -1843,29 +1843,7 @@ body.sidebar-collapsed .column:first-child {
                         </div>
                     </div>
 
-                    <!-- Aba de Visita (Apenas Servo de Circuito) -->
-                    <div id="visita-tab" class="tab-content">
-                        <div class="display-mode">
-                            <h4>Datas de Visita do Servo de Circuito</h4>
-                            <div id="detail-visitas-list" class="array-data" style="display: block; background: none; padding: 0;">
-                                <!-- Lista de visitas formatada via JS -->
-                            </div>
-                        </div>
-                        <div class="edit-mode" style="display: none;">
-                            <h4>Editar Datas de Visita</h4>
-                            <div id="edit-visita-container">
-                                <!-- Linhas de data dinâmicas criadas via JS -->
-                            </div>
-                            <button type="button" id="btn-add-visita-row" style="margin-top: 15px; padding: 8px 15px; background: #e7f1ff; border: 1px solid #007bff; color: #007bff; border-radius: 4px; font-weight: 600; cursor: pointer;">
-                                <i class="fas fa-plus"></i> Mais intervalo
-                            </button>
-                        </div>
-                        <div class="edit-controls">
-                            <button class="edit-btn" data-tab-target="visita-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
-                            <button class="save-btn" data-tab-target="visita-tab"><i class="fas fa-save"></i> Gravar</button>
-                            <button class="cancel-btn" data-tab-target="visita-tab"><i class="fas fa-times"></i> Cancelar</button>
-                        </div>
-                    </div>
+           
                 </div>
             </div>
 
@@ -1874,15 +1852,15 @@ body.sidebar-collapsed .column:first-child {
     <div class="display-mode">
         <h4>Datas de Visita do Servo de Circuito</h4>
         <div id="detail-visitas-list" class="array-data" style="display: block; background: none; padding: 0;">
-            <!-- Lista de visitas formatada -->
+            <!-- Lista de visitas formatada via JS -->
         </div>
     </div>
     <div class="edit-mode" style="display: none;">
         <h4>Editar Datas de Visita</h4>
         <div id="edit-visita-container">
-            <!-- Linhas de data dinâmicas -->
+            <!-- Linhas de data dinâmicas criadas via JS -->
         </div>
-        <button type="button" id="btn-add-visita-row" style="margin-top: 15px; padding: 8px 15px; background: #e7f1ff; border: 1px solid #007bff; color: #007bff; border-radius: 4px; font-weight: 600;">
+        <button type="button" id="btn-add-visita-row" style="margin-top: 15px; padding: 8px 15px; background: #e7f1ff; border: 1px solid #007bff; color: #007bff; border-radius: 4px; font-weight: 600; cursor: pointer;">
             <i class="fas fa-plus"></i> Mais intervalo
         </button>
     </div>
@@ -2647,15 +2625,23 @@ function populateVisitaTab(data) {
 
 function createVisitaEditRow(inicio = '', fim = '') {
     const container = document.getElementById('edit-visita-container');
-    const currentYear = new Date().getFullYear();
-    
+    if (!container) return;
+
     const row = document.createElement('div');
     row.className = 'visita-row-edit';
+    // Adicionei estilos em linha para garantir visibilidade imediata
+    row.style.display = 'flex';
+    row.style.gap = '10px';
+    row.style.marginBottom = '10px';
+    row.style.alignItems = 'center';
+
     row.innerHTML = `
-        <input type="date" class="edit-v-inicio" value="${inicio || currentYear + '-01-01'}">
+        <input type="date" class="edit-v-inicio" value="${inicio}" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
         <span>até</span>
-        <input type="date" class="edit-v-fim" value="${fim || currentYear + '-12-31'}">
-        <button type="button" class="btn-remove-visita"><i class="fas fa-trash"></i></button>
+        <input type="date" class="edit-v-fim" value="${fim}" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <button type="button" class="btn-remove-visita" title="Remover" style="color: #dc3545; background: none; border: none; font-size: 1.2rem; cursor: pointer;">
+            <i class="fas fa-trash"></i>
+        </button>
     `;
     
     row.querySelector('.btn-remove-visita').onclick = () => {
@@ -2837,7 +2823,7 @@ function enterEditMode(tabId) {
 
     // Preenche os campos de edição de TODAS as abas de uma vez só
     // Isso garante que se você mudar de aba, os dados já estarão nos inputs
-    const todasAsAbas = ['pessoal-tab', 'espiritual-tab', 'pregacao-tab', 'permissoes-tab', 'disponibilidade-tab'];
+    const todasAsAbas = ['pessoal-tab', 'espiritual-tab', 'pregacao-tab', 'permissoes-tab', 'disponibilidade-tab', 'visita-tab'];
     todasAsAbas.forEach(id => {
         populateEditFields(id, selectedPersonData);
     });
@@ -3093,15 +3079,17 @@ function populateEditFields(tabId, data) {
         
         updateAusenciasDisplay();
 
-    } else if (tabId === 'visita-tab') {
-        const container = document.getElementById('edit-visita-container');
-        container.innerHTML = '';
+} else if (tabId === 'visita-tab') {
+    const container = document.getElementById('edit-visita-container');
+    if (container) {
+        container.innerHTML = ''; // Limpa antes de preencher
         if (data.visita && data.visita.length > 0) {
             data.visita.forEach(v => createVisitaEditRow(v.inicio, v.fim));
         } else {
-            createVisitaEditRow(); 
+            createVisitaEditRow(); // Cria uma linha vazia se não houver dados
         }
     }
+}
 }
 
 
