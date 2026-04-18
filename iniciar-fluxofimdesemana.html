@@ -2125,7 +2125,76 @@ const populateDesignationFilter = async () => {
 };
 
 
+async function autoDetectEventType() {
+    console.log("[AUTO-DETECT] Verificando eventos para o Fim de Semana...");
+    
+    const tipoSelect = document.getElementById('tipo');
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const ano = await getAnoPainelFirebase();
 
+    // Obtém o intervalo da semana (Segunda a Domingo)
+    // O evento de FDS cairá sempre dentro desse intervalo
+    const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
+
+    try {
+        const snapshot = await db.collection('eventos')
+            .where('ano', 'in', [ano, ano + 1])
+            .get();
+
+        let tipoDetectado = 'normal'; // Padrão
+
+        // Mapeamento: Nome no Firebase -> ID do dropdown nesta página
+        const mapaTipos = {
+            'Assembleia': 'assembleia',
+            'Congresso': 'congresso',
+            'Visita do Servo': 'visita-servo',
+            'Evento Especial': 'evento-especial',
+            'Memorial': 'normal' // Memorial raramente afeta o fluxo de FDS, mas mantemos como normal
+        };
+
+        snapshot.forEach(doc => {
+            const eventData = doc.data();
+            let dataEvento;
+
+            // 1. Verificação por data única (Ex: Visita do Servo ou Memorial)
+            if (eventData.data) {
+                if (eventData.data.includes('/')) {
+                    const parts = eventData.data.split('/');
+                    dataEvento = new Date(parts[2], parts[1] - 1, parts[0]);
+                } else {
+                    dataEvento = new Date(eventData.data + 'T12:00:00');
+                }
+
+                if (dataEvento >= monday && dataEvento <= sunday) {
+                    if (mapaTipos[eventData.nome]) tipoDetectado = mapaTipos[eventData.nome];
+                }
+            } 
+            // 2. Verificação por intervalo (Ex: Assembleia ou Congresso)
+            else if (eventData.data_inicio && eventData.data_fim) {
+                const inicio = new Date(eventData.data_inicio + 'T00:00:00');
+                const fim = new Date(eventData.data_fim + 'T23:59:59');
+                
+                // Se o intervalo do evento sobrepõe qualquer dia da nossa semana
+                if (inicio <= sunday && fim >= monday) {
+                    if (mapaTipos[eventData.nome]) tipoDetectado = mapaTipos[eventData.nome];
+                }
+            }
+        });
+
+        // Atualiza o dropdown automaticamente
+        tipoSelect.value = tipoDetectado;
+        console.log(`[AUTO-DETECT] Tipo de reunião de FDS definido como: ${tipoDetectado}`);
+
+        // Se a seção de designações já estiver aberta, recarrega para aplicar as mudanças de tipo
+        if (document.getElementById('designacoesSection').classList.contains('active')) {
+             loadDesignacoes(); 
+        }
+
+    } catch (error) {
+        console.error("[AUTO-DETECT] Erro ao buscar eventos:", error);
+    }
+}
 
 
 
@@ -2365,94 +2434,112 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
         const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
         const diasSemana = getDiasSemana(ano, mes, semanaNumero);
         const horarios = await getHorariosFromFirebase(ano);
-        const meetingDate = getMeetingDayOfMonth(ano, diasSemana, horarios['dia-semana']);
+        
+        // Identifica se estamos na página de FDS ou de Semana para pegar o dia correto
+        const diaCampo = horarios['dia-fimdesemana'] ? 'dia-fimdesemana' : 'dia-semana';
+        const meetingDate = getMeetingDayOfMonth(ano, diasSemana, horarios[diaCampo]);
+
         const privilegiosExigidos = designacao.quemFaz && designacao.quemFaz.length > 0 
             ? designacao.quemFaz 
             : ["Publicador", "Pioneiro", "Pioneiro Regular", "Servo Ministerial", "Ancião"];
 
         let query = db.collection('pessoas').where('fazDesignacoesReuniao', '==', true);
         if (idiomas.length > 0) query = query.where('idioma', 'in', idiomas);
-        if (genderPreference === 'masculino') query = query.where('genero', '==', 'Masculino');
-        if (genderPreference === 'feminino') query = query.where('genero', '==', 'Feminino');
         
         const snapshot = await query.get();
-
         const eligiblePeopleList = [];
+
         snapshot.docs.forEach(doc => {
             const p = doc.data();
-            const temPrivilegiosNecessarios = privilegiosExigidos.some(
-                privilegio => p.privilegiosCongregacao && p.privilegiosCongregacao.includes(privilegio)
-            );
+            const specPrivs = p.privilegiosEspeciais || [];
+            
+            // --- REGRA NOVA: FILTRO DO SERVO DE CIRCUITO POR DATA ---
+            if (specPrivs.includes("Servo de Circuito")) {
+                const visitas = p.visita || [];
+                // Verifica se a data da reunião (meetingDate) está entre o início e o fim de alguma visita
+                const estaNaSemanaDaVisita = visitas.some(v => {
+                    return meetingDate >= v.inicio && meetingDate <= v.fim;
+                });
+
+                // Se não for a semana da visita dele, ignoramos ele completamente
+                if (!estaNaSemanaDaVisita) return;
+            }
+
+            // Validação de privilégios e designações (resto da função permanece igual)
+            const todosOsPrivilegios = [...(p.privilegiosCongregacao || []), ...specPrivs];
+            const temPrivilegiosNecessarios = privilegiosExigidos.some(priv => todosOsPrivilegios.includes(priv));
             const podeFazer = p.designacoesReuniao && p.designacoesReuniao.includes(designacao.nome);
             const isAbsent = meetingDate && p.ausencias && p.ausencias.includes(meetingDate);
+            
             if (podeFazer && !isAbsent && temPrivilegiosNecessarios) {
                 eligiblePeopleList.push({ id: doc.id, data: p });
             }
         });
         
+        // --- LÓGICA DE AGRUPAMENTO COM "OUTROS" ---
         const groupedPeople = new Map();
-        const DEFAULT_GROUP = 'Publicadores';
-        const groupOrder = ['Ancião', 'Servo Ministerial', 'Pioneiro Regular', 'Pioneiro Auxiliar', 'Publicadores'];
+        const groupOrder = ['Ancião', 'Servo Ministerial', 'Pioneiro Regular', 'Pioneiro Auxiliar', 'Publicadores', 'Outros'];
+
         eligiblePeopleList.forEach(person => {
-            const priorityOrder = ['Ancião', 'Servo Ministerial', 'Pioneiro Regular', 'Pioneiro Auxiliar'];
-            let assignedGroup = DEFAULT_GROUP;
-            const userPrivileges = person.data.privilegiosCongregacao;
-            if (Array.isArray(userPrivileges)) {
-                for (const priority of priorityOrder) {
-                    if (userPrivileges.includes(priority)) {
-                        assignedGroup = priority;
-                        break;
-                    }
+            const congPrivs = person.data.privilegiosCongregacao || [];
+            const specPrivs = person.data.privilegiosEspeciais || [];
+            
+            const hierarchy = ['Ancião', 'Servo Ministerial', 'Pioneiro Regular', 'Pioneiro Auxiliar'];
+            let assignedGroup = 'Publicadores';
+
+            // 1. Define grupo por hierarquia congregacional
+            for (const title of hierarchy) {
+                if (congPrivs.includes(title)) {
+                    assignedGroup = title;
+                    break;
                 }
             }
+
+            // 2. REGRA "OUTROS": Se é publicador mas tem privilégios especiais (ex: Sonorização, Indicador)
+            if (assignedGroup === 'Publicadores' && specPrivs.length > 0) {
+                assignedGroup = 'Outros';
+            }
+
             if (!groupedPeople.has(assignedGroup)) {
                 groupedPeople.set(assignedGroup, []);
             }
             groupedPeople.get(assignedGroup).push(person);
         });
+        
+        // Ordenação alfabética interna
         for (const group of groupedPeople.values()) {
             group.sort((a, b) => a.data.nomePessoa.localeCompare(b.data.nomePessoa));
         }
-        
+
+        // --- CONSTRUÇÃO DO HTML ---
         container.querySelectorAll('select.form-select').forEach((participantSelect, participantIndex) => { 
             const currentValue = participantSelect.value;
             participantSelect.innerHTML = '<option value="">Selecione...</option>';
-            const pluralize = (name) => (name.endsWith('s') ? name : name + 's');
+
+            const pluralize = (name) => {
+                if (name === 'Outros') return name;
+                return name.endsWith('s') ? name : name + 's';
+            };
+
             groupOrder.forEach(groupName => {
                 if (groupedPeople.has(groupName)) {
                     const peopleInGroup = groupedPeople.get(groupName);
                     const optgroup = document.createElement('optgroup');
                     optgroup.label = `--- ${pluralize(groupName)} ---`;
+
                     peopleInGroup.forEach(person => {
-                        const pessoaData = person.data;
-                        let podeAssumirEstePapel = false;
-                        if (participantIndex === 0 && (designacao.numeroParticipantes || 1) > 1) {
-                            if (pessoaData.personalidade === '+ à vontade' || (Array.isArray(designacao.personalidade) && designacao.personalidade.includes('- à vontade'))) {
-                                podeAssumirEstePapel = true;
-                            }
-                        } else {
-                            podeAssumirEstePapel = true;
-                        }
-            
-                        if (podeAssumirEstePapel) {
-                            const option = document.createElement('option');
-                            option.value = person.id;
-                            option.textContent = pessoaData.nomePessoa;
-                            optgroup.appendChild(option);
-                        }
+                        const option = document.createElement('option');
+                        option.value = person.id;
+                        option.textContent = person.data.nomePessoa;
+                        optgroup.appendChild(option);
                     });
-                    if (optgroup.children.length > 0) {
-                        participantSelect.appendChild(optgroup);
-                    }
+                    participantSelect.appendChild(optgroup);
                 }
             });
-            
-            if (currentValue) {
-               participantSelect.value = currentValue;
-            }
+            if (currentValue) participantSelect.value = currentValue;
         });
     } catch (error) {
-        console.error(`Erro ao carregar pessoas para a designação '${designacao.nome}':`, error);
+        console.error(`Erro ao carregar participantes:`, error);
     }
 };
 
@@ -2742,27 +2829,70 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
     return { peopleMap, designationsMap, historicoData };
 }
 
-   async function gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRanges, detailedPreviousWeek, detailedNextWeek) {
+async function gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRanges, detailedPreviousWeek, detailedNextWeek) {
     const designacao = allDesignations.get(vaga.designacaoId);
     
+    // 1. Obter a data exata da reunião para esta semana que o turbo está a processar
+    // Precisamos desta data para comparar com o período de visita do Servo de Circuito
+    const ano = await getAnoPainelFirebase();
+    const mes = parseInt(document.getElementById('mes').value);
+    const semana = parseInt(document.getElementById('semanaNumero').value);
+    const diasSemanaStr = getDiasSemana(ano, mes, semana);
+    const horarios = await getHorariosFromFirebase(ano);
+    
+    // Tenta identificar se é FDS ou Meio de Semana para pegar o dia correto
+    const diaCampo = horarios['dia-fimdesemana'] ? 'dia-fimdesemana' : 'dia-semana';
+    const meetingDate = getMeetingDayOfMonth(ano, diasSemanaStr, horarios[diaCampo]);
+
+    // 2. Definir privilégios exigidos pela designação
     const privilegiosExigidos = designacao.quemFaz && designacao.quemFaz.length > 0
         ? designacao.quemFaz
         : ["Publicador", "Pioneiro", "Pioneiro Regular", "Servo Ministerial", "Ancião"];
 
     let candidatos = Array.from(peopleMap.values());
 
+    // 3. Filtragem de Candidatos
     candidatos = candidatos.filter(p => {
+        const specPrivs = p.privilegiosEspeciais || [];
+        const congPrivs = p.privilegiosCongregacao || [];
+
+        // --- REGRA: SERVO DE CIRCUITO (POR DATA DE VISITA) ---
+        if (specPrivs.includes("Servo de Circuito")) {
+            const visitas = p.visita || [];
+            const estaNaSemanaDaVisita = visitas.some(v => {
+                // Compara se a data da reunião está entre o início e o fim da visita cadastrada
+                return meetingDate >= v.inicio && meetingDate <= v.fim;
+            });
+
+            // Se o irmão é Servo de Circuito mas NÃO é a semana da visita dele, remove da lista
+            if (!estaNaSemanaDaVisita) return false;
+        }
+
+        // --- FILTROS BÁSICOS (Género, Idioma, Capacidade) ---
         const atendeGenero = vaga.filters.genero === 'ambos' || p.genero?.toLowerCase() === vaga.filters.genero;
         const atendeIdioma = vaga.filters.idiomas.includes(p.idioma);
         const podeFazerDesignacao = p.designacoesReuniao?.includes(designacao.nome);
+
+        // --- VALIDAÇÃO DE PRIVILÉGIOS (Congregação + Especiais) ---
+        const todosOsPrivilegios = [...congPrivs, ...specPrivs];
         const temPrivilegiosNecessarios = privilegiosExigidos.some(
-            privilegio => p.privilegiosCongregacao && p.privilegiosCongregacao.includes(privilegio)
+            privilegio => todosOsPrivilegios.includes(privilegio)
         );
-        const fezEstaDesignacaoSemanaPassada = detailedPreviousWeek.has(p.id) && detailedPreviousWeek.get(p.id).has(vaga.designacaoId);
-        const faraEstaDesignacaoProximaSemana = detailedNextWeek.has(p.id) && detailedNextWeek.get(p.id).has(vaga.designacaoId);
-        return atendeGenero && atendeIdioma && podeFazerDesignacao && temPrivilegiosNecessarios && !fezEstaDesignacaoSemanaPassada && !faraEstaDesignacaoProximaSemana;
+
+        // --- REGRAS DE HISTÓRICO (Evitar repetições seguidas) ---
+        // Não pode ter feito ESTA designação específica na semana passada
+        const fezEstaDesignacaoSemanaPassada = detailedPreviousWeek.has(p.id) && 
+                                              detailedPreviousWeek.get(p.id).has(vaga.designacaoId);
+        
+        // Não pode estar já escalado para ESTA designação na próxima semana
+        const faraEstaDesignacaoProximaSemana = detailedNextWeek.has(p.id) && 
+                                               detailedNextWeek.get(p.id).has(vaga.designacaoId);
+
+        return atendeGenero && atendeIdioma && podeFazerDesignacao && 
+               temPrivilegiosNecessarios && !fezEstaDesignacaoSemanaPassada && !faraEstaDesignacaoProximaSemana;
     });
 
+    // 4. Cálculo de Frequência (Priorizar quem faz menos vezes)
     const candidatosComFrequencia = candidatos.map(candidato => {
         let frequencia = 0;
         historicoData.forEach(h => {
@@ -2772,52 +2902,24 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
                 }
             });
         });
+        
+        // Critério de desempate: verificar se a pessoa já tem outra tarefa na semana seguinte
         const isFromNextWeek = detailedNextWeek.has(candidato.id);
+        
         return { ...candidato, frequencia, isFromNextWeek };
     });
 
+    // 5. Ordenação Final
     candidatosComFrequencia.sort((a, b) => {
+        // 1º Prioridade: Menor frequência total naquela designação
         if (a.frequencia !== b.frequencia) return a.frequencia - b.frequencia;
+        // 2º Prioridade: Dar preferência a quem está livre na semana seguinte (evitar sobrecarga)
         return a.isFromNextWeek - b.isFromNextWeek;
     });
 
     return { vaga, candidatos: candidatosComFrequencia };
 }
 
-      function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignmentsMap, designationsMap, nivelBloqueio) {
-    const designacaoAtual = designationsMap.get(vaga.designacaoId);
-    if (!designacaoAtual) return false;
-    const existingDesignationIds = new Set();
-    if (preloadedAssignmentsMap.has(candidato.id)) {
-        preloadedAssignmentsMap.get(candidato.id).forEach(id => existingDesignationIds.add(id));
-    }
-    for (const [vagaId, pessoaId] of Object.entries(atribuicoesAtuais)) {
-        if (pessoaId === candidato.id) {
-            const dId = document.getElementById(vagaId).closest('.active-designation-container').dataset.designacaoId;
-            existingDesignationIds.add(dId);
-        }
-    }
-    if (existingDesignationIds.size === 0) {
-        return true;
-    }
-    for (const existingD_Id of existingDesignationIds) {
-        const designacaoExistente = designationsMap.get(existingD_Id);
-        if (!designacaoExistente) continue;
-        const repeticaoPermitida = designacaoAtual.repeticao?.includes(existingD_Id) || designacaoExistente.repeticao?.includes(designacaoAtual.id);
-        if (repeticaoPermitida) {
-            continue;
-        }
-        const bloqueioAtual = designacaoAtual.bloqueio?.[existingD_Id];
-        if (bloqueioAtual === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioAtual === 'Moderado')) {
-            return false;
-        }
-        const bloqueioOutro = designacaoExistente.bloqueio?.[designacaoAtual.id];
-        if (bloqueioOutro === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioOutro === 'Moderado')) {
-            return false;
-        }
-    }
-    return true;
-}
 
         function getWeekDateRanges(ano, mes, semana) {
             let firstDayOfMonth = new Date(ano, mes - 1, 1);
@@ -2859,7 +2961,8 @@ async function inicializarPagina() {
 }
 
 
-   async function updateWeekDisplay() {
+async function updateWeekDisplay() {
+    console.log("[DEBUG] Iniciando updateWeekDisplay (Fim de Semana)...");
     const weekDisplay = document.getElementById('weekDisplay');
     const btn = document.getElementById('btnSeguinte');
     const mes = document.getElementById('mes').value;
@@ -2867,19 +2970,26 @@ async function inicializarPagina() {
     const sala = document.getElementById('sala').value;
     const weekInfoContainer = weekDisplay.parentElement;
 
-    // Chama a nova função de contagem, passando a sala
+    if (!weekDisplay || !btn) return;
+
+    // Calcula o próximo fim de semana disponível
     const semana = await countHistoricoFimDeSemana(ano, mes, sala) + 1;
     const totalSemanas = getTotalSemanasNoMes(ano, mes);
 
     if (semana > totalSemanas && totalSemanas > 0) {
         weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
         btn.disabled = true;
-        weekInfoContainer.classList.add('warning-state'); // Ativa o aviso visual
+        weekInfoContainer.classList.add('warning-state');
     } else {
         document.getElementById('semanaNumero').value = semana;
-        weekDisplay.innerHTML = `${semana}º fim de semana de ${totalSemanas} <br>(${getDiasSemana(ano, mes, semana)})`;
+        const intervaloDias = getDiasSemana(ano, mes, semana);
+        weekDisplay.innerHTML = `${semana}º fim de semana de ${totalSemanas} <br>(${intervaloDias})`;
+        
         btn.disabled = false;
-        weekInfoContainer.classList.remove('warning-state'); // Desativa o aviso visual
+        weekInfoContainer.classList.remove('warning-state');
+
+        // === AUTO-DETEÇÃO DE EVENTOS PARA FIM DE SEMANA ===
+        await autoDetectEventType(); 
     }
 }
 
