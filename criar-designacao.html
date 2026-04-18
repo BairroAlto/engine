@@ -242,6 +242,9 @@ input:checked + .slider:before { transform: translateX(26px); }
         padding: 15px; /* Reduz o padding em telas menores */
     } 
 }
+/* Cores para os novos itens */
+.checkbox-item:has(input[value="Servo de Circuito"]) { background-color: #d1c4e9; } /* Roxo claro */
+.checkbox-item:has(input[value="Orador Público"]) { background-color: #cfd8dc; }    /* Cinza azulado */
 
     </style>
 </head>
@@ -354,14 +357,32 @@ input:checked + .slider:before { transform: translateX(26px); }
 </div>
 
                     <!-- Aba 3: Participantes -->
-                    <div id="tab-3" class="tab-pane">
-                        <div class="form-group"><label>Quem faz?</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Estudante">Estudante</label></div></div>
-                        
-                        <div class="form-navigation">
-                            <button type="button" class="btn-nav prev prev-btn" data-prev-tab="2">Anterior</button>
-                            <button type="submit" class="btn-criar" style="width: auto;">Criar Designação</button>
-                        </div>
-                    </div>
+                 <div id="tab-3" class="tab-pane">
+    <div class="form-group">
+        <label>Quem faz?</label>
+        <div class="checkbox-group">
+            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label>
+            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label>
+            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label>
+            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label>
+            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label>
+            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label>
+            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Estudante">Estudante</label>
+            
+            <!-- GAP/ESPAÇO -->
+            <div style="height: 15px;"></div> 
+            
+            <!-- NOVAS OPÇÕES -->
+            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo de Circuito">Servo de Circuito</label>
+            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Orador Público">Orador Público</label>
+        </div>
+    </div>
+    
+    <div class="form-navigation">
+        <button type="button" class="btn-nav prev prev-btn" data-prev-tab="2">Anterior</button>
+        <button type="submit" class="btn-criar" style="width: auto;">Criar Designação</button>
+    </div>
+</div>
                 </div>
             </form>
         </div>
