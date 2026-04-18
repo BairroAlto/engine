@@ -7,21 +7,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <link rel="stylesheet" href="style_sidebar.css">
     <style>
         /* Estilos Gerais */
        * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; background-color: #f5f6fa; color: #333; }
         body.popup-open { overflow: hidden; }
-
-        /* Estilos da Sidebar */
-        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding-top: 20px; height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; }
-        .logo { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #34495e; }
-        .logo h2 { margin: 0; }
-        .nav-list { list-style: none; padding: 0; }
-        .nav-item a { color: white; text-decoration: none; display: flex; align-items: center; padding: 15px 20px; transition: background-color 0.3s; }
-        .nav-item a i { margin-right: 15px; width: 20px; text-align: center; }
-        .nav-item a:hover { background-color: #34495e; }
-        .nav-item.active a { background-color: #1abc9c; }
 
         /* Estilos do Conteúdo Principal */
         .content { margin-left: 250px; padding: 30px; flex-grow: 1; width: calc(100% - 250px); }
@@ -222,21 +213,7 @@
 </head>
 <body>
 
-    <div class="sidebar">
-        <div class="logo"><h2>Sistema de Escala</h2></div>
-        <nav>
-            <ul class="nav-list">
-                <li class="nav-item"><a href="index.html"><i class="fas fa-tachometer-alt"></i><span>Painel</span></a></li>
-                <li class="nav-item"><a href="semana.html"><i class="fas fa-users"></i><span>Reunião Semana</span></a></li>
-                <li class="nav-item active"><a href="fimdesemana.html"><i class="fas fa-calendar-week"></i><span>Fim de Semana</span></a></li>
-                <li class="nav-item"><a href="pregacao.html"><i class="fas fa-bullhorn"></i><span>Pregação</span></a></li>
-                <li class="nav-item"><a href="estatisticas.html"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a></li>
-                <li class="nav-item"><a href="nomes.html"><i class="fas fa-address-book"></i><span>Nomes</span></a></li>
-                <li class="nav-item"><a href="iniciar.html"><i class="fas fa-play"></i><span>Iniciar</span></a></li>
-                <li class="nav-item"><a href="criar.html"><i class="fas fa-plus"></i><span>Criar</span></a></li>
-            </ul>
-        </nav>
-    </div>
+<div id="sidebar-placeholder"></div>
 
     <main class="content">
         <h1>Reunião de Fim de Semana</h1>
@@ -470,7 +447,7 @@
 
     <!-- ===== FIM: HTML DE TODOS OS POPUPS AVANÇADOS ===== -->
 
-
+<script src="main.js"></script>
   <script>
         // Configuração do Firebase
         const firebaseConfig = {
@@ -1514,6 +1491,18 @@ async function saveNewDesignation() {
                 }
             }
 
+            function renderIcon(iconValue) {
+    if (!iconValue) return '';
+
+    // Se o valor contiver "fa-", renderiza como ícone FontAwesome
+    if (iconValue.includes('fa-')) {
+        return `<i class="${iconValue}"></i>`;
+    } 
+    
+    // Caso contrário, assume que é um emoji ou texto simples
+    return `<span>${iconValue}</span>`;
+}
+
 
 async function findNextAvailableParticipant(selectElement, historicoDoc, fullDesigData) {
     console.clear(); 
@@ -2001,7 +1990,8 @@ function openCreatePairAnalysisPopup() {
                                     const textColor = getContrastColor(bgColor);
                                     lastHeaderColor = bgColor; 
                                     const headerStyle = `style="background-color: ${bgColor}; color: ${textColor};"`;
-                                    bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="header-icon">${headerData.icon || ''}</span><h4>${headerData.nome}</h4></div>`;
+                                  const iconHtml = renderIcon(headerData.icon);
+bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="header-icon">${iconHtml}</span><h4>${headerData.nome}</h4></div>`;
                                  }
                                 lastHeaderId = currentHeaderId;
                             }
