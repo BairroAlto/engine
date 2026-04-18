@@ -4177,39 +4177,107 @@ loadNacionalidades();
 
 
 
-        async function updateWeekDisplay() {
+async function updateWeekDisplay() {
+    console.log("[DEBUG] Iniciando updateWeekDisplay (Escola)...");
     const weekDisplay = document.getElementById('weekDisplay');
     const nextButton = document.getElementById('btnSeguinte');
     const mesSelecionado = document.getElementById('mes').value;
     const anoFirebase = await getAnoPainelFirebase();
-    
-    // 1. Lê a sala selecionada
     const sala = document.getElementById('sala').value;
-    
-    // 2. Pega a referência do container para aplicar o estilo
     const weekInfoContainer = weekDisplay.parentElement;
 
-    // 3. Passa a 'sala' para a função de contagem
+    if (!weekDisplay || !nextButton) return;
+
+    // Calcula a semana baseada na sala e no histórico da escola
     const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado, sala) + 1;
     const totalSemanas = await getTotalSemanasNoMes(anoFirebase, mesSelecionado);
 
     if (totalSemanas > 0 && semanaNumero > totalSemanas) {
         weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
         nextButton.disabled = true;
-        // 4. Usa a classe CSS para o aviso
         weekInfoContainer.classList.add('warning-state');
     } else {
         const diasSemana = getDiasSemana(anoFirebase, mesSelecionado, semanaNumero);
         document.getElementById('semanaNumero').value = semanaNumero;
         weekDisplay.innerHTML = `${semanaNumero}ª semana de ${totalSemanas} semanas <br>(${diasSemana})`;
         nextButton.disabled = false;
-        // 5. Remove a classe de aviso
         weekInfoContainer.classList.remove('warning-state');
+
+        // === NOVO: AUTO-DETEÇÃO DE EVENTOS PARA A ESCOLA ===
+        await autoDetectEventType(); 
     }
 }
 
 
+async function autoDetectEventType() {
+    console.log("[AUTO-DETECT] Verificando eventos para a semana da Escola...");
+    
+    const tipoSelect = document.getElementById('tipo');
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const ano = await getAnoPainelFirebase();
 
+    // Obtém o intervalo da semana (Segunda a Domingo)
+    // Função já existente no seu código (linha ~1145)
+    const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
+
+    try {
+        const snapshot = await db.collection('eventos')
+            .where('ano', 'in', [ano, ano + 1])
+            .get();
+
+        let tipoDetectado = 'normal'; // Padrão
+
+        // Mapeamento de nomes no Firebase para os 'values' do seu <select id="tipo">
+        const mapaTipos = {
+            'Memorial': 'memorial',
+            'Assembleia': 'assembleia',
+            'Congresso': 'congresso',
+            'Visita do Servo': 'visita-servo',
+            'Evento Especial': 'evento-especial'
+        };
+
+        snapshot.forEach(doc => {
+            const eventData = doc.data();
+            let dataEvento;
+
+            // 1. Verificação por data única (ex: Memorial ou Visita)
+            if (eventData.data) {
+                if (eventData.data.includes('/')) {
+                    const parts = eventData.data.split('/');
+                    dataEvento = new Date(parts[2], parts[1] - 1, parts[0]);
+                } else {
+                    dataEvento = new Date(eventData.data + 'T12:00:00');
+                }
+
+                if (dataEvento >= monday && dataEvento <= sunday) {
+                    if (mapaTipos[eventData.nome]) tipoDetectado = mapaTipos[eventData.nome];
+                }
+            } 
+            // 2. Verificação por intervalo (ex: Assembleia ou Congresso)
+            else if (eventData.data_inicio && eventData.data_fim) {
+                const inicio = new Date(eventData.data_inicio + 'T00:00:00');
+                const fim = new Date(eventData.data_fim + 'T23:59:59');
+                
+                if (inicio <= sunday && fim >= monday) {
+                    if (mapaTipos[eventData.nome]) tipoDetectado = mapaTipos[eventData.nome];
+                }
+            }
+        });
+
+        // Atualiza o dropdown automaticamente
+        tipoSelect.value = tipoDetectado;
+        console.log(`[AUTO-DETECT] Tipo de reunião definido como: ${tipoDetectado}`);
+
+        // Opcional: Se mudar para algo que não é 'normal', podemos avisar que a programação MWB será ignorada
+        if (tipoDetectado !== 'normal') {
+            console.warn("Evento especial detetado. O preenchimento via MWB JSON será desativado para esta semana.");
+        }
+
+    } catch (error) {
+        console.error("[AUTO-DETECT] Erro ao buscar eventos:", error);
+    }
+}
 
 
 
