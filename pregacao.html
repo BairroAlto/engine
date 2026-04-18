@@ -308,6 +308,8 @@ let isEditMode = false;
 let cacheLocais = [];
 let printLocalInPDF = false;
 let printNwNoteInPDF = true;
+let headerMap = new Map();
+let designationMap = new Map();
 
 document.addEventListener('DOMContentLoaded', async function() {
     // Carrega a sidebar
@@ -343,56 +345,97 @@ async function loadInitialData() {
     if (loadingEl) loadingEl.style.display = 'block';
     
     try {
-        // 1. Buscar ano do painel
-        const painelDoc = await db.collection('painel').doc('ano').get();
-        if (painelDoc.exists) anoPredefinido = painelDoc.data().ano;
-
-        // 2. Buscar Pessoas (Cache completo)
-        const pessoasSnap = await db.collection('pessoas').get();
-        fullPeopleCache = [];
-        personMap.clear();
-        pessoasSnap.forEach(doc => {
-            const data = doc.data();
-            fullPeopleCache.push({ id: doc.id, ...data });
-            personMap.set(doc.id, data.nomePessoa);
-        });
-
-        // 3. Buscar Locais (Para os dropdowns dinâmicos)
-        const locaisSnap = await db.collection('locais').get();
-        cacheLocais = locaisSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // 4. Buscar Históricos (Pregacao e Campo)
-        const [hSnap, hpSnap] = await Promise.all([
+        // 1. Buscar tudo em paralelo (incluindo a configuração do painel)
+        const [hSnap, hpSnap, designSnap, cabSnap, locaisSnap, pessoasSnap, configSnap] = await Promise.all([
             db.collection('historico').where('tipo', '==', 'pregacao').get(),
-            db.collection('historicoPregacao').get()
+            db.collection('historicoPregacao').get(),
+            db.collection('designacoes').get(),
+            db.collection('cabecalhos').get(),
+            db.collection('locais').get(),
+            db.collection('pessoas').get(),
+            db.collection('painel').doc('ano').get() // <--- BUSCA O ANO PREDEFINIDO
         ]);
 
+        // 2. Definir o ano vindo do Firebase
+        if (configSnap.exists) {
+            anoPredefinido = configSnap.data().ano;
+        }
+
+        // 3. Mapear Designações e Cabeçalhos
+        designSnap.forEach(doc => designationMap.set(doc.id, doc.data()));
+        cabSnap.forEach(doc => headerMap.set(doc.id, doc.data()));
+
+        // 4. Mapear Pessoas e Locais
+        personMap.clear();
+        pessoasSnap.forEach(doc => {
+            personMap.set(doc.id, doc.data().nomePessoa);
+            fullPeopleCache.push({ id: doc.id, ...doc.data() });
+        });
+        cacheLocais = locaisSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // 5. Guardar Históricos
         cacheHistorico = hSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         cacheHistoricoPregacao = hpSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
-        console.log("Caches carregados com sucesso!");
         populateYears();
     } catch (error) { 
         console.error("Erro ao carregar dados:", error); 
-        alert("Erro ao carregar dados do Firebase.");
     }
     if (loadingEl) loadingEl.style.display = 'none';
 }
 
+function getDynamicHeaderHtml(designacaoId) {
+    const desig = designationMap.get(designacaoId);
+    if (!desig || !desig.anexo) return '';
+
+    const header = headerMap.get(desig.anexo);
+    if (!header) return '';
+
+    const bgColor = header.cor || '#34495e';
+    const textColor = getContrastColor(bgColor); 
+
+    return `
+        <div class="part-header" style="background-color: ${bgColor}; color: ${textColor};">
+            ${renderIcon(header.icon)} ${header.nome}
+        </div>`;
+}
+
+// Função de contraste (podes copiar do semana.html)
+function getContrastColor(hexColor) {
+    if (!hexColor || hexColor.length < 6) return '#FFFFFF';
+    const r = parseInt(hexColor.substr(1, 2), 16);
+    const g = parseInt(hexColor.substr(3, 2), 16);
+    const b = parseInt(hexColor.substr(5, 2), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return (yiq >= 128) ? '#000000' : '#FFFFFF';
+}
+
 function populateYears() {
     const years = new Set();
+    
+    // Adiciona os anos existentes nos históricos
     cacheHistorico.forEach(d => years.add(d.ano));
     cacheHistoricoPregacao.forEach(d => years.add(d.ano));
-    if (anoPredefinido) years.add(parseInt(anoPredefinido));
+    
+    // Adiciona o ano vindo do painel (caso ainda não exista nos históricos)
+    if (anoPredefinido) {
+        years.add(parseInt(anoPredefinido));
+    }
 
     const select = document.getElementById('filter-ano');
     select.innerHTML = '<option value="">Ano</option>';
-    Array.from(years).sort((a,b)=>b-a).forEach(y => select.add(new Option(y, y)));
     
-    if (anoPredefinido && [...select.options].some(opt => opt.value == anoPredefinido)) {
+    // Preenche o select
+    Array.from(years).sort((a,b)=>b-a).forEach(y => {
+        select.add(new Option(y, y));
+    });
+    
+    // Seleciona o ano predefinido e carrega os meses
+    if (anoPredefinido) {
         select.value = anoPredefinido;
-        populateMonths();
+        populateMonths(); // Dispara o preenchimento dos meses automaticamente
     }
+    
     select.onchange = populateMonths;
 }
 
@@ -443,9 +486,9 @@ function renderSchedule() {
         return;
     }
 
-    // --- CORREÇÃO AQUI: Inicializar a variável antes de usar ---
     let html = ''; 
 
+    // 1. Filtrar dados dos caches
     let hData = cacheHistorico.filter(d => d.ano === year && monthMap[d.mes] === mesName && (week === 'todas' || d.semanaindex === week));
     let hpData = cacheHistoricoPregacao.filter(d => d.ano === year && (d.mes === mesName || monthMap[d.mes] === mesName) && (week === 'todas' || d.semanaindex === week));
 
@@ -455,95 +498,116 @@ function renderSchedule() {
     const isSpecificWeek = week !== 'todas';
     const showPencils = isEditMode && isSpecificWeek;
 
-const getPencilHtml = (id, type, index = 0) => {
-    return showPencils ? `<i class="fas fa-pencil-alt edit-icon" onclick="openEditPopup('${id}', '${type}', ${index})"></i>` : '';
-};
+    const getPencilHtml = (id, type, index = 0) => {
+        return showPencils ? `<i class="fas fa-pencil-alt edit-icon" onclick="openEditPopup('${id}', '${type}', ${index})"></i>` : '';
+    };
 
     weeksFound.forEach(wk => {
-        html += `
-            <div class="week-section">
-                <div class="week-title">
-                    ${wk} ${getPencilHtml(wk, 'semana')} 
-                </div>`;
+        html += `<div class="week-section"><div class="week-title">${wk} ${getPencilHtml(wk, 'semana')}</div>`;
 
-        // ... (lógica de evento especial) ...
-
-        // A) SERVIÇO DE CAMPO
-        if (part === 'todas' || part === 'dirigencia saida') {
-            const docs = hData.filter(d => d.semanaindex === wk);
-            if (docs.length > 0) {
-                html += `
-                <div class="style-campo">
-                    <div class="part-header"><i class="fas fa-users"></i> Serviço de Campo</div>
-                    <div class="style-campo-content">`;
-                
-docs.forEach(doc => {
-    (doc.designacoes || []).forEach((desig, idx) => { // 'idx' é a posição (0, 1, 2...)
-        const dirId = desig.participantes?.dirigente || desig.participantes?.participante;
-        html += `
-        <div class="sub-part">
-            <div class="edit-container">
-                <p class="data-row">
-                    <strong>Dirigente:</strong> ${desig.dia || ''} - ${desig.hora || ''}
-                </p>
-                <!-- O terceiro parâmetro é o idx desta linha específica -->
-                ${getPencilHtml(doc.id, 'campo', idx)} 
-            </div>
-            <p class="data-row" style="margin-left: 10px;"> ${personMap.get(dirId) || '---'}</p>
-        </div>`;
-    });
-});
-                html += `</div></div>`;
-            }
-        }
-
-        // B) TESTEMUNHO PÚBLICO
-      if (part === 'todas' || part === 'testemunho publico') {
-    const docs = hpData.filter(d => d.semanaindex === wk);
+        // --- A) SERVIÇO DE CAMPO (Dirigentes) ---
+   if (part === 'todas' || part === 'dirigencia saida') {
+    const docs = hData.filter(d => d.semanaindex === wk);
     if (docs.length > 0) {
-        html += `
-        <div class="style-testemunho" style="margin-top:25px;">
-            <div class="part-header"><i class="fas fa-store"></i> Testemunho Público</div>
-            <div class="style-testemunho-content">`;
+        const firstDesigId = docs[0].designacoes?.[0]?.designacaoId;
+        const headerObj = getHeaderByDesignation(firstDesigId);
         
-        docs.sort((a,b)=>a.grupo-b.grupo).forEach(doc => {
-            // --- NOVA LÓGICA PARA EQUIPA DINÂMICA ---
-            let nomesEquipa = [];
-            
-            // Verifica Pessoa 1
-            const p1 = doc.Pessoa1?.nome || personMap.get(doc.Pessoa1?.id);
-            if (p1) nomesEquipa.push(p1);
-            
-            // Verifica Pessoa 2
-            const p2 = doc.Pessoa2?.nome || personMap.get(doc.Pessoa2?.id);
-            if (p2) nomesEquipa.push(p2);
-            
-            // Verifica Pessoa 3 (Caso exista)
-            const p3 = doc.Pessoa3?.nome || personMap.get(doc.Pessoa3?.id);
-            if (p3) nomesEquipa.push(p3);
+        const bgColor = headerObj?.cor || '#6fb865';
+        const textColor = getContrastColor(bgColor);
 
-            // Junta os nomes encontrados com " - "
-            const equipaFormatada = nomesEquipa.length > 0 ? nomesEquipa.join(' - ') : '---';
+        html += `
+        <div class="style-section">
+            <div class="part-header" style="background-color: ${bgColor}; color: ${textColor}; padding: 10px 15px; border-radius: 6px; font-weight: bold; display: flex; align-items: center; margin-bottom: 12px;">
+                ${renderIcon(headerObj?.icon)} ${headerObj?.nome || 'Serviço de Campo'}
+            </div>
+            <div class="style-content" style="border-left: 3px solid ${bgColor}; margin-left: 5px; padding-left: 15px;">`;
+        
+        docs.forEach(doc => {
+            (doc.designacoes || []).forEach((desig, idx) => {
+                const dirId = desig.participantes?.dirigente || desig.participantes?.participante;
+                const nomePessoa = personMap.get(dirId);
+                
+                // LÓGICA DE EXIBIÇÃO: Nome > Descrição (Itálico/Negrito) > "---"
+                let displayValue = '---';
+                if (nomePessoa) {
+                    displayValue = nomePessoa;
+                } else if (desig.descricao && desig.descricao.trim() !== "") {
+                    displayValue = `<i style="font-weight: bold;">${desig.descricao}</i>`;
+                }
 
-            html += `
-            <div class="sub-part">
-                <div class="level-3-header edit-container" style="display: flex;">
-                    <span>${doc.diadasemana || ''} ${doc.hora || ''}</span>
-                    ${getPencilHtml(doc.id, 'publico')}
-                </div>
-                <p class="data-row"><strong>Equipa:</strong> ${equipaFormatada}</p>
-                <p class="data-row"><strong>Local:</strong> ${doc.local || '---'}</p>
-            </div>`;
+                html += `
+                <div class="sub-part">
+                    <div class="edit-container">
+                        <p class="data-row"><strong>Dirigente:</strong> ${desig.dia || ''} - ${desig.hora || ''}</p>
+                        ${getPencilHtml(doc.id, 'campo', idx)} 
+                    </div>
+                    <p class="data-row" style="margin-left: 10px;"> ${displayValue}</p>
+                </div>`;
+            });
         });
         html += `</div></div>`;
     }
 }
+
+        // --- B) TESTEMUNHO PÚBLICO ---
+        if (part === 'todas' || part === 'testemunho publico') {
+            const docs = hpData.filter(d => d.semanaindex === wk);
+            if (docs.length > 0) {
+                // Como não há designacaoId, procuramos o cabeçalho pelo NOME exato
+                const headerObj = Array.from(headerMap.values()).find(h => h.nome === "Testemunho Público");
+                
+                const bgColor = headerObj?.cor || '#ffdd00';
+                const textColor = getContrastColor(bgColor);
+
+                html += `
+                <div class="style-section" style="margin-top:25px;">
+                 <div class="part-header" style="background-color: ${bgColor}; color: ${textColor}; padding: 10px 15px; border-radius: 6px; font-weight: bold; display: flex; align-items: center; margin-bottom: 12px;">
+    ${renderIcon(headerObj?.icon)} ${headerObj?.nome || 'Serviço de Campo'}
+</div>
+                    <div class="style-content" style="border-left: 3px solid ${bgColor}; margin-left: 5px; padding-left: 15px;">`;
+                
+                docs.sort((a,b)=>a.grupo-b.grupo).forEach(doc => {
+                    let nomesEquipa = [];
+                    [doc.Pessoa1, doc.Pessoa2, doc.Pessoa3].forEach(p => {
+                        if (p) nomesEquipa.push(p.nome || personMap.get(p.id));
+                    });
+
+                    html += `
+                    <div class="sub-part">
+                        <div class="level-3-header edit-container" style="display: flex; background-color: #444; color: white; padding: 2px 10px; border-radius: 4px; font-size: 14px; margin-bottom: 8px;">
+                            <span>${doc.diadasemana || ''} ${doc.hora || ''}</span>
+                            ${getPencilHtml(doc.id, 'publico')}
+                        </div>
+                        <p class="data-row"><strong>Equipa:</strong> ${nomesEquipa.join(' - ') || '---'}</p>
+                        <p class="data-row"><strong>Local:</strong> ${doc.local || '---'}</p>
+                    </div>`;
+                });
+                html += `</div></div>`;
+            }
+        }
         html += `</div>`;
     });
 
-    display.innerHTML = html || '<p style="text-align:center;">Nenhum registo.</p>';
+    display.innerHTML = html || '<p style="text-align:center; padding:20px;">Nenhum registo encontrado.</p>';
 }
 
+function getHeaderByDesignation(designacaoId) {
+    const desig = designationMap.get(designacaoId);
+    if (!desig || !desig.anexo) return null;
+    return headerMap.get(desig.anexo);
+}
+
+function renderIcon(iconValue) {
+    if (!iconValue) return '';
+
+    // Se o valor contiver "fa-", renderiza como ícone FontAwesome
+    if (iconValue.includes('fa-')) {
+        return `<i class="${iconValue}" style="margin-right: 10px;"></i>`;
+    } 
+    
+    // Caso contrário, assume que é um emoji ou texto simples
+    return `<span style="margin-right: 10px;">${iconValue}</span>`;
+}
 
 function suggestPerson(index) {
     const allSelects = document.querySelectorAll('.edit-select-person');
