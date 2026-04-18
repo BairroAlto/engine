@@ -1834,7 +1834,7 @@ function openCreatePairAnalysisPopup() {
                 renderSchedule();
             }
             
-    function renderSchedule() {
+  function renderSchedule() {
     scheduleDisplay.classList.add('loading');
     scheduleContent.innerHTML = '';
     
@@ -1885,6 +1885,7 @@ function openCreatePairAnalysisPopup() {
         const weekData = group.items;         
         const weekElement = document.createElement('div');
         weekElement.className = 'schedule-week';
+        
         let headerHTML = `<div class="schedule-header">${weekIndex}`;
         if (isEditMode && weekData.length > 0) {
             headerHTML += `<i class="fas fa-pencil-alt edit-icon" 
@@ -1893,6 +1894,7 @@ function openCreatePairAnalysisPopup() {
                                   title="Editar detalhes da semana"></i>`;
         }
         headerHTML += `</div>`;
+        
         let bodyHTML = '<div class="schedule-body">';
         
         const specialEventData = weekData.find(item => item.evento);
@@ -1932,8 +1934,8 @@ function openCreatePairAnalysisPopup() {
                         const textColor = getContrastColor(bgColor);
                         lastHeaderColor = bgColor; 
                         const headerStyle = `style="background-color: ${bgColor}; color: ${textColor};"`;
-                       const iconHtml = renderIcon(headerData.icon);
-bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="header-icon">${iconHtml}</span><h4>${headerData.nome}</h4></div>`;
+                        const iconHtml = renderIcon(headerData.icon);
+                        bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="header-icon">${iconHtml}</span><h4>${headerData.nome}</h4></div>`;
                      }
                     lastHeaderId = currentHeaderId;
                 }
@@ -1950,11 +1952,11 @@ bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="head
 
                 bodyHTML += `</div>`;
                 
+                // Renderização de Participantes
                 if (desig.participantes && Object.keys(desig.participantes).length > 0) {
                     bodyHTML += '<ul class="participant-list">';
                     
                     let sortedParticipants;
-
                     if (fullDesigData.parte === 'tecnicas') {
                         const techRoleOrder = ['dirigente', 'ajudante', 'ajudante1', 'ajudante2', 'ajudante3']; 
                         sortedParticipants = Object.entries(desig.participantes).sort((a, b) => {
@@ -1969,27 +1971,37 @@ bodyHTML += `<div class="schedule-header-group" ${headerStyle}><span class="head
                         });
                     }
 
-                     for (const [role, personId] of sortedParticipants) {
-        const personName = personMap.get(personId) || 'N/A';
-        
-        // Se a parte for 'tecnicas', mostra apenas o nome, sem a etiqueta
-        if (fullDesigData.parte === 'tecnicas') {
-            bodyHTML += `<li>${personName}</li>`;
-        } 
-        // Para todas as outras partes, mantém o comportamento original com etiquetas
-        else {
-            if (role === 'participante') {
-                bodyHTML += `<li>${personName}</li>`;
-            } else {
-                const cleanRole = role.replace(/\d+$/, '');
-                const formattedRole = cleanRole.charAt(0).toUpperCase() + cleanRole.slice(1);
-                bodyHTML += `<li><em>${formattedRole}:</em> ${personName}</li>`;
-            }
-        }
-    }
+                    for (const [role, personId] of sortedParticipants) {
+                        const personName = personMap.get(personId) || 'N/A';
+                        if (fullDesigData.parte === 'tecnicas') {
+                            bodyHTML += `<li>${personName}</li>`;
+                        } else {
+                            if (role === 'participante') {
+                                bodyHTML += `<li>${personName}</li>`;
+                            } else {
+                                const cleanRole = role.replace(/\d+$/, '');
+                                const formattedRole = cleanRole.charAt(0).toUpperCase() + cleanRole.slice(1);
+                                bodyHTML += `<li><em>${formattedRole}:</em> ${personName}</li>`;
+                            }
+                        }
+                    }
+                    bodyHTML += '</ul>';
+                }
 
-    bodyHTML += '</ul>';
-}
+                // --- NOVA LÓGICA: Exibir campo "descricao" em itálico ---
+                if (desig.descricao) {
+                    let textoDescricao = desig.descricao;
+                    
+                    // Verifica se a descrição é um ID de discurso para pegar o tema real
+                    if (typeof discourseMap !== 'undefined' && discourseMap.has(desig.descricao)) {
+                        textoDescricao = discourseMap.get(desig.descricao).nome;
+                    }
+
+                    bodyHTML += `<div style="padding-left: 20px; margin-top: -3px; margin-bottom: 8px; font-style: italic; color: #555; font-size: 0.95em;">
+                                    "${textoDescricao}"
+                                 </div>`;
+                }
+                // -------------------------------------------------------
                 
                 bodyHTML += '</li></ul>';
             });
