@@ -462,6 +462,17 @@ body.popup-open {
     font-weight: bold;
 }
 
+#typeIconContainer i {
+    color: #2c3e50; /* Cor escura padrão */
+    transition: all 0.3s ease;
+}
+
+/* Cor do ícone quando o mês está completo (caixa vermelha) */
+.week-info.warning-state #typeIconContainer i {
+    color: #c0392b; 
+}
+
+
     </style>
 </head>
 
@@ -493,9 +504,11 @@ body.popup-open {
         <div class="card">
             <!-- MODIFICADO: Título principal -->
             <h1>Iniciar Fluxo de Pregação</h1>
-            <div class="week-info">
-                <p id="weekDisplay">Carregando informações da semana...</p>
-            </div>
+        <div class="week-info" style="position: relative;"> <!-- Adicionado position relative -->
+    <p id="weekDisplay">Carregando informações da semana...</p>
+    <!-- Contentor para o ícone -->
+    <div id="typeIconContainer" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 22px;"></div>
+</div>
             <form id="fluxoSemanalForm">
                 <input type="hidden" id="semanaNumero" name="semanaNumero">
                 <!-- MODIFICADO: Campo 'tipo' agora é escondido e fixo -->
@@ -581,6 +594,55 @@ body.popup-open {
                 </div>
             </div>
         </div>
+
+
+
+<!-- =================================================================== -->
+<!-- =============== POPUP DE CONFIRMAÇÃO EVENTO ESPECIAL ============= -->
+<!-- =================================================================== -->
+<div id="memorialConfirmationPopup" class="popup-overlay">
+    <div class="popup-content" style="max-width: 500px;">
+        <div class="popup-header">
+            <h2 class="popup-title">Aviso de Evento Especial</h2>
+            <button class="popup-close-button" onclick="document.getElementById('memorialConfirmationPopup').style.display='none'">×</button>
+        </div>
+        <div class="popup-body" style="padding: 20px 0;">
+            <p id="memorialPopupMessage" style="text-align: center; font-size: 16px; line-height: 1.6;">
+                A data coincide com esta semana. Deseja gravar um evento especial sem saídas de pregação e concluir?
+            </p>
+        </div>
+        <div class="popup-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn-submit" id="confirmMemorialSave" style="background-color: #2ecc71;">Sim, Gravar</button>
+            <button class="btn-submit" id="cancelMemorialSave" style="background-color: #c0392b;">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- =================================================================== -->
+<!-- ============= POPUP AVISO DE DATA NÃO COINCIDENTE ========= -->
+<!-- =================================================================== -->
+<div id="eventMismatchPopup" class="popup-overlay">
+    <div class="popup-content" style="max-width: 500px;">
+        <div class="popup-header">
+            <h2 class="popup-title" style="color: #e74c3c;">
+                <i class="fas fa-exclamation-triangle"></i> Atenção
+            </h2>
+            <button class="popup-close-button" id="closeMismatchPopup">×</button>
+        </div>
+        <div class="popup-body" style="padding: 20px 0;">
+            <p style="text-align: center; font-size: 16px; line-height: 1.6; color: #333;">
+                Não foi encontrado nenhum evento de <strong><span id="mismatchEventName"></span></strong> agendado para esta semana na base de dados.
+            </p>
+        </div>
+        <div class="popup-actions" style="display: flex; justify-content: center; gap: 15px;">
+            <button class="btn-submit" onclick="window.location.href='editar-evento.html'" style="background-color: #3498db;">
+                <i class="fas fa-calendar-alt"></i> Ir para Eventos
+            </button>
+            <button class="btn-submit" id="cancelMismatch" style="background-color: #95a5a6;">Fechar</button>
+        </div>
+    </div>
+</div>
+
 
      <!-- =================================================================== -->
 <!-- ============= INÍCIO: POPUP DE ESTATÍSTICAS ======================= -->
@@ -942,11 +1004,74 @@ pesquisaInput.addEventListener('input', () => {
 
 
 
+// Função para mostrar o popup de confirmação (Promise)
+function showSpecialEventConfirmation(eventType) {
+    return new Promise((resolve) => {
+        const popup = document.getElementById('memorialConfirmationPopup'); // Reutilizando o ID
+        const messageEl = document.getElementById('memorialPopupMessage');
+        const confirmBtn = document.getElementById('confirmMemorialSave');
+        const cancelBtn = document.getElementById('cancelMemorialSave');
+
+        messageEl.textContent = `A data de ${eventType} coincide com esta semana. Deseja gravar este evento no histórico de pregação e concluir?`;
+        popup.style.display = 'flex';
+
+        const handleConfirm = () => {
+            popup.style.display = 'none';
+            cleanup();
+            resolve(true);
+        };
+        const handleCancel = () => {
+            popup.style.display = 'none';
+            cleanup();
+            resolve(false);
+        };
+        const cleanup = () => {
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+        };
+
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+    });
+}
 
 
 
+// Função para gravar o evento especial de pregação no histórico
+async function saveSpecialEventPregacao() {
+    try {
+        const ano = await getAnoPainelFirebase();
+        const mes = parseInt(document.getElementById('mes').value);
+        const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+        const tipoReuniao = document.getElementById('tipoReuniao').value;
+        const salaOriginal = document.getElementById('sala').value;
+        const salaFormatada = salaOriginal.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, '-');
+        
+        const { monday } = getWeekMondaySunday(ano, mes, semanaNumero);
+        const diasSemana = getDiasSemana(ano, mes, semanaNumero);
 
+        const historicoData = {
+            ano: ano,
+            mes: mes,
+            semanaNumero: semanaNumero,
+            semanaindex: `(${diasSemana} ${ano})`,
+            designacoes: [], // Vazio para eventos especiais
+            evento: tipoReuniao.toLowerCase(),
+            tipo: "pregacao",
+            parte: "dirigencia saida",
+            oque: "pregacao",
+            sala: salaFormatada,
+            dia: monday.toISOString().split('T')[0],
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
 
+        await db.collection("historico").add(historicoData);
+        return true;
+    } catch (error) {
+        console.error("Erro ao gravar:", error);
+        return false;
+    }
+}
 
 
 
@@ -2786,104 +2911,94 @@ function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignme
             return { current, previous, next };
         }
 
-        async function autoDetectEventType() {
-    console.log("[AUTO-DETECT] Verificando eventos para a semana de Pregação...");
+      
+// 1. Função Central para atualizar o ícone (Lê o dropdown tipoReuniao)
+function updateTypeIcon() {
+    const tipoReuniao = document.getElementById('tipoReuniao').value;
+    const iconContainer = document.getElementById('typeIconContainer');
     
+    const iconMap = {
+        'Memorial': '<i class="fa-solid fa-wine-glass"></i>',
+        'Evento Especial': '<i class="fa-solid fa-star"></i>',
+        'Assembleia': '<i class="fa-solid fa-landmark"></i>',
+        'Congresso': '<i class="fa-solid fa-users"></i>',
+        'Visita do Servo': '<i class="fa-solid fa-briefcase"></i>',
+        'Normal': '' 
+    };
+
+    if (iconContainer) {
+        iconContainer.innerHTML = iconMap[tipoReuniao] || '';
+    }
+}
+
+// 2. Deteta se existe um evento na coleção 'eventos' para esta semana
+async function autoDetectEventType() {
     const tipoReuniaoSelect = document.getElementById('tipoReuniao');
     const mes = parseInt(document.getElementById('mes').value);
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
     const ano = await getAnoPainelFirebase();
 
-    // Obtém o intervalo da semana (Segunda a Domingo)
     const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
 
     try {
-        const snapshot = await db.collection('eventos')
-            .where('ano', 'in', [ano, ano + 1])
-            .get();
-
-        let tipoDetectado = 'Normal'; // Valor padrão
+        const snapshot = await db.collection('eventos').where('ano', 'in', [ano, ano + 1]).get();
+        let tipoDetectado = 'Normal'; 
 
         snapshot.forEach(doc => {
             const eventData = doc.data();
             let dataEvento;
 
-            // 1. Verificação por data única (Ex: Memorial ou Visita do Servo)
             if (eventData.data) {
-                if (eventData.data.includes('/')) {
-                    const parts = eventData.data.split('/');
-                    dataEvento = new Date(parts[2], parts[1] - 1, parts[0]);
-                } else {
-                    dataEvento = new Date(eventData.data + 'T12:00:00');
-                }
-
+                dataEvento = new Date(eventData.data + 'T12:00:00');
                 if (dataEvento >= monday && dataEvento <= sunday) {
-                    // O nome no Firebase deve coincidir com o texto das options
-                    // Ex: "Visita do Servo", "Memorial", "Assembleia"
                     tipoDetectado = eventData.nome; 
                 }
-            } 
-            // 2. Verificação por intervalo (Ex: Assembleia ou Congresso)
-            else if (eventData.data_inicio && eventData.data_fim) {
+            } else if (eventData.data_inicio && eventData.data_fim) {
                 const inicio = new Date(eventData.data_inicio + 'T00:00:00');
                 const fim = new Date(eventData.data_fim + 'T23:59:59');
-                
                 if (inicio <= sunday && fim >= monday) {
                     tipoDetectado = eventData.nome;
                 }
             }
         });
 
-        // Atualiza o dropdown visível
-        // Certifique-se de que o 'tipoDetectado' existe nas opções do seu HTML
-        tipoReuniaoSelect.value = tipoDetectado;
-        console.log(`[AUTO-DETECT] Tipo de período de pregação definido como: ${tipoDetectado}`);
-
-        // Se a lista de designações já estiver aberta, recarrega para atualizar os filtros de pessoas
-        if (document.getElementById('designacoesSection').classList.contains('active')) {
-             loadDesignacoes(); 
+        if (tipoReuniaoSelect.value !== tipoDetectado) {
+            tipoReuniaoSelect.value = tipoDetectado;
+            updateTypeIcon();
         }
-
     } catch (error) {
-        console.error("[AUTO-DETECT] Erro ao buscar eventos:", error);
+        console.error("[AUTO-DETECT] Erro:", error);
     }
 }
 
- async function updateWeekDisplay() {
-    console.log("[DEBUG] Iniciando updateWeekDisplay (Pregação)...");
+// 3. Atualiza a exibição da semana e chama a detecção
+async function updateWeekDisplay() {
     const weekDisplay = document.getElementById('weekDisplay');
     const btn = document.getElementById('btnSeguinte');
     const mes = document.getElementById('mes').value;
     const ano = await getAnoPainelFirebase();
     const salaOriginal = document.getElementById('sala').value;
-    
+
     if (!weekDisplay || !btn) return;
-    const weekInfoContainer = weekDisplay.parentElement;
 
-    // Formata o nome da sala
-    const salaFormatada = salaOriginal
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .replace(/\s+/g, '-');
+    updateTypeIcon();
 
+    const salaFormatada = salaOriginal.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, '-');
     const semanasExistentes = await countHistoricoSemanas(ano, mes, salaFormatada);
     const semanaAtual = semanasExistentes + 1;
     const totalSemanasNoMes = getTotalSemanasNoMes(ano, mes);
 
     if (semanaAtual > totalSemanasNoMes && totalSemanasNoMes > 0) {
-        weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
+        weekDisplay.innerHTML = "Mês completo para esta sala.";
         btn.disabled = true;
-        weekInfoContainer.classList.add('warning-state');
+        weekDisplay.parentElement.classList.add('warning-state');
     } else {
         document.getElementById('semanaNumero').value = semanaAtual;
         const intervaloDias = getDiasSemana(ano, mes, semanaAtual);
         weekDisplay.innerHTML = `${semanaAtual}ª semana de ${totalSemanasNoMes} <br>(${intervaloDias})`;
-        
         btn.disabled = false;
-        weekInfoContainer.classList.remove('warning-state');
+        weekDisplay.parentElement.classList.remove('warning-state');
 
-        // === NOVO: AUTO-DETEÇÃO DE EVENTOS PARA PREGAÇÃO ===
         await autoDetectEventType(); 
     }
 }
@@ -3642,29 +3757,74 @@ function setupTabClickListeners() {
         document.getElementById('closeLabPopup').addEventListener('click', () => document.getElementById('labPopup').style.display = 'none');
         
   // MODIFICADO: Lógica do botão "Seguinte" simplificada
-  document.getElementById('btnSeguinte').addEventListener('click', async function() {
-    console.log("[DEBUG] Botão 'Seguinte' clicado para fluxo de pregação.");
+document.getElementById('btnSeguinte').addEventListener('click', async function() {
+    const tipoReuniao = document.getElementById('tipoReuniao').value;
+    const btnSeguinte = this;
+    
+    // Se for Normal, apenas carrega as designações de saída
+    if (tipoReuniao === 'Normal') {
+        document.getElementById('designacoesSection').classList.add('active');
+        document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
+        document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth' });
+        await loadDesignacoes();
+        return;
+    }
 
-    // Mostra a secção de designações diretamente
-    document.getElementById('designacoesSection').classList.add('active');
-    document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
-    
-    // Rola suavemente até a lista de designações
-    const spacer = document.createElement('div');
-    spacer.id = 'temp-scroll-spacer';
-    spacer.style.height = '100vh';
-    document.querySelector('.card').insertAdjacentElement('afterend', spacer);
-    
-    document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    
-    // Carrega as designações de pregação
-    await loadDesignacoes();
-    
-    // Remove o espaçador auxiliar
-    document.getElementById('temp-scroll-spacer')?.remove();
+    // --- LÓGICA PARA EVENTOS ESPECIAIS (Igual à da Escola) ---
+    btnSeguinte.disabled = true;
+    btnSeguinte.textContent = "A validar data...";
+
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const ano = await getAnoPainelFirebase();
+    const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
+
+    try {
+        // Busca se existe o evento específico no banco de dados
+        const snapshot = await db.collection('eventos').where('nome', '==', tipoReuniao).get();
+        let eventoCoincide = false;
+
+        snapshot.forEach(doc => {
+            const dataEv = doc.data();
+            let dataEvento;
+            if (dataEv.data) {
+                dataEvento = new Date(dataEv.data + 'T12:00:00');
+            } else if (dataEv.data_inicio) {
+                dataEvento = new Date(dataEv.data_inicio + 'T12:00:00');
+            }
+
+            if (dataEvento >= monday && dataEvento <= sunday) {
+                eventoCoincide = true;
+            }
+        });
+
+        if (eventoCoincide) {
+            // Mostra o popup de confirmação (pode reutilizar o ID do Memorial)
+            const confirmou = await showSpecialEventConfirmation(tipoReuniao);
+            if (confirmou) {
+                const gravou = await saveSpecialEventPregacao(); // Função de gravação rápida adaptada
+                if (gravou) {
+                    alert("Evento de pregação gravado com sucesso!");
+                    window.location.reload();
+                }
+            }
+        } else {
+            // Mostra o popup de erro (Mismatch)
+            document.getElementById('mismatchEventName').textContent = tipoReuniao;
+            document.getElementById('eventMismatchPopup').style.display = 'flex';
+        }
+
+    } catch (error) {
+        console.error("Erro na validação:", error);
+        alert("Erro ao validar evento.");
+    } finally {
+        btnSeguinte.disabled = false;
+        btnSeguinte.textContent = "Seguinte";
+    }
 });
 
-
+// Localize onde estão os outros listeners e adicione este:
+document.getElementById('tipoReuniao').addEventListener('change', updateTypeIcon);
 
         document.getElementById('designacoesList').addEventListener('click', async function(event) {
             const orderButton = event.target.closest('.order-button');
@@ -3740,6 +3900,52 @@ function setupTabClickListeners() {
             return { monday, sunday };
         }
     });
+
+
+    // ==========================================================
+// === LÓGICA PARA FECHAR OS POPUPS DE EVENTOS ESPECIAIS ====
+// ==========================================================
+
+// 1. Popup de Erro de Data (Mismatch)
+const closeMismatch = document.getElementById('closeMismatchPopup');
+const cancelMismatch = document.getElementById('cancelMismatch');
+
+if (closeMismatch) {
+    closeMismatch.addEventListener('click', () => {
+        document.getElementById('eventMismatchPopup').style.display = 'none';
+    });
+}
+
+if (cancelMismatch) {
+    cancelMismatch.addEventListener('click', () => {
+        document.getElementById('eventMismatchPopup').style.display = 'none';
+    });
+}
+
+// 2. Popup de Confirmação (Memorial/Assembleia/etc)
+// Nota: O botão "Cancelar" já é tratado pela Promise na função showSpecialEventConfirmation,
+// mas se quiser adicionar um botão "X" no cabeçalho desse popup, o código abaixo garante que fecha.
+const cancelMemorial = document.getElementById('cancelMemorialSave');
+if (cancelMemorial) {
+    cancelMemorial.addEventListener('click', () => {
+        document.getElementById('memorialConfirmationPopup').style.display = 'none';
+    });
+}
+
+// Opcional: Fechar ao clicar fora do conteúdo (no fundo escuro)
+window.addEventListener('click', (event) => {
+    const mismatchPopup = document.getElementById('eventMismatchPopup');
+    const memorialPopup = document.getElementById('memorialConfirmationPopup');
+    
+    if (event.target === mismatchPopup) {
+        mismatchPopup.style.display = 'none';
+    }
+    if (event.target === memorialPopup) {
+        memorialPopup.style.display = 'none';
+    }
+});
+
+
 </script>
 <script src="main.js"></script>
 </body>
