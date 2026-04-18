@@ -80,6 +80,11 @@
     background-color: #eceff1; /* Um cinza azulado muito claro */
 }
 
+/* Cores para os novos itens na edição */
+.checkbox-item:has(input[value="Estudante"]) { background-color: #eceff1; }
+.checkbox-item:has(input[value="Servo de Circuito"]) { background-color: #d1c4e9; } /* Roxo claro */
+.checkbox-item:has(input[value="Orador Público"]) { background-color: #cfd8dc; }    /* Cinza azulado */
+
     </style>
 </head>
 <body>
@@ -149,7 +154,28 @@
                 </div>
                 
                 <div class="form-group"><label for="emoji">Emoji (Opcional)</label><input type="text" id="emoji" maxlength="2"></div>
-                <div class="form-group"><label>Quem faz?</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label><label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Estudante">Estudante</label></div></div>
+
+<div class="form-group">
+    <label>Quem faz?</label>
+    <div class="checkbox-group">
+        <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label>
+        <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label>
+        <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label>
+        <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label>
+        <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label>
+        <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label>
+        <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Estudante">Estudante</label>
+        
+        <!-- GAP/ESPAÇO -->
+        <div style="height: 15px;"></div> 
+        
+        <!-- NOVAS OPÇÕES -->
+        <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo de Circuito">Servo de Circuito</label>
+        <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Orador Público">Orador Público</label>
+    </div>
+</div>
+
+
                 <div class="form-group switch-group"><label for="status">Desligado/Ligado</label><label class="switch"><input type="checkbox" id="status"><span class="slider round"></span></label></div>
                 <button type="submit" class="btn-salvar">Salvar Alterações</button>
             </form>
