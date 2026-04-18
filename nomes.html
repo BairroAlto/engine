@@ -1455,11 +1455,26 @@ body.sidebar-collapsed .column:first-child {
 
         <form id="advanced-filter-form">
             <!-- LINHA 0: Status Principal -->
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label class="boolean-checkbox-label" style="background: #2c3e50; border: 1px solid #34495e; padding: 10px 15px; width: 100%; justify-content: center;">
-                    <input type="checkbox" id="f-naCongregacao" checked> <strong>Mostrar apenas "Na Congregação"</strong>
-                </label>
-            </div>
+<div class="form-group" style="margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+    <!-- Coluna 1 -->
+    <label class="boolean-checkbox-label" style="background: #2c3e50; border: 1px solid #34495e; padding: 10px 15px; justify-content: center; margin-bottom: 0;">
+        <input type="checkbox" id="f-naCongregacao"> <strong>Na Congregação</strong>
+    </label>
+    <!-- Coluna 2 -->
+    <label class="boolean-checkbox-label" style="background: #2c3e50; border: 1px solid #34495e; padding: 10px 15px; justify-content: center; margin-bottom: 0;">
+        <input type="checkbox" id="f-ativo"> <strong>Apenas Ativos</strong>
+    </label>
+    
+    <!-- Nova Linha - Coluna 1 -->
+    <label class="boolean-checkbox-label" style="background: #502c2c; border: 1px solid #5e3434; padding: 10px 15px; justify-content: center; margin-bottom: 0;">
+        <input type="checkbox" id="f-foraCongregacao"> <strong>Fora da Congregação</strong>
+    </label>
+    <!-- Nova Linha - Coluna 2 -->
+    <label class="boolean-checkbox-label" style="background: #502c2c; border: 1px solid #5e3434; padding: 10px 15px; justify-content: center; margin-bottom: 0;">
+        <input type="checkbox" id="f-inativo"> <strong>Apenas Não-Ativos</strong>
+    </label>
+</div>
+
 
             <div class="filter-grid-3">
                 <div class="form-group">
@@ -1612,7 +1627,7 @@ body.sidebar-collapsed .column:first-child {
                             <h4>Informações Espirituais</h4>
                             <!-- NOVO: Adicionado aqui para visualização -->
                             <div class="data-item"><strong>Na Congregação?:</strong> <span id="detail-naCongregacao">-</span></div>
-                            <div class="data-item"><strong>Ativo:</strong> <span id="detail-ativo">-</span></div>
+                            <div class="data-item"><strong>Ativo (designações):</strong> <span id="detail-ativo">-</span></div>
                             <div class="data-item"><strong>Grupo:</strong> <span id="detail-grupo">-</span></div>
                             <div class="data-item"><strong>Privilégios Congregação:</strong> <div id="detail-privilegiosCongregacao" class="array-data">-</div></div>
                             <div class="data-item"><strong>Privilégios Pregação:</strong> <div id="detail-privilegiosPregacao" class="array-data">-</div></div>
@@ -1631,7 +1646,7 @@ body.sidebar-collapsed .column:first-child {
                                 </div>
                                 <div class="form-group">
                                     <label class="boolean-checkbox-label">
-                                        <input type="checkbox" id="edit-ativo"> Ativo
+                                        <input type="checkbox" id="edit-ativo"> Ativo (designações)
                                     </label>
                                 </div>
                             </div>
@@ -1918,11 +1933,13 @@ let activeAdvancedFilters = {
 };
         // --- Variáveis de Estado ---
 let activeFilters = { 
-    naCongregacao: true, // Garante que começa filtrado
+    naCongregacao: true, 
+    ativo: false, // Inicia desligado conforme solicitado
     generos: [], personalidades: [], idiomas: [], 
     privCongs: [], privPregas: [], privEsps: [],
     fazDirigente: false, fazCarrinhos: false, fazReuniao: false 
 };
+
         let selectedPersonId = null;
         let chartInstances = {};
         let unfilteredHistoryItems = [];
@@ -2026,26 +2043,6 @@ function populateFilterOptions() {
     pop('f-privEsp', allPrivilegios.especiais);
 }
 
-// Aplicar Filtros
-btnApplyFilters.addEventListener('click', () => {
-    activeAdvancedFilters = {
-        naCongregacao: document.getElementById('f-naCongregacao').checked,
-        genero: document.getElementById('f-genero').value,
-        personalidade: document.getElementById('f-personalidade').value,
-        idioma: document.getElementById('f-idioma').value,
-        privCong: document.getElementById('f-privCong').value,
-        privPreg: document.getElementById('f-privPreg').value,
-        privEsp: document.getElementById('f-privEsp').value,
-        fazDirigente: document.getElementById('f-fazDirigente').checked,
-        fazCarrinhos: document.getElementById('f-fazCarrinhos').checked,
-        fazReuniao: document.getElementById('f-fazReuniao').checked
-    };
-    filterPessoasList(); // Chama a função de filtragem
-    filterModal.style.display = 'none';
-    
-    // Feedback visual no botão de filtro se houver filtros ativos (além do padrão)
-    btnOpenFilter.style.color = Object.values(activeAdvancedFilters).filter(v => v === true || v !== "").length > 1 ? "#007bff" : "#495057";
-});
 
 // Resetar Filtros
 btnResetFilters.addEventListener('click', () => {
@@ -2077,7 +2074,10 @@ function getCheckedValues(containerId) {
 // Aplicar Filtros
 btnApplyFilters.addEventListener('click', () => {
     activeFilters = {
-        naCongregacao: document.getElementById('f-naCongregacao').checked,
+     naCongregacao: document.getElementById('f-naCongregacao').checked,
+        foraCongregacao: document.getElementById('f-foraCongregacao').checked, // NOVO
+        ativo: document.getElementById('f-ativo').checked,
+        inativo: document.getElementById('f-inativo').checked, // NOVO
         generos: getCheckedValues('f-genero-list'),
         personalidades: getCheckedValues('f-personalidade-list'),
         idiomas: getCheckedValues('f-idioma-list'),
@@ -2103,48 +2103,10 @@ btnResetFilters.addEventListener('click', () => {
     document.getElementById('advanced-filter-form').reset();
     document.querySelectorAll('.multi-select-container input').forEach(cb => cb.checked = false);
     document.getElementById('f-naCongregacao').checked = true;
+    document.getElementById('f-ativo').checked = false;
     btnApplyFilters.click();
 });
 
-// Função de Filtragem Principal
-function filterPessoasList() {
-    const textSearch = removerAcentos(filterPessoasInput.value.toLowerCase().trim());
-    const listItems = pessoasListUl.getElementsByTagName('li');
-    const dataMap = allPessoasData.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
-
-    const f = activeFilters;
-
-    for (let li of listItems) {
-        if (li.textContent === 'Nenhuma pessoa encontrada.') continue;
-        const p = dataMap[li.dataset.id];
-        if (!p) continue;
-
-        // 1. Busca por texto
-        const matchesText = removerAcentos(p.nomePessoa.toLowerCase()).includes(textSearch);
-
-        // 2. Filtros de Seleção Múltipla (OU entre itens da mesma categoria)
-        const matchGen = f.generos.length === 0 || f.generos.includes(p.genero);
-        const matchPers = f.personalidades.length === 0 || f.personalidades.includes(p.personalidade);
-        const matchIdio = f.idiomas.length === 0 || f.idiomas.includes(p.idioma);
-        
-        // Filtros de Arrays (se a pessoa tem ALGUM dos privilégios selecionados)
-        const matchPrivC = f.privCongs.length === 0 || (p.privilegiosCongregacao || []).some(pc => f.privCongs.includes(pc));
-        const matchPrivP = f.privPregas.length === 0 || (p.privilegiosPregacao || []).some(pp => f.privPregas.includes(pp));
-        const matchPrivE = f.privEsps.length === 0 || (p.privilegiosEspeciais || []).some(pe => f.privEsps.includes(pe));
-
-        // 3. Filtros Booleanos (E estrito)
-        const matchNaCong = !f.naCongregacao || (p.naCongregacao === true || p.naCongregacao === "true");
-        const matchDirig = !f.fazDirigente || p.fazDesignacoesDirigente === true;
-        const matchCarr = !f.fazCarrinhos || p.fazDesignacoesPregacao === true;
-        const matchReun = !f.fazReuniao || p.fazDesignacoesReuniao === true;
-
-        if (matchesText && matchGen && matchPers && matchIdio && matchPrivC && matchPrivP && matchPrivE && matchNaCong && matchDirig && matchCarr && matchReun) {
-            li.style.display = '';
-        } else {
-            li.style.display = 'none';
-        }
-    }
-}
 
         // --- Funções de Sugestão ---
         function showSuggestions(suggestions, container, onSelect) {
@@ -2330,55 +2292,51 @@ function filterPessoasList() {
         }
 
 function filterPessoasList() {
-    // 1. Pega o texto da busca por nome
     const textSearch = removerAcentos((filterPessoasInput.value || "").toLowerCase().trim());
-    
-    // 2. Seleciona todos os itens da lista <li>
     const listItems = pessoasListUl.getElementsByTagName('li');
-    
-    // 3. Cria um mapa dos dados para acesso rápido por ID
-    const dataMap = allPessoasData.reduce((acc, p) => { 
-        acc[p.id] = p; 
-        return acc; 
-    }, {});
+    const dataMap = allPessoasData.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
 
-    const f = activeFilters; // Nossos filtros do modal
+    const f = activeFilters; 
 
     for (let li of listItems) {
-        // Ignora a mensagem de "vazio"
         if (li.textContent.includes('Nenhuma pessoa')) continue;
-        
         const p = dataMap[li.dataset.id];
         if (!p) continue;
-
-        // --- LÓGICA DE FILTRAGEM ---
 
         // A. Busca por Nome
         const matchesText = removerAcentos((p.nomePessoa || "").toLowerCase()).includes(textSearch);
 
-        // B. Gênero, Personalidade e Idioma (Seleção Múltipla - basta um ser verdadeiro)
+        // B. Gêneros, Personalidades e Idiomas
         const matchGen = f.generos.length === 0 || f.generos.includes(p.genero);
         const matchPers = f.personalidades.length === 0 || f.personalidades.includes(p.personalidade);
         const matchIdio = f.idiomas.length === 0 || f.idiomas.includes(p.idioma);
         
-        // C. Privilégios (Verifica se a pessoa tem pelo menos UM dos selecionados)
+        // C. Privilégios
         const matchPrivC = f.privCongs.length === 0 || (p.privilegiosCongregacao || []).some(pc => f.privCongs.includes(pc));
         const matchPrivP = f.privPregas.length === 0 || (p.privilegiosPregacao || []).some(pp => f.privPregas.includes(pp));
         const matchPrivE = f.privEsps.length === 0 || (p.privilegiosEspeciais || []).some(pe => f.privEsps.includes(pe));
 
-        // D. Checkboxes Booleanos (E estrito - se marcado no filtro, TEM que ser true no perfil)
-        const matchNaCong = !f.naCongregacao || (p.naCongregacao === true || p.naCongregacao === "true");
-        const matchDirig = !f.fazDirigente || p.fazDesignacoesDirigente === true;
-        const matchCarr = !f.fazCarrinhos || p.fazDesignacoesPregacao === true;
-        const matchReun = !f.fazReuniao || p.fazDesignacoesReuniao === true;
+        // D. Lógica de Status (Onde incluímos os novos campos)
+        // Se o filtro estiver marcado, a pessoa deve corresponder ao valor exato.
+        const matchNaCong   = !f.naCongregacao   || (p.naCongregacao === true || p.naCongregacao === "true");
+        const matchForaCong = !f.foraCongregacao || (p.naCongregacao === false || p.naCongregacao === "false");
+        
+        const matchAtivo    = !f.ativo           || (p.ativo === true || p.ativo === "true");
+        const matchInativo  = !f.inativo         || (p.ativo === false || p.ativo === "false");
 
-        // --- APLICAR RESULTADO ---
+        // Outras funções
+        const matchDirig = !f.fazDirigente || p.fazDesignacoesDirigente === true;
+        const matchCarr  = !f.fazCarrinhos || p.fazDesignacoesPregacao === true;
+        const matchReun  = !f.fazReuniao   || p.fazDesignacoesReuniao  === true;
+
+        // Validação Final
         if (matchesText && matchGen && matchPers && matchIdio && 
             matchPrivC && matchPrivP && matchPrivE && 
-            matchNaCong && matchDirig && matchCarr && matchReun) {
-            li.style.display = ''; // Mostra
+            matchNaCong && matchForaCong && matchAtivo && matchInativo && 
+            matchDirig && matchCarr && matchReun) {
+            li.style.display = ''; 
         } else {
-            li.style.display = 'none'; // Esconde
+            li.style.display = 'none';
         }
     }
 }
