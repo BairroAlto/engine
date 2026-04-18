@@ -1403,6 +1403,27 @@ body.sidebar-collapsed .column:first-child {
     color: #ffffff;    /* Fica branco ao passar o mouse */
 }
 
+.visita-row-edit {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+.visita-row-edit input[type="date"] {
+    flex: 1;
+}
+.btn-remove-visita {
+    background: none;
+    border: none;
+    color: #dc3545;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
     </style>
 </head>
 <body>
@@ -1564,6 +1585,7 @@ body.sidebar-collapsed .column:first-child {
                         <button class="tab-button" data-tab="pregacao-tab">Pregação</button>
                         <button class="tab-button" data-tab="permissoes-tab">Designações</button>
                         <button class="tab-button" data-tab="disponibilidade-tab">Ausências</button>
+                        <button class="tab-button" data-tab="visita-tab" id="visita-tab-btn" style="display: none;">Visita</button>
                     </div>
 
                     <!-- Aba Pessoal -->
@@ -1787,10 +1809,13 @@ body.sidebar-collapsed .column:first-child {
                     </div>
                     
                     <!-- Aba de Disponibilidade (Ausências) -->
-                    <div id="disponibilidade-tab" class="tab-content">
+                   <div id="disponibilidade-tab" class="tab-content">
                         <div class="display-mode">
                             <h4>Disponibilidade Geral</h4>
-                             <div class="data-item"><strong>Ausências:</strong> <pre><code id="detail-ausencias">-</code></pre></div>
+                             <div class="data-item">
+                                <strong>Ausências:</strong> 
+                                <div id="detail-ausencias-list" class="array-data" style="display: block; background: none; padding: 0;">-</div>
+                             </div>
                         </div>
                         <div class="edit-mode" style="display: none;">
                             <h4>Editar Ausências</h4>
@@ -1817,9 +1842,60 @@ body.sidebar-collapsed .column:first-child {
                             <button class="cancel-btn" data-tab-target="disponibilidade-tab"><i class="fas fa-times"></i> Cancelar</button>
                         </div>
                     </div>
+
+                    <!-- Aba de Visita (Apenas Servo de Circuito) -->
+                    <div id="visita-tab" class="tab-content">
+                        <div class="display-mode">
+                            <h4>Datas de Visita do Servo de Circuito</h4>
+                            <div id="detail-visitas-list" class="array-data" style="display: block; background: none; padding: 0;">
+                                <!-- Lista de visitas formatada via JS -->
+                            </div>
+                        </div>
+                        <div class="edit-mode" style="display: none;">
+                            <h4>Editar Datas de Visita</h4>
+                            <div id="edit-visita-container">
+                                <!-- Linhas de data dinâmicas criadas via JS -->
+                            </div>
+                            <button type="button" id="btn-add-visita-row" style="margin-top: 15px; padding: 8px 15px; background: #e7f1ff; border: 1px solid #007bff; color: #007bff; border-radius: 4px; font-weight: 600; cursor: pointer;">
+                                <i class="fas fa-plus"></i> Mais intervalo
+                            </button>
+                        </div>
+                        <div class="edit-controls">
+                            <button class="edit-btn" data-tab-target="visita-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
+                            <button class="save-btn" data-tab-target="visita-tab"><i class="fas fa-save"></i> Gravar</button>
+                            <button class="cancel-btn" data-tab-target="visita-tab"><i class="fas fa-times"></i> Cancelar</button>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+               <!-- Aba de Visita (Apenas Servo de Circuito) -->
+<div id="visita-tab" class="tab-content">
+    <div class="display-mode">
+        <h4>Datas de Visita do Servo de Circuito</h4>
+        <div id="detail-visitas-list" class="array-data" style="display: block; background: none; padding: 0;">
+            <!-- Lista de visitas formatada -->
         </div>
+    </div>
+    <div class="edit-mode" style="display: none;">
+        <h4>Editar Datas de Visita</h4>
+        <div id="edit-visita-container">
+            <!-- Linhas de data dinâmicas -->
+        </div>
+        <button type="button" id="btn-add-visita-row" style="margin-top: 15px; padding: 8px 15px; background: #e7f1ff; border: 1px solid #007bff; color: #007bff; border-radius: 4px; font-weight: 600;">
+            <i class="fas fa-plus"></i> Mais intervalo
+        </button>
+    </div>
+    <div class="edit-controls">
+        <button class="edit-btn" data-tab-target="visita-tab"><i class="fas fa-pencil-alt"></i> Editar</button>
+        <button class="save-btn" data-tab-target="visita-tab"><i class="fas fa-save"></i> Gravar</button>
+        <button class="cancel-btn" data-tab-target="visita-tab"><i class="fas fa-times"></i> Cancelar</button>
+    </div>
+</div>
+
+        </div>
+
+     
 
         <!-- Coluna 3: Histórico -->
         <div class="column history-column">
@@ -2278,20 +2354,34 @@ btnResetFilters.addEventListener('click', () => {
             return label;
         }
 
-        function updateAusenciasDisplay() {
-            selectedAusenciasListDiv.innerHTML = '';
-            selectedAusencias.sort().forEach(date => {
-                const item = document.createElement('div'); item.className = 'ausencia-item';
-                const text = document.createElement('span'); text.textContent = date.split('-').reverse().join('/');
-                const removeBtn = document.createElement('button'); removeBtn.className = 'remove-ausencia-btn'; removeBtn.innerHTML = '×'; removeBtn.title = 'Remover data'; removeBtn.type = 'button';
-                removeBtn.onclick = () => {
-                    selectedAusencias = selectedAusencias.filter(d => d !== date);
-                    updateAusenciasDisplay();
-                };
-                item.appendChild(text); item.appendChild(removeBtn);
-                selectedAusenciasListDiv.appendChild(item);
-            });
-        }
+       function updateAusenciasDisplay() {
+    const listDiv = document.getElementById('selected-ausencias-list');
+    listDiv.innerHTML = '';
+    
+    selectedAusencias.sort().forEach(date => {
+        const item = document.createElement('div'); 
+        item.className = 'ausencia-item';
+        
+        // Estilo igual ao que já tinhas, mas garantindo que o ano atual é fácil de ver
+        const formatada = date.split('-').reverse().join('/');
+        const text = document.createElement('span'); 
+        text.textContent = formatada;
+        
+        const removeBtn = document.createElement('button'); 
+        removeBtn.className = 'remove-ausencia-btn'; 
+        removeBtn.innerHTML = '×'; 
+        removeBtn.type = 'button';
+        removeBtn.onclick = () => {
+            selectedAusencias = selectedAusencias.filter(d => d !== date);
+            updateAusenciasDisplay();
+            hasChanges = true;
+        };
+        
+        item.appendChild(text); 
+        item.appendChild(removeBtn);
+        listDiv.appendChild(item);
+    });
+}
 
 function filterPessoasList() {
     const textSearch = removerAcentos((filterPessoasInput.value || "").toLowerCase().trim());
@@ -2478,7 +2568,7 @@ if (autoSelectId) {
 }
 
         // --- Funções de Preenchimento e Lógica de Edição ---
-    function loadPersonDetails(personId) {
+function loadPersonDetails(personId) {
     showLoading('detail', true);
     
     // Limpa o nome centralizado antes de carregar o novo
@@ -2494,26 +2584,89 @@ if (autoSelectId) {
             // Define o nome no centro da barra
             document.getElementById('detail-name').textContent = selectedPersonData.nomePessoa || 'Nome não encontrado';
             
-            // ATUALIZADO: Chama a função passando os dois status (Congregação e Ativo)
+            // Atualiza a cor de fundo e ícone de status (Ativo/Inativo e Na Congregação)
             updateTitleBackground(selectedPersonData.naCongregacao, selectedPersonData.ativo);
             
-            // Preenche os dados de visualização em cada aba
+            // --- LÓGICA DA ABA DE VISITA (EXCLUSIVA PARA SERVO DE CIRCUITO) ---
+            const privilegiosEspeciais = selectedPersonData.privilegiosEspeciais || [];
+            const isSC = privilegiosEspeciais.includes('Servo de Circuito');
+            const visitaTabBtn = document.getElementById('visita-tab-btn');
+
+            if (visitaTabBtn) {
+                // Só mostra o botão da aba se for Servo de Circuito
+                visitaTabBtn.style.display = isSC ? 'inline-block' : 'none';
+            }
+
+            // --- PREENCHIMENTO DOS DADOS EM CADA ABA ---
             populatePessoalTab(selectedPersonData);
             populateEspiritualTab(selectedPersonData);
             populatePregacaoTab(selectedPersonData);
             populatePermissoesTab(selectedPersonData);
             populateDisponibilidadeTab(selectedPersonData);
             
-            // Por padrão, abre a aba Pessoal ao selecionar
+            // Preenche a nova aba de visitas (caso exista dados)
+            if (typeof populateVisitaTab === 'function') {
+                populateVisitaTab(selectedPersonData);
+            }
+            
+            // Por padrão, abre a aba Pessoal ao selecionar uma nova pessoa
             switchTab('pessoal-tab');
+            
         } else { 
-            console.error("Pessoa não encontrada"); 
+            console.error("Pessoa não encontrada no banco de dados."); 
+            alert("Erro: Pessoa não encontrada.");
         }
     }).catch(error => { 
         console.error("Erro ao carregar detalhes:", error); 
         showLoading('detail', false);
+        alert("Erro ao carregar detalhes da pessoa.");
     });
 }
+
+function populateVisitaTab(data) {
+    const listDiv = document.getElementById('detail-visitas-list');
+    listDiv.innerHTML = '';
+    
+    if (data.visita && data.visita.length > 0) {
+        data.visita.forEach(v => {
+            const span = document.createElement('span');
+            span.style.display = 'block';
+            span.style.marginBottom = '5px';
+            span.style.backgroundColor = '#e9ecef';
+            span.style.color = '#333';
+            // Formata YYYY-MM-DD para DD/MM/YYYY
+            const inicio = v.inicio.split('-').reverse().join('/');
+            const fim = v.fim.split('-').reverse().join('/');
+            span.textContent = `📅 ${inicio} até ${fim}`;
+            listDiv.appendChild(span);
+        });
+    } else {
+        listDiv.textContent = 'Nenhuma visita registrada.';
+    }
+}
+
+function createVisitaEditRow(inicio = '', fim = '') {
+    const container = document.getElementById('edit-visita-container');
+    const currentYear = new Date().getFullYear();
+    
+    const row = document.createElement('div');
+    row.className = 'visita-row-edit';
+    row.innerHTML = `
+        <input type="date" class="edit-v-inicio" value="${inicio || currentYear + '-01-01'}">
+        <span>até</span>
+        <input type="date" class="edit-v-fim" value="${fim || currentYear + '-12-31'}">
+        <button type="button" class="btn-remove-visita"><i class="fas fa-trash"></i></button>
+    `;
+    
+    row.querySelector('.btn-remove-visita').onclick = () => {
+        row.remove();
+        hasChanges = true;
+    };
+    container.appendChild(row);
+}
+
+// Evento do botão "Mais intervalo"
+document.getElementById('btn-add-visita-row').onclick = () => createVisitaEditRow();
 
   function populatePessoalTab(data) {
     document.getElementById('detail-nomePessoa').textContent = data.nomePessoa || '-';
@@ -2572,8 +2725,63 @@ if (autoSelectId) {
     document.getElementById('detail-acompanhaCarrinhos').textContent = formatBoolean(data.acompanhaCarrinhos);
 }
 
-        function populateDisponibilidadeTab(data) { document.getElementById('detail-ausencias').textContent = formatAusencias(data.ausencias); }
+function populateDisponibilidadeTab(data) {
+    const listDiv = document.getElementById('detail-ausencias-list');
+    listDiv.innerHTML = '';
+    
+    const ausencias = data.ausencias || [];
+    
+    if (ausencias.length > 0) {
+        // 1. Ordenar as datas
+        const sortedDates = [...ausencias].sort();
         
+        // 2. Lógica para agrupar datas consecutivas
+        const groups = [];
+        if (sortedDates.length > 0) {
+            let start = sortedDates[0];
+            let end = sortedDates[0];
+
+            for (let i = 1; i <= sortedDates.length; i++) {
+                const currentDate = sortedDates[i];
+                const lastDate = new Date(end);
+                const nextDay = new Date(lastDate);
+                nextDay.setDate(lastDate.getDate() + 1);
+                const nextDayStr = nextDay.toISOString().split('T')[0];
+
+                if (currentDate === nextDayStr) {
+                    end = currentDate;
+                } else {
+                    groups.push(start === end ? start : `${start} a ${end}`);
+                    start = currentDate;
+                    end = currentDate;
+                }
+            }
+        }
+
+        // 3. Renderizar os grupos (Badges)
+        groups.forEach(group => {
+            const span = document.createElement('span');
+            span.style.display = 'inline-block';
+            span.style.margin = '4px 8px 4px 0';
+            span.style.padding = '6px 14px';
+            span.style.borderRadius = '8px';
+            span.style.backgroundColor = 'rgba(231, 76, 60, 0.1)'; // Vermelho suave transparente
+            span.style.color = '#e74c3c';
+            span.style.fontSize = '0.9rem';
+            span.style.fontWeight = '600';
+            span.style.border = '1px solid rgba(231, 76, 60, 0.3)';
+            
+            // Formatar as datas para o padrão europeu (DD/MM/YYYY)
+            const textContent = group.split(' a ').map(d => d.split('-').reverse().join('/')).join(' a ');
+            
+            span.textContent = `🚫 ${textContent}`;
+            listDiv.appendChild(span);
+        });
+    } else {
+        listDiv.textContent = 'Nenhuma ausência registrada.';
+    }
+}
+
   function populatePermissoesTab(data) {
         const fazReuniaoSpan = document.getElementById('detail-fazDesignacoesReuniao');
         const designacoesContainer = document.getElementById('detail-designacoesReuniao');
@@ -2713,9 +2921,9 @@ function cancelEditMode() {
 
 
 function handlePrivilegeChange(e) {
-    const changedCheckbox = e.target;
-    if (changedCheckbox.type !== 'checkbox') return;
+    if (e.target.type !== 'checkbox') return;
 
+    const changedCheckbox = e.target;
     const checkboxType = changedCheckbox.dataset.type;
     const isChecked = changedCheckbox.checked;
 
@@ -2723,64 +2931,48 @@ function handlePrivilegeChange(e) {
     const espGroup = document.getElementById('edit-privilegios-especiais-group');
     const pregGroup = document.getElementById('edit-privilegios-pregacao-group');
 
-    // Função auxiliar para desmarcar um grupo inteiro de checkboxes
-    const uncheckGroup = (group) => {
-        if (group) {
-            group.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-        }
-    };
-
-    // --- LÓGICA DE EXCLUSIVIDADE DE PRIVILÉGIOS ---
     if (isChecked) {
-        // 1. Se marcar um privilégio de CONGREGAÇÃO (Ancião, Servo, etc)
+        // Exclusividade: Congregação vs Especiais
         if (checkboxType === 'congregacao') {
-            // Desmarca outros do mesmo grupo (Ancião tira Servo, etc)
             congGroup.querySelectorAll('input').forEach(cb => { if(cb !== changedCheckbox) cb.checked = false; });
-            // Desmarca todos os ESPECIAIS (Servo de Circuito ou Orador Público)
-            uncheckGroup(espGroup);
+            espGroup.querySelectorAll('input').forEach(cb => cb.checked = false);
         }
-
-        // 2. Se marcar um privilégio ESPECIAL (Servo de Circuito ou Orador Público)
         if (checkboxType === 'especiais') {
-            // Desmarca todos os de CONGREGAÇÃO
-            uncheckGroup(congGroup);
+            congGroup.querySelectorAll('input').forEach(cb => cb.checked = false);
+            // Se for SC desmarca Orador e vice-versa (se desejar essa regra)
+            espGroup.querySelectorAll('input').forEach(cb => { if(cb !== changedCheckbox) cb.checked = false; });
         }
-
-        // 3. Se marcar um privilégio de PREGAÇÃO (Pioneiros)
         if (checkboxType === 'pregacao') {
-            // Desmarca outros do mesmo grupo (Pioneiro Regular tira Auxiliar, etc)
             pregGroup.querySelectorAll('input').forEach(cb => { if(cb !== changedCheckbox) cb.checked = false; });
         }
     }
 
-    // --- LÓGICA DE VISIBILIDADE DE CAMPOS ---
-
-    // A. Mostrar campo "Congregação" apenas se for Orador Público
-    const oradorPublicoCheckbox = espGroup.querySelector('input[value="Orador Público"]');
-    const congregacaoGroupDiv = document.getElementById('congregacao-externa-group');
-    if (oradorPublicoCheckbox && congregacaoGroupDiv) {
-        const deveMostrar = oradorPublicoCheckbox.checked;
-        congregacaoGroupDiv.style.display = deveMostrar ? 'block' : 'none';
-        if (!deveMostrar) {
-            document.getElementById('edit-congregacao').value = ''; // Limpa o texto se esconder
-        }
-    }
-
-    // B. Filtrar designações na aba "Designações" baseando-se no Servo de Circuito
-    // Chamamos a função que filtra os itens com a classe 'designacao-sc-reuniao'
-    if (typeof filtrarDesignacoesSCReuniao === 'function') {
-        filtrarDesignacoesSCReuniao();
-    }
+    // VISIBILIDADE EM TEMPO REAL
     
-    // Marca que houve alterações para o aviso de saída da página
+    // 1. Mostrar/Esconder campo Congregação (Orador Público)
+    const oradorPublicoCB = espGroup.querySelector('input[value="Orador Público"]');
+    document.getElementById('congregacao-externa-group').style.display = oradorPublicoCB?.checked ? 'block' : 'none';
+
+    // 2. Mostrar/Esconder Aba de Visita (Servo de Circuito)
+    const servoCircuitoCB = espGroup.querySelector('input[value="Servo de Circuito"]');
+    const visitaTabBtn = document.getElementById('visita-tab-btn');
+    if (visitaTabBtn) {
+        visitaTabBtn.style.display = servoCircuitoCB?.checked ? 'inline-block' : 'none';
+    }
+
+    // 3. Filtrar designações de reunião exclusivas de SC
+    filtrarDesignacoesSCReuniao();
+    
     hasChanges = true;
 }
 
-
+    
 
 
 
 function populateEditFields(tabId, data) {
+    if (!data) return;
+
     if (tabId === 'pessoal-tab') {
         document.getElementById('edit-nomePessoa').value = data.nomePessoa || '';
         document.getElementById('edit-nomeCompletoPessoa').value = data.nomeCompletoPessoa || '';
@@ -2796,25 +2988,10 @@ function populateEditFields(tabId, data) {
         document.getElementById('edit-casadoCom').value = data.casadoCom ? (allPessoasNames[data.casadoCom] || '') : '';
 
     } else if (tabId === 'espiritual-tab') {
-        const naCongregacaoCB = document.getElementById('edit-naCongregacao');
-        const ativoCB = document.getElementById('edit-ativo');
-
-        // Preenche os valores iniciais dos checkboxes
-        naCongregacaoCB.checked = typeof data.naCongregacao === 'boolean' ? data.naCongregacao : true;
-        ativoCB.checked = typeof data.ativo === 'boolean' ? data.ativo : true;
-        
-        // ATUALIZADO: Lógica para mudar a barra e ícone em tempo real durante a edição
-        const refreshHeader = () => {
-            updateTitleBackground(naCongregacaoCB.checked, ativoCB.checked);
-            hasChanges = true; // Marca que houve alteração para o aviso de saída
-        };
-
-        naCongregacaoCB.onclick = refreshHeader;
-        ativoCB.onclick = refreshHeader;
-
+        document.getElementById('edit-naCongregacao').checked = typeof data.naCongregacao === 'boolean' ? data.naCongregacao : true;
+        document.getElementById('edit-ativo').checked = typeof data.ativo === 'boolean' ? data.ativo : true;
         document.getElementById('edit-grupo').value = data.grupo || '';
         
-        // Preenche os grupos de privilégios (Congregação, Pregação, Especiais)
         const populatePrivilegeGroup = (groupDivId, privilegeType, currentPrivileges) => {
             const groupDiv = document.getElementById(groupDivId);
             groupDiv.innerHTML = '';
@@ -2828,36 +3005,26 @@ function populateEditFields(tabId, data) {
         populatePrivilegeGroup('edit-privilegios-pregacao-group', 'pregacao', data.privilegiosPregacao);
         populatePrivilegeGroup('edit-privilegios-especiais-group', 'especiais', data.privilegiosEspeciais);
 
-        // Lógica de exibição da congregação externa (para Oradores Públicos)
         const oradorPublicoChecked = (data.privilegiosEspeciais || []).includes('Orador Público');
-        const congregacaoGroup = document.getElementById('congregacao-externa-group');
+        document.getElementById('congregacao-externa-group').style.display = oradorPublicoChecked ? 'block' : 'none';
         document.getElementById('edit-congregacao').value = data.congregacao || '';
-        congregacaoGroup.style.display = oradorPublicoChecked ? 'block' : 'none';
 
-        // Evento para tratar exclusividade de privilégios (ex: ancião desmarca servo)
         const spiritualEditModeDiv = document.getElementById('espiritual-tab').querySelector('.edit-mode');
         spiritualEditModeDiv.removeEventListener('change', handlePrivilegeChange); 
         spiritualEditModeDiv.addEventListener('change', handlePrivilegeChange);
 
     } else if (tabId === 'pregacao-tab') {
-        const fazPregacaoCB = document.getElementById('edit-fazDesignacoesPregacao');
-        fazPregacaoCB.checked = data.fazDesignacoesPregacao || false;
-        fazPregacaoCB.onclick = updatePregacaoFieldsState;
-
-        const fazDirigenteCB = document.getElementById('edit-fazDesignacoesDirigente');
-        fazDirigenteCB.checked = data.fazDesignacoesDirigente || false;
-        fazDirigenteCB.onclick = updatePregacaoFieldsState;
-
+        document.getElementById('edit-fazDesignacoesPregacao').checked = data.fazDesignacoesPregacao || false;
+        document.getElementById('edit-fazDesignacoesDirigente').checked = data.fazDesignacoesDirigente || false;
         document.getElementById('edit-acompanhaCarrinhos').checked = data.acompanhaCarrinhos || false;
 
         const desigPregacaoGroupDiv = document.getElementById('edit-designacoesPregacao-group');
         desigPregacaoGroupDiv.innerHTML = '';
-        const currentDesigPregacao = data.designacoesPregacao || [];
         allDesignacoes.pregacao.forEach(desig => {
-            desigPregacaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-pregacao', currentDesigPregacao.includes(desig)));
+            const isChecked = (data.designacoesPregacao || []).includes(desig);
+            desigPregacaoGroupDiv.appendChild(createEditCheckbox(desig, 'edit-designacao-pregacao', isChecked));
         });
         
-        // Montagem dos horários baseados no banco
         const horariosSemanaDiv = document.getElementById('edit-horarios-semana');
         const horariosFimDeSemanaDiv = document.getElementById('edit-horarios-fim-de-semana');
         horariosSemanaDiv.innerHTML = '<h5>Semana</h5>'; 
@@ -2867,82 +3034,73 @@ function populateEditFields(tabId, data) {
         const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"];
         const weekendOrder = ["sabado", "domingo"];
         
-        const populateDay = (day, times, container) => {
+        const populateDay = (day, times, container, key) => {
             if (times && Array.isArray(times) && times.length > 0) {
                 const dayContainer = document.createElement('div');
                 dayContainer.className = 'day-container';
-                const dayTitle = document.createElement('h6');
-                dayTitle.textContent = day.charAt(0).toUpperCase() + day.slice(1);
-                dayContainer.appendChild(dayTitle);
-                
-                const keyToUse = container.id === 'edit-horarios-semana' ? 'semana' : 'fimDeSemana';
-                const personTimesForThisDay = (currentHorarios[keyToUse] || {})[day] || [];
-
+                dayContainer.innerHTML = `<h6>${day.charAt(0).toUpperCase() + day.slice(1)}</h6>`;
                 times.sort().forEach(time => {
-                    const isChecked = personTimesForThisDay.includes(time);
+                    const isChecked = (currentHorarios[key] || {})[day]?.includes(time);
                     dayContainer.appendChild(createTimeSlotCheckbox(time, day, isChecked));
                 });
                 container.appendChild(dayContainer);
             }
         };
 
-        weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv));
-        weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimDeSemanaDiv));
-
+        weekOrder.forEach(day => populateDay(day, allHorarios.semana[day], horariosSemanaDiv, 'semana'));
+        weekendOrder.forEach(day => populateDay(day, allHorarios.fimDeSemana[day], horariosFimDeSemanaDiv, 'fimDeSemana'));
+        
         updatePregacaoFieldsState();
 
-    } else if (tabId === 'disponibilidade-tab') {
-        selectedAusencias = (data.ausencias || []).map(ausencia => {
-            if (ausencia?.toDate) {
-                const d = ausencia.toDate();
-                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            }
-            return ausencia;
-        }).filter(Boolean);
-        updateAusenciasDisplay();
-
     } else if (tabId === 'permissoes-tab') {
-        const fazReuniaoCB = document.getElementById('edit-fazDesignacoesReuniao');
-        fazReuniaoCB.checked = data.fazDesignacoesReuniao || false;
-        fazReuniaoCB.onclick = updateReuniaoFieldsState;
-
+        document.getElementById('edit-fazDesignacoesReuniao').checked = data.fazDesignacoesReuniao || false;
         document.getElementById('edit-regularidade').value = data.regularidade || 'Regularmente';
         document.getElementById('edit-rule').value = data.rule || '';
         
-        const desigReuniaoGroupDiv = document.getElementById('edit-designacoesReuniao-group');
-        desigReuniaoGroupDiv.innerHTML = '';
-        const currentDesigReuniao = data.designacoesReuniao || [];
-        const categoriesOrder = ['resto da semana', 'escola', 'fim de semana', 'tecnicas'];
-        const categoryLabels = {'resto da semana': 'Resto da Semana', 'escola': 'Escola', 'fim de semana': 'Fim de Semana', 'tecnicas': 'Técnicas'};
-        const groupedDesignations = {'resto da semana': [], 'escola': [], 'fim de semana': [], 'tecnicas': [], 'outros': []};
-
-        allDesignacoes.reuniao.forEach(desigObj => {
-            const partKey = desigObj.parte ? desigObj.parte.toLowerCase() : 'outros';
-            if (groupedDesignations[partKey]) groupedDesignations[partKey].push(desigObj);
-            else groupedDesignations['outros'].push(desigObj);
-        });
-
-        categoriesOrder.forEach(key => {
-            const items = groupedDesignations[key];
-            if (items && items.length > 0) {
-                const header = document.createElement('div');
-                header.className = 'category-header';
-                header.textContent = categoryLabels[key];
-                desigReuniaoGroupDiv.appendChild(header);
-                
-                items.sort((a, b) => a.ordem - b.ordem).forEach(desig => {
-                    const isChecked = currentDesigReuniao.includes(desig.nome);
-                    const checkboxItem = createEditCheckbox(desig.nome, 'edit-designacao-reuniao', isChecked);
-                    if (desig.quemFaz && desig.quemFaz.includes("Servo de Circuito")) {
-                        checkboxItem.classList.add('designacao-sc-reuniao');
-                    }
-                    desigReuniaoGroupDiv.appendChild(checkboxItem);
-                });
-                filtrarDesignacoesSCReuniao();
+        const groupDiv = document.getElementById('edit-designacoesReuniao-group');
+        groupDiv.innerHTML = '';
+        const currentDesig = data.designacoesReuniao || [];
+        
+        allDesignacoes.reuniao.forEach(desig => {
+            const isChecked = currentDesig.includes(desig.nome);
+            const checkboxItem = createEditCheckbox(desig.nome, 'edit-designacao-reuniao', isChecked);
+            if (desig.quemFaz && desig.quemFaz.includes("Servo de Circuito")) {
+                checkboxItem.classList.add('designacao-sc-reuniao');
             }
+            groupDiv.appendChild(checkboxItem);
         });
-
+        
         updateReuniaoFieldsState();
+        filtrarDesignacoesSCReuniao();
+
+    } else if (tabId === 'disponibilidade-tab') {
+        // --- ABA AUSÊNCIAS: PREDEFINIR DATA DE HOJE (DIA/MÊS/ANO) ---
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`; // Formato YYYY-MM-DD para o input date
+        
+        document.getElementById('ausencia-single-date').value = todayStr;
+        document.getElementById('ausencia-start-date').value = todayStr;
+        document.getElementById('ausencia-end-date').value = todayStr;
+
+        // Carregar ausências existentes
+        selectedAusencias = (data.ausencias || []).map(a => {
+            if (a?.toDate) return a.toDate().toISOString().split('T')[0];
+            return a;
+        }).filter(Boolean);
+        
+        updateAusenciasDisplay();
+
+    } else if (tabId === 'visita-tab') {
+        const container = document.getElementById('edit-visita-container');
+        container.innerHTML = '';
+        if (data.visita && data.visita.length > 0) {
+            data.visita.forEach(v => createVisitaEditRow(v.inicio, v.fim));
+        } else {
+            createVisitaEditRow(); 
+        }
     }
 }
 
@@ -2973,123 +3131,107 @@ function filtrarDesignacoesSCReuniao() {
     saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gravando...';
     
     let dataToUpdate = {};
-    const batch = db.batch(); // Inicia um lote de operações (Batch)
-
-    // --- COLETA DE DADOS POR ABA ---
-
-    if (tabId === 'pessoal-tab') {
-        const familiaValue = document.getElementById('edit-familia').value.trim();
-        const spouseName = document.getElementById('edit-casadoCom').value.trim();
-        
-        // Encontra o ID do novo cônjuge pelo nome digitado
-        const newSpouse = allPessoasData.find(p => p.nomePessoa === spouseName);
-        const newSpouseId = newSpouse ? newSpouse.id : null;
-        const oldSpouseId = selectedPersonData.casadoCom;
-
-        dataToUpdate = {
-            nomePessoa: document.getElementById('edit-nomePessoa').value.trim(),
-            nomeCompletoPessoa: document.getElementById('edit-nomeCompletoPessoa').value.trim(),
-            morada: document.getElementById('edit-morada').value.trim(),
-            genero: document.getElementById('edit-genero').value,
-            idioma: document.getElementById('edit-idioma').value,
-            personalidade: document.getElementById('edit-personalidade').value,
-            naCongregacao: document.getElementById('edit-naCongregacao').checked,
-            dataNascimento: document.getElementById('edit-dataNascimento').value || null,
-            dataBatismo: document.getElementById('edit-dataBatismo').value || null,
-            email: document.getElementById('edit-email').value.trim(),
-            telemovel: document.getElementById('edit-telemovel').value.trim(),
-            familia: familiaValue ? familiaValue.split(',').map(name => name.trim()).filter(Boolean) : [],
-            casadoCom: newSpouseId
-        };
-
-        // --- LÓGICA DE RECIPROCIDADE (Ponto 1) ---
-        if (newSpouseId !== oldSpouseId) {
-            // 1. Se havia um cônjuge antigo, remove o vínculo dele
-            if (oldSpouseId) {
-                batch.update(db.collection('pessoas').doc(oldSpouseId), { casadoCom: null });
-            }
-            // 2. Se há um novo cônjuge, faz ele apontar para a pessoa atual
-            if (newSpouseId) {
-                batch.update(db.collection('pessoas').doc(newSpouseId), { casadoCom: selectedPersonId });
-            }
-        }
-
-    } else if (tabId === 'espiritual-tab') {
-        const getSelectedPrivileges = (type) => Array.from(document.querySelectorAll(`#edit-privilegios-${type}-group input:checked`)).map(cb => cb.value);
-        dataToUpdate = {
-            ativo: document.getElementById('edit-ativo').checked,
-            grupo: document.getElementById('edit-grupo').value || null,
-            privilegiosCongregacao: getSelectedPrivileges('congregacao'),
-            privilegiosPregacao: getSelectedPrivileges('pregacao'),
-            privilegiosEspeciais: getSelectedPrivileges('especiais'),
-            congregacao: document.getElementById('edit-congregacao').value.trim() || null
-        };
-
-    } else if (tabId === 'pregacao-tab') {
-        const horariosPregacao = { semana: {}, fimDeSemana: {} };
-        document.querySelectorAll('#edit-horarios-semana .horario-checkbox:checked').forEach(cb => {
-            const day = cb.dataset.day; 
-            if (!horariosPregacao.semana[day]) horariosPregacao.semana[day] = []; 
-            horariosPregacao.semana[day].push(cb.value);
-        });
-        document.querySelectorAll('#edit-horarios-fim-de-semana .horario-checkbox:checked').forEach(cb => {
-            const day = cb.dataset.day; 
-            if (!horariosPregacao.fimDeSemana[day]) horariosPregacao.fimDeSemana[day] = []; 
-            horariosPregacao.fimDeSemana[day].push(cb.value);
-        });
-
-        dataToUpdate = { 
-            horariosPregacao: horariosPregacao,
-            fazDesignacoesPregacao: document.getElementById('edit-fazDesignacoesPregacao').checked, 
-            fazDesignacoesDirigente: document.getElementById('edit-fazDesignacoesDirigente').checked,
-            designacoesPregacao: Array.from(document.querySelectorAll('#edit-designacoesPregacao-group input:checked')).map(cb => cb.value),
-            acompanhaCarrinhos: document.getElementById('edit-acompanhaCarrinhos').checked
-        };
-
-    } else if (tabId === 'permissoes-tab') {
-        dataToUpdate = {
-            fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked,
-            regularidade: document.getElementById('edit-regularidade').value,
-            designacoesReuniao: Array.from(document.querySelectorAll('#edit-designacoesReuniao-group input:checked')).map(cb => cb.value),
-            rule: document.getElementById('edit-rule').value.trim() || null
-        };
-
-    } else if (tabId === 'disponibilidade-tab') {
-        dataToUpdate = { ausencias: selectedAusencias.sort() };
-    }
-
-    // --- FINALIZAÇÃO E GRAVAÇÃO ---
+    const batch = db.batch();
 
     try {
-        // Adiciona a atualização da própria pessoa ao Batch
-        batch.update(db.collection('pessoas').doc(selectedPersonId), dataToUpdate);
+        if (tabId === 'pessoal-tab') {
+            const spouseName = document.getElementById('edit-casadoCom').value.trim();
+            const newSpouse = allPessoasData.find(p => p.nomePessoa === spouseName);
+            const newSpouseId = newSpouse ? newSpouse.id : null;
+            const oldSpouseId = selectedPersonData.casadoCom;
 
-        // Executa todas as atualizações no Firestore de uma vez só
+            dataToUpdate = {
+                nomePessoa: document.getElementById('edit-nomePessoa').value.trim(),
+                nomeCompletoPessoa: document.getElementById('edit-nomeCompletoPessoa').value.trim(),
+                morada: document.getElementById('edit-morada').value.trim(),
+                genero: document.getElementById('edit-genero').value,
+                idioma: document.getElementById('edit-idioma').value,
+                personalidade: document.getElementById('edit-personalidade').value,
+                naCongregacao: document.getElementById('edit-naCongregacao').checked,
+                dataNascimento: document.getElementById('edit-dataNascimento').value || null,
+                dataBatismo: document.getElementById('edit-dataBatismo').value || null,
+                email: document.getElementById('edit-email').value.trim(),
+                telemovel: document.getElementById('edit-telemovel').value.trim(),
+                familia: document.getElementById('edit-familia').value.split(',').map(n => n.trim()).filter(Boolean),
+                casadoCom: newSpouseId
+            };
+
+            // Reciprocidade do cônjuge
+            if (newSpouseId !== oldSpouseId) {
+                if (oldSpouseId) batch.update(db.collection('pessoas').doc(oldSpouseId), { casadoCom: null });
+                if (newSpouseId) batch.update(db.collection('pessoas').doc(newSpouseId), { casadoCom: selectedPersonId });
+            }
+
+        } else if (tabId === 'espiritual-tab') {
+            const getSelected = (id) => Array.from(document.querySelectorAll(`#${id} input:checked`)).map(cb => cb.value);
+            dataToUpdate = {
+                ativo: document.getElementById('edit-ativo').checked,
+                grupo: document.getElementById('edit-grupo').value || null,
+                privilegiosCongregacao: getSelected('edit-privilegios-congregacao-group'),
+                privilegiosPregacao: getSelected('edit-privilegios-pregacao-group'),
+                privilegiosEspeciais: getSelected('edit-privilegios-especiais-group'),
+                congregacao: document.getElementById('edit-congregacao').value.trim() || null
+            };
+
+        } else if (tabId === 'pregacao-tab') {
+            const h = { semana: {}, fimDeSemana: {} };
+            document.querySelectorAll('.horario-checkbox:checked').forEach(cb => {
+                const day = cb.dataset.day;
+                const container = cb.closest('.horarios-column').id;
+                const key = container.includes('semana') ? 'semana' : 'fimDeSemana';
+                if (!h[key][day]) h[key][day] = [];
+                h[key][day].push(cb.value);
+            });
+            dataToUpdate = {
+                horariosPregacao: h,
+                fazDesignacoesPregacao: document.getElementById('edit-fazDesignacoesPregacao').checked,
+                fazDesignacoesDirigente: document.getElementById('edit-fazDesignacoesDirigente').checked,
+                designacoesPregacao: Array.from(document.querySelectorAll('#edit-designacoesPregacao-group input:checked')).map(cb => cb.value),
+                acompanhaCarrinhos: document.getElementById('edit-acompanhaCarrinhos').checked
+            };
+
+        } else if (tabId === 'permissoes-tab') {
+            dataToUpdate = {
+                fazDesignacoesReuniao: document.getElementById('edit-fazDesignacoesReuniao').checked,
+                regularidade: document.getElementById('edit-regularidade').value,
+                designacoesReuniao: Array.from(document.querySelectorAll('#edit-designacoesReuniao-group input:checked')).map(cb => cb.value),
+                rule: document.getElementById('edit-rule').value.trim() || null
+            };
+
+        } else if (tabId === 'disponibilidade-tab') {
+            dataToUpdate = { ausencias: selectedAusencias.sort() };
+
+        } else if (tabId === 'visita-tab') {
+            // --- SALVAR VISITAS ---
+            const visitaIntervals = [];
+            document.querySelectorAll('.visita-row-edit').forEach(row => {
+                const inicio = row.querySelector('.edit-v-inicio').value;
+                const fim = row.querySelector('.edit-v-fim').value;
+                if (inicio && fim) visitaIntervals.push({ inicio, fim });
+            });
+            dataToUpdate = { visita: visitaIntervals };
+        }
+
+        batch.update(db.collection('pessoas').doc(selectedPersonId), dataToUpdate);
         await batch.commit();
 
-        // Atualiza os dados locais (Cache)
+        // Atualiza cache e UI
         selectedPersonData = { ...selectedPersonData, ...dataToUpdate };
         const idx = allPessoasData.findIndex(p => p.id === selectedPersonId);
         if (idx !== -1) allPessoasData[idx] = { ...allPessoasData[idx], ...dataToUpdate };
 
-        // Atualiza a interface
+        // Refresh UI
         populatePessoalTab(selectedPersonData);
         populateEspiritualTab(selectedPersonData);
         populatePregacaoTab(selectedPersonData);
         populatePermissoesTab(selectedPersonData);
         populateDisponibilidadeTab(selectedPersonData);
-        
-        if (dataToUpdate.nomePessoa) {
-            const liItem = document.querySelector(`#pessoas-list li[data-id="${selectedPersonId}"]`);
-            if (liItem) liItem.textContent = dataToUpdate.nomePessoa;
-            document.getElementById('detail-name').textContent = dataToUpdate.nomePessoa;
-        }
+        populateVisitaTab(selectedPersonData);
         
         cancelEditMode();
-        console.log("Sucesso ao gravar dados e atualizar vínculos.");
     } catch (error) {
         console.error("Erro ao gravar:", error);
-        alert('Erro ao gravar dados: ' + error.message);
+        alert('Erro ao gravar: ' + error.message);
     } finally {
         saveButton.disabled = false;
         saveButton.innerHTML = '<i class="fas fa-save"></i> Gravar';
