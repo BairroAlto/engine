@@ -2754,7 +2754,7 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
             return { current, previous, next };
         }
 
-       async function updateWeekDisplay() {
+async function updateWeekDisplay() {
     const weekDisplay = document.getElementById('weekDisplay');
     const btn = document.getElementById('btnSeguinte');
     const mes = document.getElementById('mes').value;
@@ -2762,19 +2762,95 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
     const sala = document.getElementById('sala').value;
     const weekInfoContainer = weekDisplay.parentElement;
 
-    // A função de contagem já está correta, então o resto funciona perfeitamente
+    if (!weekDisplay || !btn) return;
+
+    // Calcula a próxima semana baseada no histórico de tarefas técnicas
     const semana = await countHistoricoSemanas(ano, mes, sala) + 1;
     const totalSemanas = getTotalSemanasNoMes(ano, mes);
 
     if (semana > totalSemanas && totalSemanas > 0) {
         weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
         btn.disabled = true;
-        weekInfoContainer.classList.add('warning-state'); // Ativa o aviso
+        weekInfoContainer.classList.add('warning-state');
     } else {
         document.getElementById('semanaNumero').value = semana;
-        weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${getDiasSemana(ano, mes, semana)})`;
+        const intervaloDias = getDiasSemana(ano, mes, semana);
+        weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${intervaloDias})`;
+        
         btn.disabled = false;
-        weekInfoContainer.classList.remove('warning-state'); // Desativa o aviso
+        weekInfoContainer.classList.remove('warning-state');
+
+        // === NOVO: AUTO-DETEÇÃO DE EVENTOS PARA TAREFAS TÉCNICAS ===
+        await autoDetectEventType(); 
+    }
+}
+
+async function autoDetectEventType() {
+    console.log("[AUTO-DETECT] Verificando eventos para a semana técnica...");
+    
+    const tipoSelect = document.getElementById('tipo');
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const ano = await getAnoPainelFirebase();
+
+    // Obtém o intervalo da semana (Segunda a Domingo)
+    const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
+
+    try {
+        const snapshot = await db.collection('eventos')
+            .where('ano', 'in', [ano, ano + 1])
+            .get();
+
+        let tipoDetectado = 'normal'; // Padrão
+
+        // Mapeamento de nomes no Firebase para os valores do seu <select id="tipo">
+        const mapaTipos = {
+            'Memorial': 'memorial',
+            'Assembleia': 'assembleia',
+            'Congresso': 'congresso',
+            'Visita do Servo': 'visita-servo',
+            'Evento Especial': 'evento-especial'
+        };
+
+        snapshot.forEach(doc => {
+            const eventData = doc.data();
+            let dataEvento;
+
+            // 1. Verificação por data única (ex: Visita do Servo ou Memorial)
+            if (eventData.data) {
+                if (eventData.data.includes('/')) {
+                    const parts = eventData.data.split('/');
+                    dataEvento = new Date(parts[2], parts[1] - 1, parts[0]);
+                } else {
+                    dataEvento = new Date(eventData.data + 'T12:00:00');
+                }
+
+                if (dataEvento >= monday && dataEvento <= sunday) {
+                    if (mapaTipos[eventData.nome]) tipoDetectado = mapaTipos[eventData.nome];
+                }
+            } 
+            // 2. Verificação por intervalo (ex: Assembleia ou Congresso)
+            else if (eventData.data_inicio && eventData.data_fim) {
+                const inicio = new Date(eventData.data_inicio + 'T00:00:00');
+                const fim = new Date(eventData.data_fim + 'T23:59:59');
+                
+                if (inicio <= sunday && fim >= monday) {
+                    if (mapaTipos[eventData.nome]) tipoDetectado = mapaTipos[eventData.nome];
+                }
+            }
+        });
+
+        // Atualiza o dropdown automaticamente
+        tipoSelect.value = tipoDetectado;
+        console.log(`[AUTO-DETECT] Tipo de reunião técnica definido como: ${tipoDetectado}`);
+
+        // Se a seção de designações já estiver aberta (em caso de troca de mês/sala), recarrega
+        if (document.getElementById('designacoesSection').classList.contains('active')) {
+             loadDesignacoes(); 
+        }
+
+    } catch (error) {
+        console.error("[AUTO-DETECT] Erro ao buscar eventos:", error);
     }
 }
 
