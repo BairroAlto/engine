@@ -413,102 +413,141 @@
                 return genderMatch && languageMatch;
             });
 
-            if (filteredParticipantIds.length > 0) {
-                validAssignments.push({
-                    designacaoId: desig.designacaoId,
-                    date: doc.dia,
-                    participantIds: filteredParticipantIds,
-                    weekId: doc.id,
-                    descricao: desig.descricao || null
-                });
-            }
+  if (filteredParticipantIds.length > 0) {
+    // ADICIONE ESTE LOG:
+    console.log(`[Filtro] Semana: ${doc.semanaindex} | Designação: ${designacoesMap.get(desig.designacaoId)} | Participantes:`, 
+        filteredParticipantIds.map(id => ({
+            nome: pessoasMap.get(id)?.nomePessoa,
+            genero: pessoasMap.get(id)?.genero
+        }))
+    );
+
+    validAssignments.push({
+        designacaoId: desig.designacaoId,
+        date: doc.dia,
+        participantIds: filteredParticipantIds,
+        weekId: doc.id,
+        descricao: desig.descricao || null
+    });
+}
         });
     });
     return validAssignments;
 }
 
     // --- FUNÇÕES DE ATUALIZAÇÃO DOS PAINÉIS ---
-    async function updateGeralDashboard() {
-        console.log("A atualizar 'Geral' com filtros...");
-        const filterPanel = document.getElementById('Geral').querySelector('.filter-panel');
-        if (!filterPanel) return;
+async function updateGeralDashboard() {
+    
+    const filterPanel = document.getElementById('Geral').querySelector('.filter-panel');
+    if (!filterPanel) {
+        console.error("Erro: Painel de filtros não encontrado na aba Geral.");
+        return;
+    }
 
-        const snapshot = await buildHistoricoQuery().get();
-        let documents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // 1. Obter dados brutos do Firebase
+    const snapshot = await buildHistoricoQuery().get();
+    let documents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        const anosSelecionados = getCustomDropdownValues(filterPanel, 'ano').map(y => parseInt(y));
-        const semanasSelecionadas = getCustomDropdownValues(filterPanel, 'semana');
-        const totalAnosDisponiveis = filterPanel.querySelector('[data-filter-name="ano"]').querySelectorAll('input[type="checkbox"]').length;
-        const totalSemanasDisponiveis = filterPanel.querySelector('[data-filter-name="semana"]').querySelectorAll('input[type="checkbox"]').length;
+    // 2. Aplicar filtros de Ano e Semana
+    const anosSelecionados = getCustomDropdownValues(filterPanel, 'ano').map(y => parseInt(y));
+    const semanasSelecionadas = getCustomDropdownValues(filterPanel, 'semana');
+    const totalAnosDisponiveis = filterPanel.querySelector('[data-filter-name="ano"]').querySelectorAll('input[type="checkbox"]').length;
+    const totalSemanasDisponiveis = filterPanel.querySelector('[data-filter-name="semana"]').querySelectorAll('input[type="checkbox"]').length;
 
-        if (anosSelecionados.length < totalAnosDisponiveis) {
-            documents = documents.filter(doc => anosSelecionados.includes(doc.ano));
-        }
-        if (semanasSelecionadas.length < totalSemanasDisponiveis) {
-            documents = documents.filter(doc => semanasSelecionadas.includes(doc.id));
-        }
+    if (anosSelecionados.length < totalAnosDisponiveis) {
+        documents = documents.filter(doc => anosSelecionados.includes(doc.ano));
+    }
+    if (semanasSelecionadas.length < totalSemanasDisponiveis) {
+        documents = documents.filter(doc => semanasSelecionadas.includes(doc.id));
+    }
 
-        const validAssignments = getFilteredAssignments(documents, filterPanel);
-        const flatParticipations = [];
-        validAssignments.forEach(assignment => {
-            assignment.participantIds.forEach(personId => {
-                flatParticipations.push({
-                    personId: personId,
-                    designacaoId: assignment.designacaoId,
-                    date: assignment.date
-                });
+    // 3. Extrair participações filtradas (Género, Idioma, Tipo de Designação)
+    const validAssignments = getFilteredAssignments(documents, filterPanel);
+    const flatParticipations = [];
+    
+    validAssignments.forEach(assignment => {
+        assignment.participantIds.forEach(personId => {
+            flatParticipations.push({
+                personId: personId,
+                designacaoId: assignment.designacaoId,
+                date: assignment.date
             });
         });
+    });
 
-        const totalDesignacoes = flatParticipations.length;
-        let totalMasculino = 0, totalFeminino = 0;
-        const idiomasCount = new Map();
-        flatParticipations.forEach(p => {
-            const pessoa = pessoasMap.get(p.personId);
-            if (!pessoa) return;
-            if (pessoa.genero === 'masculino') totalMasculino++;
-            if (pessoa.genero === 'feminino') totalFeminino++;
-            const idioma = pessoa.idioma || 'Não especificado';
-            idiomasCount.set(idioma, (idiomasCount.get(idioma) || 0) + 1);
-        });
+    // 4. Contagem de Métricas
+    let totalMasculino = 0;
+    let totalFeminino = 0;
+    const idiomasCount = new Map();
 
-        const filteredHistoricoSemanas = historicoSemanas.filter(s => documents.some(d => d.id === s.id));
-        let numMonths = 0;
-        if (filteredHistoricoSemanas.length > 0) {
-            const firstDate = filteredHistoricoSemanas[0].startDate;
-            const lastDate = filteredHistoricoSemanas[filteredHistoricoSemanas.length - 1].startDate;
-            numMonths = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 + (lastDate.getMonth() - firstDate.getMonth()) + 1;
-            numMonths = Math.max(1, numMonths);
+    flatParticipations.forEach((p, index) => {
+        const pessoa = pessoasMap.get(p.personId);
+        if (!pessoa) {
+            console.warn(`[Aviso] Participação #${index}: Pessoa com ID ${p.personId} não encontrada.`);
+            return;
         }
-        
-        const mediaTotalMes = numMonths > 0 ? (totalDesignacoes / numMonths).toFixed(1) : '0.0';
-        const mediaMascMes = numMonths > 0 ? (totalMasculino / numMonths).toFixed(1) : '0.0';
-        const mediaFemMes = numMonths > 0 ? (totalFeminino / numMonths).toFixed(1) : '0.0';
-        let mediaIdiomasHTML = '';
-        for (const [idioma, count] of idiomasCount.entries()) { mediaIdiomasHTML += `<div class="idioma-stat">${idioma}: <strong>${numMonths > 0 ? (count / numMonths).toFixed(1) : '0.0'}</strong></div>`; }
-        const percMasculino = totalDesignacoes > 0 ? ((totalMasculino / totalDesignacoes) * 100).toFixed(0) : '0';
-        const percFeminino = totalDesignacoes > 0 ? ((totalFeminino / totalDesignacoes) * 100).toFixed(0) : '0';
-        let percIdiomasHTML = '';
-        for (const [idioma, count] of idiomasCount.entries()) { percIdiomasHTML += `<div class="idioma-stat">${idioma}: <strong>${totalDesignacoes > 0 ? ((count / totalDesignacoes) * 100).toFixed(0) : '0'}%</strong></div>`; }
 
-        document.getElementById('total-designacoes').textContent = totalDesignacoes;
-        document.getElementById('total-masculino').textContent = totalMasculino;
-        document.getElementById('total-feminino').textContent = totalFeminino;
-        let idiomasHTML = '';
-        for (const [idioma, count] of idiomasCount.entries()) { idiomasHTML += `<div class="idioma-stat">${idioma}: <strong>${count}</strong></div>`; }
-        document.getElementById('idiomas-container').innerHTML = idiomasHTML || 'N/A';
-        document.getElementById('media-total-mes').textContent = mediaTotalMes;
-        document.getElementById('media-masc-mes').textContent = mediaMascMes;
-        document.getElementById('media-fem-mes').textContent = mediaFemMes;
-        document.getElementById('media-idiomas-container').innerHTML = mediaIdiomasHTML || 'N/A';
-        document.getElementById('perc-designacoes').textContent = 'N/A';
-        document.getElementById('perc-masculino').textContent = `${percMasculino}%`;
-        document.getElementById('perc-feminino').textContent = `${percFeminino}%`;
-        document.getElementById('perc-idiomas-container').innerHTML = percIdiomasHTML || 'N/A';
+        const genero = pessoa.genero ? pessoa.genero.toLowerCase() : 'não definido';
+        const nome = pessoa.nomePessoa || 'Sem Nome';
+
+        if (genero === 'masculino') {
+            totalMasculino++;
+        } else if (genero === 'feminino') {
+            totalFeminino++;
+        } else {
+        }
+
+        const idioma = pessoa.idioma || 'Não especificado';
+        idiomasCount.set(idioma, (idiomasCount.get(idioma) || 0) + 1);
+    });
+
+    // 5. Cálculos de Tempo e Médias
+    const filteredHistoricoSemanas = historicoSemanas.filter(s => documents.some(d => d.id === s.id));
+    let numMonths = 0;
+    if (filteredHistoricoSemanas.length > 0) {
+        const firstDate = filteredHistoricoSemanas[0].startDate;
+        const lastDate = filteredHistoricoSemanas[filteredHistoricoSemanas.length - 1].startDate;
+        numMonths = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 + (lastDate.getMonth() - firstDate.getMonth()) + 1;
+        numMonths = Math.max(1, numMonths);
     }
     
+    const totalDesignacoes = flatParticipations.length;
+    const mediaTotalMes = numMonths > 0 ? (totalDesignacoes / numMonths).toFixed(1) : '0.0';
+    const mediaMascMes = numMonths > 0 ? (totalMasculino / numMonths).toFixed(1) : '0.0';
+    const mediaFemMes = numMonths > 0 ? (totalFeminino / numMonths).toFixed(1) : '0.0';
+
+    // 6. Cálculos Percentuais
+    const percMasculino = totalDesignacoes > 0 ? ((totalMasculino / totalDesignacoes) * 100).toFixed(0) : '0';
+    const percFeminino = totalDesignacoes > 0 ? ((totalFeminino / totalDesignacoes) * 100).toFixed(0) : '0';
+
+
+    // 8. Atualização da Interface (DOM)
+    document.getElementById('total-designacoes').textContent = totalDesignacoes;
+    document.getElementById('total-masculino').textContent = totalMasculino;
+    document.getElementById('total-feminino').textContent = totalFeminino;
+
+    let idiomasHTML = '';
+    let mediaIdiomasHTML = '';
+    let percIdiomasHTML = '';
+
+    for (const [idioma, count] of idiomasCount.entries()) {
+        idiomasHTML += `<div class="idioma-stat">${idioma}: <strong>${count}</strong></div>`;
+        mediaIdiomasHTML += `<div class="idioma-stat">${idioma}: <strong>${numMonths > 0 ? (count / numMonths).toFixed(1) : '0.0'}</strong></div>`;
+        percIdiomasHTML += `<div class="idioma-stat">${idioma}: <strong>${totalDesignacoes > 0 ? ((count / totalDesignacoes) * 100).toFixed(0) : '0'}%</strong></div>`;
+    }
+
+    document.getElementById('idiomas-container').innerHTML = idiomasHTML || 'N/A';
+    document.getElementById('media-total-mes').textContent = mediaTotalMes;
+    document.getElementById('media-masc-mes').textContent = mediaMascMes;
+    document.getElementById('media-fem-mes').textContent = mediaFemMes;
+    document.getElementById('media-idiomas-container').innerHTML = mediaIdiomasHTML || 'N/A';
+    document.getElementById('perc-designacoes').textContent = 'Filtro Ativo';
+    document.getElementById('perc-masculino').textContent = `${percMasculino}%`;
+    document.getElementById('perc-feminino').textContent = `${percFeminino}%`;
+    document.getElementById('perc-idiomas-container').innerHTML = percIdiomasHTML || 'N/A';
+}
+    
     async function updateTopDashboard() {
-        console.log("A atualizar 'Top' com filtros...");
         const filterPanel = document.getElementById('Top').querySelector('.filter-panel');
         if (!filterPanel) return;
 
@@ -544,7 +583,6 @@
     }
 
     async function updateComparacaoDashboard() {
-        console.log("A atualizar 'Comparação' com filtros...");
         const filterPanel = document.getElementById('Comparacao').querySelector('.filter-panel');
         const cardsContainer = document.getElementById('comparison-cards-container');
         const chartContainer = document.getElementById('comparison-chart-container');
@@ -596,7 +634,6 @@
     }
 
     async function updateIndividualDashboard() {
-    console.log("A atualizar 'Individual' com filtros, gráficos e discursos...");
     const filterPanel = document.getElementById('Individual').querySelector('.filter-panel');
     const analysisContainer = document.getElementById('individual-analysis-container');
     const placeholder = document.getElementById('individual-placeholder');
@@ -874,7 +911,6 @@ if (compCardsContainer) {
                 pessoasSnapshot.forEach(doc => pessoasMap.set(doc.id, doc.data()));
                 nacionalidadesSnapshot.forEach(doc => nacionalidadesMap.set(doc.id, doc.data().nome));
                 discursosSnapshot.forEach(doc => discursosMap.set(doc.id, doc.data()));
-                console.log("Dados de designações, pessoas, nacionalidades e discursos pré-carregados.");
                 if (oradorDesignacaoId) { console.log(`ID da designação 'Orador' encontrado: ${oradorDesignacaoId}`); } else { console.warn("'Orador' não encontrado na coleção de designações."); }
             } catch (error) { console.error("Erro ao pré-carregar dados:", error); }
         }
@@ -971,7 +1007,6 @@ modalOverlay.addEventListener('click', (e) => {
         await updateTopDashboard();
         await updateComparacaoDashboard();
         await updateIndividualDashboard();
-        console.log("Página pronta e filtros configurados.");
     });
 </script>
 </body>
