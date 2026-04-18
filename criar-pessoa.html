@@ -161,7 +161,8 @@
                             <div class="form-row"><div class="form-group"><label for="grupo">Grupo</label><select id="grupo" name="grupo" class="form-select"><option value="">Sem grupo</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option></select></div></div>
                             <div class="form-group"><label>Privilégios Congregação</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Ancião"> Ancião</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Servo Ministerial"> Servo Ministerial</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Publicador"> Publicador</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Publicador não Batizado"> Publicador não Batizado</label><label class="checkbox-item"><input type="checkbox" name="privilegios-congregacao" value="Estudante"> Estudante</label></div></div>
                             <div class="form-group"><label>Privilégios Pregação</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="privilegios-pregacao" value="Pioneiro Regular"> Pioneiro Regular</label><label class="checkbox-item"><input type="checkbox" name="privilegios-pregacao" value="Pioneiro Auxiliar"> Pioneiro Auxiliar</label><label class="checkbox-item"><input type="checkbox" name="privilegios-pregacao" value="Pioneiro Especial"> Pioneiro Especial</label><label class="checkbox-item"><input type="checkbox" name="privilegios-pregacao" value="Missionário"> Missionário</label></div></div>
-                            <div class="form-group"><label>Privilégios Especiais</label><div class="checkbox-group"><label class="checkbox-item"><input type="checkbox" name="privilegios-especiais" value="Servo de Circuito"> Servo de Circuito</label><label class="checkbox-item"><input type="checkbox" name="privilegios-especiais" value="Orador Público" id="orador-publico-checkbox"> Orador Público</label></div></div>
+                            <div class="form-group"><label>Privilégios Especiais</label><div class="checkbox-group"><label class="checkbox-item">
+    <input type="checkbox" name="privilegios-especiais" value="Servo de Circuito" id="privilegio-servo-circuito">Servo de Circuito</label><label class="checkbox-item"><input type="checkbox" name="privilegios-especiais" value="Orador Público" id="orador-publico-checkbox"> Orador Público</label></div></div>
                         </div>
                     </div>
 
@@ -398,7 +399,29 @@
                     const congregacoes = allPessoas.map(p => p.congregacao).filter(c => c);
                     allCongregacoes = [...new Set(congregacoes)];
                 }),
-                db.collection("designacoes").where("tipo", "==", "reuniao").orderBy("ordem").orderBy("nome").get().then(snapshot => snapshot.forEach(doc => { const data = doc.data(); const checkbox = createDesignacaoCheckbox(data.nome, 'designacoes-reuniao-list'); if (data.parte === 'escola') listaDesignacoesEscolaDiv.appendChild(checkbox); else if (data.parte === 'resto da semana') listaDesignacoesRestoSemanaDiv.appendChild(checkbox); else if (data.parte === 'fim de semana') listaDesignacoesFimSemanaDiv.appendChild(checkbox); })),
+// Localize este bloco dentro do loadDataPromises e substitua:
+db.collection("designacoes").where("tipo", "==", "reuniao").orderBy("ordem").orderBy("nome").get().then(snapshot => {
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        const checkbox = createDesignacaoCheckbox(data.nome, 'designacoes-reuniao-list');
+        
+        // NOVO: Verifica se esta designação é exclusiva para Servo de Circuito
+        if (data.quemFaz && data.quemFaz.includes("Servo de Circuito")) {
+            checkbox.classList.add('designacao-sc');
+        }
+
+        if (data.parte === 'escola') {
+            listaDesignacoesEscolaDiv.appendChild(checkbox);
+        } else if (data.parte === 'resto da semana') {
+            listaDesignacoesRestoSemanaDiv.appendChild(checkbox);
+        } else if (data.parte === 'fim de semana') {
+            listaDesignacoesFimSemanaDiv.appendChild(checkbox);
+        }
+    });
+    // Executa a filtragem inicial após carregar
+    filtrarDesignacoesSC();
+}),
+
                 db.collection("designacoes").where("tipo", "==", "pregacao").orderBy("nome").get().then(snapshot => snapshot.forEach(doc => listaDesignacoesPregacaoDiv.appendChild(createDesignacaoCheckbox(doc.data().nome, 'designacoes-pregacao-list')))),
                 db.collection("horarios").orderBy("ano", "desc").limit(1).get().then(snapshot => { if (snapshot.empty) return; const data = snapshot.docs[0].data(); const weekOrder = ["segunda", "terca", "quarta", "quinta", "sexta"]; const weekendOrder = ["sabado", "domingo"]; const createDaySection = (day, times, container, type) => { if (!times || times.length === 0) return; const dayContainer = document.createElement('div'); dayContainer.className = 'day-container'; dayContainer.innerHTML = `<h4>${day.charAt(0).toUpperCase() + day.slice(1)}</h4>`; times.sort().forEach(time => dayContainer.appendChild(createTimeSlotCheckbox(time, day, type))); container.appendChild(dayContainer); }; if (data['dias-semana-horarios']) weekOrder.forEach(day => createDaySection(day, data['dias-semana-horarios'][day], horariosSemanaDiv, 'semana')); if (data['dias-fimdesemana-horarios']) weekendOrder.forEach(day => createDaySection(day, data['dias-fimdesemana-horarios'][day], horariosFimDeSemanaDiv, 'fim-de-semana')); })
             ];
@@ -578,7 +601,29 @@
 
 
 
+// Função para mostrar/esconder designações de Servo de Circuito
+function filtrarDesignacoesSC() {
+    const isServoCircuito = document.getElementById('privilegio-servo-circuito').checked;
+    const itensSC = document.querySelectorAll('.designacao-sc');
 
+    itensSC.forEach(item => {
+        if (isServoCircuito) {
+            item.style.display = 'flex'; // Mostra se for SC
+        } else {
+            item.style.display = 'none'; // Esconde se não for SC
+            // Opcional: Desmarca o checkbox se ele for escondido
+            const cb = item.querySelector('input');
+            if (cb) cb.checked = false;
+        }
+    });
+}
+
+// Adiciona o evento de clique no checkbox de privilégio
+document.getElementById('privilegio-servo-circuito').addEventListener('change', filtrarDesignacoesSC);
+
+// Chame a função também dentro do populateFormForEdit para quando estiver editando
+// (Adicione esta linha ao final da função populateFormForEdit existente)
+// filtrarDesignacoesSC();
 
 
             function handleSpouseSuggestions() {
