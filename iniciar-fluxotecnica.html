@@ -462,6 +462,16 @@ body.popup-open {
     font-weight: bold;
 }
 
+#typeIconContainer i {
+    color: #2c3e50; /* Cor escura padrão */
+    transition: all 0.3s ease;
+}
+
+/* Cor do ícone quando a caixa está em modo de aviso (mês completo) */
+.week-info.warning-state #typeIconContainer i {
+    color: #c0392b; 
+}
+
     </style>
 </head>
 
@@ -492,9 +502,11 @@ body.popup-open {
 
         <div class="card">
             <h1>Iniciar Fluxo - Tarefas Técnicas</h1>
-            <div class="week-info">
-                <p id="weekDisplay">Carregando informações da semana...</p>
-            </div>
+          <div class="week-info" style="position: relative;"> <!-- Adicionado position relative -->
+    <p id="weekDisplay">Carregando informações da semana...</p>
+    <!-- Contentor para o ícone -->
+    <div id="typeIconContainer" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 22px;"></div>
+</div>
             <form id="fluxoSemanalForm">
                 <input type="hidden" id="semanaNumero" name="semanaNumero">
                 <div class="form-group">
@@ -941,7 +953,29 @@ pesquisaInput.addEventListener('input', () => {
 
 
 
+// Função auxiliar para obter os objetos Date de Segunda e Domingo da semana selecionada
+const getWeekMondaySunday = (ano, mes, semanaNumero) => {
+    const primeiroDiaMes = new Date(ano, mes - 1, 1);
+    let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
+    if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7; // Converte Domingo (0) para 7
 
+    let diasToAddForFirstMonday = (8 - diaSemanaPrimeiroDia) % 7;
+    if (primeiroDiaMes.getDay() === 1) {
+        diasToAddForFirstMonday = 0;
+    }
+
+    const primeiroSegundaMes = new Date(ano, mes - 1, 1 + diasToAddForFirstMonday);
+    const monday = new Date(primeiroSegundaMes);
+    monday.setDate(monday.getDate() + (semanaNumero - 1) * 7);
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6); 
+
+    monday.setHours(0, 0, 0, 0);
+    sunday.setHours(23, 59, 59, 999);
+
+    return { monday, sunday };
+};
 
 
 
@@ -2754,56 +2788,42 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
             return { current, previous, next };
         }
 
-async function updateWeekDisplay() {
-    const weekDisplay = document.getElementById('weekDisplay');
-    const btn = document.getElementById('btnSeguinte');
-    const mes = document.getElementById('mes').value;
-    const ano = await getAnoPainelFirebase();
-    const sala = document.getElementById('sala').value;
-    const weekInfoContainer = weekDisplay.parentElement;
+      
 
-    if (!weekDisplay || !btn) return;
 
-    // Calcula a próxima semana baseada no histórico de tarefas técnicas
-    const semana = await countHistoricoSemanas(ano, mes, sala) + 1;
-    const totalSemanas = getTotalSemanasNoMes(ano, mes);
+// 1. Função isolada para atualizar o ícone
+function updateTypeIcon() {
+    const tipoReuniao = document.getElementById('tipo').value;
+    const iconContainer = document.getElementById('typeIconContainer');
+    
+    const iconMap = {
+        'memorial': '<i class="fa-solid fa-wine-glass"></i>',
+        'evento-especial': '<i class="fa-solid fa-star"></i>',
+        'assembleia': '<i class="fa-solid fa-landmark"></i>',
+        'congresso': '<i class="fa-solid fa-users"></i>',
+        'visita-servo': '<i class="fa-solid fa-briefcase"></i>',
+        'normal': '' 
+    };
 
-    if (semana > totalSemanas && totalSemanas > 0) {
-        weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
-        btn.disabled = true;
-        weekInfoContainer.classList.add('warning-state');
-    } else {
-        document.getElementById('semanaNumero').value = semana;
-        const intervaloDias = getDiasSemana(ano, mes, semana);
-        weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${intervaloDias})`;
-        
-        btn.disabled = false;
-        weekInfoContainer.classList.remove('warning-state');
-
-        // === NOVO: AUTO-DETEÇÃO DE EVENTOS PARA TAREFAS TÉCNICAS ===
-        await autoDetectEventType(); 
+    if (iconContainer) {
+        iconContainer.innerHTML = iconMap[tipoReuniao] || '';
     }
 }
 
+// 2. autoDetectEventType atualizado para Tarefas Técnicas
 async function autoDetectEventType() {
-    console.log("[AUTO-DETECT] Verificando eventos para a semana técnica...");
-    
+    console.log("[AUTO-DETECT] Verificando eventos para Tarefas Técnicas...");
     const tipoSelect = document.getElementById('tipo');
     const mes = parseInt(document.getElementById('mes').value);
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
     const ano = await getAnoPainelFirebase();
 
-    // Obtém o intervalo da semana (Segunda a Domingo)
     const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
 
     try {
-        const snapshot = await db.collection('eventos')
-            .where('ano', 'in', [ano, ano + 1])
-            .get();
+        const snapshot = await db.collection('eventos').where('ano', 'in', [ano, ano + 1]).get();
+        let tipoDetectado = 'normal'; 
 
-        let tipoDetectado = 'normal'; // Padrão
-
-        // Mapeamento de nomes no Firebase para os valores do seu <select id="tipo">
         const mapaTipos = {
             'Memorial': 'memorial',
             'Assembleia': 'assembleia',
@@ -2816,43 +2836,60 @@ async function autoDetectEventType() {
             const eventData = doc.data();
             let dataEvento;
 
-            // 1. Verificação por data única (ex: Visita do Servo ou Memorial)
             if (eventData.data) {
-                if (eventData.data.includes('/')) {
-                    const parts = eventData.data.split('/');
-                    dataEvento = new Date(parts[2], parts[1] - 1, parts[0]);
-                } else {
-                    dataEvento = new Date(eventData.data + 'T12:00:00');
-                }
-
+                dataEvento = new Date(eventData.data + 'T12:00:00');
                 if (dataEvento >= monday && dataEvento <= sunday) {
                     if (mapaTipos[eventData.nome]) tipoDetectado = mapaTipos[eventData.nome];
                 }
-            } 
-            // 2. Verificação por intervalo (ex: Assembleia ou Congresso)
-            else if (eventData.data_inicio && eventData.data_fim) {
+            } else if (eventData.data_inicio && eventData.data_fim) {
                 const inicio = new Date(eventData.data_inicio + 'T00:00:00');
                 const fim = new Date(eventData.data_fim + 'T23:59:59');
-                
                 if (inicio <= sunday && fim >= monday) {
                     if (mapaTipos[eventData.nome]) tipoDetectado = mapaTipos[eventData.nome];
                 }
             }
         });
 
-        // Atualiza o dropdown automaticamente
-        tipoSelect.value = tipoDetectado;
-        console.log(`[AUTO-DETECT] Tipo de reunião técnica definido como: ${tipoDetectado}`);
-
-        // Se a seção de designações já estiver aberta (em caso de troca de mês/sala), recarrega
-        if (document.getElementById('designacoesSection').classList.contains('active')) {
-             loadDesignacoes(); 
+        if (tipoSelect.value !== tipoDetectado) {
+            tipoSelect.value = tipoDetectado;
+            updateTypeIcon();
         }
-
     } catch (error) {
-        console.error("[AUTO-DETECT] Erro ao buscar eventos:", error);
+        console.error("[AUTO-DETECT] Erro:", error);
     }
 }
+
+// 3. updateWeekDisplay atualizado
+async function updateWeekDisplay() {
+    const weekDisplay = document.getElementById('weekDisplay');
+    const btn = document.getElementById('btnSeguinte');
+    const mes = document.getElementById('mes').value;
+    const sala = document.getElementById('sala').value;
+    const ano = await getAnoPainelFirebase();
+
+    if (!weekDisplay || !btn) return;
+
+    updateTypeIcon();
+
+    const semanaCount = await countHistoricoSemanas(ano, mes, sala);
+    const semana = semanaCount + 1;
+    const totalSemanas = getTotalSemanasNoMes(ano, mes);
+
+    if (semana > totalSemanas && totalSemanas > 0) {
+        weekDisplay.innerHTML = "Mês completo para esta sala.";
+        btn.disabled = true;
+        weekDisplay.parentElement.classList.add('warning-state');
+    } else {
+        document.getElementById('semanaNumero').value = semana;
+        const intervaloDias = getDiasSemana(ano, mes, semana); 
+        weekDisplay.innerHTML = `${semana}ª semana de ${totalSemanas} <br>(${intervaloDias})`;
+        btn.disabled = false;
+        weekDisplay.parentElement.classList.remove('warning-state');
+        await autoDetectEventType(); 
+    }
+}
+
+
 
         const loadNacionalidades = async () => {
             const snapshot = await db.collection('nacionalidades').get();
@@ -3598,6 +3635,59 @@ function setupTabClickListeners() {
     });
 }
 
+// Função para exibir confirmação (reutilizando IDs do seu HTML)
+function showSpecialEventConfirmation(type) {
+    return new Promise((resolve) => {
+        const popup = document.getElementById('specialEventConfirmationPopup');
+        const msg = document.getElementById('specialEventPopupMessage');
+        const confirmBtn = document.getElementById('confirmSpecialEventSave');
+        const cancelBtn = document.getElementById('cancelSpecialEventSave');
+
+        msg.textContent = `A data do evento (${type}) coincide com esta semana. Deseja gravar este evento especial nas tarefas técnicas e concluir?`;
+        popup.style.display = 'flex';
+
+        const handleConfirm = () => { popup.style.display = 'none'; cleanup(); resolve(true); };
+        const handleCancel = () => { popup.style.display = 'none'; cleanup(); resolve(false); };
+        const cleanup = () => {
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+        };
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+    });
+}
+
+
+// Gravação rápida no histórico para Técnicas
+async function saveSpecialEventFast() {
+    try {
+        const ano = await getAnoPainelFirebase();
+        const mes = parseInt(document.getElementById('mes').value);
+        const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+        const tipoEvento = document.getElementById('tipo').value;
+        const sala = document.getElementById('sala').value;
+        const diasSemana = getDiasSemana(ano, mes, semanaNumero);
+        const { monday } = getWeekMondaySunday(ano, mes, semanaNumero);
+
+        const data = {
+            ano, mes, semanaNumero,
+            semanaindex: `(${diasSemana} ${ano})`,
+            designacoes: [],
+            evento: tipoEvento,
+            tipo: "reuniao",
+            parte: "tecnicas",
+            quando: "Semana e Fim de Semana",
+            oque: "reuniao",
+            sala: sala,
+            dia: monday.toISOString().split('T')[0],
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection("historico").add(data);
+        return true;
+    } catch (e) { console.error(e); return false; }
+}
+
 // ===================================================================
 // ====== FIM: CÓDIGO DE SUBSTITUIÇÃO PARA ANÁLISE DE PARES ========
 // ===================================================================
@@ -3606,109 +3696,63 @@ function setupTabClickListeners() {
         document.getElementById('closePairAnalysisPopup').addEventListener('click', () => document.getElementById('pairAnalysisPopup').style.display = 'none');
         document.getElementById('closeLabPopup').addEventListener('click', () => document.getElementById('labPopup').style.display = 'none');
         
-  document.getElementById('btnSeguinte').addEventListener('click', async function() {
-    console.log("=====================================================");
-    console.log("[DEBUG] Botão 'Seguinte' clicado. Iniciando verificação (v2)...");
-
+document.getElementById('btnSeguinte').addEventListener('click', async function() {
     const tipoReuniao = document.getElementById('tipo').value;
-    console.log(`[DEBUG] 1. Tipo de Reunião selecionado: "${tipoReuniao}"`);
-
-    const specialEventTypes = ['memorial', 'assembleia', 'congresso', 'visita-servo'];
-
-    if (specialEventTypes.includes(tipoReuniao)) {
-        console.log(`[DEBUG] 2. O tipo "${tipoReuniao}" é um evento especial.`);
-
-        const ano = await getAnoPainelFirebase();
-        console.log(`[DEBUG] 3. Ano do painel: ${ano}`);
-
-        const eventNameMap = {
-            'memorial': 'Memorial',
-            'assembleia': 'Assembleia',
-            'congresso': 'Congresso',
-            'visita-servo': 'Visita do Servo'
-        };
-        const eventNameForQuery = eventNameMap[tipoReuniao];
-        console.log(`[DEBUG] 4. Nome para a consulta: "${eventNameForQuery}"`);
-
-        if (eventNameForQuery) {
-            const snapshot = await db.collection('eventos')
-                .where('nome', '==', eventNameForQuery)
-                .where('ano', '==', ano)
-                .get();
-
-            if (!snapshot.empty) {
-                console.log(`[DEBUG] 5. SUCESSO! Foram encontrados ${snapshot.docs.length} evento(s) com este nome.`);
-                
-                const mes = parseInt(document.getElementById('mes').value);
-                const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
-                const { monday: weekStart, sunday: weekEnd } = getWeekMondaySunday(ano, mes, semanaNumero);
-                
-                console.log(`[DEBUG] 6. Intervalo da semana a verificar: ${weekStart.toLocaleDateString()} a ${weekEnd.toLocaleDateString()}`);
-
-                let overlapFound = false;
-
-                // ===== INÍCIO DA LÓGICA CORRIGIDA =====
-                // Agora percorremos TODOS os documentos encontrados
-                for (const doc of snapshot.docs) {
-                    const eventData = doc.data();
-                    console.log(`[DEBUG] 7. A verificar o evento com data: ${eventData.data || (eventData.data_inicio + ' a ' + eventData.data_fim)}`);
-
-                    // Verifica evento com data única
-                    if (eventData.data) {
-                        const eventDate = new Date(eventData.data + 'T12:00:00');
-                        if (eventDate >= weekStart && eventDate <= weekEnd) {
-                            overlapFound = true;
-                            console.log(`[DEBUG] 8. VERDADEIRO! Sobreposição encontrada com este evento. A interromper a verificação.`);
-                            break; // Interrompe o loop, pois já encontrámos uma correspondência
-                        }
-                    } 
-                    // Verifica evento com data de início e fim
-                    else if (eventData.data_inicio && eventData.data_fim) {
-                        const eventStart = new Date(eventData.data_inicio + 'T00:00:00');
-                        const eventEnd = new Date(eventData.data_fim + 'T23:59:59');
-                        if (eventStart <= weekEnd && eventEnd >= weekStart) {
-                            overlapFound = true;
-                             console.log(`[DEBUG] 8. VERDADEIRO! Sobreposição encontrada com este evento. A interromper a verificação.`);
-                            break; // Interrompe o loop
-                        }
-                    }
-                }
-                // ===== FIM DA LÓGICA CORRIGIDA =====
-
-
-                if (overlapFound) {
-                    console.log("[DEBUG] 9. A chamar o pop-up de confirmação.");
-                    const confirmed = await showSpecialEventConfirmation(tipoReuniao);
-                    if (confirmed) {
-                        const success = await saveSpecialEvent();
-                        if (success) {
-                            alert(`Evento de ${eventNameForQuery} gravado com sucesso!`);
-                            window.location.reload();
-                        }
-                    }
-                    return; 
-                } else {
-                    console.log("[DEBUG] 8. FALSO. Nenhum dos eventos encontrados coincide com a semana selecionada.");
-                }
-            } else {
-                console.warn(`[DEBUG] 5. AVISO! Nenhum evento correspondente encontrado para "${eventNameForQuery}" em ${ano}.`);
-            }
-        }
-    } else {
-         console.log(`[DEBUG] 2. O tipo "${tipoReuniao}" não é um evento especial.`);
+    const btnSeguinte = this;
+    
+    if (tipoReuniao === 'normal') {
+        document.getElementById('designacoesSection').classList.add('active');
+        document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
+        document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth' });
+        await loadDesignacoes();
+        return;
     }
 
-    console.log("[DEBUG] A continuar para o fluxo normal (mostrar designações).");
-    document.getElementById('designacoesSection').classList.add('active');
-    document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
-    
-    const spacer = document.createElement('div');
-    spacer.id = 'temp-scroll-spacer';
-    spacer.style.height = '100vh';
-    document.querySelector('.card').insertAdjacentElement('afterend', spacer);
-    document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    await loadDesignacoes();
-    document.getElementById('temp-scroll-spacer')?.remove();
+    // --- LÓGICA PARA EVENTOS ESPECIAIS ---
+    btnSeguinte.disabled = true;
+    btnSeguinte.textContent = "A validar data...";
+
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const ano = await getAnoPainelFirebase();
+    const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
+
+    const eventNameMap = {
+        'memorial': 'Memorial',
+        'assembleia': 'Assembleia',
+        'congresso': 'Congresso',
+        'visita-servo': 'Visita do Servo',
+        'evento-especial': 'Evento Especial'
+    };
+
+    try {
+        const snapshot = await db.collection('eventos').where('nome', '==', eventNameMap[tipoReuniao]).get();
+        let overlap = false;
+
+        snapshot.forEach(doc => {
+            const d = doc.data();
+            const date = d.data ? new Date(d.data + 'T12:00:00') : new Date(d.data_inicio + 'T12:00:00');
+            if (date >= monday && date <= sunday) overlap = true;
+        });
+
+        if (overlap) {
+            const confirmed = await showSpecialEventConfirmation(tipoReuniao);
+            if (confirmed) {
+                const success = await saveSpecialEventFast(); 
+                if (success) {
+                    alert("Evento técnico gravado com sucesso!");
+                    window.location.reload();
+                }
+            }
+        } else {
+            alert(`Atenção: Não existe um evento de "${eventNameMap[tipoReuniao]}" agendado para esta semana no calendário.`);
+        }
+    } catch (error) {
+        console.error(error);
+    } finally {
+        btnSeguinte.disabled = false;
+        btnSeguinte.textContent = "Seguinte";
+    }
 });
 
 
@@ -3747,6 +3791,9 @@ function setupTabClickListeners() {
             }
         });
 
+        // Localize onde estão os listeners e adicione este:
+document.getElementById('tipo').addEventListener('change', updateTypeIcon);
+
         document.getElementById('nacionalidades').addEventListener('change', () => {
             const selectedIdiomas = getSelectedNacionalidades();
 
@@ -3771,6 +3818,21 @@ function setupTabClickListeners() {
         
         fetch('sidebar.html').then(response => response.text()).then(html => document.getElementById("sidebar-placeholder").innerHTML = html);
     });
+
+    // Fechar popups de Técnicas
+const closeSpecialX = document.querySelector('#specialEventConfirmationPopup .popup-close-button');
+if (closeSpecialX) {
+    closeSpecialX.addEventListener('click', () => {
+        document.getElementById('specialEventConfirmationPopup').style.display = 'none';
+    });
+}
+
+// Fechar ao clicar fora
+window.addEventListener('click', (e) => {
+    const popup = document.getElementById('specialEventConfirmationPopup');
+    if (e.target === popup) popup.style.display = 'none';
+});
+
 </script>
 
 <script src="main.js"></script>
