@@ -1217,6 +1217,16 @@ body.popup-open {
     display: none;
 }
 
+#typeIconContainer i {
+    color: #2c3e50; /* Cor escura padrão */
+    transition: all 0.3s ease;
+}
+
+/* Ajuste de cor quando a caixa está em modo de aviso (mês completo) */
+.week-info.warning-state #typeIconContainer i {
+    color: #c0392b; 
+}
+
     </style>
 </head>
 <body>
@@ -1526,9 +1536,11 @@ body.popup-open {
 
         <div class="card">
             <h1>Iniciar Fluxo Escola</h1>
-            <div class="week-info">
-                <p id="weekDisplay">Carregando informações da semana...</p>
-            </div>
+          <div class="week-info" style="position: relative;"> <!-- Adicionado position relative -->
+    <p id="weekDisplay">Carregando informações da semana...</p>
+    <!-- Novo elemento para o ícone -->
+    <div id="typeIconContainer" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 22px;"></div>
+</div>
             <form id="fluxoSemanalForm">
                 <input type="hidden" id="semanaNumero" name="semanaNumero">
                 <div class="form-group">
@@ -1763,6 +1775,28 @@ async function montarDesignacoesAutomaticas(listaNomesMwb) {
         } else {
             console.warn(`Designação "${nomeMwb}" não encontrada no banco de dados.`);
         }
+    }
+}
+
+
+
+// 1. Função isolada para atualizar o ícone
+function updateTypeIcon() {
+    const tipoReuniao = document.getElementById('tipo').value;
+    const iconContainer = document.getElementById('typeIconContainer');
+    
+    const iconMap = {
+        'memorial': '<i class="fa-solid fa-wine-glass"></i>',
+        'evento-especial': '<i class="fa-solid fa-star"></i>',
+        'assembleia': '<i class="fa-solid fa-landmark"></i>',
+        'congresso': '<i class="fa-solid fa-users"></i>',
+        'visita-servo': '<i class="fa-solid fa-briefcase"></i>',
+        'normal': '' 
+    };
+
+    if (iconContainer) {
+        iconContainer.innerHTML = iconMap[tipoReuniao] || '';
+        console.log(`[DEBUG-ICON] Ícone da Escola atualizado para: ${tipoReuniao}`);
     }
 }
 
@@ -4177,58 +4211,19 @@ loadNacionalidades();
 
 
 
-async function updateWeekDisplay() {
-    console.log("[DEBUG] Iniciando updateWeekDisplay (Escola)...");
-    const weekDisplay = document.getElementById('weekDisplay');
-    const nextButton = document.getElementById('btnSeguinte');
-    const mesSelecionado = document.getElementById('mes').value;
-    const anoFirebase = await getAnoPainelFirebase();
-    const sala = document.getElementById('sala').value;
-    const weekInfoContainer = weekDisplay.parentElement;
-
-    if (!weekDisplay || !nextButton) return;
-
-    // Calcula a semana baseada na sala e no histórico da escola
-    const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado, sala) + 1;
-    const totalSemanas = await getTotalSemanasNoMes(anoFirebase, mesSelecionado);
-
-    if (totalSemanas > 0 && semanaNumero > totalSemanas) {
-        weekDisplay.innerHTML = "Mês completo para esta sala. Por favor, selecione outro mês ou sala.";
-        nextButton.disabled = true;
-        weekInfoContainer.classList.add('warning-state');
-    } else {
-        const diasSemana = getDiasSemana(anoFirebase, mesSelecionado, semanaNumero);
-        document.getElementById('semanaNumero').value = semanaNumero;
-        weekDisplay.innerHTML = `${semanaNumero}ª semana de ${totalSemanas} semanas <br>(${diasSemana})`;
-        nextButton.disabled = false;
-        weekInfoContainer.classList.remove('warning-state');
-
-        // === NOVO: AUTO-DETEÇÃO DE EVENTOS PARA A ESCOLA ===
-        await autoDetectEventType(); 
-    }
-}
-
-
+// 2. Versão atualizada do autoDetectEventType (deteta e avisa o ícone)
 async function autoDetectEventType() {
     console.log("[AUTO-DETECT] Verificando eventos para a semana da Escola...");
-    
     const tipoSelect = document.getElementById('tipo');
     const mes = parseInt(document.getElementById('mes').value);
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
     const ano = await getAnoPainelFirebase();
-
-    // Obtém o intervalo da semana (Segunda a Domingo)
-    // Função já existente no seu código (linha ~1145)
     const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
 
     try {
-        const snapshot = await db.collection('eventos')
-            .where('ano', 'in', [ano, ano + 1])
-            .get();
+        const snapshot = await db.collection('eventos').where('ano', 'in', [ano, ano + 1]).get();
+        let tipoDetectado = 'normal'; 
 
-        let tipoDetectado = 'normal'; // Padrão
-
-        // Mapeamento de nomes no Firebase para os 'values' do seu <select id="tipo">
         const mapaTipos = {
             'Memorial': 'memorial',
             'Assembleia': 'assembleia',
@@ -4240,42 +4235,63 @@ async function autoDetectEventType() {
         snapshot.forEach(doc => {
             const eventData = doc.data();
             let dataEvento;
-
-            // 1. Verificação por data única (ex: Memorial ou Visita)
             if (eventData.data) {
-                if (eventData.data.includes('/')) {
-                    const parts = eventData.data.split('/');
-                    dataEvento = new Date(parts[2], parts[1] - 1, parts[0]);
-                } else {
-                    dataEvento = new Date(eventData.data + 'T12:00:00');
-                }
+                dataEvento = eventData.data.includes('/') ? 
+                    new Date(eventData.data.split('/')[2], eventData.data.split('/')[1] - 1, eventData.data.split('/')[0]) : 
+                    new Date(eventData.data + 'T12:00:00');
 
                 if (dataEvento >= monday && dataEvento <= sunday) {
                     if (mapaTipos[eventData.nome]) tipoDetectado = mapaTipos[eventData.nome];
                 }
-            } 
-            // 2. Verificação por intervalo (ex: Assembleia ou Congresso)
-            else if (eventData.data_inicio && eventData.data_fim) {
+            } else if (eventData.data_inicio && eventData.data_fim) {
                 const inicio = new Date(eventData.data_inicio + 'T00:00:00');
                 const fim = new Date(eventData.data_fim + 'T23:59:59');
-                
                 if (inicio <= sunday && fim >= monday) {
                     if (mapaTipos[eventData.nome]) tipoDetectado = mapaTipos[eventData.nome];
                 }
             }
         });
 
-        // Atualiza o dropdown automaticamente
-        tipoSelect.value = tipoDetectado;
-        console.log(`[AUTO-DETECT] Tipo de reunião definido como: ${tipoDetectado}`);
-
-        // Opcional: Se mudar para algo que não é 'normal', podemos avisar que a programação MWB será ignorada
-        if (tipoDetectado !== 'normal') {
-            console.warn("Evento especial detetado. O preenchimento via MWB JSON será desativado para esta semana.");
+        if (tipoSelect.value !== tipoDetectado) {
+            tipoSelect.value = tipoDetectado;
+            console.log(`[AUTO-DETECT] Mudando dropdown para: ${tipoDetectado}`);
+            updateTypeIcon(); // <--- ATUALIZA O ÍCONE!
         }
-
     } catch (error) {
-        console.error("[AUTO-DETECT] Erro ao buscar eventos:", error);
+        console.error("[AUTO-DETECT] Erro:", error);
+    }
+}
+
+// 3. Versão atualizada do updateWeekDisplay
+async function updateWeekDisplay() {
+    console.log("[DEBUG] Iniciando updateWeekDisplay (Escola)...");
+    const weekDisplay = document.getElementById('weekDisplay');
+    const nextButton = document.getElementById('btnSeguinte');
+    const mesSelecionado = document.getElementById('mes').value;
+    const anoFirebase = await getAnoPainelFirebase();
+    const sala = document.getElementById('sala').value;
+    const weekInfoContainer = weekDisplay.parentElement;
+
+    if (!weekDisplay || !nextButton) return;
+
+    // Atualiza o ícone logo no início do processo
+    updateTypeIcon();
+
+    const semanaNumero = await countHistoricoSemanas(anoFirebase, mesSelecionado, sala) + 1;
+    const totalSemanas = await getTotalSemanasNoMes(anoFirebase, mesSelecionado);
+
+    if (totalSemanas > 0 && semanaNumero > totalSemanas) {
+        weekDisplay.innerHTML = "Mês completo para esta sala.";
+        nextButton.disabled = true;
+        weekInfoContainer.classList.add('warning-state');
+    } else {
+        const diasSemana = getDiasSemana(anoFirebase, mesSelecionado, semanaNumero);
+        document.getElementById('semanaNumero').value = semanaNumero;
+        weekDisplay.innerHTML = `${semanaNumero}ª semana de ${totalSemanas} semanas <br>(${diasSemana})`;
+        nextButton.disabled = false;
+        weekInfoContainer.classList.remove('warning-state');
+
+        await autoDetectEventType(); 
     }
 }
 
@@ -4411,27 +4427,114 @@ async function autoDetectEventType() {
 
             // Handle "Seguinte" button click (VERSÃO COM PAINEL CUSTOMIZADO)
 document.getElementById('btnSeguinte').addEventListener('click', async function() {
-                const tipoReuniao = document.getElementById('tipo').value;
-                const btnSeguinte = this;
+    const tipoReuniao = document.getElementById('tipo').value;
+    const btnSeguinte = this;
+    
+    console.log(`%c[INÍCIO] Verificando fluxo para: ${tipoReuniao.toUpperCase()}`, "color: #3498db; font-weight: bold; font-size: 12px;");
 
-                if (tipoReuniao === 'normal') {
-                    btnSeguinte.disabled = true;
-                    btnSeguinte.textContent = "Carregando Programação...";
-                    await processarMwbAutomatico();
-                    btnSeguinte.disabled = false;
-                    btnSeguinte.textContent = "Seguinte";
+    if (tipoReuniao === 'normal') {
+        console.log("%c[LOG] Reunião Normal: Iniciando processamento MWB...", "color: #7f8c8d;");
+        btnSeguinte.disabled = true;
+        btnSeguinte.textContent = "Carregando Programação...";
+        await processarMwbAutomatico();
+        
+        document.getElementById('designacoesSection').classList.add('active');
+        document.getElementById('leituraBibliaSection').style.display = 'block';
+        document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
+        btnSeguinte.disabled = false;
+        btnSeguinte.textContent = "Seguinte";
+        return;
+    }
+
+    // --- LÓGICA PARA EVENTOS ESPECIAIS ---
+    btnSeguinte.disabled = true;
+    btnSeguinte.textContent = "Validando data...";
+
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const ano = await getAnoPainelFirebase();
+    
+    // 1. Calcular o intervalo da semana
+    const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
+    
+    console.log("%c[CÁLCULO SEMANA]", "color: #e67e22; font-weight: bold;");
+    console.log(`| Mês selecionado: ${mes} | Semana: ${semanaNumero} | Ano: ${ano}`);
+    console.log(`| Intervalo calculado: ${monday.toLocaleDateString()} até ${sunday.toLocaleDateString()}`);
+
+    const mapaNomesFirestore = {
+        'memorial': 'Memorial',
+        'assembleia': 'Assembleia',
+        'congresso': 'Congresso',
+        'visita-servo': 'Visita do Servo',
+        'evento-especial': 'Evento Especial'
+    };
+
+    const nomeProcurado = mapaNomesFirestore[tipoReuniao];
+    console.log(`%c[FIREBASE] Buscando na coleção 'eventos' por: "${nomeProcurado}"`, "color: #9b59b6;");
+
+    try {
+        const snapshot = await db.collection('eventos').where('nome', '==', nomeProcurado).get();
+        console.log(`| Total de eventos encontrados com esse nome: ${snapshot.size}`);
+
+        let eventoCoincide = false;
+        let dataEncontradaStr = "";
+
+        snapshot.forEach(doc => {
+            const dataEv = doc.data();
+            let dataEvento;
+
+            // Tratamento flexível de data (campo data ou dia/mes/ano)
+            if (dataEv.data) {
+                dataEvento = new Date(dataEv.data + 'T12:00:00');
+            } else if (dataEv.ano && dataEv.mes && dataEv.dia) {
+                dataEvento = new Date(dataEv.ano, dataEv.mes - 1, dataEv.dia, 12, 0, 0);
+            }
+
+            const statusCheck = (dataEvento >= monday && dataEvento <= sunday);
+            console.log(`  -> Checando Evento ID: ${doc.id} | Data: ${dataEvento.toLocaleDateString()} | %cCoincide? ${statusCheck ? 'SIM' : 'NÃO'}`, statusCheck ? "color: #2ecc71" : "color: #e74c3c");
+
+            if (statusCheck) {
+                eventoCoincide = true;
+                dataEncontradaStr = dataEvento.toLocaleDateString();
+            }
+        });
+
+        if (eventoCoincide) {
+            console.log(`%c[SUCESSO] O evento "${nomeProcurado}" do dia ${dataEncontradaStr} está dentro da semana selecionada!`, "background: #27ae60; color: #fff; padding: 2px 5px;");
+            
+            const confirmou = await showSpecialEventConfirmation(tipoReuniao);
+            if (confirmou) {
+                console.log("[LOG] Usuário confirmou a gravação rápida.");
+                const gravou = await saveSpecialEvent();
+                if (gravou) {
+                    alert("Evento gravado com sucesso!");
+                    window.location.reload();
                 }
+            } else {
+                console.log("[LOG] Usuário cancelou a gravação rápida.");
+            }
+        } else {
+            console.warn(`%c[AVISO] Nenhuma data de ${nomeProcurado} agendada para o intervalo desta semana.`, "background: #f1c40f; color: #000; padding: 2px 5px;");
+            document.getElementById('mismatchEventName').textContent = nomeProcurado;
+            document.getElementById('eventMismatchPopup').style.display = 'flex';
+        }
 
-                const designacoesSection = document.getElementById('designacoesSection');
-                const leituraBibliaSection = document.getElementById('leituraBibliaSection');
-                const iniciarFluxoButton = document.querySelector('#fluxoSemanalForm button[type="submit"].btn-submit');
-                
-                designacoesSection.classList.add('active');
-                leituraBibliaSection.style.display = 'block';
-                iniciarFluxoButton.style.display = 'block';
-                
-                designacoesSection.scrollIntoView({ behavior: 'smooth' });
-            });
+    } catch (error) {
+        console.error("%c[ERRO FIREBASE] Falha na consulta:", "color: #c0392b;", error);
+        alert("Erro ao validar evento no banco de dados.");
+    } finally {
+        btnSeguinte.disabled = false;
+        btnSeguinte.textContent = "Seguinte";
+    }
+});
+
+// Função auxiliar para mostrar as seções de designação (reutilização)
+function exibirSecoesDesignacao() {
+    document.getElementById('designacoesSection').classList.add('active');
+    document.getElementById('leituraBibliaSection').style.display = 'block';
+    document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
+    document.getElementById('designacoesSection').scrollIntoView({ behavior: 'smooth' });
+}
 
             // ======================================================================== //
             // ============= FIM: NOVAS FUNÇÕES PARA LÓGICA DO MEMORIAL =============== //
@@ -6629,7 +6732,26 @@ function isPersonOnCooldown(personData, lastDateStr, meetingDateStr) {
 // === FIM: LÓGICA DE REGULARIDADE ========================================
 // ========================================================================
 
+// --- Lógica para fechar o popup de Mismatch (Data Não Coincidente) ---
 
+// 1. Fechar no botão "X"
+document.getElementById('closeMismatchPopup').addEventListener('click', function() {
+    document.getElementById('eventMismatchPopup').style.display = 'none';
+    console.log("[UI] Popup de Atenção fechado pelo 'X'");
+});
+
+// 2. Fechar no botão "Fechar" (cinza)
+document.getElementById('cancelMismatch').addEventListener('click', function() {
+    document.getElementById('eventMismatchPopup').style.display = 'none';
+    console.log("[UI] Popup de Atenção fechado pelo botão Fechar");
+});
+
+// 3. Opcional: Fechar ao clicar fora do conteúdo (no fundo escuro)
+document.getElementById('eventMismatchPopup').addEventListener('click', function(event) {
+    if (event.target === this) {
+        this.style.display = 'none';
+    }
+});
 
 // =================================================================== //
 // ========== GESTÃO DOS CLIQUES NOS ÍCONES E PAINEL DE ALERTA ======= //
@@ -6682,7 +6804,8 @@ const setupValidationListeners = () => {
 // Chamar a função para ativar os ouvintes de eventos
 setupValidationListeners();
 
-
+// Localiza o listener do campo tipo (se já existir, adiciona a chamada, se não, cria este)
+document.getElementById('tipo').addEventListener('change', updateTypeIcon);
 
     </script>
 
