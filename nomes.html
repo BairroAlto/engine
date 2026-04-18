@@ -1458,7 +1458,7 @@ body.sidebar-collapsed .column:first-child {
 <div class="form-group" style="margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
     <!-- Coluna 1 -->
     <label class="boolean-checkbox-label" style="background: #2c3e50; border: 1px solid #34495e; padding: 10px 15px; justify-content: center; margin-bottom: 0;">
-        <input type="checkbox" id="f-naCongregacao"> <strong>Na Congregação</strong>
+        <input type="checkbox" id="f-naCongregacao" checked> <strong>Na Congregação</strong>
     </label>
     <!-- Coluna 2 -->
     <label class="boolean-checkbox-label" style="background: #2c3e50; border: 1px solid #34495e; padding: 10px 15px; justify-content: center; margin-bottom: 0;">
@@ -2044,13 +2044,6 @@ function populateFilterOptions() {
 }
 
 
-// Resetar Filtros
-btnResetFilters.addEventListener('click', () => {
-    filterForm.reset();
-    document.getElementById('f-naCongregacao').checked = true; // Mantém o padrão
-    btnApplyFilters.click();
-});
-
 
 // Função para criar a lista de checkboxes dentro das divs
 function renderMultiSelect(containerId, options) {
@@ -2100,10 +2093,19 @@ btnApplyFilters.addEventListener('click', () => {
 
 // Limpar
 btnResetFilters.addEventListener('click', () => {
+    // Reset o formulário
     document.getElementById('advanced-filter-form').reset();
+    
+    // Desmarca todos os checkboxes das listas múltiplas
     document.querySelectorAll('.multi-select-container input').forEach(cb => cb.checked = false);
-    document.getElementById('f-naCongregacao').checked = true;
+    
+    // --- CONFIGURAÇÃO PADRÃO ---
+    document.getElementById('f-naCongregacao').checked = true; // Marcar como predefinido
+    document.getElementById('f-foraCongregacao').checked = false;
     document.getElementById('f-ativo').checked = false;
+    document.getElementById('f-inativo').checked = false;
+
+    // Aplica os filtros novamente (isso vai atualizar a lista na hora)
     btnApplyFilters.click();
 });
 
