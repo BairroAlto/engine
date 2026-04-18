@@ -1909,7 +1909,9 @@ async function loadNuncaTab() {
         const designacaoNome = document.getElementById('nuncaFiltroDesignacao').value;
         const contentDiv = document.getElementById('nuncaContent');
         contentDiv.innerHTML = `<div style="text-align: center; padding: 20px; columns: 1;"><i class="fas fa-spinner fa-spin"></i> A processar dados...</div>`;
-let pessoasQuery = db.collection('pessoas').where('fazDesignacoesDirigente', '==', true);
+let pessoasQuery = db.collection('pessoas')
+    .where('fazDesignacoesDirigente', '==', true)
+    .where('ativo', '==', true);
       if (genero) pessoasQuery = pessoasQuery.where('genero', '==', genero);
         if (idioma) pessoasQuery = pessoasQuery.where('idioma', '==', idioma);
         if (designacaoNome) pessoasQuery = pessoasQuery.where('designacoesReuniao', 'array-contains', designacaoNome);
@@ -2244,7 +2246,11 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
             ? designacao.quemFaz 
             : ["Publicador", "Pioneiro", "Pioneiro Regular", "Servo Ministerial", "Ancião"];
 
-        let query = db.collection('pessoas').where('fazDesignacoesDirigente', '==', true);
+        // ADICIONADO: .where('ativo', '==', true)
+        let query = db.collection('pessoas')
+            .where('fazDesignacoesDirigente', '==', true)
+            .where('ativo', '==', true);
+
         if (idiomas.length > 0) query = query.where('idioma', 'in', idiomas);
         if (genderPreference === 'masculino') query = query.where('genero', '==', 'Masculino');
         if (genderPreference === 'feminino') query = query.where('genero', '==', 'Feminino');
@@ -2255,7 +2261,6 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
         snapshot.docs.forEach(doc => {
             const p = doc.data();
 
-            // A verificação crucial agora usa 'designacoesPregacao'
             const podeFazer = p.designacoesPregacao && p.designacoesPregacao.includes(designacao.nome);
             const isAbsent = meetingDate && p.ausencias && p.ausencias.includes(meetingDate);
             const temPrivilegiosNecessarios = privilegiosExigidos.some(
@@ -2267,7 +2272,6 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
             }
         });
         
-        // ETAPA 2: ORGANIZAÇÃO VISUAL
         const groupedPeople = new Map();
         const DEFAULT_GROUP = 'Publicadores';
         const groupOrder = ['Ancião', 'Servo Ministerial', 'Pioneiro Regular', 'Pioneiro Auxiliar', 'Publicadores'];
@@ -2290,13 +2294,9 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
             }
             groupedPeople.get(assignedGroup).push(person);
         });
-        
-        for (const group of groupedPeople.values()) {
-            group.sort((a, b) => a.data.nomePessoa.localeCompare(b.data.nomePessoa));
-        }
 
-        // ETAPA 3: CONSTRUÇÃO DO DROPDOWN
-        container.querySelectorAll('select.form-select:not(.dia-select):not(.local-select)').forEach((participantSelect, participantIndex) => {
+        // ETAPA 3: CONSTRUÇÃO DO DROPDOWN (LÓGICA DE PERSONALIDADE REMOVIDA)
+        container.querySelectorAll('select.form-select:not(.dia-select):not(.local-select)').forEach((participantSelect) => {
             const currentValue = participantSelect.value;
             participantSelect.innerHTML = '<option value="">Selecione...</option>';
 
@@ -2309,23 +2309,10 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
                     optgroup.label = `--- ${pluralize(groupName)} ---`;
 
                     peopleInGroup.forEach(person => {
-                        const pessoaData = person.data;
-                        let podeAssumirEstePapel = false;
-                        
-                        if (participantIndex === 0 && (designacao.numeroParticipantes || 1) > 1) {
-                            if (pessoaData.personalidade === '+ à vontade' || (Array.isArray(designacao.personalidade) && designacao.personalidade.includes('- à vontade'))) {
-                                podeAssumirEstePapel = true;
-                            }
-                        } else {
-                            podeAssumirEstePapel = true;
-                        }
-            
-                        if (podeAssumirEstePapel) {
-                            const option = document.createElement('option');
-                            option.value = person.id;
-                            option.textContent = pessoaData.nomePessoa;
-                            optgroup.appendChild(option);
-                        }
+                        const option = document.createElement('option');
+                        option.value = person.id;
+                        option.textContent = person.data.nomePessoa;
+                        optgroup.appendChild(option);
                     });
 
                     if (optgroup.children.length > 0) {
@@ -2613,11 +2600,14 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
     return finalCandidates;
 }
 
-    async function getDataFromFirebase() {
+   async function getDataFromFirebase() {
     const ano = await getAnoPainelFirebase();
 
-   const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
-        db.collection('pessoas').where('fazDesignacoesDirigente', '==', true).get(),
+    const [pessoasSnapshot, designacoesSnapshot, historicoSnapshot] = await Promise.all([
+        db.collection('pessoas')
+            .where('fazDesignacoesDirigente', '==', true)
+            .where('ativo', '==', true) // ADICIONADO
+            .get(),
         db.collection('designacoes').get(),
         db.collection('historico').where('ano', '==', ano).get()
     ]);
@@ -2634,95 +2624,95 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
 
  async function gerarCandidatosParaVaga(vaga, peopleMap, historicoData, dateRanges, detailedPreviousWeek, detailedNextWeek, designationsMap, mes, relaxRules = false) {
     const designacao = designationsMap.get(vaga.designacaoId);
+    const desigNome = designacao ? designacao.nome : "Desconhecida";
     
+    // Inicia um grupo de logs para esta vaga específica
+    console.groupCollapsed(`🚀 Analisando candidatos para: ${desigNome} (${relaxRules ? 'MODO EMERGÊNCIA' : 'Modo Normal'})`);
+
     const privilegiosExigidos = designacao.quemFaz && designacao.quemFaz.length > 0
         ? designacao.quemFaz
         : ["Publicador", "Pioneiro", "Pioneiro Regular", "Servo Ministerial", "Ancião"];
 
     let candidatos = Array.from(peopleMap.values());
+    let totalInicial = candidatos.length;
 
-    // --- Lógica de Filtros Rígidos (permanece igual) ---
+    // --- FILTRAGEM ---
     candidatos = candidatos.filter(p => {
         const atendeGenero = vaga.filters.genero === 'ambos' || p.genero?.toLowerCase() === vaga.filters.genero;
-        const atendeIdioma = vaga.filters.idiomas.includes(p.idioma);
+        const atendeIdioma = (vaga.filters.idiomas || []).includes(p.idioma);
         const podeFazerDesignacao = p.designacoesPregacao?.includes(designacao.nome);
-        const temPrivilegiosNecessarios = privilegiosExigidos.some(
-            privilegio => p.privilegiosCongregacao && p.privilegiosCongregacao.includes(privilegio)
-        );
-
-        if (!atendeGenero || !atendeIdioma || !podeFazerDesignacao || !temPrivilegiosNecessarios) return false;
-
+        const temPrivilegiosNecessarios = privilegiosExigidos.some(priv => p.privilegiosCongregacao?.includes(priv));
         const meetingDate = dateRanges.current.start;
-        if (p.ausencias && p.ausencias.includes(meetingDate)) {
-             return false;
+        const isAbsent = p.ausencias && p.ausencias.includes(meetingDate);
+
+        // Filtro Básico
+        if (!atendeGenero || !atendeIdioma || !podeFazerDesignacao || !temPrivilegiosNecessarios || isAbsent) {
+            return false;
         }
 
-        const fezEstaDesignacaoSemanaPassada = detailedPreviousWeek.has(p.id) && detailedPreviousWeek.get(p.id).has(vaga.designacaoId);
-        const faraEstaDesignacaoProximaSemana = detailedNextWeek.has(p.id) && detailedNextWeek.get(p.id).has(vaga.designacaoId);
-        if(fezEstaDesignacaoSemanaPassada || faraEstaDesignacaoProximaSemana) return false;
+        // VERIFICAÇÃO DA REGRA DE OURO (SEMANA ANTERIOR)
+        const trabalhouSemanaPassada = detailedPreviousWeek.has(p.id) && Array.from(detailedPreviousWeek.get(p.id)).some(id => designationsMap.get(id)?.parte === 'dirigencia saida');
+        const trabalhouSemanaSeguinte = detailedNextWeek.has(p.id) && Array.from(detailedNextWeek.get(p.id)).some(id => designationsMap.get(id)?.parte === 'dirigencia saida');
 
-        if (detailedPreviousWeek.has(p.id)) {
-            for (const desigId of detailedPreviousWeek.get(p.id)) {
-                if (designationsMap.get(desigId)?.parte === 'dirigencia saida') return false;
+        if (!relaxRules) {
+            if (trabalhouSemanaPassada || trabalhouSemanaSeguinte) {
+                console.log(`[BLOQUEIO RÍGIDO] ${p.nomePessoa} descartado(a) - Trabalhou na semana anterior/seguinte.`);
+                return false;
             }
-        }
-        if (detailedNextWeek.has(p.id)) {
-            for (const desigId of detailedNextWeek.get(p.id)) {
-                if (designationsMap.get(desigId)?.parte === 'dirigencia saida') return false;
+        } else {
+            if (trabalhouSemanaPassada) {
+                console.warn(`[AVISO EMERGÊNCIA] ${p.nomePessoa} será considerado APENAS porque não existem alternativas limpas.`);
             }
         }
 
         return true;
     });
 
-    // --- Lógica de Pontuação ---
+    console.log(`Candidatos viáveis encontrados: ${candidatos.length} de ${totalInicial}`);
+
+    // --- PONTUAÇÃO ---
     const candidatosComScore = candidatos.map(candidato => {
-        // Regra 12: Frequência anual (base da pontuação)
         let score = 0;
+        
+        // Frequência Anual (Peso 10 por cada vez que fez)
+        let participacoesAno = 0;
         historicoData.forEach(h => {
             h.designacoes?.forEach(d => {
                 if (d.designacaoId === vaga.designacaoId && Object.values(d.participantes).includes(candidato.id)) {
-                    score++;
+                    participacoesAno++;
                 }
             });
         });
-        
-        // Se estiver no modo relaxado, não aplica as penalizações
+        score += (participacoesAno * 10);
+
         if (!relaxRules) {
-            // Regra 4: "Não convém" ter feito ESTA designação no mês
-            const fezEsteMes = historicoData.some(h => 
-                h.mes === mes && 
-                h.designacoes?.some(d => d.designacaoId === vaga.designacaoId && Object.values(d.participantes).includes(candidato.id))
-            );
-            if(fezEsteMes) score += 50;
-
-            // --- NOVA REGRA ADICIONADA: "Não convém" ter feito QUALQUER 'dirigencia saida' neste Mês ---
-            const fezTipoDeParteEsteMes = historicoData.some(h => 
-                h.mes === mes &&
-                h.designacoes?.some(d => {
-                    const dInfo = designationsMap.get(d.designacaoId);
-                    return dInfo && dInfo.parte === 'dirigencia saida' && Object.values(d.participantes).includes(candidato.id);
-                })
-            );
-            if(fezTipoDeParteEsteMes) score += 40; // Penalização alta, mas um pouco menor que a de fazer a parte exata.
-            // --- FIM DA NOVA REGRA ---
-
-            // Regra 8: "Não convém" ter feito 'dirigencia saida' na semana passada
-            if (detailedPreviousWeek.has(candidato.id)) {
-                const fezParteDoMesmoTipo = Array.from(detailedPreviousWeek.get(candidato.id)).some(desigId => 
-                    designationsMap.get(desigId)?.parte === 'dirigencia saida'
-                );
-                if(fezParteDoMesmoTipo) score += 10;
+            // Penalização por já ter feito no mês (Peso 100)
+            const fezEsteMes = historicoData.some(h => h.mes === mes && h.designacoes?.some(d => Object.values(d.participantes).includes(candidato.id)));
+            if(fezEsteMes) {
+                score += 100;
+                console.log(`[INFO] ${candidato.nomePessoa} tem penalização por já ter participado este mês.`);
             }
+        } else {
+            // Em modo relaxado, quem trabalhou na semana passada leva uma penalização GIGANTE 
+            // para garantir que se aparecer alguém "limpo" (que talvez tenha falhado o idioma mas o sistema relaxou), ele passe à frente.
+            const trabalhouSemanaPassada = detailedPreviousWeek.has(candidato.id);
+            if (trabalhouSemanaPassada) score += 2000;
         }
 
-        return { ...candidato, score };
+        return { ...candidato, score, participacoesAno };
     });
-    // --- FIM: Lógica de Pontuação ---
 
-    // Ordena os candidatos pelo score (menor é melhor)
+    // Ordenação
     candidatosComScore.sort((a, b) => a.score - b.score);
 
+    if (candidatosComScore.length > 0) {
+        const top = candidatosComScore[0];
+        console.log(`🏆 Melhor escolha: ${top.nomePessoa} (Score: ${top.score}, Participações no Ano: ${top.participacoesAno})`);
+    } else {
+        console.error(`❌ NENHUM CANDIDATO encontrado para esta vaga.`);
+    }
+
+    console.groupEnd(); // Fecha o grupo de logs
     return candidatosComScore;
 }
 
@@ -2796,15 +2786,81 @@ function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignme
             return { current, previous, next };
         }
 
+        async function autoDetectEventType() {
+    console.log("[AUTO-DETECT] Verificando eventos para a semana de Pregação...");
+    
+    const tipoReuniaoSelect = document.getElementById('tipoReuniao');
+    const mes = parseInt(document.getElementById('mes').value);
+    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const ano = await getAnoPainelFirebase();
+
+    // Obtém o intervalo da semana (Segunda a Domingo)
+    const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
+
+    try {
+        const snapshot = await db.collection('eventos')
+            .where('ano', 'in', [ano, ano + 1])
+            .get();
+
+        let tipoDetectado = 'Normal'; // Valor padrão
+
+        snapshot.forEach(doc => {
+            const eventData = doc.data();
+            let dataEvento;
+
+            // 1. Verificação por data única (Ex: Memorial ou Visita do Servo)
+            if (eventData.data) {
+                if (eventData.data.includes('/')) {
+                    const parts = eventData.data.split('/');
+                    dataEvento = new Date(parts[2], parts[1] - 1, parts[0]);
+                } else {
+                    dataEvento = new Date(eventData.data + 'T12:00:00');
+                }
+
+                if (dataEvento >= monday && dataEvento <= sunday) {
+                    // O nome no Firebase deve coincidir com o texto das options
+                    // Ex: "Visita do Servo", "Memorial", "Assembleia"
+                    tipoDetectado = eventData.nome; 
+                }
+            } 
+            // 2. Verificação por intervalo (Ex: Assembleia ou Congresso)
+            else if (eventData.data_inicio && eventData.data_fim) {
+                const inicio = new Date(eventData.data_inicio + 'T00:00:00');
+                const fim = new Date(eventData.data_fim + 'T23:59:59');
+                
+                if (inicio <= sunday && fim >= monday) {
+                    tipoDetectado = eventData.nome;
+                }
+            }
+        });
+
+        // Atualiza o dropdown visível
+        // Certifique-se de que o 'tipoDetectado' existe nas opções do seu HTML
+        tipoReuniaoSelect.value = tipoDetectado;
+        console.log(`[AUTO-DETECT] Tipo de período de pregação definido como: ${tipoDetectado}`);
+
+        // Se a lista de designações já estiver aberta, recarrega para atualizar os filtros de pessoas
+        if (document.getElementById('designacoesSection').classList.contains('active')) {
+             loadDesignacoes(); 
+        }
+
+    } catch (error) {
+        console.error("[AUTO-DETECT] Erro ao buscar eventos:", error);
+    }
+}
+
  async function updateWeekDisplay() {
+    console.log("[DEBUG] Iniciando updateWeekDisplay (Pregação)...");
     const weekDisplay = document.getElementById('weekDisplay');
     const btn = document.getElementById('btnSeguinte');
     const mes = document.getElementById('mes').value;
     const ano = await getAnoPainelFirebase();
     const salaOriginal = document.getElementById('sala').value;
+    
+    if (!weekDisplay || !btn) return;
     const weekInfoContainer = weekDisplay.parentElement;
 
-    // Formata o nome da sala para corresponder ao formato do banco de dados
+    // Formata o nome da sala
     const salaFormatada = salaOriginal
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -2821,9 +2877,14 @@ function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignme
         weekInfoContainer.classList.add('warning-state');
     } else {
         document.getElementById('semanaNumero').value = semanaAtual;
-        weekDisplay.innerHTML = `${semanaAtual}ª semana de ${totalSemanasNoMes} <br>(${getDiasSemana(ano, mes, semanaAtual)})`;
+        const intervaloDias = getDiasSemana(ano, mes, semanaAtual);
+        weekDisplay.innerHTML = `${semanaAtual}ª semana de ${totalSemanasNoMes} <br>(${intervaloDias})`;
+        
         btn.disabled = false;
         weekInfoContainer.classList.remove('warning-state');
+
+        // === NOVO: AUTO-DETEÇÃO DE EVENTOS PARA PREGAÇÃO ===
+        await autoDetectEventType(); 
     }
 }
 
