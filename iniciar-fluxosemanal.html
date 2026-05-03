@@ -4112,7 +4112,7 @@ function setupTabClickListeners() {
                 // 1. Carrega os componentes visuais e dados estáticos
                 loadNacionalidades();
                 initializeSystemData();
-                fetch('slidebar.html')
+                fetch('sidebar.html')
                     .then(response => response.text())
                     .then(html => document.getElementById("sidebar-placeholder").innerHTML = html);
 
