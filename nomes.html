@@ -1947,7 +1947,8 @@ body.sidebar-collapsed .column:first-child {
             </div>
         </div>
     </div>
-    
+    <script src="designations-module.js"></script>
+<script src="main.js"></script>
     <script>
      document.addEventListener('DOMContentLoaded', () => {
         // --- Seletores ---
@@ -2362,48 +2363,41 @@ btnResetFilters.addEventListener('click', () => {
 }
 
 function filterPessoasList() {
+    // 1. Segurança: se a lista de dados estiver vazia, tenta carregar do cache global
+    if (!allPessoasData || allPessoasData.length === 0) {
+        console.warn("Aviso: allPessoasData está vazio. A carregar dados do cache...");
+    }
+
     const textSearch = removerAcentos((filterPessoasInput.value || "").toLowerCase().trim());
     const listItems = pessoasListUl.getElementsByTagName('li');
+    
+    // Cria o mapa de dados
     const dataMap = allPessoasData.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
-
     const f = activeFilters; 
 
     for (let li of listItems) {
-        if (li.textContent.includes('Nenhuma pessoa')) continue;
+        // Ignora a mensagem de "Nenhuma pessoa encontrada"
+        if (li.dataset.id === undefined) continue;
+
         const p = dataMap[li.dataset.id];
         if (!p) continue;
 
-        // A. Busca por Nome
-        const matchesText = removerAcentos((p.nomePessoa || "").toLowerCase()).includes(textSearch);
+        // --- FILTRO 1: Nome ---
+        const nomePessoa = p.nomePessoa || "";
+        const matchesText = removerAcentos(nomePessoa.toLowerCase()).includes(textSearch);
 
-        // B. Gêneros, Personalidades e Idiomas
+        // --- FILTRO 2: Status (Na Congregação / Ativo) ---
+        // Usamos lógica de "não é falso" para aceitar quem não tem o campo preenchido
+        const matchNaCong   = !f.naCongregacao   || (p.naCongregacao !== false);
+        const matchForaCong = !f.foraCongregacao || (p.naCongregacao === false);
+        const matchAtivo    = !f.ativo           || (p.ativo !== false);
+        const matchInativo  = !f.inativo         || (p.ativo === false);
+
+        // --- FILTRO 3: Gênero e Outros ---
         const matchGen = f.generos.length === 0 || f.generos.includes(p.genero);
-        const matchPers = f.personalidades.length === 0 || f.personalidades.includes(p.personalidade);
-        const matchIdio = f.idiomas.length === 0 || f.idiomas.includes(p.idioma);
-        
-        // C. Privilégios
-        const matchPrivC = f.privCongs.length === 0 || (p.privilegiosCongregacao || []).some(pc => f.privCongs.includes(pc));
-        const matchPrivP = f.privPregas.length === 0 || (p.privilegiosPregacao || []).some(pp => f.privPregas.includes(pp));
-        const matchPrivE = f.privEsps.length === 0 || (p.privilegiosEspeciais || []).some(pe => f.privEsps.includes(pe));
 
-        // D. Lógica de Status (Onde incluímos os novos campos)
-        // Se o filtro estiver marcado, a pessoa deve corresponder ao valor exato.
-        const matchNaCong   = !f.naCongregacao   || (p.naCongregacao === true || p.naCongregacao === "true");
-        const matchForaCong = !f.foraCongregacao || (p.naCongregacao === false || p.naCongregacao === "false");
-        
-        const matchAtivo    = !f.ativo           || (p.ativo === true || p.ativo === "true");
-        const matchInativo  = !f.inativo         || (p.ativo === false || p.ativo === "false");
-
-        // Outras funções
-        const matchDirig = !f.fazDirigente || p.fazDesignacoesDirigente === true;
-        const matchCarr  = !f.fazCarrinhos || p.fazDesignacoesPregacao === true;
-        const matchReun  = !f.fazReuniao   || p.fazDesignacoesReuniao  === true;
-
-        // Validação Final
-        if (matchesText && matchGen && matchPers && matchIdio && 
-            matchPrivC && matchPrivP && matchPrivE && 
-            matchNaCong && matchForaCong && matchAtivo && matchInativo && 
-            matchDirig && matchCarr && matchReun) {
+        // APLICAÇÃO FINAL
+        if (matchesText && matchNaCong && matchForaCong && matchAtivo && matchInativo && matchGen) {
             li.style.display = ''; 
         } else {
             li.style.display = 'none';
@@ -2411,10 +2405,12 @@ function filterPessoasList() {
     }
 }
 
+
         // --- Funções de Carregamento de Dados ---
         function loadAllPessoasData() {
             return db.collection('pessoas').get().then(snapshot => {
                 allPessoasData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                filterPessoasList();
                 allPessoasNames = allPessoasData.reduce((acc, p) => {
                     acc[p.id] = p.nomePessoa;
                     return acc;
@@ -2446,12 +2442,15 @@ function loadAllDesignacoes() {
                 emoji: data.emoji || '🔹' 
             };
 
-          if (data.tipo === 'reuniao') {
+      if (data.tipo === 'reuniao') {
     allDesignacoes.reuniao.push({ 
+        id: doc.id, // Garanta que o ID está aqui
         nome: data.nome, 
         parte: data.parte || 'outros',
         ordem: typeof data.ordem === 'number' ? data.ordem : 999,
-        quemFaz: data.quemFaz || [] // <-- ADICIONE ESTA LINHA
+        quemFaz: data.quemFaz || [],
+        tipo: data.tipo,   // <--- ADICIONE ESTA LINHA
+        status: data.status // <--- ADICIONE ESTA LINHA
     });
 }
             else if (data.tipo === 'pregacao') {
@@ -2495,6 +2494,7 @@ function loadAllDesignacoes() {
     historyLoadingDiv.style.display = 'none';
 
     db.collection('pessoas').orderBy('nomePessoa').get().then(snapshot => {
+        allPessoasData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         showLoading('list', false);
         if (snapshot.empty) {
             pessoasListUl.innerHTML = '<li style="cursor: default; color: #6c757d;">Nenhuma pessoa encontrada.</li>';
@@ -3038,28 +3038,33 @@ function populateEditFields(tabId, data) {
         
         updatePregacaoFieldsState();
 
-    } else if (tabId === 'permissoes-tab') {
-        document.getElementById('edit-fazDesignacoesReuniao').checked = data.fazDesignacoesReuniao || false;
-        document.getElementById('edit-regularidade').value = data.regularidade || 'Regularmente';
-        document.getElementById('edit-rule').value = data.rule || '';
-        
-        const groupDiv = document.getElementById('edit-designacoesReuniao-group');
-        groupDiv.innerHTML = '';
-        const currentDesig = data.designacoesReuniao || [];
-        
-        allDesignacoes.reuniao.forEach(desig => {
-            const isChecked = currentDesig.includes(desig.nome);
-            const checkboxItem = createEditCheckbox(desig.nome, 'edit-designacao-reuniao', isChecked);
-            if (desig.quemFaz && desig.quemFaz.includes("Servo de Circuito")) {
-                checkboxItem.classList.add('designacao-sc-reuniao');
-            }
-            groupDiv.appendChild(checkboxItem);
-        });
-        
-        updateReuniaoFieldsState();
-        filtrarDesignacoesSCReuniao();
+} else if (tabId === 'permissoes-tab') {
+    // 1. Sincroniza os valores dos campos principais
+    const fazReuniaoCB = document.getElementById('edit-fazDesignacoesReuniao');
+    fazReuniaoCB.checked = data.fazDesignacoesReuniao || false;
+    
+    document.getElementById('edit-regularidade').value = data.regularidade || 'Regularmente';
+    document.getElementById('edit-rule').value = data.rule || '';
+    
+    const groupDiv = document.getElementById('edit-designacoesReuniao-group');
+    const currentDesig = data.designacoesReuniao || [];
 
-    } else if (tabId === 'disponibilidade-tab') {
+    // --- CHAMADA DO MÓDULO MODULAR ---
+  DesignationModule.renderGrouped({
+        container: groupDiv,
+        userCurrentDesignations: currentDesig,
+        allDesignations: allDesignacoes.reuniao,
+        checkboxCreator: createEditCheckbox
+    }).then(() => {
+        // 3. ESTA É A PARTE IMPORTANTE: 
+        // Após o módulo criar o HTML, forçamos a verificação do estado (bloqueado/livre)
+        updateReuniaoFieldsState(); 
+        filtrarDesignacoesSCReuniao();
+    });
+}
+    
+    
+    else if (tabId === 'disponibilidade-tab') {
         // --- ABA AUSÊNCIAS: PREDEFINIR DATA DE HOJE (DIA/MÊS/ANO) ---
         const today = new Date();
         const yyyy = today.getFullYear();
@@ -3551,6 +3556,7 @@ function switchTab(tabId) {
         
         // --- Event Listeners e Inicialização ---
         filterPessoasInput.addEventListener('input', filterPessoasList);
+        document.getElementById('edit-fazDesignacoesReuniao').addEventListener('change', updateReuniaoFieldsState);
         tabButtons.forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
         editButtons.forEach(button => button.addEventListener('click', (e) => enterEditMode(e.target.closest('button').dataset.tabTarget)));
         cancelButtons.forEach(button => button.addEventListener('click', cancelEditMode));
@@ -3664,22 +3670,25 @@ function updateTitleBackground(naCongregacao, ativo) {
 function updateReuniaoFieldsState() {
     const mainCB = document.getElementById('edit-fazDesignacoesReuniao');
     const groupDiv = document.getElementById('edit-designacoesReuniao-group');
-    const regSelect = document.getElementById('edit-regularidade'); // NOVO: Pega o dropdown
+    const regSelect = document.getElementById('edit-regularidade');
     
     if (!mainCB || !groupDiv) return;
     
     const isChecked = mainCB.checked;
     
-    // Atualiza a lista de checkboxes
+    // Altera a aparência e funcionalidade do container de designações
     groupDiv.style.opacity = isChecked ? "1" : "0.5";
     groupDiv.style.pointerEvents = isChecked ? "auto" : "none";
-    groupDiv.querySelectorAll('input').forEach(cb => cb.disabled = !isChecked);
+    
+    // Desabilita/Habilita todos os checkboxes internos para que não sejam salvos por erro
+    groupDiv.querySelectorAll('input').forEach(cb => {
+        cb.disabled = !isChecked;
+    });
 
-    // NOVO: Atualiza o dropdown de regularidade
+    // Atualiza também o dropdown de regularidade
     if (regSelect) {
         regSelect.disabled = !isChecked;
         regSelect.style.opacity = isChecked ? "1" : "0.5";
-        regSelect.style.cursor = isChecked ? "pointer" : "not-allowed";
     }
 }
 
@@ -3704,8 +3713,10 @@ function updatePregacaoFieldsState() {
 
 // Função para remover acentos e caracteres especiais
 function removerAcentos(str) {
+    if (!str) return "";
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
+
 
     </script>
     
