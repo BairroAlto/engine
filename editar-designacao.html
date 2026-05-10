@@ -365,58 +365,72 @@
                 if (editButton) { carregarDadosFormulario(e.target.closest('.designation-item').dataset.id); }
             });
 
-            editForm.addEventListener('submit', async function(e) {
+   editForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 if (!idAtualEmEdicao) return;
-                if (!document.querySelector('input[name="quem_faz"]:checked')) { alert('O campo "Quem faz?" é obrigatório.'); return; }
+                
+                // Captura os valores do Checkbox
+                const quemFazSelecionados = Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value);
+                
+                // LOG PARA VERIFICAÇÃO NO CONSOLE DO NAVEGADOR
+                console.log("--- TESTE DE GRAVAÇÃO ---");
+                console.log("IDs selecionados em 'Quem faz?':", quemFazSelecionados);
+
+                if (quemFazSelecionados.length === 0) { 
+                    alert('O campo "Quem faz?" é obrigatório.'); 
+                    return; 
+                }
 
                 const personalidadeSel = document.querySelector('input[name="personalidade"]:checked');
                 const horarioAnexadoSel = document.querySelector('input[name="horario_anexado"]:checked');
                 const localAnexadoSel = document.querySelector('input[name="local_anexado"]:checked');
-const valorHorarioCompleto = horarioAnexadoSel ? horarioAnexadoSel.value : "";
+                const valorHorarioCompleto = horarioAnexadoSel ? horarioAnexadoSel.value : "";
 
-let diaAnexado = "";
-    let horaAnexada = "";
+                let diaAnexado = "";
+                let horaAnexada = "";
 
-    // NOVO: Verifica se um horário foi selecionado antes de dividir
-    if (valorHorarioCompleto) {
-        const ultimoEspaco = valorHorarioCompleto.lastIndexOf(' ');
-        if (ultimoEspaco !== -1) {
-            diaAnexado = valorHorarioCompleto.substring(0, ultimoEspaco);
-            horaAnexada = valorHorarioCompleto.substring(ultimoEspaco + 1);
-        }
-    }
-
+                if (valorHorarioCompleto) {
+                    const ultimoEspaco = valorHorarioCompleto.lastIndexOf(' ');
+                    if (ultimoEspaco !== -1) {
+                        diaAnexado = valorHorarioCompleto.substring(0, ultimoEspaco);
+                        horaAnexada = valorHorarioCompleto.substring(ultimoEspaco + 1);
+                    }
+                }
 
 
-              const designacaoAtualizada = {
-        nome: document.getElementById('nome-designacao').value,
-        numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
-        feitoPor: document.getElementById('feito-por').value,
-        preferencia: document.getElementById('preferencia').value,
-        personalidade: personalidadeSel ? personalidadeSel.value : "",
-        quando: document.getElementById('quando').value,
-        tipo: document.getElementById('tipo').value,
-        parte: document.getElementById('parte').value,
-        horarioAnexado: valorHorarioCompleto, // Mantém o campo original
-        localAnexado: localAnexadoSel ? localAnexadoSel.value : "",
-        dia: diaAnexado,     // NOVO CAMPO
-        hora: horaAnexada,   // NOVO CAMPO
-        anexo: document.getElementById('anexo').value,
-        descricao: document.getElementById('descricao').value,
-        anexadoDiscursos: document.getElementById('anexado-discursos').value,
-        emoji: document.getElementById('emoji').value,
-        status: document.getElementById('status').checked,
-        quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
-        dataModificacao: firebase.firestore.FieldValue.serverTimestamp()
-    };
 
-                try {
+      const designacaoAtualizada = {
+                    nome: document.getElementById('nome-designacao').value,
+                    numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
+                    feitoPor: document.getElementById('feito-por').value,
+                    preferencia: document.getElementById('preferencia').value,
+                    personalidade: personalidadeSel ? personalidadeSel.value : "",
+                    quando: document.getElementById('quando').value,
+                    tipo: document.getElementById('tipo').value,
+                    parte: document.getElementById('parte').value,
+                    horarioAnexado: valorHorarioCompleto,
+                    localAnexado: localAnexadoSel ? localAnexadoSel.value : "",
+                    dia: diaAnexado,
+                    hora: horaAnexada,
+                    anexo: document.getElementById('anexo').value,
+                    descricao: document.getElementById('descricao').value,
+                    anexadoDiscursos: document.getElementById('anexado-discursos').value,
+                    emoji: document.getElementById('emoji').value,
+                    status: document.getElementById('status').checked,
+                    quemFaz: quemFazSelecionados, // Array com os valores
+                    dataModificacao: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+               try {
                     await db.collection('designacoes').doc(idAtualEmEdicao).update(designacaoAtualizada);
+                    console.log("✅ Sucesso ao gravar no Firebase!");
                     editFormCard.style.display = 'none';
                     idAtualEmEdicao = null;
                     await renderizarListas();
-                } catch (error) { console.error("Erro ao atualizar:", error); alert("Erro ao salvar."); }
+                } catch (error) { 
+                    console.error("❌ Erro ao atualizar:", error); 
+                    alert("Erro ao salvar."); 
+                }
             });
 
             // --- Carregamento Inicial ---
