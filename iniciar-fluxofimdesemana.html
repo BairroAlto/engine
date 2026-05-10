@@ -1428,7 +1428,6 @@ if(validationIcon && validationPanel && validationPanelClose) {
         console.log(historicoData);
         
         await db.collection("historico").add(historicoData);
-        alert("Fluxo de fim de semana criado com sucesso!");
         window.location.reload();
 
     } catch (error) {
