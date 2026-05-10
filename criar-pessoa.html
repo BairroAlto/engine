@@ -449,9 +449,14 @@ db.collection("designacoes").where("tipo", "==", "reuniao").orderBy("ordem").ord
         const data = doc.data();
         const checkbox = createDesignacaoCheckbox(data.nome, 'designacoes-reuniao-list');
         
-        // NOVO: Verifica se esta designação é exclusiva para Servo de Circuito
-        if (data.quemFaz && data.quemFaz.includes("Servo de Circuito")) {
-            checkbox.classList.add('designacao-sc');
+        // NOVA REGRA: Verifica se a designação é EXCLUSIVA para Servo de Circuito
+        // Ou seja, o array quemFaz tem apenas 1 item e esse item é "Servo de Circuito"
+        const isExclusivaSC = data.quemFaz && 
+                             data.quemFaz.length === 1 && 
+                             data.quemFaz[0] === "Servo de Circuito";
+
+        if (isExclusivaSC) {
+            checkbox.classList.add('designacao-sc-exclusiva');
         }
 
         if (data.parte === 'escola') {
@@ -462,7 +467,7 @@ db.collection("designacoes").where("tipo", "==", "reuniao").orderBy("ordem").ord
             listaDesignacoesFimSemanaDiv.appendChild(checkbox);
         }
     });
-    // Executa a filtragem inicial após carregar
+    // Aplica o filtro inicial (esconder as exclusivas se a pessoa não for SC)
     filtrarDesignacoesSC();
 }),
 
@@ -735,15 +740,19 @@ function populateFormForEdit(data) {
 
 // Função para mostrar/esconder designações de Servo de Circuito
 function filtrarDesignacoesSC() {
+    // Verifica se o checkbox de "Servo de Circuito" na aba Informações Pessoais está marcado
     const isServoCircuito = document.getElementById('privilegio-servo-circuito').checked;
-    const itensSC = document.querySelectorAll('.designacao-sc');
+    
+    // Seleciona apenas as designações que marcámos como EXCLUSIVAS
+    const itensExclusivosSC = document.querySelectorAll('.designacao-sc-exclusiva');
 
-    itensSC.forEach(item => {
+    itensExclusivosSC.forEach(item => {
         if (isServoCircuito) {
             item.style.display = 'flex'; // Mostra se for SC
         } else {
             item.style.display = 'none'; // Esconde se não for SC
-            // Opcional: Desmarca o checkbox se ele for escondido
+            
+            // Desmarca o checkbox se ele for escondido para não gravar dados errados
             const cb = item.querySelector('input');
             if (cb) cb.checked = false;
         }
