@@ -140,9 +140,13 @@
                 renderConflictEditor(selectedDesignation);
             }
 
-            function renderConflictEditor(selectedDesignation) {
+        function renderConflictEditor(selectedDesignation) {
                 const existingBloqueios = selectedDesignation.bloqueio || {};
                 let html = `<h2>Regras para: ${selectedDesignation.nome}</h2>`;
+                
+                // Espaço discreto para mostrar "Salvando..."
+                html += `<div id="save-status" style="height: 20px; font-size: 0.85em; margin-bottom: 10px;"></div>`;
+
                 const otherDesignations = allDesignations.filter(d => d.id !== selectedDesignation.id);
                 orderedCategories.forEach(categoryName => {
                     const partes = categoryStructure[categoryName];
@@ -156,19 +160,69 @@
                                 html += `<h5 class="subcategory-header ${className}">${formatSubcategoryName(parte)}</h5>`;
                                 designationsInParte.forEach(otherD => {
                                     const currentPermission = existingBloqueios[otherD.id] || 'Não';
-                                    html += `<div class="permission-item"><label for="perm-${otherD.id}">${otherD.nome}</label><select id="perm-${otherD.id}" data-target-designation-id="${otherD.id}" class="permission-select"><option value="Sim" ${currentPermission === 'Sim' ? 'selected' : ''}>Sim</option><option value="Moderado" ${currentPermission === 'Moderado' ? 'selected' : ''}>Moderado</option><option value="Não" ${currentPermission === 'Não' ? 'selected' : ''}>Não</option></select></div>`;
+                                    // Adicionamos data-source e data-target para saber quem salvar
+                                    html += `<div class="permission-item">
+                                                <label>${otherD.nome}</label>
+                                                <select class="permission-select" 
+                                                        data-source-id="${selectedDesignation.id}" 
+                                                        data-target-id="${otherD.id}">
+                                                    <option value="Sim" ${currentPermission === 'Sim' ? 'selected' : ''}>Sim</option>
+                                                    <option value="Moderado" ${currentPermission === 'Moderado' ? 'selected' : ''}>Moderado</option>
+                                                    <option value="Não" ${currentPermission === 'Não' ? 'selected' : ''}>Não</option>
+                                                </select>
+                                            </div>`;
                                 });
                             }
                         });
                     }
                 });
-                html += `<div class="save-button-container"><button id="save-permissions-btn" data-source-designation-id="${selectedDesignation.id}">Salvar Alterações</button><p id="save-feedback"></p></div>`;
+
                 editorContent.innerHTML = html;
+
+                // Ativa a mudança automática em cada select
                 editorContent.querySelectorAll('.permission-select').forEach(select => {
                     updateSelectColor(select);
-                    select.addEventListener('change', () => updateSelectColor(select));
+                    select.addEventListener('change', function() {
+                        updateSelectColor(this);
+                        saveIndividualChange(this);
+                    });
                 });
-                document.getElementById('save-permissions-btn').addEventListener('click', handleSaveChanges);
+            }
+
+            async function saveIndividualChange(selectElement) {
+                const sourceId = selectElement.dataset.sourceId;
+                const targetId = selectElement.dataset.targetId;
+                const newValue = selectElement.value;
+                const statusEl = document.getElementById('save-status');
+
+                statusEl.innerHTML = '<span style="color: #3498db;">Salvando...</span>';
+
+                try {
+                    const batch = db.batch();
+                    const sourceRef = db.collection('designacoes').doc(sourceId);
+                    const targetRef = db.collection('designacoes').doc(targetId);
+
+                    // Atualiza no banco (nos dois sentidos)
+                    batch.update(sourceRef, { [`bloqueio.${targetId}`]: newValue });
+                    batch.update(targetRef, { [`bloqueio.${sourceId}`]: newValue });
+
+                    await batch.commit();
+
+                    // Atualiza na memória local (allDesignations) para manter sincronizado
+                    [sourceId, targetId].forEach(id => {
+                        const item = allDesignations.find(d => d.id === id);
+                        if (item) {
+                            if (!item.bloqueio) item.bloqueio = {};
+                            item.bloqueio[id === sourceId ? targetId : sourceId] = newValue;
+                        }
+                    });
+
+                    statusEl.innerHTML = '<span style="color: #2ecc71;">✓ Salvo</span>';
+                    setTimeout(() => { statusEl.innerHTML = ''; }, 2000);
+                } catch (error) {
+                    console.error("Erro ao salvar:", error);
+                    statusEl.innerHTML = '<span style="color: #e74c3c;">Erro ao salvar!</span>';
+                }
             }
 
             async function handleSaveChanges(e) {
