@@ -127,9 +127,13 @@
             }
 
             // Renderiza o painel da direita com os checkboxes
-            function renderRepetitionEditor(selectedDesignation) {
+        function renderRepetitionEditor(selectedDesignation) {
                 const currentRepetitions = selectedDesignation.repeticao || [];
-                let html = `<h2>Regras de Repetição para: ${selectedDesignation.nome}</h2><p>Marque as designações que devem ser atribuídas à(s) mesma(s) pessoa(s).</p>`;
+                let html = `<h2>Regras de Repetição para: ${selectedDesignation.nome}</h2>`;
+                
+                // Indicador de salvamento
+                html += `<div id="save-status" style="height: 20px; font-size: 0.85em; margin-bottom: 10px;"></div>`;
+                html += `<p style="margin-bottom: 15px; color: #666;">Marque as designações que devem ser atribuídas à(s) mesma(s) pessoa(s).</p>`;
                 
                 const otherDesignations = allDesignations.filter(d => d.id !== selectedDesignation.id);
 
@@ -146,7 +150,11 @@
                                 designationsInParte.forEach(otherD => {
                                     const isChecked = currentRepetitions.includes(otherD.id) ? 'checked' : '';
                                     html += `<div class="repetition-item">
-                                               <input type="checkbox" id="rep-${otherD.id}" data-target-designation-id="${otherD.id}" ${isChecked}>
+                                               <input type="checkbox" 
+                                                      id="rep-${otherD.id}" 
+                                                      data-source-id="${selectedDesignation.id}" 
+                                                      data-target-id="${otherD.id}" 
+                                                      ${isChecked} class="repetition-checkbox">
                                                <label for="rep-${otherD.id}">${otherD.nome}</label>
                                              </div>`;
                                 });
@@ -155,79 +163,67 @@
                     }
                 });
                 
-                html += `<div class="save-button-container"><button id="save-repetitions-btn" data-source-designation-id="${selectedDesignation.id}">Salvar Alterações</button><p id="save-feedback"></p></div>`;
                 editorContent.innerHTML = html;
-                document.getElementById('save-repetitions-btn').addEventListener('click', handleSaveChanges);
+
+                // Adiciona o evento de mudança em cada checkbox
+                editorContent.querySelectorAll('.repetition-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        toggleRepetition(this);
+                    });
+                });
             }
 
-            // Lida com o salvamento das mudanças, garantindo a sincronização recíproca
-            async function handleSaveChanges(e) {
-                const btn = e.target;
-                const sourceDesignationId = btn.dataset.sourceDesignationId;
-                const feedbackEl = document.getElementById('save-feedback');
-                
-                if (!sourceDesignationId) return;
+            // Nova função de salvamento automático
+            async function toggleRepetition(checkbox) {
+                const sourceId = checkbox.dataset.sourceId;
+                const targetId = checkbox.dataset.targetId;
+                const isChecked = checkbox.checked;
+                const statusEl = document.getElementById('save-status');
 
-                btn.disabled = true;
-                btn.textContent = 'Salvando...';
-                feedbackEl.textContent = '';
+                statusEl.innerHTML = '<span style="color: #3498db;"><i class="fas fa-spinner fa-spin"></i> Sincronizando...</span>';
 
-                // 1. Obter a lista antiga e a nova lista de repetições
-                const sourceDesignation = allDesignations.find(d => d.id === sourceDesignationId);
-                const oldRepetitions = sourceDesignation.repeticao || [];
-                const newRepetitions = [];
-                editorContent.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
-                    newRepetitions.push(checkbox.dataset.targetDesignationId);
-                });
-
-                // 2. Determinar quais IDs foram adicionados e removidos
-                const addedIds = newRepetitions.filter(id => !oldRepetitions.includes(id));
-                const removedIds = oldRepetitions.filter(id => !newRepetitions.includes(id));
-                
-                const batch = db.batch();
-
-                // 3. Atualizar o documento de origem
-                const sourceRef = db.collection('designacoes').doc(sourceDesignationId);
-                batch.update(sourceRef, { repeticao: newRepetitions });
-
-                // 4. Atualizar os documentos adicionados (adicionar referência de volta)
-                addedIds.forEach(targetId => {
-                    const targetRef = db.collection('designacoes').doc(targetId);
-                    batch.update(targetRef, { repeticao: firebase.firestore.FieldValue.arrayUnion(sourceDesignationId) });
-                });
-
-                // 5. Atualizar os documentos removidos (remover referência de volta)
-                removedIds.forEach(targetId => {
-                    const targetRef = db.collection('designacoes').doc(targetId);
-                    batch.update(targetRef, { repeticao: firebase.firestore.FieldValue.arrayRemove(sourceDesignationId) });
-                });
-
-                // 6. Executar o batch
                 try {
-                    await batch.commit();
-                    
-                    // Atualizar estado local para evitar recarregar a página
-                    sourceDesignation.repeticao = newRepetitions;
-                    addedIds.forEach(id => allDesignations.find(d => d.id === id)?.repeticao?.push(sourceDesignationId));
-                    removedIds.forEach(id => {
-                        let target = allDesignations.find(d => d.id === id);
-                        if (target && target.repeticao) {
-                            target.repeticao = target.repeticao.filter(repId => repId !== sourceDesignationId);
-                        }
-                    });
+                    const batch = db.batch();
+                    const sourceRef = db.collection('designacoes').doc(sourceId);
+                    const targetRef = db.collection('designacoes').doc(targetId);
 
-                    feedbackEl.textContent = "Regras de repetição salvas com sucesso!";
-                    feedbackEl.style.color = "#2ecc71";
+                    if (isChecked) {
+                        // Adiciona ID em ambos os documentos
+                        batch.update(sourceRef, { repeticao: firebase.firestore.FieldValue.arrayUnion(targetId) });
+                        batch.update(targetRef, { repeticao: firebase.firestore.FieldValue.arrayUnion(sourceId) });
+                    } else {
+                        // Remove ID de ambos os documentos
+                        batch.update(sourceRef, { repeticao: firebase.firestore.FieldValue.arrayRemove(targetId) });
+                        batch.update(targetRef, { repeticao: firebase.firestore.FieldValue.arrayRemove(sourceId) });
+                    }
+
+                    await batch.commit();
+
+                    // Atualiza os dados locais (allDesignations) para manter a consistência visual
+                    const sourceObj = allDesignations.find(d => d.id === sourceId);
+                    const targetObj = allDesignations.find(d => d.id === targetId);
+
+                    if (isChecked) {
+                        if (!sourceObj.repeticao) sourceObj.repeticao = [];
+                        if (!targetObj.repeticao) targetObj.repeticao = [];
+                        if (!sourceObj.repeticao.includes(targetId)) sourceObj.repeticao.push(targetId);
+                        if (!targetObj.repeticao.includes(sourceId)) targetObj.repeticao.push(sourceId);
+                    } else {
+                        if (sourceObj.repeticao) sourceObj.repeticao = sourceObj.repeticao.filter(id => id !== targetId);
+                        if (targetObj.repeticao) targetObj.repeticao = targetObj.repeticao.filter(id => id !== sourceId);
+                    }
+
+                    statusEl.innerHTML = '<span style="color: #2ecc71;"><i class="fas fa-check"></i> Sincronizado</span>';
+                    setTimeout(() => { statusEl.innerHTML = ''; }, 2000);
+
                 } catch (error) {
-                    console.error("Erro ao salvar regras de repetição: ", error);
-                    feedbackEl.textContent = "Erro ao salvar. Tente novamente.";
-                    feedbackEl.style.color = "#e74c3c";
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = 'Salvar Alterações';
-                    setTimeout(() => { feedbackEl.textContent = ''; }, 4000);
+                    console.error("Erro ao salvar repetição:", error);
+                    statusEl.innerHTML = '<span style="color: #e74c3c;"><i class="fas fa-times"></i> Erro ao salvar</span>';
+                    checkbox.checked = !isChecked; // Reverte o checkbox em caso de erro
                 }
             }
+
+  
         });
     </script>
     
