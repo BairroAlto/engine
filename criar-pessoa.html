@@ -336,11 +336,6 @@
             const acompanhaCarrinhosSwitch = document.getElementById('acompanha-carrinhos');
             const horariosSemanaDiv = document.getElementById('horarios-semana');
             const horariosFimDeSemanaDiv = document.getElementById('horarios-fim-de-semana');
-            const ausenciaSingleDateInput = document.getElementById('ausencia-single-date');
-            const addSingleAusenciaBtn = document.getElementById('add-single-ausencia-btn');
-            const ausenciaStartDateInput = document.getElementById('ausencia-start-date');
-            const ausenciaEndDateInput = document.getElementById('ausencia-end-date');
-            const addAusenciaBtn = document.getElementById('add-ausencia-btn');
             const selectedAusenciasListDiv = document.getElementById('selected-ausencias-list');
 
             // NOVAS VARIÁVEIS
@@ -966,28 +961,8 @@ document.getElementById('add-ausencia-row-btn').onclick = () => createAusenciaRo
                 if (!congregacaoSuggestionsDiv.contains(e.target) && e.target !== congregacaoExternaInput) hideSuggestions(congregacaoSuggestionsDiv);
             });
 
-            addSingleAusenciaBtn.addEventListener('click', () => {
-                const date = ausenciaSingleDateInput.value;
-                if (date && !selectedAusencias.includes(date)) {
-                    selectedAusencias.push(date);
-                    updateAusenciasDisplay();
-                }
-                ausenciaSingleDateInput.value = '';
-            });
+    
 
-            addAusenciaBtn.addEventListener('click', () => {
-                const startDate = new Date(ausenciaStartDateInput.value + 'T00:00:00');
-                const endDate = new Date(ausenciaEndDateInput.value + 'T00:00:00');
-                if (ausenciaStartDateInput.value && ausenciaEndDateInput.value && startDate <= endDate) {
-                    for (let d = startDate; d <= endDate; d.setDate(d.getDate() + 1)) {
-                        const dateString = d.toISOString().split('T')[0];
-                        if (!selectedAusencias.includes(dateString)) selectedAusencias.push(dateString);
-                    }
-                    updateAusenciasDisplay();
-                }
-                ausenciaStartDateInput.value = '';
-                ausenciaEndDateInput.value = '';
-            });
 
   criarPessoaForm.onsubmit = async (e) => {
     e.preventDefault();
