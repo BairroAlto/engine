@@ -2363,41 +2363,45 @@ btnResetFilters.addEventListener('click', () => {
 }
 
 function filterPessoasList() {
-    // 1. Segurança: se a lista de dados estiver vazia, tenta carregar do cache global
-    if (!allPessoasData || allPessoasData.length === 0) {
-        console.warn("Aviso: allPessoasData está vazio. A carregar dados do cache...");
-    }
-
     const textSearch = removerAcentos((filterPessoasInput.value || "").toLowerCase().trim());
     const listItems = pessoasListUl.getElementsByTagName('li');
-    
-    // Cria o mapa de dados
     const dataMap = allPessoasData.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
     const f = activeFilters; 
 
     for (let li of listItems) {
-        // Ignora a mensagem de "Nenhuma pessoa encontrada"
         if (li.dataset.id === undefined) continue;
-
         const p = dataMap[li.dataset.id];
         if (!p) continue;
 
-        // --- FILTRO 1: Nome ---
-        const nomePessoa = p.nomePessoa || "";
-        const matchesText = removerAcentos(nomePessoa.toLowerCase()).includes(textSearch);
+        // Filtro de Texto (Nome)
+        const matchesText = removerAcentos((p.nomePessoa || "").toLowerCase()).includes(textSearch);
 
-        // --- FILTRO 2: Status (Na Congregação / Ativo) ---
-        // Usamos lógica de "não é falso" para aceitar quem não tem o campo preenchido
+        // Filtros de Status (Congregação e Atividade)
         const matchNaCong   = !f.naCongregacao   || (p.naCongregacao !== false);
         const matchForaCong = !f.foraCongregacao || (p.naCongregacao === false);
         const matchAtivo    = !f.ativo           || (p.ativo !== false);
         const matchInativo  = !f.inativo         || (p.ativo === false);
 
-        // --- FILTRO 3: Gênero e Outros ---
-        const matchGen = f.generos.length === 0 || f.generos.includes(p.genero);
+        // Filtros de Seleção Única/Múltipla (Gênero, Idioma, Personalidade)
+        const matchGen     = f.generos.length === 0 || f.generos.includes(p.genero);
+        const matchIdioma  = f.idiomas.length === 0 || f.idiomas.includes(p.idioma);
+        const matchPers    = f.personalidades.length === 0 || f.personalidades.includes(p.personalidade);
 
-        // APLICAÇÃO FINAL
-        if (matchesText && matchNaCong && matchForaCong && matchAtivo && matchInativo && matchGen) {
+        // Filtros de Privilégios (Arrays no Firebase)
+        const matchPrivCong  = f.privCongs.length === 0 || f.privCongs.some(priv => (p.privilegiosCongregacao || []).includes(priv));
+        const matchPrivPrega = f.privPregas.length === 0 || f.privPregas.some(priv => (p.privilegiosPregacao || []).includes(priv));
+        const matchPrivEsp   = f.privEsps.length === 0 || f.privEsps.some(priv => (p.privilegiosEspeciais || []).includes(priv));
+
+        // Filtros de Funções (Booleanos)
+        const matchFazDirigente = !f.fazDirigente || p.fazDesignacoesDirigente === true;
+        const matchFazCarrinhos = !f.fazCarrinhos || p.fazDesignacoesPregacao === true;
+        const matchFazReuniao   = !f.fazReuniao   || p.fazDesignacoesReuniao === true;
+
+        // Condição Final para exibir ou ocultar o item da lista
+        if (matchesText && matchNaCong && matchForaCong && matchAtivo && matchInativo && 
+            matchGen && matchIdioma && matchPers && 
+            matchPrivCong && matchPrivPrega && matchPrivEsp && 
+            matchFazDirigente && matchFazCarrinhos && matchFazReuniao) {
             li.style.display = ''; 
         } else {
             li.style.display = 'none';
