@@ -477,7 +477,7 @@
     console.log("Área de criação pronta!");
 }
 
-        document.addEventListener('DOMContentLoaded', async function() {
+        
             // ===================================================================
             // INÍCIO: VARIÁVEIS GLOBAIS E DE CACHE
             // ===================================================================
@@ -552,6 +552,7 @@ closePairAnalysisPopup.addEventListener('click', () => {
             const headerMap = new Map();
             const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             let isEditMode = false;
+            let participationStatsCache = { ano: null, data: null };
             
             // ===================================================================
             // INÍCIO: LÓGICA DA PÁGINA PRINCIPAL (semana.html)
@@ -1086,6 +1087,25 @@ async function findNextValidGroup() {
                 const pairKey = [group[i], group[j]].sort().join('_');
                 if (recentPairs.has(pairKey)) return false;
             }
+
+             const allSelects = Array.from(editPopupParticipantsContainer.querySelectorAll('.form-select'));
+        const minhaPosicao = allSelects.indexOf(selectElement);
+        
+        if (minhaPosicao === 0) {
+            // Se eu sou o dirigente (1º dropdown), não posso ser alguém que bloqueie os parceiros já escolhidos
+            for (let i = 1; i < allSelects.length; i++) {
+                if (allSelects[i].value && typeof verificarRestricaoImpedimento === "function" && verificarRestricaoImpedimento(candidateId, allSelects[i].value, fullDesigData.id)) {
+                    return false;
+                }
+            }
+        } else {
+            // Se eu sou o parceiro (morador/ajudante), não posso violar a regra com o dirigente já escolhido
+            const dirigenteId = allSelects[0].value;
+            if (dirigenteId && typeof verificarRestricaoImpedimento === "function" && verificarRestricaoImpedimento(dirigenteId, candidateId, fullDesigData.id)) {
+                return false;
+            }
+        }
+        
         }
         return true;
     });
@@ -2213,6 +2233,40 @@ async function saveWeekHeaderChanges() {
     }
 }
 
+async function getParticipationStatsForYear(ano) {
+    if (participationStatsCache.ano === ano && participationStatsCache.data) {
+        return participationStatsCache.data;
+    }
+
+    const snapshot = await db.collection('historico')
+        .where('ano', '==', ano)
+        .where('tipo', '==', 'reuniao')
+        .get();
+
+    const stats = new Map();
+    snapshot.forEach(doc => {
+        doc.data().designacoes?.forEach(desig => {
+            if (!stats.has(desig.designacaoId)) {
+                stats.set(desig.designacaoId, { total: 0, participants: new Set(), counts: new Map() });
+            }
+            const dStats = stats.get(desig.designacaoId);
+            Object.values(desig.participantes || {}).forEach(pId => {
+                dStats.total++;
+                dStats.participants.add(pId);
+                dStats.counts.set(pId, (dStats.counts.get(pId) || 0) + 1);
+            });
+        });
+    });
+
+    const finalData = new Map();
+    stats.forEach((val, key) => {
+        const avg = val.participants.size > 0 ? val.total / val.participants.size : 0;
+        finalData.set(key, { average: avg, counts: val.counts });
+    });
+
+    participationStatsCache = { ano, data: finalData };
+    return finalData;
+}
 
 // Adiciona o "ouvinte" de cliques para os novos ícones de lápis (usando delegação de eventos)
 scheduleContent.addEventListener('click', function(event) {
@@ -2269,22 +2323,38 @@ saveWeekHeaderChangesBtn.addEventListener('click', saveWeekHeaderChanges);
     return recentPairsMap;
 };
 
-            const getParticipantsForWeek = async (ano, mes, semana) => {
-                if(!ano || !mes || !semana) return new Set();
-                const q = db.collection('historico')
-                    .where("ano", "in", [ano, String(ano)]) 
-                    .where("mes", "==", mes)
-                    .where("semanaNumero", "==", semana)
-                    .where("quando", "==", "Semana");
-                const snapshot = await q.get();
-                const participants = new Set();
-                if (!snapshot.empty) {
-                    snapshot.docs[0].data().designacoes?.forEach(desig => {
-                        Object.values(desig.participantes || {}).forEach(id => participants.add(id));
+          const getParticipantsForWeek = async (ano, mes, semana) => {
+    if(!ano || !mes || !semana) return new Map();
+    
+    // Procura no histórico documentos da mesma semana
+    const q = db.collection('historico')
+        .where("ano", "in", [ano, String(ano)]) 
+        .where("mes", "==", mes)
+        .where("semanaNumero", "==", semana)
+        .where("quando", "==", "Semana"); // Garante que olha apenas para a reunião da semana
+
+    const snapshot = await q.get();
+    const participantsMap = new Map(); // Mudamos de Set para Map
+
+    if (!snapshot.empty) {
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            data.designacoes?.forEach(desig => {
+                if (desig.participantes) {
+                    Object.values(desig.participantes).forEach(pId => {
+                        // Guardamos o ID da pessoa como Chave 
+                        // e os dados da tarefa como Valor
+                        participantsMap.set(pId.toString(), {
+                            desigId: desig.designacaoId,
+                            parte: data.parte
+                        });
                     });
                 }
-                return participants;
-            }
+            });
+        });
+    }
+    return participantsMap;
+}
 
             const getPreviousWeekContext = async (currentAno, currentMes, currentSemana) => {
                  if (currentSemana > 1) {
@@ -2321,15 +2391,15 @@ saveWeekHeaderChangesBtn.addEventListener('click', saveWeekHeaderChanges);
                 }
             }
 
-            const getParticipantsLastWeek = async (ano, mes, semana) => {
-                const prev = await getPreviousWeekContext(ano, mes, semana);
-                return getParticipantsForWeek(prev.ano, prev.mes, prev.semana);
-            };
+           const getParticipantsLastWeek = async (ano, mes, semana) => {
+    const prev = await getPreviousWeekContext(ano, mes, semana);
+    return getParticipantsForWeek(prev.ano, prev.mes, prev.semana);
+};
 
-            const getParticipantsNextWeek = async (ano, mes, semana) => {
-                const next = await getNextWeekContext(ano, mes, semana);
-                return getParticipantsForWeek(next.ano, next.mes, next.semana);
-            };
+const getParticipantsNextWeek = async (ano, mes, semana) => {
+    const next = await getNextWeekContext(ano, mes, semana);
+    return getParticipantsForWeek(next.ano, next.mes, next.semana);
+};
 
             // --- Lógica do Popup de Edição ---
             const editDesignationPopup = document.getElementById('editDesignationPopup');
@@ -2563,109 +2633,227 @@ async function populateSingleEditDropdown(selectElement, historicoDoc, fullDesig
 
             
 async function validatePopupSelections(historicoDoc, fullDesigData) {
-    const popupSelects = editPopupParticipantsContainer.querySelectorAll('.form-select');
+    const popupSelects = editPopupParticipantsContainer.querySelectorAll('select.form-select');
     const allViolations = new Set();
     const validationList = document.getElementById('validation-list');
     const alertContainer = document.getElementById('validation-alert-container');
-    popupSelects.forEach(s => s.classList.remove('invalid-selection'));
+    const alertIcon = document.getElementById('validation-alert-icon');
+    
+    popupSelects.forEach(s => s.classList.remove('invalid-selection', 'warning-selection'));
     validationList.innerHTML = '';
 
+    if (!historicoDoc) return;
+
     const context = { ano: historicoDoc.ano, mes: historicoDoc.mes, semana: historicoDoc.semanaNumero };
-    const [lastWeek, nextWeek, recentPairs] = await Promise.all([
+
+    // --- CORREÇÃO AQUI: Garantir que participationStats é carregado ---
+    const [lastWeek, nextWeek, recentPairs, participationStats] = await Promise.all([
         getParticipantsLastWeek(context.ano, context.mes, context.semana),
         getParticipantsNextWeek(context.ano, context.mes, context.semana),
-        getRecentPairs()
+        getRecentPairs(),
+        getParticipationStatsForYear(context.ano) // <-- Carrega as estatísticas
     ]);
 
-    const currentWeekAssignments = new Map();
-    const weekHistoricoDocs = allScheduleData.filter(item =>
-        item.ano === historicoDoc.ano && item.mes === historicoDoc.mes && item.semanaNumero === historicoDoc.semanaNumero
-    );
+
+    // 3. MAPEAMENTO DA SEMANA ATUAL (Ignorando a instância que está a ser editada)
+    const ocupadosEstaSemana = new Map();
+    const originalSignature = currentEditData.trueOriginalSignature;
+    const editingDesignationId = currentEditData.trueOriginalDesignationId;
+
+    // Filtra todos os documentos desta semana no cache
+    const weekDocs = allScheduleData.filter(d => d.semanaindex === historicoDoc.semanaindex);
     
-    // ===== INÍCIO DA CORREÇÃO CRÍTICA =====
-    for (const doc of weekHistoricoDocs) {
-        for (const desig of doc.designacoes) {
+    weekDocs.forEach(doc => {
+        doc.designacoes?.forEach(desig => {
+            // Lógica de Auto-Exclusão: Se for a tarefa exata que abrimos para editar, não a contamos como "conflito"
+            const isSelf = desig.designacaoId === editingDesignationId && 
+                           createParticipantSignature(desig.participantes) === originalSignature;
             
-            // A condição de ignorar PRECISA ser tão precisa quanto a da validação de pares.
-            // Compara o ID do documento, o ID da designação E a assinatura dos participantes.
-            const isTheTrueOriginalEntry = 
-                doc.id === currentEditData.historicoDocRefId &&
-                desig.designacaoId === currentEditData.trueOriginalDesignationId &&
-                createParticipantSignature(desig.participantes) === currentEditData.trueOriginalSignature;
-
-            // Se NÃO for a entrada exata que estamos a editar, adiciona os participantes à lista de ocupados.
-            if (!isTheTrueOriginalEntry) {
-                 for (const personId of Object.values(desig.participantes)) {
-                    currentWeekAssignments.set(personId, desig.designacaoId);
-                }
+            if (!isSelf) {
+                Object.values(desig.participantes || {}).forEach(pId => {
+                    ocupadosEstaSemana.set(pId, desig.designacaoId);
+                });
             }
-        }
-    }
-    // ===== FIM DA CORREÇÃO CRÍTICA =====
+        });
+    });
 
-    const selections = new Map();
-    const currentPair = [];
+    // 4. FUNÇÃO AUXILIAR: EXISTEM OUTROS IRMÃOS QUALIFICADOS?
+    const verificarSubstitutos = (designacaoId, pessoaAtualId) => {
+        const desigInfo = designationMap.get(designacaoId);
+        if (!desigInfo) return false;
+
+        const idioFiltro = document.getElementById('editIdioma').value;
+        const genFiltro = document.getElementById('editGeneroPreferencia').value;
+        let countDisponiveis = 0;
+
+        allPeopleDataMap.forEach((p, id) => {
+            if (id === pessoaAtualId) return; // Ignora a pessoa em análise
+            
+            const matchIdioma = idioFiltro === 'todos' || p.idioma === idioFiltro;
+            const matchGenero = genFiltro === 'masculino feminino' || p.genero?.toLowerCase() === genFiltro;
+            const podeFazer = p.designacoesReuniao?.includes(desigInfo.nome);
+            const temPrivilegio = (desigInfo.quemFaz || []).some(priv => p.privilegiosCongregacao?.includes(priv));
+            const ocupado = ocupadosEstaSemana.has(id);
+            const ausente = p.ausencias && p.ausencias.includes(historicoDoc.dia);
+
+            if (matchIdioma && matchGenero && podeFazer && temPrivilegio && !ocupado && !ausente) {
+                countDisponiveis++;
+            }
+        });
+        return countDisponiveis > 0;
+    };
+
+    // 5. VALIDAÇÃO DOS SELECCIONADOS NO POPUP
+    const currentPopupIds = new Map(); // Para validar duplicados dentro deste popup
 
     for (const select of popupSelects) {
         if (select.value) {
             const personId = select.value;
-            const personName = select.options[select.selectedIndex].text;
-            currentPair.push({id: personId, el: select, name: personName});
+            const personData = allPeopleDataMap.get(personId);
+            const personName = personData ? personData.nomePessoa : personId;
+            const designacaoAtualId = fullDesigData.id;
 
-            if (selections.has(personId)) {
-                allViolations.add(`${personName} está selecionado mais de uma vez.`);
+            let localHasError = false;
+
+            // --- 1. DUPLICADO DENTRO DO PRÓPRIO POPUP (Ex: Ser Dirigente e Morador ao mesmo tempo) ---
+            if (currentPopupIds.has(personId)) {
+                allViolations.add(`${personName} faz mais de uma designação esta semana.`);
                 select.classList.add('invalid-selection');
-                selections.get(personId).el.classList.add('invalid-selection');
-            } else { selections.set(personId, { el: select }); }
-            
-            if (lastWeek.has(personId)) { allViolations.add(`${personName} participou na semana anterior.`); select.classList.add('invalid-selection'); }
-            if (nextWeek.has(personId)) { allViolations.add(`${personName} já está na semana seguinte.`); select.classList.add('invalid-selection'); }
-            
-            // A verificação de conflito em si
-            if (currentWeekAssignments.has(personId)) {
-                const existingAssignmentData = designationMap.get(currentWeekAssignments.get(personId));
-                if (existingAssignmentData) {
-                    allViolations.add(`${personName} já está a fazer "${existingAssignmentData.nome}" esta semana.`);
+                const previousSelectId = currentPopupIds.get(personId);
+                const previousSelect = document.getElementById(previousSelectId);
+                if (previousSelect) previousSelect.classList.add('invalid-selection');
+                localHasError = true;
+            } else {
+                currentPopupIds.set(personId, select.id);
+            }
+
+            // --- 2. CONFLITO COM OUTRAS PARTES DA REUNIÃO (Bloqueio Cruzado) ---
+            if (ocupadosEstaSemana.has(personId)) {
+                const idOutraDesignacao = ocupadosEstaSemana.get(personId);
+                
+                // Verifica se a designação que estamos a editar permite repetição com a outra que ele já tem
+                const permissao = fullDesigData.bloqueio?.[idOutraDesignacao];
+                
+                if (permissao !== "Sim") {
+                    const nomeOutra = designationMap.get(idOutraDesignacao)?.nome || "outra parte";
+                    allViolations.add(`${personName} já tem a designação "${nomeOutra}" no histórico desta semana.`);
                     select.classList.add('invalid-selection');
+                    localHasError = true;
+                }
+            }
+
+            // --- 3. SEMANAS ADJACENTES (Lógica de Cores: Vermelho vs Laranja) ---
+            const validarAdjacente = (mapa, tempo) => {
+                if (mapa.has(personId)) {
+                    const infoOutraSemana = mapa.get(personId);
+                    
+                    if (infoOutraSemana.desigId === designacaoAtualId) {
+                        // REGRA VERMELHA: Mesma tarefa em semanas seguidas
+                        allViolations.add(`${personName} fez a MESMA designação na semana ${tempo}.`);
+                        select.classList.add('invalid-selection');
+                        localHasError = true;
+                    } else if (!localHasError) {
+                        // REGRA LARANJA: Tarefa diferente, mas verifica se há outros irmãos livres
+                        if (verificarSubstitutos(designacaoAtualId, personId)) {
+                            allViolations.add(`${personName} participou na semana ${tempo}, mas existem outros irmãos disponíveis.`);
+                            select.classList.add('warning-selection');
+                        }
+                    }
+                }
+            };
+
+            // ========================================================================
+    // COLA AQUI: --- NOVA REGRA: IMPEDIMENTOS DE PRIVILÉGIO (Dirigente vs Outros) ---
+    // ========================================================================
+    const selectsArray = Array.from(popupSelects);
+    if (selectsArray.length >= 2 && selectsArray[0].value) {
+        const dirigenteId = selectsArray[0].value;
+        const dirigenteNome = selectsArray[0].options[selectsArray[0].selectedIndex].text;
+
+        for (let i = 1; i < selectsArray.length; i++) {
+            if (selectsArray[i].value) {
+                const parceiroId = selectsArray[i].value;
+                const parceiroNome = selectsArray[i].options[selectsArray[i].selectedIndex].text;
+
+                if (typeof verificarRestricaoImpedimento === "function" && verificarRestricaoImpedimento(dirigenteId, parceiroId, fullDesigData.id)) {
+                    allViolations.add(`🚫 Restrição: ${parceiroNome} não pode ser parceiro de ${dirigenteNome} nesta designação.`);
+                    selectsArray[0].classList.add('invalid-selection');
+                    selectsArray[i].classList.add('invalid-selection');
                 }
             }
         }
     }
-    
-    // A lógica de "pares recentes" que já estava correta.
-    if (currentPair.length >= 2) {
-        const pairKey = currentPair.map(p => p.id).sort().join('_');
-        if (recentPairs.has(pairKey)) {
-            const recentInstances = recentPairs.get(pairKey);
-            const conflictingInstance = recentInstances.find(instance => {
-                const isTheTrueOriginalEntry = 
-                    instance.historicoId === currentEditData.historicoDocRefId &&
-                    instance.designacaoId === currentEditData.trueOriginalDesignationId &&
-                    instance.signature === currentEditData.trueOriginalSignature;
-                return !isTheTrueOriginalEntry;
-            });
-            if (conflictingInstance) {
-                const lastDate = new Date(conflictingInstance.lastDate);
-                const meetingDate = new Date(historicoDoc.dia + "T12:00:00Z");
-                const monthDiff = (meetingDate.getFullYear() - lastDate.getFullYear()) * 12 + meetingDate.getMonth() - lastDate.getMonth();
-                if (monthDiff <= 1) {
-                    allViolations.add(`${currentPair.map(p => p.name).join(' e ')} trabalharam juntos recentemente.`);
-                    currentPair.forEach(p => p.el.classList.add('invalid-selection'));
+    // ========================================================================
+
+
+            // --- 4. MÉDIA ANUAL (Rotatividade) ---
+            if (!localHasError && !select.classList.contains('warning-selection')) {
+                if (participationStats && participationStats.has(designacaoAtualId)) {
+                    const stats = participationStats.get(designacaoAtualId);
+                    const pCount = stats.counts.get(personId) || 0;
+                    
+                    if (pCount > stats.average && stats.average > 0) {
+                        allViolations.add(`${personName} fez "${fullDesigData.nome}" ${pCount}x este ano (média: ${stats.average.toFixed(1)}).`);
+                        select.classList.add('warning-selection');
+                    }
                 }
             }
         }
     }
-    
+
+    // 6. EXIBIÇÃO DOS RESULTADOS
     if (allViolations.size > 0) {
-        allViolations.forEach(msg => validationList.innerHTML += `<li>${msg}</li>`);
+        Array.from(allViolations).forEach(msg => {
+            const li = document.createElement('li');
+            li.textContent = msg;
+            validationList.appendChild(li);
+        });
+
+        const hasCritical = Array.from(popupSelects).some(s => s.classList.contains('invalid-selection'));
+        alertIcon.classList.toggle('warning-only', !hasCritical);
         alertContainer.style.display = 'block';
     } else {
         alertContainer.style.display = 'none';
-        document.getElementById('validation-panel').classList.remove('active');
     }
 
-    await updateAccountabilityButton();
+    // Atualiza botão de contabilidade (se a função existir)
+    if (typeof updateAccountabilityButton === 'function') {
+        await updateAccountabilityButton();
+    }
 }
+
+function verificarRestricaoImpedimento(dirigenteId, parceiroId, designacaoId) {
+    const desig = designationMap.get(designacaoId);
+    // Se não houver regras, permite
+    if (!desig || !desig.impedimentos || desig.impedimentos.length === 0) return false;
+
+    const dData = allPeopleDataMap.get(dirigenteId);
+    const pData = allPeopleDataMap.get(parceiroId);
+    if (!dData || !pData) return false;
+
+    // Une privilégios normais e especiais
+    const privsDir = [...(dData.privilegiosCongregacao || []), ...(dData.privilegiosEspeciais || [])];
+    const privsPar = [...(pData.privilegiosCongregacao || []), ...(pData.privilegiosEspeciais || [])];
+
+    // Verifica se alguma regra de "Outro" bloqueia o par baseado no cargo
+    return desig.impedimentos.some(regra => 
+        privsDir.includes(regra.Dirigente) && privsPar.includes(regra.Outro)
+    );
+}
+
+// FUNÇÃO AUXILIAR DE SUBSTITUTOS (Igual à que criámos para a outra página)
+    const verificarOutros = (designacaoId, pessoaId) => {
+        const desig = designationMap.get(designacaoId);
+        let count = 0;
+        allPeopleDataMap.forEach((p, id) => {
+            if (id === pessoaId) return;
+            const matchIdio = p.idioma === document.getElementById('editIdioma').value || document.getElementById('editIdioma').value === 'todos';
+            const pode = p.designacoesReuniao?.includes(desig.nome);
+            if (matchIdio && pode && !ocupadosEstaSemana.has(id)) count++;
+        });
+        return count > 0;
+    };
+
 
 
             // Evento de clique no lápis de edição
@@ -2816,6 +3004,7 @@ async function validatePopupSelections(historicoDoc, fullDesigData) {
 
             // Carregamento Inicial
             loadInitialData();
+            document.addEventListener('DOMContentLoaded', async function() {
         });
     </script>
 </body>
