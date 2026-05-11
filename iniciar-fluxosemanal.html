@@ -1009,7 +1009,7 @@ const perfilFiltroAno = document.getElementById('perfilFiltroAno');
 const perfilFiltroMes = document.getElementById('perfilFiltroMes');
 const perfilFiltroDesignacao = document.getElementById('perfilFiltroDesignacao');
 const perfilFiltroPapel = document.getElementById('perfilFiltroPapel');
-
+const ocupadosNoFirebase = new Map();
 
 
 
@@ -1184,7 +1184,7 @@ async function getNextWeekContext(currentAno, currentMes, currentSemana) {
 // Funções para obter os participantes de semanas adjacentes
 const getParticipantsFromWeek = async (weekContext) => {
     try {
-        if (!weekContext || !weekContext.ano) return new Map(); 
+        if (!weekContext || !weekContext.ano) return new Map();
         const q = db.collection('historico')
             .where("ano", "==", weekContext.ano)
             .where("mes", "==", weekContext.mes)
@@ -1192,17 +1192,17 @@ const getParticipantsFromWeek = async (weekContext) => {
             .where("quando", "==", "Semana");
             
         const snapshot = await q.get();
-        const participantsMap = new Map(); // Alterado para Map: ID -> {desigId, parte}
+        const participantsMap = new Map(); // Alterado para Map
 
         if (!snapshot.empty) {
             snapshot.docs.forEach(doc => {
-                const data = doc.data();
-                data.designacoes.forEach(desig => {
+                doc.data().designacoes.forEach(desig => {
                     if (desig.participantes) {
                         Object.values(desig.participantes).forEach(personId => {
+                            // Guardamos o ID da pessoa associado ao ID da designação dela
                             participantsMap.set(personId.toString(), {
                                 desigId: desig.designacaoId,
-                                parte: data.parte // ex: "resto da semana" ou "escola"
+                                parte: doc.data().parte
                             });
                         });
                     }
@@ -1214,7 +1214,7 @@ const getParticipantsFromWeek = async (weekContext) => {
         console.error("Erro ao obter participantes:", error);
         return new Map();
     }
-};
+}; 
 
 async function verificarIrmaosDisponiveis(designacaoId, pessoaAtualId, genderPref, idiomas) {
     const designacao = allDesignations.get(designacaoId);
@@ -1273,162 +1273,155 @@ const getRecentPairs = async () => {
 
 // Função principal de validação (com logs de depuração)
 const validateAllSelections = async () => {
-    console.log('%c[VALIDATION] A validar regras...', 'color: #bada55');
+    console.log('%c[VALIDATION] Analisando regras e restrições de privilégio...', 'color: #3498db; font-weight: bold;');
+    
     const alertContainer = document.getElementById('validation-alert-container');
     const alertIcon = document.getElementById('validation-alert-icon');
     const validationList = document.getElementById('validation-list');
 
-    // Limpa estados anteriores nos dropdowns e na lista do triângulo
-    document.querySelectorAll('.form-select.invalid-selection, .form-select.warning-selection').forEach(el => {
+    // 1. RESET DE INTERFACE
+    document.querySelectorAll('.form-select').forEach(el => {
         el.classList.remove('invalid-selection', 'warning-selection');
     });
     validationList.innerHTML = '';
     let allViolations = [];
 
-    // Dados de contexto atual
+    // 2. BUSCAR CONTEXTO E DADOS
     const ano = await getAnoPainelFirebase();
     const mes = parseInt(document.getElementById('mes').value);
-    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const semanaNum = document.getElementById('semanaNumero').value;
+    const diasSemanaStr = getDiasSemana(ano, mes, semanaNum);
+    const semanaindexAlvo = `(${diasSemanaStr} ${ano})`;
 
-    // Carrega dados de comparação (Semanas adjacentes e Pares Recentes)
     const [prevWeekCtx, nextWeekCtx] = await Promise.all([
-        getPreviousWeekContext(ano, mes, semanaNumero),
-        getNextWeekContext(ano, mes, semanaNumero)
+        getPreviousWeekContext(ano, mes, parseInt(semanaNum)),
+        getNextWeekContext(ano, mes, parseInt(semanaNum))
     ]);
 
-    const [participantsLastWeek, participantsNextWeek, recentPairsMap] = await Promise.all([
-        getParticipantsFromWeek(prevWeekCtx),
-        getParticipantsFromWeek(nextWeekCtx),
-        getRecentPairs()
+    const [participantsLastWeek, participantsNextWeek, participationStats, snapHistorico] = await Promise.all([
+        getParticipantsFromWeek(prevWeekCtx), 
+        getParticipantsFromWeek(nextWeekCtx), 
+        getParticipationStatsForYear(ano),
+        db.collection('historico').where('semanaindex', '==', semanaindexAlvo).get()
     ]);
 
-    const currentSelections = new Map();
+    // Mapeia quem já está no histórico (ex: se o fluxo da Escola já foi feito)
+    const ocupadosNoHistorico = new Map(); 
+    snapHistorico.forEach(doc => {
+        const data = doc.data();
+        data.designacoes?.forEach(desig => {
+            Object.values(desig.participantes || {}).forEach(pId => {
+                ocupadosNoHistorico.set(pId, desig.designacaoId);
+            });
+        });
+    });
 
-    // 1. ITERAÇÃO SOBRE TODOS OS SELECTS ATIVOS NO ECRÃ
-    const selectElements = document.querySelectorAll('#activeDesignationsContainer .form-select:not(.descricao-input):not(.discurso-search-input)');
-    
-    for (const select of selectElements) {
-        if (select.value) {
-            const personId = select.value;
-            const dataFromMap = allPeopleDataMap.get(personId) || {};
-            const personName = dataFromMap.nomePessoa || select.options[select.selectedIndex]?.text || 'Desconhecido';
+    const currentSelections = new Map(); 
+    const containers = document.querySelectorAll('.active-designation-container');
 
-            const currentInstance = select.closest('.active-designation-container');
-            const currentDesignationId = currentInstance?.dataset.designacaoId;
-            const infoDesignacao = allDesignations.get(currentDesignationId);
-            const nomeDaDesignacao = infoDesignacao ? infoDesignacao.nome : "esta designação";
-            
-            const genderPref = currentInstance?.querySelector('.genero-preferencia-select')?.value || 'ambos';
-            const selectedIdiomas = getSelectedNacionalidades();
+    // 3. PROCESSAMENTO POR CARTÃO (DESIGNAÇÃO)
+    containers.forEach(container => {
+        const designacaoId = container.dataset.designacaoId;
+        const infoDesignacao = allDesignations.get(designacaoId);
+        const selects = Array.from(container.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'));
+        
+        // --- REGRA: IMPEDIMENTOS DE PRIVILÉGIO (DIRIGENTE vs AJUDANTES) ---
+        if (selects.length >= 2 && selects[0].value) {
+            const dirigenteId = selects[0].value;
+            const dirigenteNome = selects[0].options[selects[0].selectedIndex].text;
 
-            const dataLastWeek = participantsLastWeek.get(personId);
-            const dataNextWeek = participantsNextWeek.get(personId);
+            // Verifica do índice 1 em diante (Ajudante 1, Ajudante 2...)
+            for (let i = 1; i < selects.length; i++) {
+                if (selects[i].value) {
+                    const parceiroId = selects[i].value;
+                    const parceiroNome = selects[i].options[selects[i].selectedIndex].text;
 
-            let hasError = false;
-
-            // A. VERIFICAÇÃO DE DUPLICADOS NA MESMA SEMANA (CONFLITO DE HORÁRIO)
-            if (currentSelections.has(personId)) {
-                const firstOccurrence = currentSelections.get(personId);
-                const firstSelect = firstOccurrence.selectElement;
-                const firstDesignationId = firstSelect.closest('.active-designation-container')?.dataset.designacaoId;
-
-                let isRepetitionAllowed = false;
-                if (currentDesignationId && firstDesignationId && currentDesignationId !== firstDesignationId) {
-                    const currentInfo = allDesignations.get(currentDesignationId);
-                    const firstInfo = allDesignations.get(firstDesignationId);
-                    isRepetitionAllowed = currentInfo?.repeticao?.includes(firstDesignationId) || firstInfo?.repeticao?.includes(currentDesignationId);
-                }
-
-                if (!isRepetitionAllowed) {
-                    allViolations.push({ message: `${personName} está designado(a) para mais de uma tarefa nesta semana.`, type: 'error' });
-                    select.classList.add('invalid-selection');
-                    firstSelect.classList.add('invalid-selection');
-                    hasError = true;
-                }
-            } else {
-                currentSelections.set(personId, { selectElement: select, name: personName });
-            }
-
-            // B. REGRA VERMELHA: MESMA DESIGNAÇÃO NA SEMANA PASSADA
-            if (dataLastWeek?.desigId === currentDesignationId) {
-                allViolations.push({ 
-                    message: `${personName} já fez "${nomeDaDesignacao}" na semana PASSADA.`, 
-                    type: 'error' 
-                });
-                select.classList.add('invalid-selection');
-                hasError = true;
-            }
-
-            // C. REGRA VERMELHA: MESMA DESIGNAÇÃO NA SEMANA SEGUINTE
-            if (dataNextWeek?.desigId === currentDesignationId) {
-                allViolations.push({ 
-                    message: `${personName} já está escalado(a) para "${nomeDaDesignacao}" na semana SEGUINTE.`, 
-                    type: 'error' 
-                });
-                select.classList.add('invalid-selection');
-                hasError = true;
-            }
-
-            // D. REGRA AMARELA: PARTICIPAÇÃO EM QUALQUER COISA NAS SEMANAS ADJACENTES (AVISO DE DISPONIBILIDADE)
-            if (!hasError) {
-                const participouSemanaPassada = dataLastWeek?.parte === "resto da semana";
-                const participaraSemanaSeguinte = dataNextWeek?.parte === "resto da semana";
-
-                if (participouSemanaPassada || participaraSemanaSeguinte) {
-                    // Verifica se há outros irmãos que podem assumir esta função (Substitutos)
-                    const haOutros = await verificarIrmaosDisponiveis(currentDesignationId, personId, genderPref, selectedIdiomas);
-                    
-                    if (haOutros) {
-                        const tempo = participouSemanaPassada ? "PASSADA" : "SEGUINTE";
+                    // Chama a função de cruzamento de privilégios configurada no Firebase
+                    if (typeof verificarRestricaoImpedimento === "function" && verificarRestricaoImpedimento(dirigenteId, parceiroId, designacaoId)) {
                         allViolations.push({ 
-                            message: `${personName} participou na semana ${tempo}, mas existem outros irmãos disponíveis para "${nomeDaDesignacao}".`, 
-                            type: 'warning' 
+                            message: `🚫 Restrição: ${parceiroNome} não pode ser parceiro de ${dirigenteNome} em "${infoDesignacao?.nome}".`, 
+                            type: 'error' 
                         });
-                        select.classList.add('warning-selection');
+                        selects[0].classList.add('invalid-selection');
+                        selects[i].classList.add('invalid-selection');
                     }
                 }
             }
         }
-    }
 
+        // --- VALIDAÇÕES INDIVIDUAIS ---
+        selects.forEach(select => {
+            if (!select.value) return;
 
-    // 2. Verifica Pares Recentes
-   document.querySelectorAll('#activeDesignationsContainer .active-designation-container').forEach(instance => {
-        const selectedPeople = Array.from(instance.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'))
-            .filter(select => select.value)
-            .map(select => {
-                const pData = allPeopleDataMap.get(select.value) || {};
-                return { 
-                    id: select.value, 
-                    name: pData.nomePessoa || select.options[select.selectedIndex]?.text || 'Desconhecido', 
-                    element: select 
-                };
-            });
+            const personId = select.value;
+            const personData = allPeopleDataMap.get(personId);
+            const personName = personData ? personData.nomePessoa : personId;
 
-        if (selectedPeople.length >= 2) {
-            const pairNames = selectedPeople.map(p => p.name).join(' e ');
-            const ids = selectedPeople.map(p => p.id).sort();
-            const pairKey = ids.join('_');
-            
-            if (recentPairsMap.has(pairKey)) {
-                allViolations.push({ message: `${pairNames} trabalharam juntos recentemente.`, type: 'error' });
-                selectedPeople.forEach(p => p.element.classList.add('invalid-selection'));
+            // A. Duplicado na própria página (esta semana)
+            if (currentSelections.has(personId)) {
+                const firstOccurrence = currentSelections.get(personId);
+                // Verifica se a repetição é permitida entre estas duas designações
+                const idOutra = firstOccurrence.closest('.active-designation-container').dataset.designacaoId;
+                const repeticaoPermitida = infoDesignacao?.repeticao?.includes(idOutra) || allDesignations.get(idOutra)?.repeticao?.includes(designacaoId);
+
+                if (!repeticaoPermitida) {
+                    allViolations.push({ message: `⚠️ ${personName} está duplicado nesta semana.`, type: 'error' });
+                    select.classList.add('invalid-selection');
+                    firstOccurrence.classList.add('invalid-selection');
+                }
+            } else {
+                currentSelections.set(personId, select);
             }
-        }
+
+            // B. Já está no histórico desta semana (Ex: Escola)
+            if (ocupadosNoHistorico.has(personId)) {
+                const idTarefaAntiga = ocupadosNoHistorico.get(personId);
+                // Verifica se a designação atual bloqueia a que já está no histórico
+                if (infoDesignacao?.bloqueio?.[idTarefaAntiga] !== "Sim") {
+                    const nomeAntiga = allDesignations.get(idTarefaAntiga)?.nome || "outra parte";
+                    allViolations.push({ message: `🚫 ${personName} já tem "${nomeAntiga}" gravada para esta semana.`, type: 'error' });
+                    select.classList.add('invalid-selection');
+                }
+            }
+
+            // C. Mesma tarefa em semanas adjacentes
+            const checkAdjacent = (mapa, tempo) => {
+                const info = mapa.get(personId);
+                if (info && info.desigId === designacaoId) {
+                    allViolations.push({ message: `⚠️ ${personName} fez a MESMA designação na semana ${tempo}.`, type: 'error' });
+                    select.classList.add('invalid-selection');
+                }
+            };
+            checkAdjacent(participantsLastWeek, "PASSADA");
+            checkAdjacent(participantsNextWeek, "SEGUINTE");
+
+            // D. Média Anual (Aviso Amarelo)
+            if (!select.classList.contains('invalid-selection') && participationStats.has(designacaoId)) {
+                const stats = participationStats.get(designacaoId);
+                const pCount = stats.counts.get(personId) || 0;
+                if (pCount > stats.average && stats.average > 0) {
+                    allViolations.push({ 
+                        message: `🔸 ${personName} já fez esta parte ${pCount}x este ano (média: ${stats.average.toFixed(1)}).`, 
+                        type: 'warning' 
+                    });
+                    select.classList.add('warning-selection');
+                }
+            }
+        });
     });
 
-    // Exibe os alertas
-  if (allViolations.length > 0) {
-        const hasErrors = allViolations.some(v => v.type === 'error');
-        alertIcon.classList.toggle('warning-only', !hasErrors);
+    // 4. EXIBIÇÃO DO PAINEL
+    if (allViolations.length > 0) {
+        const hasCritical = allViolations.some(v => v.type === 'error');
+        alertIcon.classList.toggle('warning-only', !hasCritical);
         
-        // Remove mensagens duplicadas para não encher a lista
-        const uniqueViolations = [...new Map(allViolations.map(v => [v.message, v])).values()];
+        // Remover duplicados da lista de mensagens para não poluir o painel
+        const uniqueMessages = [...new Map(allViolations.map(v => [v.message, v])).values()];
         
-        uniqueViolations.forEach(violation => {
+        uniqueMessages.forEach(v => {
             const li = document.createElement('li');
-            li.textContent = violation.message;
-            li.classList.add(violation.type === 'warning' ? 'warning-item' : 'error-item');
+            li.textContent = v.message;
+            li.className = v.type === 'warning' ? 'warning-item' : 'error-item';
             validationList.appendChild(li);
         });
         alertContainer.style.display = 'block';
@@ -1437,7 +1430,6 @@ const validateAllSelections = async () => {
         document.getElementById('validation-panel').classList.remove('active');
     }
 };
-
 
 // ========================================================== //
 // ============ GATILHOS (EVENT LISTENERS) - INÍCIO ========= //
@@ -2501,81 +2493,80 @@ const loadPeopleOptionsIntoSelects = async (designacao, container, genderPrefere
 };
 
 
-
-
-   const initializeSystemData = async () => {
-    console.log('[DEBUG] initializeSystemData: A iniciar listener em tempo real...'); 
-    const searchInput = document.getElementById('pesquisaPessoa');
-    
-    // Se já houver um listener, cancela-o para evitar duplicados
-    if (peopleUnsubscribe) {
-        peopleUnsubscribe();
-    }
-
+// Função para carregar TODAS as designações para o cache de validação
+const loadAllDesignationsIntoCache = async () => {
+    console.log('%c[CACHE] Carregando mapa global de designações...', 'color: purple; font-weight: bold;');
     try {
-        // Inicializa cache de discursos (mantém-se igual)
-        await initializeDiscursos();
-
-        // LISTENER EM TEMPO REAL NA COLEÇÃO PESSOAS
-        peopleUnsubscribe = db.collection('pessoas').orderBy('nomePessoa')
-            .onSnapshot(snapshot => {
-                let hasChanges = false;
-                
-                // Processa apenas as mudanças
-                snapshot.docChanges().forEach(change => {
-                    const personData = change.doc.data();
-                    const personId = change.doc.id;
-
-                    if (change.type === "added" || change.type === "modified") {
-                        // Atualiza o Mapa de Dados Completo
-                        allPeopleDataMap.set(personId, { 
-                            id: personId, 
-                            ...personData 
-                        });
-                        
-                        // Atualiza a Lista de Pesquisa Simples
-                        const existingIndex = allPeople.findIndex(p => p.id === personId);
-                        if (existingIndex > -1) {
-                            allPeople[existingIndex] = { id: personId, nome: personData.nomePessoa };
-                        } else {
-                            allPeople.push({ id: personId, nome: personData.nomePessoa });
-                        }
-                        hasChanges = true;
-                    }
-                    
-                    if (change.type === "removed") {
-                        allPeopleDataMap.delete(personId);
-                        allPeople = allPeople.filter(p => p.id !== personId);
-                        hasChanges = true;
-                    }
-                });
-
-                // Configuração inicial da barra de pesquisa (apenas na primeira carga ou atualização)
-                if (searchInput) {
-                    searchInput.disabled = false;
-                    searchInput.placeholder = "Comece a digitar um nome...";
-                }
-
-                // SE HOUVER ALTERAÇÕES e a página já tiver designações carregadas:
-                // Atualiza os dropdowns automaticamente
-                if (hasChanges && document.querySelectorAll('.active-designation-container').length > 0) {
-                    console.log("[REAL-TIME] Alterações detetadas em 'pessoas'. A atualizar dropdowns...");
-                    refreshActiveDropdowns();
-                }
-                
-                console.log(`[DEBUG] Dados de pessoas sincronizados. Total: ${allPeople.length}`);
-
-            }, error => {
-                console.error("Erro no listener de pessoas:", error);
-                if(searchInput) searchInput.placeholder = "Erro ao sincronizar participantes";
-            });
-
+        const snapshot = await db.collection('designacoes').get();
+        allDesignations.clear(); // Limpa o cache atual
+        snapshot.forEach(doc => {
+            // Guarda o objeto completo incluindo o nome e regras de bloqueio
+            allDesignations.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+        console.log(`%c[CACHE] Sucesso: ${allDesignations.size} designações mapeadas para validação.`, 'color: green;');
     } catch (error) {
-        console.error("Erro ao inicializar dados do sistema:", error);
+        console.error('[CACHE] Erro ao carregar designações:', error);
     }
 };
 
 
+  const initializeSystemData = async () => {
+    console.log('[DEBUG] initializeSystemData: Iniciando carregamento...'); 
+    const searchInput = document.getElementById('pesquisaPessoa');
+    
+    try {
+        // 1. PRIMEIRO: Carrega todas as designações para o cache global
+        // Isso impede o erro de "Designação Desconhecida" na validação cruzada
+        await loadAllDesignationsIntoCache();
+
+        // 2. SEGUNDO: Carrega a lista de pessoas
+        const [pessoasSnapshot] = await Promise.all([
+            db.collection('pessoas').orderBy('nomePessoa').get(),
+        ]);
+
+        allPeople = [];
+        allPeopleDataMap.clear();
+
+        pessoasSnapshot.forEach(doc => {
+            const pessoaData = doc.data();
+            // Lista simples para a barra de pesquisa
+            allPeople.push({ id: doc.id, nome: pessoaData.nomePessoa });
+            
+            // Mapa detalhado para as regras de validação (género, privilégios, etc)
+            allPeopleDataMap.set(doc.id, { 
+                id: doc.id,
+                nome: pessoaData.nomePessoa, 
+                nomePessoa: pessoaData.nomePessoa,
+                genero: pessoaData.genero,
+                idioma: pessoaData.idioma,
+                privilegiosCongregacao: pessoaData.privilegiosCongregacao || [],
+                designacoesReuniao: pessoaData.designacoesReuniao || [],
+                fazDesignacoesReuniao: pessoaData.fazDesignacoesReuniao || false,
+                ausencias: pessoaData.ausencias || []
+            });
+        });
+  console.log(`[DEBUG] initializeSystemData: ${allPeople.length} pessoas carregadas.`);
+
+        // 3. TERCEIRO: Ativa a interface de pesquisa
+        if (searchInput) {
+            searchInput.disabled = false;
+            searchInput.placeholder = "Comece a digitar um nome...";
+        }
+
+        // 4. QUARTO: Inicializa cache de discursos (se aplicável)
+        if (typeof initializeDiscursos === 'function') {
+            await initializeDiscursos();
+        }
+
+        console.log('%c[SISTEMA] Inicialização concluída com sucesso.', 'color: green; font-weight: bold;');
+
+    } catch (error) {
+        console.error("Erro crítico ao inicializar dados do sistema:", error);
+        if (searchInput) {
+            searchInput.placeholder = "Erro ao carregar participantes";
+        }
+    }
+};
 
   
 
@@ -2942,68 +2933,45 @@ async function autoDetectEventType() {
     }
 }
 
-    function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignmentsMap, designationsMap, nivelBloqueio) {
+  function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignmentsMap, designationsMap) {
     const designacaoAtual = designationsMap.get(vaga.designacaoId);
     if (!designacaoAtual) return false;
 
-    const nomeCandidato = candidato.nomePessoa || candidato.nome || "Desconhecido";
-    const nomeVagaDestino = designacaoAtual.nome;
-
-    console.log(`%c[LOG-TURBO] A analisar: ${nomeCandidato} para a vaga: ${nomeVagaDestino}`, "color: #3498db; font-weight: bold;");
-
-    // 1. Criar lista de designações que a pessoa já tem nesta semana
+    // 1. Verificar se a pessoa já está ocupada nesta semana
     const designacoesQueJaTem = new Set();
-    
-    // Verificar se já veio do histórico (ex: Escola)
     if (preloadedAssignmentsMap.has(candidato.id)) {
-        preloadedAssignmentsMap.get(candidato.id).forEach(id => {
-            designacoesQueJaTem.add(id);
-            const nomeJaTem = designationsMap.get(id)?.nome || id;
-            console.log(`   -> O candidato já está ocupado em: ${nomeJaTem} (Vindo da Escola/Histórico)`);
-        });
+        preloadedAssignmentsMap.get(candidato.id).forEach(id => designacoesQueJaTem.add(id));
     }
-
-    // Verificar o que o Foguete já preencheu nesta rodada
     for (const [vagaId, pessoaId] of Object.entries(atribuicoesAtuais)) {
         if (pessoaId === candidato.id) {
-            const selectElement = document.getElementById(vagaId);
-            const container = selectElement ? selectElement.closest('.active-designation-container') : null;
-            const dId = container ? container.dataset.designacaoId : null;
-            if (dId) {
-                designacoesQueJaTem.add(dId);
-                const nomeJaTem = designationsMap.get(dId)?.nome || dId;
-                console.log(`   -> O candidato já foi escalado agora por mim em: ${nomeJaTem}`);
+            const container = document.getElementById(vagaId)?.closest('.active-designation-container');
+            if (container) designacoesQueJaTem.add(container.dataset.designacaoId);
+        }
+    }
+
+    // Se já tem tarefa, checa se a repetição é permitida
+    for (const idExistente of designacoesQueJaTem) {
+        const desigExistente = designationsMap.get(idExistente);
+        const repeticaoOk = (designacaoAtual.repeticao?.includes(idExistente)) || (desigExistente?.repeticao?.includes(vaga.designacaoId));
+        if (!repeticaoOk) return false; 
+    }
+
+    // --- NOVA REGRA: VERIFICAÇÃO DE IMPEDIMENTO COM O DIRIGENTE ---
+    const selectVaga = document.getElementById(vaga.elementId);
+    if (selectVaga) {
+        const container = selectVaga.closest('.active-designation-container');
+        // Se esta vaga for o Ajudante (index > 0), precisamos ver quem é o Dirigente
+        const allSelects = Array.from(container.querySelectorAll('.form-select'));
+        const minhaPosicao = allSelects.indexOf(selectVaga);
+
+        if (minhaPosicao > 0) {
+            const dirigenteId = allSelects[0].value || atribuicoesAtuais[allSelects[0].id];
+            if (dirigenteId && verificarRestricaoImpedimento(dirigenteId, candidato.id, vaga.designacaoId)) {
+                return false; // Bloqueia porque o par viola a regra de privilégios
             }
         }
     }
 
-    // SE A PESSOA ESTÁ LIVRE
-    if (designacoesQueJaTem.size === 0) {
-        console.log(`   %c[OK] ${nomeCandidato} está totalmente livre. Aceite.`, "color: #2ecc71;");
-        return true;
-    }
-
-    // SE A PESSOA JÁ TEM ALGO, VERIFICAR REGRAS DE REPETIÇÃO
-    for (const idExistente of designacoesQueJaTem) {
-        const designacaoExistente = designationsMap.get(idExistente);
-        const nomeExistente = designacaoExistente ? designacaoExistente.nome : "Outra";
-
-        // Regra de Repetição: Uma permite a outra?
-        const repeticaoPermitida = 
-            (designacaoAtual.repeticao && designacaoAtual.repeticao.includes(idExistente)) || 
-            (designacaoExistente && designacaoExistente.repeticao && designacaoExistente.repeticao.includes(vaga.designacaoId));
-
-        if (repeticaoPermitida) {
-            console.log(`   %c[AVISO] ${nomeCandidato} já está em ${nomeExistente}, mas a repetição é permitida com ${nomeVagaDestino}.`, "color: #f39c12;");
-            continue; // Continua a verificar se há outros conflitos
-        }
-
-        // Se chegou aqui e tem algo, e não há regra de repetição... REJEITA.
-        console.log(`   %c[BLOQUEADO] ${nomeCandidato} REJEITADO para ${nomeVagaDestino} porque já está em ${nomeExistente} e NÃO há regra de repetição.`, "color: #e74c3c; font-weight: bold;");
-        return false; 
-    }
-
-    console.log(`   %c[OK] ${nomeCandidato} passou nos testes de conflito. Aceite.`, "color: #2ecc71;");
     return true;
 }
 
@@ -4327,6 +4295,28 @@ const getWeekMondaySunday = (ano, mes, semanaNumero) => {
 
     return { monday, sunday };
 };
+
+function verificarRestricaoImpedimento(dirigenteId, parceiroId, designacaoId) {
+    // Busca a designação no mapa global carregado no início
+    const desig = allDesignations.get(designacaoId);
+    if (!desig || !desig.impedimentos || desig.impedimentos.length === 0) return false;
+
+    const dirigenteData = allPeopleDataMap.get(dirigenteId);
+    const parceiroData = allPeopleDataMap.get(parceiroId);
+
+    if (!dirigenteData || !parceiroData) return false;
+
+    // Concatena privilégios normais e especiais
+    const privsDirigente = [...(dirigenteData.privilegiosCongregacao || []), ...(dirigenteData.privilegiosEspeciais || [])];
+    const privsParceiro = [...(parceiroData.privilegiosCongregacao || []), ...(parceiroData.privilegiosEspeciais || [])];
+
+    // Verifica se alguma regra de "Outro" bloqueia este par
+    return desig.impedimentos.some(regra => {
+        const dirigenteBate = privsDirigente.includes(regra.Dirigente);
+        const parceiroBate = privsParceiro.includes(regra.Outro);
+        return dirigenteBate && parceiroBate;
+    });
+}
 
  document.addEventListener('DOMContentLoaded', function() {
          // Botão de Perfil (Funcional)
