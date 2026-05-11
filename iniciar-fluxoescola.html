@@ -2222,12 +2222,18 @@ const validateAllSelections = async () => {
     if(iconInfo) iconInfo.style.display = 'none';
     validationList.innerHTML = '';
 
+    // --- DEFINIÇÃO DO CONTEXTO PARA VALIDAÇÃO ---
+    const validationContext = {
+        allPeopleData: allPeopleDataMap,
+        allDesignationsData: allDesignationsDataMap
+    };
+
     const currentSelections = new Map(); 
     const ano = await getAnoPainelFirebase();
     const mes = parseInt(document.getElementById('mes').value);
     const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
 
-    // --- MELHORIA: Carregar contexto da semana UMA ÚNICA VEZ ---
+    // Carregar contexto da semana
     const [horariosData, lastW, nextW, thisMonthParticipants, stats, pairHistory] = await Promise.all([
         getHorariosFromFirebase(ano),
         getParticipantsLastWeek(ano, mes, semanaNumero),
@@ -2245,13 +2251,12 @@ const validateAllSelections = async () => {
     const assignedPeopleThisWeek = new Set(allSelects.map(s => s.value).filter(v => v));
     let hasViolations = false;
 
-    // --- FASE 1: VALIDAÇÃO INDIVIDUAL (DUPLICADOS / SEMANAS ADJACENTES) ---
+    // --- FASE 1: VALIDAÇÃO INDIVIDUAL ---
     allSelects.forEach(select => {
         if (!select.value) return;
         const personId = select.value;
         const personName = select.options[select.selectedIndex].text;
 
-        // Vermelho: Duplicado
         if (currentSelections.has(personId)) {
             hasViolations = true; iconError.style.display = 'block';
             select.classList.add('invalid-selection');
@@ -2265,7 +2270,6 @@ const validateAllSelections = async () => {
             currentSelections.set(personId, select.id);
         }
 
-        // Vermelho: Semana Passada ou Próxima
         if (lastW.has(personId) || nextW.has(personId)) {
             hasViolations = true; iconError.style.display = 'block';
             select.classList.add('invalid-selection');
@@ -2275,7 +2279,6 @@ const validateAllSelections = async () => {
             validationList.appendChild(li);
         }
 
-        // Laranja: Já participou este mês (e há alternativas livres)
         if (!select.classList.contains('invalid-selection') && thisMonthParticipants.has(personId)) {
             const candidatos = getEligiblePeopleForDropdown(select);
             const alternativasFrescas = candidatos.filter(id => !thisMonthParticipants.has(id) && !assignedPeopleThisWeek.has(id));
@@ -2284,38 +2287,53 @@ const validateAllSelections = async () => {
                 hasViolations = true; iconWarning.style.display = 'block';
                 select.classList.add('warning-selection');
                 const li = document.createElement('li');
-                li.innerHTML = `🔸 <b>${personName}</b> já teve designação este mês. Há ${alternativasFrescas.length} participante(s) disponível(eis) que ainda não fizeram nada este mês.`;
+                li.innerHTML = `🔸 <b>${personName}</b> já teve designação este mês.`;
                 li.style.color = '#f39c12';
                 validationList.appendChild(li);
             }
         }
     });
 
-    // --- FASE 2: VALIDAÇÃO DE PARES (REPETIÇÃO 180 DIAS) ---
+    // --- FASE 2: VALIDAÇÃO DE PARES (REPETIÇÃO 180 DIAS + IMPEDIMENTOS) ---
     const containers = document.querySelectorAll('.active-designation-container');
     containers.forEach(container => {
+        const desigId = container.dataset.designacaoId;
         const selectsInCard = Array.from(container.querySelectorAll('.form-select')).filter(s => s.value && !s.closest('.lab-popup'));
-        if (selectsInCard.length === 2) {
+        
+        if (selectsInCard.length >= 2) {
             const p1Id = selectsInCard[0].value;
-            const p2Id = selectsInCard[1].value;
-            const pairKey = [p1Id, p2Id].sort().join('_');
-            const history = pairHistory.get(pairKey) || [];
+            const p1Name = selectsInCard[0].options[selectsInCard[0].selectedIndex].text;
 
-            const repeticaoRecente = history.find(h => {
-                const diffDays = Math.ceil(Math.abs(dataReuniaoObj - new Date(h.dia + "T12:00:00")) / (1000 * 60 * 60 * 24));
-                return diffDays > 0 && diffDays <= 180;
-            });
+            for (let i = 1; i < selectsInCard.length; i++) {
+                const partnerId = selectsInCard[i].value;
+                const partnerName = selectsInCard[i].options[selectsInCard[i].selectedIndex].text;
 
-            if (repeticaoRecente && !selectsInCard[0].classList.contains('invalid-selection')) {
-                const alternativas1 = getEligiblePeopleForDropdown(selectsInCard[0]).filter(id => !assignedPeopleThisWeek.has(id));
-                const alternativas2 = getEligiblePeopleForDropdown(selectsInCard[1]).filter(id => !assignedPeopleThisWeek.has(id));
+                // CORREÇÃO: Usar validationContext em vez de context
+                const isRestricted = verificarRestricaoImpedimento(p1Id, partnerId, desigId, validationContext);
 
-                if (alternativas1.length > 0 || alternativas2.length > 0) {
+                if (isRestricted) {
                     hasViolations = true; iconError.style.display = 'block';
                     selectsInCard[0].classList.add('invalid-selection');
-                    selectsInCard[1].classList.add('invalid-selection');
+                    selectsInCard[i].classList.add('invalid-selection');
                     const li = document.createElement('li');
-                    li.innerHTML = `⚠️ <b>Par Repetido:</b> ${selectsInCard[0].options[selectsInCard[0].selectedIndex].text} e ${selectsInCard[1].options[selectsInCard[1].selectedIndex].text} trabalharam juntos recentemente.`;
+                    li.innerHTML = `🚫 <b>Restrição de Privilégio:</b> Para "${allDesignationsDataMap.get(desigId).nome}", <b>${partnerName}</b> não pode ser parceiro de <b>${p1Name}</b>.`;
+                    li.style.color = '#c0392b';
+                    validationList.appendChild(li);
+                }
+
+                const pairKey = [p1Id, partnerId].sort().join('_');
+                const history = pairHistory.get(pairKey) || [];
+                const repeticaoRecente = history.find(h => {
+                    const diffDays = Math.ceil(Math.abs(dataReuniaoObj - new Date(h.dia + "T12:00:00")) / (1000 * 60 * 60 * 24));
+                    return diffDays > 0 && diffDays <= 180;
+                });
+
+                if (repeticaoRecente && !selectsInCard[0].classList.contains('invalid-selection')) {
+                    hasViolations = true; iconError.style.display = 'block';
+                    selectsInCard[0].classList.add('invalid-selection');
+                    selectsInCard[i].classList.add('invalid-selection');
+                    const li = document.createElement('li');
+                    li.innerHTML = `⚠️ <b>Par Repetido:</b> ${p1Name} e ${partnerName} trabalharam juntos recentemente.`;
                     li.style.color = '#c0392b';
                     validationList.appendChild(li);
                 }
@@ -3599,6 +3617,12 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
         const ano = await getAnoPainelFirebase();
         const designacaoId = designationContainer.dataset.designacaoId;
         
+        // Contexto para a função de verificação
+        const validationContext = {
+            allPeopleData: allPeopleDataMap,
+            allDesignationsData: allDesignationsDataMap
+        };
+
         // 1. Dados de apoio (Semana passada/seguinte)
         const [participantsLastWeek, participantsNextWeek] = await Promise.all([
             getParticipantsLastWeek(ano, mes, semanaNumero),
@@ -3621,7 +3645,6 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
                 !participantsNextWeek.has(id)
             );
 
-            // Buscar contagem de participações para rotatividade
             const statsSummary = await getParticipationHistorySummary();
 
             finalRankedList = candidates.map(id => {
@@ -3636,7 +3659,6 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
 
         // --- LÓGICA PARA PARES (2 PARTICIPANTES) ---
         } else {
-            // Contagem de colaborações (Tua lógica original)
             const pairCollaborationCount = new Map();
             const historicoSnapshot = await db.collection('historico').where('ano', '==', ano).get();
             historicoSnapshot.forEach(doc => {
@@ -3653,10 +3675,10 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
                 });
             });
 
-            const lockedIcon = clonedSelects[0].parentNode.querySelector('.lab-lock-icon[data-locked="true"]');
+            const lockedIcon = clonedInstance.querySelector('.lab-lock-icon[data-locked="true"]');
 
             if (lockedIcon) {
-                // CASO: Um dos participantes está trancado (Tua lógica original)
+                // CASO: Um dos participantes está trancado
                 const lockedIndex = parseInt(lockedIcon.dataset.selectIndex);
                 const fixedPersonId = clonedSelects[lockedIndex].value;
                 
@@ -3668,13 +3690,20 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
                 const targetSelectIndex = lockedIndex === 0 ? 1 : 0;
                 const fixedPersonData = allPeopleDataMap.get(fixedPersonId);
                 
-                const candidates = getEligiblePeopleForDropdown(originalSelects[targetSelectIndex]).filter(id =>
-                    id !== fixedPersonId &&
-                    !assignedPeopleThisWeek.has(id) &&
-                    !participantsLastWeek.has(id) &&
-                    !participantsNextWeek.has(id) &&
-                    (allPeopleDataMap.get(id)?.genero === fixedPersonData.genero)
-                );
+                const candidates = getEligiblePeopleForDropdown(originalSelects[targetSelectIndex]).filter(id => {
+                    const basicValid = id !== fixedPersonId &&
+                        !assignedPeopleThisWeek.has(id) &&
+                        !participantsLastWeek.has(id) &&
+                        !participantsNextWeek.has(id) &&
+                        (allPeopleDataMap.get(id)?.genero === fixedPersonData.genero);
+
+                    if (!basicValid) return false;
+
+                    // NOVA REGRA: Impedimentos de Privilégio no Lab (Trancado)
+                    const dId = (lockedIndex === 0) ? fixedPersonId : id;
+                    const pId = (lockedIndex === 0) ? id : fixedPersonId;
+                    return !verificarRestricaoImpedimento(dId, pId, designacaoId, validationContext);
+                });
 
                 finalRankedList = candidates.map(candidateId => {
                     const pair = [];
@@ -3686,7 +3715,7 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
                 });
 
             } else {
-                // CASO: Nenhum trancado - Sugerir todos os pares possíveis (Tua lógica original devolvida)
+                // CASO: Nenhum trancado - Sugerir pares livres
                 const eligibleDirigentes = getEligiblePeopleForDropdown(originalSelects[0]).filter(id => 
                     !assignedPeopleThisWeek.has(id) && !participantsLastWeek.has(id) && !participantsNextWeek.has(id)
                 );
@@ -3701,7 +3730,13 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
                         if (dId !== mId) {
                             const dData = allPeopleDataMap.get(dId);
                             const mData = allPeopleDataMap.get(mId);
+                            
+                            // Validação de Género
                             if (dData && mData && dData.genero === mData.genero) {
+                                
+                                // NOVA REGRA: Impedimentos de Privilégio no Lab (Livre)
+                                if (verificarRestricaoImpedimento(dId, mId, designacaoId, validationContext)) continue;
+
                                 const pairKey = [dId, mId].sort().join('_');
                                 const score = pairCollaborationCount.get(pairKey) || 0;
                                 possiblePairs.push({ pair: [dId, mId], totalScore: score, justification: `Colaborações: ${score}` });
@@ -3714,17 +3749,16 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
             finalRankedList.sort((a, b) => a.totalScore - b.totalScore);
         }
 
-        // --- RENDERIZAÇÃO FINAL (Compatível com ambos os casos) ---
+        // Renderização final
         suggestionsContainer.innerHTML = '<h3><i class="fas fa-lightbulb"></i> Sugestões</h3>';
         const listContainer = document.createElement('div');
         suggestionsContainer.appendChild(listContainer);
 
         if (finalRankedList.length === 0) {
-            listContainer.innerHTML = '<p>Nenhuma sugestão válida encontrada.</p>';
+            listContainer.innerHTML = '<p>Nenhuma sugestão válida encontrada respeitando as restrições.</p>';
             return;
         }
 
-        // Mostrar as primeiras 10 sugestões
         finalRankedList.slice(0, 10).forEach(item => {
             const suggestionItem = document.createElement('div');
             suggestionItem.className = 'suggestion-item';
@@ -3732,7 +3766,7 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
             if (isIndividual) {
                 const name = (allPeopleDataMap.get(item.pair[0]) || {}).nome || 'N/A';
                 suggestionItem.innerHTML = `<strong>Participante:</strong> ${name}<div class="suggestion-justification">${item.justification}</div>`;
-                suggestionItem.dataset.dirigente = item.pair[0]; // ID para o clique
+                suggestionItem.dataset.dirigente = item.pair[0];
             } else {
                 const dName = (allPeopleDataMap.get(item.pair[0]) || {}).nome || 'N/A';
                 const mName = (allPeopleDataMap.get(item.pair[1]) || {}).nome || 'N/A';
@@ -3745,7 +3779,7 @@ async function generateLabSuggestions(designationContainer, originalSelects, clo
 
     } catch (error) {
         console.error("[LAB] Erro:", error);
-        suggestionsContainer.innerHTML = '<h3>Sugestões</h3><p style="color:red">Erro ao processar.</p>';
+        suggestionsContainer.innerHTML = '<h3>Sugestões</h3><p style="color:red">Erro ao processar sugestões.</p>';
     }
 }
 
@@ -5914,10 +5948,21 @@ function checkPairRepetition(person1Id, person2Id, designationId, context) {
     const { designation } = context;
 
     const generateCombinations = (strictMode) => {
-        const { allPeopleData, assignedPeopleThisWeek, participantsLastWeek, participantsNextWeek, diaDaReuniao, nonSchoolAssignmentsThisWeek, allDesignationsData } = context;
+        const { 
+            allPeopleData, 
+            assignedPeopleThisWeek, 
+            participantsLastWeek, 
+            participantsNextWeek, 
+            diaDaReuniao, 
+            nonSchoolAssignmentsThisWeek, 
+            allDesignationsData 
+        } = context;
+        
         let combinations = [];
 
-        // Lógica para INDIVÍDUOS (esta parte já estava correta)
+        // ==========================================
+        // 1. LÓGICA PARA INDIVÍDUOS (1 PARTICIPANTE)
+        // ==========================================
         if (group.length === 1) {
             const select = group[0];
             const candidatos = getEligiblePeopleForDropdown(select);
@@ -5929,42 +5974,36 @@ function checkPairRepetition(person1Id, person2Id, designationId, context) {
                 if (assignedPeopleThisWeek.has(personId)) isValid = false;
                 if (participantsNextWeek.has(personId)) isValid = false;
                 if (personData.ausencias && personData.ausencias.includes(diaDaReuniao)) isValid = false;
-                if (designation.parte === 'escola' && !personData.fazDesignacoesReuniao) isValid = false;
+                
                 if (strictMode && participantsLastWeek.has(personId)) isValid = false;
 
-                 // NOVO: Regra de Regularidade no Foguetão (Indivíduos)
+                // Regra de Regularidade
                 const lastPartDate = context.lastParticipationMap.get(personId);
-                if (isPersonOnCooldown(personData, lastPartDate, diaDaReuniao)) isValid = false;
+                if (isValid && isPersonOnCooldown(personData, lastPartDate, diaDaReuniao)) isValid = false;
 
+                // Bloqueios de Designações Externas
                 if (isValid && nonSchoolAssignmentsThisWeek.has(personId)) {
                     const otherDesignationIds = nonSchoolAssignmentsThisWeek.get(personId);
                     let isBlocked = true;
                     for (const otherDesigId of otherDesignationIds) {
                         const otherDesigData = allDesignationsData.get(otherDesigId);
-                        if (otherDesigData && otherDesigData.bloqueio && otherDesigData.bloqueio[designation.id] === 'Sim') {
+                        if (otherDesigData?.bloqueio?.[designation.id] === 'Sim') {
                             isBlocked = false;
                             break;
                         }
                     }
-                    if (isBlocked) {
-                        isValid = false;
-                    }
+                    if (isBlocked) isValid = false;
                 }
 
                 if (isValid) {
-                    if (designation.quemFaz && designation.quemFaz.length > 0) {
-                        const hasRequiredPrivilege = designation.quemFaz.some(p => personData.privilegiosCongregacao && personData.privilegiosCongregacao.includes(p));
-                        if (hasRequiredPrivilege) {
-                            combinations.push({ combination: [personId], isException: false });
-                        }
-                    } else {
-                        combinations.push({ combination: [personId], isException: false });
-                    }
+                    combinations.push({ combination: [personId], isException: false });
                 }
             }
         }
         
-        // Lógica para PARES (com a correção aplicada)
+        // ==========================================
+        // 2. LÓGICA PARA PARES (2 PARTICIPANTES)
+        // ==========================================
         if (group.length === 2) {
             const [select1, select2] = group;
             const candidatos1 = getEligiblePeopleForDropdown(select1);
@@ -5973,56 +6012,58 @@ function checkPairRepetition(person1Id, person2Id, designationId, context) {
             for (const p1 of candidatos1) {
                 for (const p2 of candidatos2) {
                     if (p1 === p2) continue;
-                    let isValidPair = true; // A variável correta para este bloco
+                    let isValidPair = true;
                     const combination = [p1, p2];
 
+                    // Validações individuais básicas para p1 e p2
                     for (const personId of combination) {
                         const personData = allPeopleData.get(personId);
                         if (!personData || assignedPeopleThisWeek.has(personId) || participantsNextWeek.has(personId) || (personData.ausencias && personData.ausencias.includes(diaDaReuniao))) {
                             isValidPair = false; break;
                         }
-                     if (strictMode && participantsLastWeek.has(personId)) {
+                        if (strictMode && participantsLastWeek.has(personId)) {
                             isValidPair = false; break;
                         }
                         
-                        // NOVO: Regra de Regularidade no Foguetão (Pares)
                         const lastPartDate = context.lastParticipationMap.get(personId);
                         if (isPersonOnCooldown(personData, lastPartDate, diaDaReuniao)) {
                             isValidPair = false; break;
                         }
-                        if (designation.quemFaz && designation.quemFaz.length > 0) {
-                            const hasPrivilege = designation.quemFaz.some(p => personData.privilegiosCongregacao && personData.privilegiosCongregacao.includes(p));
-                            if (!hasPrivilege) { isValidPair = false; break; }
-                        }
+
                         if (nonSchoolAssignmentsThisWeek.has(personId)) {
                             const otherDesignationIds = nonSchoolAssignmentsThisWeek.get(personId);
                             let isBlocked = true;
                             for (const otherDesigId of otherDesignationIds) {
-                                const otherDesigData = allDesignationsData.get(otherDesigId);
-                                if (otherDesigData?.bloqueio?.[designation.id] === 'Sim') {
-                                    isBlocked = false;
-                                    break;
+                                if (allDesignationsData.get(otherDesigId)?.bloqueio?.[designation.id] === 'Sim') {
+                                    isBlocked = false; break;
                                 }
                             }
-                            // ================== CORREÇÃO AQUI ==================
-                            if (isBlocked) { isValidPair = false; break; } // Usar isValidPair em vez de isValid
-                            // ===================================================
+                            if (isBlocked) { isValidPair = false; break; }
                         }
                     }
                     if (!isValidPair) continue;
 
                     const p1Data = allPeopleData.get(p1);
+                    const p2Data = allPeopleData.get(p2);
+
+                    // Validação de Personalidade do Dirigente (p1)
                     const permiteMenosAVontade = Array.isArray(designation.personalidade) && designation.personalidade.includes('- à vontade');
                     if (p1Data.personalidade === '- à vontade' && !permiteMenosAVontade) continue;
                     
+                    // Validação de Género (Mesmo Género ou Mix)
                     const genderMixSelect = select1.closest('.active-designation-container').querySelector('.gender-mix-select');
-                    if (genderMixSelect && genderMixSelect.value === 'nao' && p1Data.genero !== allPeopleData.get(p2).genero) continue;
+                    if (genderMixSelect && genderMixSelect.value === 'nao' && p1Data.genero !== p2Data.genero) continue;
+
+                    // -----------------------------------------------------------
+                    // NOVA REGRA: IMPEDIMENTOS DE PRIVILÉGIO (FIREBASE)
+                    // -----------------------------------------------------------
+                    const violaImpedimento = verificarRestricaoImpedimento(p1, p2, designation.id, context);
+                    if (violaImpedimento) continue; 
+                    // -----------------------------------------------------------
                     
                     if (strictMode) {
                         const repetitionCheck = checkPairRepetition(p1, p2, designation.id, context);
-                        if (repetitionCheck.isInvalid) {
-                            continue;
-                        }
+                        if (repetitionCheck.isInvalid) continue;
                         combinations.push({ combination: combination, isException: repetitionCheck.isException });
                     } else {
                         combinations.push({ combination: combination, isException: false });
@@ -6030,21 +6071,59 @@ function checkPairRepetition(person1Id, person2Id, designationId, context) {
                 }
             }
         }
+
+        // ==========================================
+        // 3. LÓGICA PARA TRIOS (3 PARTICIPANTES)
+        // ==========================================
+        if (group.length === 3) {
+            const [s1, s2, s3] = group;
+            const cand1 = getEligiblePeopleForDropdown(s1);
+            const cand2 = getEligiblePeopleForDropdown(s2);
+            const cand3 = getEligiblePeopleForDropdown(s3);
+
+            for (const p1 of cand1) {
+                for (const p2 of cand2) {
+                    if (p1 === p2) continue;
+                    for (const p3 of cand3) {
+                        if (p3 === p1 || p3 === p2) continue;
+                        
+                        let isValidTrio = true;
+                        const combination = [p1, p2, p3];
+
+                        for (const personId of combination) {
+                            const personData = allPeopleData.get(personId);
+                            if (!personData || assignedPeopleThisWeek.has(personId) || (strictMode && participantsLastWeek.has(personId)) || (personData.ausencias && personData.ausencias.includes(diaDaReuniao))) {
+                                isValidTrio = false; break;
+                            }
+                        }
+                        if (!isValidTrio) continue;
+
+                        // Verifica Impedimentos (Dirigente p1 vs Morador p2 e Ajudante p3)
+                        if (verificarRestricaoImpedimento(p1, p2, designation.id, context) || 
+                            verificarRestricaoImpedimento(p1, p3, designation.id, context)) {
+                            continue;
+                        }
+
+                        combinations.push({ combination: combination, isException: false });
+                    }
+                }
+            }
+        }
+
         return combinations;
     };
 
+    // --- Execução do Algoritmo ---
     let possibleCombinations = generateCombinations(true);
 
     if (possibleCombinations.length === 0) {
-        console.warn(`-> ⚠️ Nenhuma combinação 100% válida encontrada para "${designation.nome}". A relaxar a regra da "semana passada"...`);
+        console.warn(`-> ⚠️ Relaxando regras para "${designation.nome}"...`);
         possibleCombinations = generateCombinations(false);
     }
     
-    if (possibleCombinations.length === 0) {
-        console.error(`-> ❌ Mesmo com regras relaxadas, não foi encontrada nenhuma combinação para "${designation.nome}".`);
-        return null;
-    }
+    if (possibleCombinations.length === 0) return null;
 
+    // Pontuação e Ranking
     const scoredCombinations = possibleCombinations.map(comboObject => {
         return {
             combination: comboObject.combination,
@@ -6059,6 +6138,8 @@ function checkPairRepetition(person1Id, person2Id, designationId, context) {
     const chosenOne = selectRandomFrom(bestCombinations);
     return chosenOne ? chosenOne.combination : null;
 }
+
+
 
 // Cache para guardar o resumo do histórico de participação
 let participationCountSummaryCache = null;
@@ -6728,6 +6809,27 @@ function isPersonOnCooldown(personData, lastDateStr, meetingDateStr) {
     return isOnCooldown;
 }
    
+function verificarRestricaoImpedimento(dirigenteId, parceiroId, designacaoId, context) {
+    const desig = context.allDesignationsData.get(designacaoId);
+    if (!desig || !desig.impedimentos || desig.impedimentos.length === 0) return false;
+
+    const dirigenteData = context.allPeopleData.get(dirigenteId);
+    const parceiroData = context.allPeopleData.get(parceiroId);
+
+    if (!dirigenteData || !parceiroData) return false;
+
+    // Junta privilégios de congregação e especiais para a verificação
+    const privsDirigente = [...(dirigenteData.privilegiosCongregacao || []), ...(dirigenteData.privilegiosEspeciais || [])];
+    const privsParceiro = [...(parceiroData.privilegiosCongregacao || []), ...(parceiroData.privilegiosEspeciais || [])];
+
+    // Verifica se alguma regra de impedimento é violada
+    return desig.impedimentos.some(regra => {
+        const dirigenteTemPrivilegio = privsDirigente.includes(regra.Dirigente);
+        const parceiroTemPrivilegio = privsParceiro.includes(regra.Outro);
+        return dirigenteTemPrivilegio && parceiroTemPrivilegio;
+    });
+}
+
 // ========================================================================
 // === FIM: LÓGICA DE REGULARIDADE ========================================
 // ========================================================================
