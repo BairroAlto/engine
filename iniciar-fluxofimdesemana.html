@@ -2694,7 +2694,7 @@ function shuffleArray(array) {
 
 
 async function preencherAutomaticamente(exclusionSet = new Set()) {
-    console.log("🚀 Iniciando o preenchimento automático com regra de repetição...");
+    console.log("🚀 Iniciando o preenchimento automático (Repetição + Manual)...");
     
     const ano = await getAnoPainelFirebase();
     const mes = parseInt(document.getElementById('mes').value);
@@ -2704,34 +2704,24 @@ async function preencherAutomaticamente(exclusionSet = new Set()) {
     let atribuicoesFinais = {};
     const preloadedAssignmentsMap = new Map();
 
-    // 1. Obter dados necessários do Firebase e Cache
+    // --- IMPORTANTE: LER O QUE JÁ ESTÁ NO ECRÃ (MANUAL OU BLOQUEADO) ---
+    // Isso evita que o Turbo escolha alguém que já selecionaste para outra coisa
+    document.querySelectorAll('.active-designation-container').forEach(card => {
+        const dId = card.dataset.designacaoId;
+        card.querySelectorAll('select.form-select:not(.descricao-input):not(.discurso-search-input)').forEach(select => {
+            const personIdNaTela = select.value;
+            if (personIdNaTela) {
+                if (!preloadedAssignmentsMap.has(personIdNaTela)) {
+                    preloadedAssignmentsMap.set(personIdNaTela, new Set());
+                }
+                preloadedAssignmentsMap.get(personIdNaTela).add(dId);
+            }
+        });
+    });
+
     const { peopleMap, designationsMap, historicoData } = await getDataFromFirebase();
     
-    // 2. Verificar se já existem atribuições (para não sobrecarregar quem já tem algo manual)
-    try {
-        const historicoAtualSnapshot = await db.collection('historico')
-            .where('ano', '==', ano)
-            .where('mes', '==', mes)
-            .where('semanaNumero', '==', semana)
-            .get();
-            
-        if (!historicoAtualSnapshot.empty) {
-            historicoAtualSnapshot.forEach(doc => {
-                doc.data().designacoes?.forEach(d => {
-                    Object.values(d.participantes).forEach(pId => {
-                        if (!preloadedAssignmentsMap.has(pId)) {
-                            preloadedAssignmentsMap.set(pId, new Set());
-                        }
-                        preloadedAssignmentsMap.get(pId).add(d.designacaoId);
-                    });
-                });
-            });
-        }
-    } catch (error) {
-        console.error("Erro ao verificar o histórico da semana atual:", error);
-    }
-    
-    // 3. Coletar todas as vagas (Selects) que não estão bloqueadas
+    // Coletar vagas que não estão travadas com o cadeado
     const vagas = [];
     document.querySelectorAll('.active-designation-container:not([data-locked="true"])').forEach(card => {
         card.querySelectorAll('select.form-select:not(.descricao-input):not(.discurso-search-input)').forEach(select => {
@@ -2746,12 +2736,8 @@ async function preencherAutomaticamente(exclusionSet = new Set()) {
         });
     });
 
-    if (vagas.length === 0) {
-        console.log("Nenhuma vaga desbloqueada para preencher.");
-        return {};
-    }
+    if (vagas.length === 0) return {};
 
-    // 4. Preparar dados de histórico para filtros de frequência e repetição semanal
     const detailedPreviousWeek = getDetailedParticipantsInRange(dateRanges.previous.start, dateRanges.previous.end, historicoData);
     const detailedNextWeek = getDetailedParticipantsInRange(dateRanges.next.start, dateRanges.next.end, historicoData);
     
@@ -2760,22 +2746,17 @@ async function preencherAutomaticamente(exclusionSet = new Set()) {
         if (!exclusionSet.has(id)) availablePeopleMap.set(id, person);
     });
 
-    // =========================================================
-    // 5. LÓGICA DE AGRUPAMENTO POR REPETIÇÃO (REGRA SOLICITADA)
-    // =========================================================
+    // --- LÓGICA DE AGRUPAMENTO (PARA TAREFAS QUE SÃO SEMPRE A MESMA PESSA) ---
     const vagaGroups = [];
     const processedVagaElementIds = new Set();
 
     vagas.forEach(vaga => {
         if (processedVagaElementIds.has(vaga.elementId)) return;
-
         const currentGroup = [vaga];
         processedVagaElementIds.add(vaga.elementId);
-
         const designacaoInfo = designationsMap.get(vaga.designacaoId);
         const idsParaRepetir = designacaoInfo?.repeticao || [];
 
-        // Se esta designação tem IDs no campo 'repeticao', busca as outras vagas correspondentes
         if (idsParaRepetir.length > 0) {
             vagas.forEach(potentialMatch => {
                 if (!processedVagaElementIds.has(potentialMatch.elementId) &&
@@ -2788,81 +2769,76 @@ async function preencherAutomaticamente(exclusionSet = new Set()) {
         vagaGroups.push(currentGroup);
     });
     
-    // Ordenar: Grupos com mais repetições primeiro (são mais difíceis de encaixar)
     vagaGroups.sort((a, b) => b.length - a.length);
 
-    // 6. Atribuição de Candidatos aos Grupos
     for (const group of vagaGroups) {
-        // findSharedCandidatesForGroup busca pessoas que atendem aos requisitos de TODOS os itens do grupo
         const sharedCandidates = await findSharedCandidatesForGroup(group, availablePeopleMap, historicoData, dateRanges, detailedPreviousWeek, detailedNextWeek);
         
-        if (sharedCandidates.length === 0) {
-            console.warn(`Não foi possível encontrar um candidato comum para o grupo de repetição:`, group);
-            continue;
-        }
+        if (sharedCandidates.length === 0) continue;
         
-        // Selecionar os melhores (menor frequência) e embaralhar para variação
         const bestScore = sharedCandidates[0].frequencia;
         const bestCandidates = sharedCandidates.filter(c => c.frequencia === bestScore);
         shuffleArray(bestCandidates);
 
         for (const chosenCandidate of bestCandidates) {
-            // Validar se o candidato já não está ocupado nesta semana em outra tarefa manual/bloqueada
-            if (isCandidatoValido(chosenCandidate, group[0], atribuicoesFinais, preloadedAssignmentsMap, designationsMap, 'Não')) {
-                // ATRIBUIÇÃO: O mesmo candidato para todas as vagas do grupo (Cumpre a regra de repetição)
+            // AQUI A REPETIÇÃO É VALIDADA
+            if (isCandidatoValido(chosenCandidate, group[0], atribuicoesFinais, preloadedAssignmentsMap, designationsMap)) {
                 group.forEach(vagaInGroup => {
                     atribuicoesFinais[vagaInGroup.elementId] = chosenCandidate.id;
+                    
+                    // Adicionar ao mapa de ocupados para o Turbo não repetir na próxima iteração
+                    if (!preloadedAssignmentsMap.has(chosenCandidate.id)) {
+                        preloadedAssignmentsMap.set(chosenCandidate.id, new Set());
+                    }
+                    preloadedAssignmentsMap.get(chosenCandidate.id).add(vagaInGroup.designacaoId);
                 });
                 break; 
             }
         }
     }
     
-    console.log("✅ Preenchimento automático com regras de repetição concluído.");
     return atribuicoesFinais;
 }
-
 
 /**
  * Verifica se um candidato pode ser escalado para uma vaga,
  * respeitando se ele já está ocupado em outra tarefa na mesma semana.
  */
-function isCandidatoValido(candidato, vagaAtual, atribuicoesFinais, preloadedAssignments, designationsMap, permitirDuplicados = 'Não') {
+function isCandidatoValido(candidato, vagaAtual, atribuicoesFinais, preloadedAssignments, designationsMap) {
     const personId = candidato.id;
     const idDesignacaoAtual = vagaAtual.designacaoId;
     const desigAtual = designationsMap.get(idDesignacaoAtual);
 
-    // 1. Verificação de Ocupação/Repetição
+    // 1. Obter todas as designações que esta pessoa já tem (na tela e as que o Turbo já escolheu agora)
     const designacoesOcupadas = new Set();
+    
+    // Designações que já estavam na tela antes de carregar no foguetão
     if (preloadedAssignments.has(personId)) {
         preloadedAssignments.get(personId).forEach(id => designacoesOcupadas.add(id));
     }
+    
+    // Designações que o Turbo acabou de atribuir nesta rodada
     for (const [vagaId, pId] of Object.entries(atribuicoesFinais)) {
         if (pId === personId) {
-            const card = document.getElementById(vagaId)?.closest('.active-designation-container');
+            const selectElement = document.getElementById(vagaId);
+            const card = selectElement ? selectElement.closest('.active-designation-container') : null;
             if (card) designacoesOcupadas.add(card.dataset.designacaoId);
         }
     }
 
+    // 2. VERIFICAR REPETIÇÃO: Se a pessoa já está ocupada, a nova tarefa é permitida?
     for (const idExistente of designacoesOcupadas) {
+        if (idExistente === idDesignacaoAtual) continue; // Mesma tarefa (ex: 2 ajudantes)
+
         const desigExistente = designationsMap.get(idExistente);
-        const repOk = (desigAtual?.repeticao?.includes(idExistente)) || (desigExistente?.repeticao?.includes(idDesignacaoAtual));
-        if (!repOk) return false;
-    }
+        
+        // Verifica se a tarefa atual autoriza a existente OU se a existente autoriza a atual
+        const repOk = (desigAtual?.repeticao?.includes(idExistente)) || 
+                      (desigExistente?.repeticao?.includes(idDesignacaoAtual));
 
-    // --- NOVA REGRA: VERIFICAÇÃO DE IMPEDIMENTO NO TURBO ---
-    const selectVaga = document.getElementById(vagaAtual.elementId);
-    if (selectVaga) {
-        const card = selectVaga.closest('.active-designation-container');
-        const todosOsSelectsNoCard = Array.from(card.querySelectorAll('select.form-select'));
-        const minhaPosicao = todosOsSelectsNoCard.indexOf(selectVaga);
-
-        // Se eu sou o parceiro (índice 1 ou 2), verifico quem é o dirigente (índice 0)
-        if (minhaPosicao > 0) {
-            const dirigenteId = todosOsSelectsNoCard[0].value || atribuicoesFinais[todosOsSelectsNoCard[0].id];
-            if (dirigenteId && verificarRestricaoImpedimento(dirigenteId, personId, idDesignacaoAtual)) {
-                return false; // Bloqueia a escolha porque o par é proibido por privilégios
-            }
+        if (!repOk) {
+            // Se não houver autorização de repetição, o candidato é INVÁLIDO
+            return false; 
         }
     }
 
