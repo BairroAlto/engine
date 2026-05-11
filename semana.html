@@ -1105,7 +1105,7 @@ async function findNextValidGroup() {
                 return false;
             }
         }
-        
+
         }
         return true;
     });
@@ -2182,35 +2182,71 @@ async function saveWeekHeaderChanges() {
     const docId = saveWeekHeaderChangesBtn.dataset.docId;
     if (!docId) return;
 
-    // 1. Começa com um objeto de atualização vazio.
     const updateData = {};
-
-    // 2. Pega o valor de cada campo do formulário.
     const newSemanaindex = document.getElementById('editSemanaindex').value.trim();
     const newDia = document.getElementById('editDia').value;
     const newHora = document.getElementById('editHora').value;
 
-    // 3. Adiciona cada campo ao objeto de atualização SOMENTE SE ele tiver um valor.
-    // Isso impede que campos vazios substituam dados existentes.
     if (newSemanaindex) {
         updateData.semanaindex = newSemanaindex;
     }
 
     if (newDia) {
         updateData.dia = newDia;
-        // Se a data for alterada, calcula e adiciona o novo ano e mês.
+        
+        // Criar objeto de data seguro (meio-dia para evitar erros de fuso horário)
         const dateObject = new Date(newDia + 'T12:00:00');
-        updateData.ano = dateObject.getFullYear();
-        updateData.mes = dateObject.getMonth() + 1;
+        const ano = dateObject.getFullYear();
+        const mes = dateObject.getMonth() + 1;
+
+        updateData.ano = ano;
+        updateData.mes = mes;
+
+        // ==========================================================
+        // LÓGICA DE CONTABILIDADE IGUAL À PÁGINA "INICIAR FLUXO"
+        // (Semana baseada na Primeira Segunda-Feira do Mês)
+        // ==========================================================
+        
+        // 1. Obter o primeiro dia do mês selecionado
+        const primeiroDiaMes = new Date(ano, mes - 1, 1);
+        
+        // 2. Descobrir que dia da semana é o dia 1 (0=Dom, 1=Seg, ..., 6=Sáb)
+        let diaSemanaPrimeiroDia = primeiroDiaMes.getDay();
+        if (diaSemanaPrimeiroDia === 0) diaSemanaPrimeiroDia = 7; // Ajustar Domingo para 7
+
+        // 3. Calcular quantos dias faltam para a primeira segunda-feira
+        // Se o dia 1 já for segunda, faltam 0. Se não, faltam (8 - diaSemana)
+        let diasParaPrimeiraSegunda = (diaSemanaPrimeiroDia === 1) ? 0 : (8 - diaSemanaPrimeiroDia);
+        
+        // 4. Definir a data da exata da Primeira Segunda-Feira deste mês
+        const primeiraSegundaMês = new Date(ano, mes - 1, 1 + diasParaPrimeiraSegunda);
+        primeiraSegundaMês.setHours(0, 0, 0, 0);
+
+        // 5. Calcular a diferença de dias entre a data escolhida e a primeira segunda-feira
+        const diffMs = dateObject.getTime() - primeiraSegundaMês.getTime();
+        const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        let semanaCalculada;
+        if (diffDias < 0) {
+            // Se a data for ANTES da primeira segunda do mês (dias 1, 2... antes da segunda)
+            // No seu sistema, isso é considerado Semana 1
+            semanaCalculada = 1;
+        } else {
+            // Cálculo padrão: diferença de dias a dividir por 7
+            semanaCalculada = Math.floor(diffDias / 7) + 1;
+        }
+
+        updateData.semanaNumero = semanaCalculada;
+        console.log(`[AJUSTE SEMANA] Data: ${newDia} -> Calculada como Semana: ${semanaCalculada}`);
     }
 
     if (newHora) {
         updateData.hora = newHora;
     }
 
-    // 4. Validação: Se o objeto de atualização estiver vazio, significa que o utilizador não preencheu nada.
+    // Validação: Se não houver nada para atualizar
     if (Object.keys(updateData).length === 0) {
-        alert("Nenhuma alteração detetada. Por favor, preencha pelo menos um campo para guardar.");
+        alert("Nenhuma alteração detetada.");
         return;
     }
 
@@ -2218,15 +2254,19 @@ async function saveWeekHeaderChanges() {
         saveWeekHeaderChangesBtn.textContent = 'A Guardar...';
         saveWeekHeaderChangesBtn.disabled = true;
 
-        // 5. Atualiza o documento no Firebase apenas com os campos fornecidos.
+        // Atualiza no Firebase
         await db.collection('historico').doc(docId).update(updateData);
 
-        closeWeekHeaderPopupBtn.click();
-        await loadInitialData(); // Recarrega os dados para refletir as mudanças.
+        // Fecha o popup e recarrega a página
+        editWeekHeaderPopup.classList.remove('active');
+        document.body.classList.remove('popup-open');
+        
+        await loadInitialData();
+        renderSchedule();
 
     } catch (error) {
         console.error("Erro ao atualizar os detalhes da semana:", error);
-        openModal("Erro de Gravação", "Não foi possível guardar as alterações. Tente novamente.");
+        openModal("Erro de Gravação", "Não foi possível guardar as alterações.");
     } finally {
         saveWeekHeaderChangesBtn.textContent = 'Guardar Alterações';
         saveWeekHeaderChangesBtn.disabled = false;
