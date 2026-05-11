@@ -3679,7 +3679,11 @@ document.getElementById('btnSeguinte').addEventListener('click', async function(
     const tipoReuniao = document.getElementById('tipo').value;
     const btnSeguinte = this;
     
-    if (tipoReuniao === 'normal') {
+    // DEFINIÇÃO: Quais tipos permitem preencher designações (Som, Vídeo, etc)
+    // Adicionamos 'memorial' e 'evento-especial' nesta lista
+    const tiposComDesignacoes = ['normal', 'memorial', 'evento-especial'];
+
+    if (tiposComDesignacoes.includes(tipoReuniao)) {
         document.getElementById('designacoesSection').classList.add('active');
         document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
         document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth' });
@@ -3687,7 +3691,7 @@ document.getElementById('btnSeguinte').addEventListener('click', async function(
         return;
     }
 
-    // --- LÓGICA PARA EVENTOS ESPECIAIS ---
+    // --- LÓGICA APENAS PARA OS OUTROS EVENTOS (Assembleia, Visita, etc) ---
     btnSeguinte.disabled = true;
     btnSeguinte.textContent = "A validar data...";
 
@@ -3697,11 +3701,9 @@ document.getElementById('btnSeguinte').addEventListener('click', async function(
     const { monday, sunday } = getWeekMondaySunday(ano, mes, semanaNumero);
 
     const eventNameMap = {
-        'memorial': 'Memorial',
         'assembleia': 'Assembleia',
         'congresso': 'Congresso',
-        'visita-servo': 'Visita do Servo',
-        'evento-especial': 'Evento Especial'
+        'visita-servo': 'Visita do Servo'
     };
 
     try {
@@ -3719,7 +3721,6 @@ document.getElementById('btnSeguinte').addEventListener('click', async function(
             if (confirmed) {
                 const success = await saveSpecialEventFast(); 
                 if (success) {
-                    alert("Evento técnico gravado com sucesso!");
                     window.location.reload();
                 }
             }
@@ -3733,6 +3734,7 @@ document.getElementById('btnSeguinte').addEventListener('click', async function(
         btnSeguinte.textContent = "Seguinte";
     }
 });
+
 
 
 
