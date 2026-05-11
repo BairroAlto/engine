@@ -2642,39 +2642,42 @@ function getDayOfWeekNumber(dayOfWeekString) {
 
 
  async function preencherAutomaticamente(exclusionSet = new Set()) {
-    console.log("🚀 Iniciando o preenchimento automático (v9 - Correção Final)...");
-    const ano = await getAnoPainelFirebase(); // Mantemos esta linha, pois 'ano' é usado em outros locais.
+    console.log("🚀 Iniciando o preenchimento v11 (Escassez + Grupos de Repetição + Revisão)...");
+    const ano = await getAnoPainelFirebase();
     const mes = parseInt(document.getElementById('mes').value);
     const semana = parseInt(document.getElementById('semanaNumero').value);
     const dateRanges = getWeekDateRanges(ano, mes, semana);
 
-    // ... (a lógica de 'preloadedAssignmentsMap' e 'vagas' continua igual) ...
     let atribuicoesFinais = {};
     const preloadedAssignmentsMap = new Map();
 
+    // 1. Mapear ocupados (Escola, etc)
     try {
-        const historicoAtualSnapshot = await db.collection('historico').where('ano', '==', ano).where('mes', '==', mes).where('semanaNumero', '==', semana).get();
+        const historicoAtualSnapshot = await db.collection('historico').where('ano', '==', ano).where('mes', '==', mes).where('semanaNumero', '==', semana).where('quando', '==', 'Semana').get();
         if (!historicoAtualSnapshot.empty) {
             historicoAtualSnapshot.forEach(doc => {
                 doc.data().designacoes?.forEach(d => {
                     Object.values(d.participantes).forEach(pId => {
-                        if (!preloadedAssignmentsMap.has(pId)) {
-                            preloadedAssignmentsMap.set(pId, new Set());
-                        }
+                        if (!preloadedAssignmentsMap.has(pId)) preloadedAssignmentsMap.set(pId, new Set());
                         preloadedAssignmentsMap.get(pId).add(d.designacaoId);
                     });
                 });
             });
-            console.log(`[Regra 4] Mapa de pessoas pré-carregadas:`, preloadedAssignmentsMap);
         }
-    } catch (error) {
-        console.error("Erro ao verificar o histórico da semana atual:", error);
-    }
-    
-    const vagas = [];
+    } catch (e) { console.error(e); }
+
+    const { peopleMap, designationsMap, historicoData } = await getDataFromFirebase();
+    const detailedPreviousWeek = getDetailedParticipantsInRange(dateRanges.previous.start, dateRanges.previous.end, historicoData);
+    const detailedNextWeek = getDetailedParticipantsInRange(dateRanges.next.start, dateRanges.next.end, historicoData);
+
+    const availablePeopleMap = new Map();
+    peopleMap.forEach((person, id) => { if (!exclusionSet.has(id)) availablePeopleMap.set(id, person); });
+
+    // 2. RECOLHER TODAS AS VAGAS
+    let todasAsVagas = [];
     document.querySelectorAll('.active-designation-container:not([data-locked="true"])').forEach(card => {
         card.querySelectorAll('select.form-select').forEach(select => {
-            vagas.push({
+            todasAsVagas.push({
                 elementId: select.id,
                 designacaoId: card.dataset.designacaoId,
                 filters: {
@@ -2685,64 +2688,74 @@ function getDayOfWeekNumber(dayOfWeekString) {
         });
     });
 
-    if (vagas.length === 0) {
-        console.log("Nenhuma vaga desbloqueada para preencher.");
-        return {};
-    }
+    // 3. AGRUPAR VAGAS PELA REGRA DA REPETIÇÃO
+    let vagaGroups = [];
+    let processedVagas = new Set();
 
-    // ALTERADO: A chamada agora é simples, sem parâmetros.
-    const { peopleMap, designationsMap, historicoData } = await getDataFromFirebase();
-    
-    // ... (o resto da função continua exatamente igual) ...
-    const detailedPreviousWeek = getDetailedParticipantsInRange(dateRanges.previous.start, dateRanges.previous.end, historicoData);
-    const detailedNextWeek = getDetailedParticipantsInRange(dateRanges.next.start, dateRanges.next.end, historicoData);
-    
-    const availablePeopleMap = new Map();
-    peopleMap.forEach((person, id) => {
-        if (!exclusionSet.has(id)) availablePeopleMap.set(id, person);
-    });
-
-    const vagaGroups = [];
-    const processedVagas = new Set();
-    vagas.forEach(vaga => {
+    todasAsVagas.forEach(vaga => {
         if (processedVagas.has(vaga.elementId)) return;
-        const currentGroup = [vaga];
+        
+        let currentGroup = [vaga];
         processedVagas.add(vaga.elementId);
+        
         const designacao = designationsMap.get(vaga.designacaoId);
         if (designacao && designacao.repeticao && designacao.repeticao.length > 0) {
-            designacao.repeticao.forEach(linkedDesignacaoId => {
-                vagas.forEach(otherVaga => {
-                    if (otherVaga.designacaoId === linkedDesignacaoId && !processedVagas.has(otherVaga.elementId)) {
-                        currentGroup.push(otherVaga);
-                        processedVagas.add(otherVaga.elementId);
+            designacao.repeticao.forEach(linkedId => {
+                todasAsVagas.forEach(other => {
+                    if (other.designacaoId === linkedId && !processedVagas.has(other.elementId)) {
+                        currentGroup.push(other);
+                        processedVagas.add(other.elementId);
                     }
                 });
             });
         }
         vagaGroups.push(currentGroup);
     });
-    
-    vagaGroups.sort((a, b) => b.length - a.length);
 
-    for (const group of vagaGroups) {
-        const sharedCandidates = await findSharedCandidatesForGroup(group, availablePeopleMap, historicoData, dateRanges, detailedPreviousWeek, detailedNextWeek);
-        if (sharedCandidates.length === 0) continue;
-        
-        const bestScore = sharedCandidates[0].frequencia;
-        const bestCandidates = sharedCandidates.filter(c => c.frequencia === bestScore);
+    // 4. CALCULAR CANDIDATOS PARA CADA GRUPO E ORDENAR POR ESCASSEZ
+    for (let group of vagaGroups) {
+        // Encontra candidatos que podem fazer TODAS as partes do grupo (Regra da Repetição)
+        group.candidates = await findSharedCandidatesForGroup(group, availablePeopleMap, historicoData, dateRanges, detailedPreviousWeek, detailedNextWeek);
+        group.poolSize = group.candidates.length;
+    }
+
+    // Ordenar grupos: o mais difícil (menos candidatos) primeiro
+    vagaGroups.sort((a, b) => a.poolSize - b.poolSize);
+
+    // 5. PRIMEIRA PASSAGEM: Tentar os "Melhores" (Média Baixa)
+    for (let group of vagaGroups) {
+        if (group.candidates.length === 0) continue;
+
+        const bestScore = group.candidates[0].frequencia;
+        const bestCandidates = group.candidates.filter(c => c.frequencia === bestScore);
         shuffleArray(bestCandidates);
 
-        for (const chosenCandidate of bestCandidates) {
-            if (isCandidatoValido(chosenCandidate, group[0], atribuicoesFinais, preloadedAssignmentsMap, designationsMap, 'Não')) {
-                group.forEach(vagaInGroup => {
-                    atribuicoesFinais[vagaInGroup.elementId] = chosenCandidate.id;
-                });
-                break; 
+        for (const escolhido of bestCandidates) {
+            // Verifica se este candidato é válido para o grupo inteiro
+            let canAssign = group.every(v => isCandidatoValido(escolhido, v, atribuicoesFinais, preloadedAssignmentsMap, designationsMap));
+            if (canAssign) {
+                group.forEach(v => atribuicoesFinais[v.elementId] = escolhido.id);
+                break;
             }
         }
     }
-    
-    console.log("✅ Preenchimento (v9) concluído.");
+
+    // 6. SEGUNDA PASSAGEM: Revisão de grupos vazios (Caso Tiago Almeida / Fallback)
+    console.log("🔍 Revisão: Tentando preencher lacunas com qualquer candidato apto...");
+    for (let group of vagaGroups) {
+        if (atribuicoesFinais[group[0].elementId]) continue; // Já preenchido
+
+        for (const escolhido of group.candidates) {
+            let canAssign = group.every(v => isCandidatoValido(escolhido, v, atribuicoesFinais, preloadedAssignmentsMap, designationsMap));
+            if (canAssign) {
+                console.log(`✨ Fallback: Grupo ${group[0].designacaoId} preenchido com ${escolhido.nome}`);
+                group.forEach(v => atribuicoesFinais[v.elementId] = escolhido.id);
+                break;
+            }
+        }
+    }
+
+    console.log("✅ Preenchimento inteligente v11 concluído.");
     return atribuicoesFinais;
 }
 
@@ -3890,22 +3903,23 @@ function setupTabClickListeners() {
         document.getElementById('closeLabPopup').addEventListener('click', () => document.getElementById('labPopup').style.display = 'none');
         
  document.getElementById('btnSeguinte').addEventListener('click', async function() {
-    console.log("[DEBUG] Botão 'Seguinte' clicado.");
+    console.log("%c[DEBUG-ESPECIAL] Botão 'Seguinte' pressionado.", "color: #3498db; font-weight: bold;");
+    
     const tipoReuniao = document.getElementById('tipo').value;
     const btnSeguinte = this;
     const originalText = btnSeguinte.textContent;
 
-    // 1. Lista de eventos que bloqueiam as designações normais e abrem o popup de "Gravar Evento Especial"
-    // REMOVEMOS 'visita-servo' daqui para que ele carregue as designações normalmente.
     const specialEventTypes = ['memorial', 'assembleia', 'congresso'];
 
-    // === LÓGICA DE EVENTOS ESPECIAIS (Memorial, Assembleia, Congresso) ===
+    // LOG: Verifica se o tipo atual entra na regra de bloqueio
+    console.log(`[DEBUG-ESPECIAL] Tipo de Reunião selecionado: ${tipoReuniao}`);
+    console.log(`[DEBUG-ESPECIAL] É evento especial? ${specialEventTypes.includes(tipoReuniao)}`);
+
     if (specialEventTypes.includes(tipoReuniao)) {
         btnSeguinte.textContent = "A verificar...";
         btnSeguinte.disabled = true;
 
         const ano = await getAnoPainelFirebase();
-        
         const eventNameMap = {
             'memorial': 'Memorial',
             'assembleia': 'Assembleia',
@@ -3913,46 +3927,39 @@ function setupTabClickListeners() {
         };
         const eventNameForQuery = eventNameMap[tipoReuniao];
         
+        console.log(`[DEBUG-ESPECIAL] Procurando no Firebase por: "${eventNameForQuery}" no ano ${ano}`);
+
         let overlapFound = false;
 
         if (eventNameForQuery) {
-            // Busca o evento configurado no banco de dados
             const snapshot = await db.collection('eventos')
                 .where('nome', '==', eventNameForQuery)
                 .where('ano', 'in', [ano, ano + 1]) 
                 .get();
+
+            console.log(`[DEBUG-ESPECIAL] Eventos encontrados no banco: ${snapshot.size}`);
 
             if (!snapshot.empty) {
                 const mes = parseInt(document.getElementById('mes').value);
                 const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
                 const { monday: weekStart, sunday: weekEnd } = getWeekMondaySunday(ano, mes, semanaNumero);
                 
-                for (const doc of snapshot.docs) {
+                console.log(`[DEBUG-ESPECIAL] Intervalo da semana selecionada: ${weekStart.toLocaleDateString()} a ${weekEnd.toLocaleDateString()}`);
+
+                snapshot.forEach(doc => {
                     const eventData = doc.data();
+                    let eventDate;
                     
                     if (eventData.data) {
-                        let eventDate;
-                        if (eventData.data.includes('/')) {
-                            const parts = eventData.data.split('/');
-                            eventDate = new Date(parts[2], parts[1] - 1, parts[0]);
-                        } else {
-                            eventDate = new Date(eventData.data + 'T12:00:00');
-                        }
-                        
-                        if (eventDate >= weekStart && eventDate <= weekEnd) {
-                            overlapFound = true;
-                            break; 
-                        }
-                    } 
-                    else if (eventData.data_inicio && eventData.data_fim) {
-                        const eventStart = new Date(eventData.data_inicio + 'T00:00:00');
-                        const eventEnd = new Date(eventData.data_fim + 'T23:59:59');
-                        if (eventStart <= weekEnd && eventEnd >= weekStart) {
-                            overlapFound = true;
-                            break;
-                        }
+                        eventDate = new Date(eventData.data + 'T12:00:00');
+                        console.log(`[DEBUG-ESPECIAL] Checando data única do evento: ${eventDate.toLocaleDateString()}`);
                     }
-                }
+
+                    if (eventDate >= weekStart && eventDate <= weekEnd) {
+                        console.log("%c[DEBUG-ESPECIAL] MATCH! O evento cai dentro desta semana.", "color: #2ecc71; font-weight: bold;");
+                        overlapFound = true;
+                    }
+                });
             }
         }
 
@@ -3960,51 +3967,33 @@ function setupTabClickListeners() {
         btnSeguinte.disabled = false;
 
         if (overlapFound) {
-            // Cenário: Evento encontrado para esta semana -> Pergunta se quer gravar como especial
+            console.log("[DEBUG-ESPECIAL] Exibindo popup de confirmação para salvar sem designações.");
             const confirmed = await showSpecialEventConfirmation(tipoReuniao);
             if (confirmed) {
+                console.log("[DEBUG-ESPECIAL] Usuário confirmou. Gravando no histórico...");
                 const success = await saveSpecialEvent();
-                if (success) {
-                    window.location.reload();
-                }
+                if (success) window.location.reload();
             }
-            return; 
         } else {
-            // Cenário: Evento NÃO configurado -> Mostra Popup Dark de erro
+            console.log("%c[DEBUG-ESPECIAL] ERRO: Nenhuma data correspondente no banco. Exibindo popup de erro (Mismatch).", "color: #e74c3c;");
             const popup = document.getElementById('eventMismatchPopup');
             const eventNameSpan = document.getElementById('mismatchEventName');
-            const closeBtn = document.getElementById('closeMismatchPopup');
-            const cancelBtn = document.getElementById('cancelMismatch');
-
             if (eventNameSpan) eventNameSpan.textContent = eventNameForQuery;
             if (popup) popup.style.display = 'flex';
-
-            const closeHandler = () => { popup.style.display = 'none'; };
-            if(closeBtn) closeBtn.onclick = closeHandler;
-            if(cancelBtn) cancelBtn.onclick = closeHandler;
-
-            return; 
         }
+        return; 
     }
 
-    // === LÓGICA DE FLUXO NORMAL E VISITA DO SERVO ===
-    // (Esta parte agora inclui a Visita do Servo e qualquer outro tipo como "Evento Especial" ou "Normal")
-    console.log("[DEBUG] Fluxo com designações iniciado.");
+    // Se não for especial, segue o fluxo normal
+    console.log("[DEBUG-ESPECIAL] Seguindo para fluxo normal (carregar designações).");
     document.getElementById('designacoesSection').classList.add('active');
     document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
-    
-    // Scroll suave para a lista de designações
-    const spacer = document.createElement('div');
-    spacer.id = 'temp-scroll-spacer';
-    spacer.style.height = '100vh';
-    document.querySelector('.card').insertAdjacentElement('afterend', spacer);
-    document.getElementById('designacoesList').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    
-    // Carrega a lista de designações (que já tem o filtro para Servo de Circuito baseado no dropdown)
     await loadDesignacoes();
-    
-    document.getElementById('temp-scroll-spacer')?.remove();
 });
+
+      
+
+    
 
 
         document.getElementById('designacoesList').addEventListener('click', async function(event) {
