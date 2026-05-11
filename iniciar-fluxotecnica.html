@@ -1428,7 +1428,6 @@ if(validationIcon && validationPanel && validationPanelClose) {
 
         // --- ETAPA 6: Gravar os dados ---
         await db.collection("historico").add(historicoData);
-        alert("Fluxo semanal criado com sucesso!");
         window.location.reload();
 
     } catch (error) {
