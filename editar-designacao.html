@@ -123,6 +123,17 @@
                 <div class="form-group"><label for="tipo">Tipo</label><select id="tipo" required><option value="reuniao">Reunião</option><option value="pregacao">Pregação</option></select></div>
                 <div class="form-group"><label for="parte">Parte</label><select id="parte" required><option value="escola">Escola</option><option value="resto da semana">Resto da Semana</option><option value="fim de semana">Fim de Semana</option><option value="tecnicas">Técnicas</option><option value="pregacao">Pregação</option><option value="dirigencia saida">Dirigência Saída</option></select></div>
                 
+                <!-- SEÇÃO DE IMPEDIMENTOS (NOVA) -->
+<div id="impedimentos-section" class="anexo-section" style="display: none; border-left: 4px solid #e74c3c; margin-bottom: 20px;">
+    <h4>Impedimentos <span class="help-text">(Restrições de Parelha)</span></h4>
+    <div id="impedimentos-container">
+        <!-- Linhas carregadas via JS -->
+    </div>
+    <button type="button" id="btn-add-impedimento" class="btn-nav" style="background-color: #2ecc71; color: white; padding: 5px 15px; margin-top: 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+        <i class="fas fa-plus"></i> Adicionar Restrição
+    </button>
+</div>
+
                 <!-- SEÇÃO DE ANEXO DE HORÁRIOS -->
                 <div id="horarios-anexo-section" class="anexo-section" style="display: none;">
                     <h4>Anexar Horário <span class="help-text">(Opcional)</span></h4>
@@ -184,259 +195,276 @@
 
     <script src="firebase-config.js"></script>
     <script src="main.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            if (typeof db === 'undefined') { alert("Erro de configuração do banco de dados."); return; }
+  <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        if (typeof db === 'undefined') { alert("Erro de configuração do banco de dados."); return; }
 
-            // --- Seletores de Elementos ---
-            const mainContent = document.querySelector('.content');
-            const editFormCard = document.getElementById('edit-form-card');
-            const editForm = document.getElementById('editar-designacao-form');
-            const listaReuniaoDiv = document.getElementById('lista-reuniao');
-            const listaPregacaoDiv = document.getElementById('lista-pregacao');
-            const parteSelect = document.getElementById('parte');
-            const horariosSection = document.getElementById('horarios-anexo-section');
-            const locaisSection = document.getElementById('locais-anexo-section');
-            const descricaoSelect = document.getElementById('descricao');
-            const anexadoDiscursosGroup = document.getElementById('anexado-discursos-group');
+        // --- Seletores de Elementos ---
+        const mainContent = document.querySelector('.content');
+        const editFormCard = document.getElementById('edit-form-card');
+        const editForm = document.getElementById('editar-designacao-form');
+        const listaReuniaoDiv = document.getElementById('lista-reuniao');
+        const listaPregacaoDiv = document.getElementById('lista-pregacao');
+        const parteSelect = document.getElementById('parte');
+        const numParticipantesSelect = document.getElementById('numero-participantes');
+        const horariosSection = document.getElementById('horarios-anexo-section');
+        const locaisSection = document.getElementById('locais-anexo-section');
+        const descricaoSelect = document.getElementById('descricao');
+        const anexadoDiscursosGroup = document.getElementById('anexado-discursos-group');
+        
+        // Seção de Impedimentos
+        const impedimentosSection = document.getElementById('impedimentos-section');
+        const impedimentosContainer = document.getElementById('impedimentos-container');
+        const btnAddImpedimento = document.getElementById('btn-add-impedimento');
+
+        const opcoesPrivilegio = ["Ancião", "Servo Ministerial", "Pioneiro Regular", "Pioneiro Auxiliar", "Publicador", "Publicador não Batizado", "Estudante", "Servo de Circuito", "Orador Público"];
+        
+        let idAtualEmEdicao = null;
+        let horariosCarregados = false;
+        let locaisCarregados = false;
+
+        // --- Funções Auxiliares ---
+        function capitalize(string) { return string.charAt(0).toUpperCase() + string.slice(1); }
+
+        // ==========================================
+        // 1. LÓGICA DE IMPEDIMENTOS
+        // ==========================================
+        function verificarExibicaoImpedimentos() {
+            const num = parseInt(numParticipantesSelect.value);
+            if (num > 1) {
+                impedimentosSection.style.display = 'block';
+            } else {
+                impedimentosSection.style.display = 'none';
+                impedimentosContainer.innerHTML = '';
+            }
+        }
+
+        function adicionarLinhaImpedimento(dados = null) {
+            const div = document.createElement('div');
+            div.className = 'impedimento-row';
+            div.style = "display: flex; align-items: center; gap: 8px; background: #f9f9f9; padding: 8px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #ddd; flex-wrap: wrap;";
             
-            let idAtualEmEdicao = null;
-            let horariosCarregados = false;
-            let locaisCarregados = false;
+            let optionsHTML = opcoesPrivilegio.map(opt => `<option value="${opt}">${opt}</option>`).join('');
 
-            // --- Funções de Carregamento ---
-            function capitalize(string) { return string.charAt(0).toUpperCase() + string.slice(1); }
+            div.innerHTML = `
+                <span style="font-size: 12px; font-weight: bold;">Quando</span>
+                <select class="sel-dirigente" style="width: auto; flex: 1; padding: 4px;">${optionsHTML}</select>
+                <span style="font-size: 12px; font-weight: bold;">faz de Dirigente,</span>
+                <select class="sel-outro" style="width: auto; flex: 1; padding: 4px;">${optionsHTML}</select>
+                <span style="font-size: 12px; font-weight: bold;">não pode fazer parelha.</span>
+                <button type="button" class="btn-remove" style="background: none; border: none; color: #e74c3c; cursor: pointer; padding: 5px;"><i class="fas fa-trash"></i></button>
+            `;
 
-            async function carregarAnexos() {
-                const anexoSelect = document.getElementById('anexo');
-                anexoSelect.innerHTML = '<option value="">Selecione um anexo</option>';
-                try {
-                    const snapshot = await db.collection('cabecalhos').get();
-                    snapshot.forEach(doc => {
-                        const option = document.createElement('option');
-                        option.value = doc.id;
-                        option.textContent = doc.data().nome;
-                        anexoSelect.appendChild(option);
-                    });
-                } catch (error) { console.error("Erro ao carregar anexos: ", error); }
+            if (dados) {
+                div.querySelector('.sel-dirigente').value = dados.Dirigente;
+                div.querySelector('.sel-outro').value = dados.Outro;
             }
 
-            async function carregarHorariosPregacao(horarioSalvo = null) {
-                if (horariosCarregados) {
-                    document.querySelectorAll('input[name="horario_anexado"]').forEach(radio => radio.checked = (radio.value === horarioSalvo));
-                    return;
-                }
-                const container = document.getElementById('horarios-container');
-                container.innerHTML = 'Carregando...';
-                try {
-                    const snapshot = await db.collection('horarios').where('tipo', '==', 'pregacao').get();
-                    if (snapshot.empty) { container.textContent = 'Nenhum horário de pregação encontrado.'; return; }
-                    let horariosHTML = '';
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        if (data['dias-semana-horarios']) {
-                            for (const dia in data['dias-semana-horarios']) {
-                                data['dias-semana-horarios'][dia].forEach(hora => {
-                                    const valor = `${capitalize(dia)} ${hora}`;
-                                    horariosHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}" ${valor === horarioSalvo ? 'checked' : ''}>${valor}</label>`;
-                                });
-                            }
+            div.querySelector('.btn-remove').addEventListener('click', () => div.remove());
+            impedimentosContainer.appendChild(div);
+        }
+
+        btnAddImpedimento.addEventListener('click', () => adicionarLinhaImpedimento());
+        numParticipantesSelect.addEventListener('change', verificarExibicaoImpedimentos);
+
+        // ==========================================
+        // 2. CARREGAMENTO DE DADOS (FIREBASE)
+        // ==========================================
+        async function carregarAnexos() {
+            const anexoSelect = document.getElementById('anexo');
+            anexoSelect.innerHTML = '<option value="">Selecione um anexo</option>';
+            try {
+                const snapshot = await db.collection('cabecalhos').get();
+                snapshot.forEach(doc => {
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = doc.data().nome;
+                    anexoSelect.appendChild(option);
+                });
+            } catch (error) { console.error("Erro anexos:", error); }
+        }
+
+        async function carregarHorariosPregacao(horarioSalvo = null) {
+            const container = document.getElementById('horarios-container');
+            container.innerHTML = 'Carregando...';
+            try {
+                const snapshot = await db.collection('horarios').where('tipo', '==', 'pregacao').get();
+                let html = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const processarDias = (dias, isWeekend) => {
+                        for (const dia in dias) {
+                            let nomeDia = isWeekend && dia === 'sabado' ? 'Sábado' : capitalize(dia);
+                            dias[dia].forEach(hora => {
+                                const valor = `${nomeDia} ${hora}`;
+                                html += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}" ${valor === horarioSalvo ? 'checked' : ''}>${valor}</label>`;
+                            });
                         }
-                        if (data['dias-fimdesemana-horarios']) {
-                            for (const dia in data['dias-fimdesemana-horarios']) {
-                                let diaF = dia === 'sabado' ? 'Sábado' : capitalize(dia);
-                                data['dias-fimdesemana-horarios'][dia].forEach(hora => {
-                                    const valor = `${diaF} ${hora}`;
-                                    horariosHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}" ${valor === horarioSalvo ? 'checked' : ''}>${valor}</label>`;
-                                });
-                            }
-                        }
+                    };
+                    if (data['dias-semana-horarios']) processarDias(data['dias-semana-horarios'], false);
+                    if (data['dias-fimdesemana-horarios']) processarDias(data['dias-fimdesemana-horarios'], true);
+                });
+                container.innerHTML = html || 'Nenhum horário disponível.';
+                horariosCarregados = true;
+            } catch (e) { console.error(e); }
+        }
+
+        async function carregarLocais(localSalvo = null) {
+            const container = document.getElementById('locais-container');
+            container.innerHTML = 'Carregando...';
+            try {
+                const snapshot = await db.collection('locais').where('tag', '==', 'Dirigência Saída').get();
+                let html = '';
+                snapshot.forEach(doc => {
+                    const nome = doc.data().nome;
+                    html += `<label class="option-item-horizontal"><input type="radio" name="local_anexado" value="${nome}" ${nome === localSalvo ? 'checked' : ''}>${nome}</label>`;
+                });
+                container.innerHTML = html || 'Nenhum local disponível.';
+                locaisCarregados = true;
+            } catch (e) { console.error(e); }
+        }
+
+        async function renderizarListas() {
+            listaReuniaoDiv.innerHTML = 'Carregando...';
+            listaPregacaoDiv.innerHTML = 'Carregando...';
+            try {
+                const snapshot = await db.collection('designacoes').orderBy('nome').get();
+                listaReuniaoDiv.innerHTML = '';
+                listaPregacaoDiv.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const itemHtml = `<div class="designation-item" data-id="${doc.id}"><span class="designation-status"><i class="fas ${data.status ? 'fa-check' : 'fa-times'}"></i></span><span class="designation-name">${data.nome}</span><button class="edit-btn inline"><i class="fas fa-edit"></i></button></div>`;
+                    if (data.tipo === 'reuniao') listaReuniaoDiv.innerHTML += itemHtml;
+                    else if (data.tipo === 'pregacao') listaPregacaoDiv.innerHTML += itemHtml;
+                });
+            } catch (error) { console.error(error); }
+        }
+
+        // ==========================================
+        // 3. CARREGAR DADOS NO FORMULÁRIO
+        // ==========================================
+        async function carregarDadosFormulario(id) {
+            try {
+                const doc = await db.collection('designacoes').doc(id).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    idAtualEmEdicao = id;
+
+                    document.getElementById('nome-designacao').value = data.nome || '';
+                    numParticipantesSelect.value = data.numeroParticipantes || '1';
+                    document.getElementById('feito-por').value = data.feitoPor || 'Masculino';
+                    document.getElementById('preferencia').value = data.preferencia || 'Masculino';
+                    document.getElementById('quando').value = data.quando || 'Semana';
+                    document.getElementById('tipo').value = data.tipo || 'reuniao';
+                    document.getElementById('parte').value = data.parte || 'escola';
+                    document.getElementById('anexo').value = data.anexo || '';
+                    document.getElementById('descricao').value = data.descricao || 'nao';
+                    document.getElementById('status').checked = data.status;
+                    document.getElementById('anexado-discursos').value = data.anexadoDiscursos || 'nao';
+
+                    document.querySelectorAll('input[name="quem_faz"]').forEach(cb => {
+                        cb.checked = data.quemFaz && data.quemFaz.includes(cb.value);
                     });
-                    container.innerHTML = horariosHTML;
-                    horariosCarregados = true;
-                } catch (error) { console.error("Erro ao carregar horários: ", error); container.textContent = 'Erro ao carregar horários.'; }
-            }
-
-            async function carregarLocais(localSalvo = null) {
-                if (locaisCarregados) {
-                    document.querySelectorAll('input[name="local_anexado"]').forEach(radio => radio.checked = (radio.value === localSalvo));
-                    return;
-                }
-                const container = document.getElementById('locais-container');
-                container.innerHTML = 'Carregando...';
-                try {
-                    const snapshot = await db.collection('locais').where('tag', '==', 'Dirigência Saída').get();
-                    if (snapshot.empty) { container.innerHTML = 'Nenhum local com a tag "Dirigência Saída" encontrado.'; return; }
-                    let locaisHTML = '';
-                    snapshot.forEach(doc => {
-                        const valor = doc.data().nome;
-                        locaisHTML += `<label class="option-item-horizontal"><input type="radio" name="local_anexado" value="${valor}" ${valor === localSalvo ? 'checked' : ''}>${valor}</label>`;
+                    document.querySelectorAll('input[name="personalidade"]').forEach(radio => {
+                        radio.checked = (radio.value === data.personalidade);
                     });
-                    container.innerHTML = locaisHTML;
-                    locaisCarregados = true;
-                } catch (error) { console.error("Erro ao carregar locais: ", error); container.textContent = 'Erro ao carregar locais.'; }
-            }
 
-            // --- Funções de Renderização e Lógica do Formulário ---
-            async function renderizarListas() {
-                listaReuniaoDiv.innerHTML = 'Carregando...';
-                listaPregacaoDiv.innerHTML = 'Carregando...';
-                try {
-                    const snapshot = await db.collection('designacoes').orderBy('nome').get();
-                    listaReuniaoDiv.innerHTML = '';
-                    listaPregacaoDiv.innerHTML = '';
-                    if (snapshot.empty) {
-                        listaReuniaoDiv.innerHTML = 'Nenhuma designação encontrada.';
-                        listaPregacaoDiv.innerHTML = 'Nenhuma designação encontrada.';
-                        return;
+                    // Impedimentos
+                    impedimentosContainer.innerHTML = '';
+                    verificarExibicaoImpedimentos();
+                    if (data.impedimentos) {
+                        data.impedimentos.forEach(imp => adicionarLinhaImpedimento(imp));
                     }
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const itemHtml = `<div class="designation-item" data-id="${doc.id}"><span class="designation-status"><i class="fas ${data.status ? 'fa-check' : 'fa-times'}"></i></span><span class="designation-name">${data.nome}</span><button class="edit-btn inline"><i class="fas fa-edit"></i></button></div>`;
-                        if (data.tipo === 'reuniao') { listaReuniaoDiv.innerHTML += itemHtml; } 
-                        else if (data.tipo === 'pregacao') { listaPregacaoDiv.innerHTML += itemHtml; }
-                    });
-                } catch (error) {
-                    console.error("Erro ao carregar designações: ", error);
-                    listaReuniaoDiv.innerHTML = 'Erro ao carregar.';
-                    listaPregacaoDiv.innerHTML = 'Erro ao carregar.';
-                }
-            }
 
-            async function carregarDadosFormulario(id) {
-                try {
-                    const doc = await db.collection('designacoes').doc(id).get();
-                    if (doc.exists) {
-                        const data = doc.data();
-                        document.getElementById('nome-designacao').value = data.nome || '';
-                        document.getElementById('numero-participantes').value = data.numeroParticipantes || '1';
-                        document.getElementById('feito-por').value = data.feitoPor || 'Masculino';
-                        document.getElementById('preferencia').value = data.preferencia || 'Masculino';
-                        document.getElementById('quando').value = data.quando || 'Semana';
-                        document.getElementById('tipo').value = data.tipo || 'reuniao';
-                        document.getElementById('parte').value = data.parte || 'escola';
-                        document.getElementById('anexo').value = data.anexo || '';
-                        document.getElementById('descricao').value = data.descricao || 'nao';
-                        document.getElementById('status').checked = data.status;
-                        document.getElementById('emoji').value = data.emoji || '';
-                        document.getElementById('anexado-discursos').value = data.anexadoDiscursos || 'nao';
-                        anexadoDiscursosGroup.style.display = (data.descricao === 'sim') ? 'block' : 'none';
-
-                        document.querySelectorAll('input[name="quem_faz"]').forEach(cb => cb.checked = data.quemFaz && data.quemFaz.includes(cb.value));
-                        document.querySelectorAll('input[name="personalidade"]').forEach(radio => radio.checked = (radio.value === data.personalidade));
-                        
-                        if (data.parte === 'dirigencia saida') {
-                            horariosSection.style.display = 'block';
-                            locaisSection.style.display = 'block';
-                            await carregarHorariosPregacao(data.horarioAnexado || null);
-                            await carregarLocais(data.localAnexado || null);
-                        } else {
-                            horariosSection.style.display = 'none';
-                            locaisSection.style.display = 'none';
-                        }
-
-                        idAtualEmEdicao = id;
-                        editFormCard.style.display = 'block';
-                        editFormCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Seções de Pregação
+                    if (data.parte === 'dirigencia saida') {
+                        horariosSection.style.display = 'block';
+                        locaisSection.style.display = 'block';
+                        await carregarHorariosPregacao(data.horarioAnexado);
+                        await carregarLocais(data.localAnexado);
+                    } else {
+                        horariosSection.style.display = 'none';
+                        locaisSection.style.display = 'none';
                     }
-                } catch (error) { console.error("Erro ao buscar dados da designação:", error); }
-            }
-            
-            // --- Event Listeners ---
-            descricaoSelect.addEventListener('change', function() {
-                anexadoDiscursosGroup.style.display = (this.value === 'sim') ? 'block' : 'none';
-                if (this.value !== 'sim') { document.getElementById('anexado-discursos').value = 'nao'; }
-            });
 
-            parteSelect.addEventListener('change', function() {
-                if (this.value === 'dirigencia saida') {
-                    horariosSection.style.display = 'block';
-                    locaisSection.style.display = 'block';
-                    carregarHorariosPregacao();
-                    carregarLocais();
-                } else {
-                    horariosSection.style.display = 'none';
-                    locaisSection.style.display = 'none';
+                    editFormCard.style.display = 'block';
+                    editFormCard.scrollIntoView({ behavior: 'smooth' });
                 }
-            });
+            } catch (error) { console.error(error); }
+        }
 
-            mainContent.addEventListener('click', function(e) {
-                const editButton = e.target.closest('.edit-btn.inline');
-                if (editButton) { carregarDadosFormulario(e.target.closest('.designation-item').dataset.id); }
-            });
-
-   editForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                if (!idAtualEmEdicao) return;
-                
-                // Captura os valores do Checkbox
-                const quemFazSelecionados = Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value);
-                
-                // LOG PARA VERIFICAÇÃO NO CONSOLE DO NAVEGADOR
-                console.log("--- TESTE DE GRAVAÇÃO ---");
-                console.log("IDs selecionados em 'Quem faz?':", quemFazSelecionados);
-
-                if (quemFazSelecionados.length === 0) { 
-                    alert('O campo "Quem faz?" é obrigatório.'); 
-                    return; 
-                }
-
-                const personalidadeSel = document.querySelector('input[name="personalidade"]:checked');
-                const horarioAnexadoSel = document.querySelector('input[name="horario_anexado"]:checked');
-                const localAnexadoSel = document.querySelector('input[name="local_anexado"]:checked');
-                const valorHorarioCompleto = horarioAnexadoSel ? horarioAnexadoSel.value : "";
-
-                let diaAnexado = "";
-                let horaAnexada = "";
-
-                if (valorHorarioCompleto) {
-                    const ultimoEspaco = valorHorarioCompleto.lastIndexOf(' ');
-                    if (ultimoEspaco !== -1) {
-                        diaAnexado = valorHorarioCompleto.substring(0, ultimoEspaco);
-                        horaAnexada = valorHorarioCompleto.substring(ultimoEspaco + 1);
-                    }
-                }
-
-
-
-      const designacaoAtualizada = {
-                    nome: document.getElementById('nome-designacao').value,
-                    numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
-                    feitoPor: document.getElementById('feito-por').value,
-                    preferencia: document.getElementById('preferencia').value,
-                    personalidade: personalidadeSel ? personalidadeSel.value : "",
-                    quando: document.getElementById('quando').value,
-                    tipo: document.getElementById('tipo').value,
-                    parte: document.getElementById('parte').value,
-                    horarioAnexado: valorHorarioCompleto,
-                    localAnexado: localAnexadoSel ? localAnexadoSel.value : "",
-                    dia: diaAnexado,
-                    hora: horaAnexada,
-                    anexo: document.getElementById('anexo').value,
-                    descricao: document.getElementById('descricao').value,
-                    anexadoDiscursos: document.getElementById('anexado-discursos').value,
-                    emoji: document.getElementById('emoji').value,
-                    status: document.getElementById('status').checked,
-                    quemFaz: quemFazSelecionados, // Array com os valores
-                    dataModificacao: firebase.firestore.FieldValue.serverTimestamp()
-                };
-
-               try {
-                    await db.collection('designacoes').doc(idAtualEmEdicao).update(designacaoAtualizada);
-                    console.log("✅ Sucesso ao gravar no Firebase!");
-                    editFormCard.style.display = 'none';
-                    idAtualEmEdicao = null;
-                    await renderizarListas();
-                } catch (error) { 
-                    console.error("❌ Erro ao atualizar:", error); 
-                    alert("Erro ao salvar."); 
-                }
-            });
-
-            // --- Carregamento Inicial ---
-            await carregarAnexos();
-            await renderizarListas();
+        // ==========================================
+        // 4. EVENT LISTENERS E SUBMISSÃO
+        // ==========================================
+        mainContent.addEventListener('click', (e) => {
+            const btn = e.target.closest('.edit-btn.inline');
+            if (btn) carregarDadosFormulario(e.target.closest('.designation-item').dataset.id);
         });
-    </script>
+
+        parteSelect.addEventListener('change', function() {
+            if (this.value === 'dirigencia saida') {
+                horariosSection.style.display = 'block';
+                locaisSection.style.display = 'block';
+                carregarHorariosPregacao();
+                carregarLocais();
+            } else {
+                horariosSection.style.display = 'none';
+                locaisSection.style.display = 'none';
+            }
+        });
+
+        editForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!idAtualEmEdicao) return;
+
+            const impedimentos = [];
+            if (impedimentosSection.style.display === 'block') {
+                document.querySelectorAll('.impedimento-row').forEach(row => {
+                    impedimentos.push({
+                        Dirigente: row.querySelector('.sel-dirigente').value,
+                        Outro: row.querySelector('.sel-outro').value
+                    });
+                });
+            }
+
+            const horarioSel = document.querySelector('input[name="horario_anexado"]:checked');
+            let dia = "", hora = "";
+            if (horarioSel) {
+                const parts = horarioSel.value.split(' ');
+                dia = parts[0]; hora = parts[1];
+            }
+
+            const dataToUpdate = {
+                nome: document.getElementById('nome-designacao').value,
+                numeroParticipantes: parseInt(numParticipantesSelect.value),
+                feitoPor: document.getElementById('feito-por').value,
+                preferencia: document.getElementById('preferencia').value,
+                personalidade: document.querySelector('input[name="personalidade"]:checked')?.value || "",
+                quando: document.getElementById('quando').value,
+                tipo: document.getElementById('tipo').value,
+                parte: parteSelect.value,
+                horarioAnexado: horarioSel ? horarioSel.value : "",
+                localAnexado: document.querySelector('input[name="local_anexado"]:checked')?.value || "",
+                dia: dia, hora: hora,
+                anexo: document.getElementById('anexo').value,
+                descricao: document.getElementById('descricao').value,
+                anexadoDiscursos: document.getElementById('anexado-discursos').value,
+                status: document.getElementById('status').checked,
+                quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
+                impedimentos: impedimentos,
+                dataModificacao: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                await db.collection('designacoes').doc(idAtualEmEdicao).update(dataToUpdate);
+                window.location.reload();
+            } catch (err) { console.error(err); alert("Erro ao salvar."); }
+        });
+
+        // Inicialização
+        await carregarAnexos();
+        await renderizarListas();
+    });
+</script>
 </body>
 </html>
