@@ -1728,56 +1728,6 @@ async function processarMwbAutomatico() {
     }
 }
 
-async function montarDesignacoesAutomaticas(listaNomesMwb) {
-    const designacoesRef = db.collection('designacoes');
-    const containerAtivas = document.getElementById('activeDesignationsContainer');
-    const containerLeitura = document.getElementById('leituraBibliaDesignationContainer');
-    
-    // Limpamos o que existir de escalas anteriores
-    containerAtivas.innerHTML = '';
-    containerLeitura.innerHTML = '';
-
-    // Buscamos os dados da semana para os dropdowns
-    const ano = await getAnoPainelFirebase();
-    const horariosData = await getHorariosFromFirebase(ano);
-    const diaSemanaReuniaoString = horariosData['dia-semana'];
-    const diasSemanaDisplay = document.getElementById('weekDisplay').innerHTML;
-    const diasSemanaMatch = diasSemanaDisplay.match(/\((.*?)\)/);
-    const diasSemana = diasSemanaMatch ? diasSemanaMatch[1] : null;
-
-    // 1. Sempre adicionamos a Leitura da Bíblia primeiro (pois ela é fixa no seu sistema)
-    // Buscamos o objeto da Leitura da Bíblia no Firebase
-    const snapLeitura = await designacoesRef.where('nome', '==', 'Leitura da Bíblia').limit(1).get();
-    if (!snapLeitura.empty) {
-        const docL = snapLeitura.docs[0];
-        updateActiveDesignationDisplay({id: docL.id, ...docL.data()}, 1, 1, {}, diasSemana, diaSemanaReuniaoString, {});
-    }
-
-    // 2. Adicionamos as outras baseadas no JSON
-    let ordemManual = 2;
-    for (const nomeMwb of listaNomesMwb) {
-        const snapshot = await designacoesRef.where('nome', '==', nomeMwb).where('status', '==', true).limit(1).get();
-        
-        if (!snapshot.empty) {
-            const doc = snapshot.docs[0];
-            const designacaoData = doc.data();
-            
-            // Ativa o display automaticamente
-            updateActiveDesignationDisplay(
-                { id: doc.id, ...designacaoData },
-                ordemManual++, 
-                1, // Quantidade 1 por padrão
-                {}, 
-                diasSemana, 
-                diaSemanaReuniaoString, 
-                {}
-            );
-        } else {
-            console.warn(`Designação "${nomeMwb}" não encontrada no banco de dados.`);
-        }
-    }
-}
-
 
 
 // 1. Função isolada para atualizar o ícone
@@ -1866,15 +1816,30 @@ function formatarDataParaTituloJSON(diasSemanaStr) {
         "Maio": "MAIO", "Jun": "JUNHO", "Jul": "JULHO", "Ago": "AGOSTO", 
         "Set": "SETEMBRO", "Out": "OUTUBRO", "Nov": "NOVEMBRO", "Dez": "DEZEMBRO"
     };
+
+    // Remove o ano se ele vier na string (ex: "27 Jul - 2 Ago 2026" -> "27 Jul - 2 Ago")
     let dataLimpa = diasSemanaStr.split(' 20')[0]; 
     let partes = dataLimpa.split(' - ');
     if (partes.length < 2) return "";
-    let inicio = partes[0].trim().split(' ');
-    let fim = partes[1].trim().split(' ');
+
+    let inicio = partes[0].trim().split(' '); // Ex: ["27", "Jul"]
+    let fim = partes[1].trim().split(' ');    // Ex: ["2", "Ago"]
+
     let diaInicio = inicio[0];
+    let mesInicio = mesesFull[inicio[1]] || null; // Pega o mês de início se existir
+
     let diaFim = fim[0];
-    let mesFim = mesesFull[fim[1]] || fim[1].toUpperCase();
-    return `${diaInicio} A ${diaFim} DE ${mesFim}`;
+    let mesFim = mesesFull[fim[1]] || fim[1].toUpperCase(); // Pega o mês de fim
+
+    // LÓGICA CORRIGIDA:
+    // Se existe um mês no início e ele é diferente do mês de fim, inclui ambos.
+    if (mesInicio && mesInicio !== mesFim) {
+        // Resultado: "27 DE JULHO A 2 DE AGOSTO"
+        return `${diaInicio} DE ${mesInicio} A ${diaFim} DE ${mesFim}`;
+    } else {
+        // Resultado normal: "13 A 19 DE JULHO"
+        return `${diaInicio} A ${diaFim} DE ${mesFim}`;
+    }
 }
 
 // 3. Função Principal de Processamento
@@ -1887,47 +1852,44 @@ const processarMwbAutomatico = async () => {
         const mesFormatado = mesOriginal.padStart(2, '0');
         const caminhoJson = `js/mwb/${ano}/${mesFormatado}.json`;
 
-        console.log(`[MWB] 📁 A carregar ficheiro: ${caminhoJson}`);
-
         const infoSemana = document.getElementById('weekDisplay').innerText;
         const dataMatch = infoSemana.match(/\((.*?)\)/);
-        
-        if (!dataMatch) {
-            console.error("[MWB] ❌ Não foi possível extrair a data do cabeçalho.");
-            return;
-        }
+        if (!dataMatch) return;
         
         const tituloProcurado = formatarDataParaTituloJSON(dataMatch[1]);
-        console.log(`[MWB] 🔍 A procurar semana no JSON: "${tituloProcurado}"`);
-
         const response = await fetch(caminhoJson);
-        if (!response.ok) throw new Error(`Ficheiro não encontrado: ${caminhoJson}`);
-        
         const data = await response.json();
         const semana = data.artigos.find(a => a.titulo.toUpperCase() === tituloProcurado);
 
         if (!semana) {
-            console.warn(`[MWB] ⚠️ Semana "${tituloProcurado}" não encontrada no JSON.`);
+            console.warn(`[MWB] ⚠️ Semana "${tituloProcurado}" não encontrada.`);
             return;
         }
 
-        console.log("%c[MWB] ✅ Semana encontrada!", "color: #2ecc71;");
+        const listaItensComContexto = [];
+        semana.conteudo.forEach((item, index) => {
+            // Captura subtemas que começam com número (4., 5., 6., etc)
+            if (item.tipo === "subtema" && /^\d+\./.test(item.texto)) {
+                const nomeBase = item.texto.replace(/^\d+\.\s*/, '').trim();
+                const proximoItem = semana.conteudo[index + 1];
+                const contextoTexto = proximoItem ? proximoItem.texto : "";
 
-        // CORREÇÃO AQUI: Extraímos o texto bruto e passamos para a montagem
-        const itensMwb = semana.conteudo
-            .filter(c => c.tipo === "subtema" && /^\d+\./.test(c.texto))
-            .map(c => c.texto); // Pegamos o texto original "4. Iniciar conversas"
+                listaItensComContexto.push({
+                    nomeBase: nomeBase,
+                    contexto: contextoTexto
+                });
+            }
+        });
 
-        await montarDesignacoesAutomaticas(itensMwb);
+        await montarDesignacoesAutomaticas(listaItensComContexto);
 
     } catch (err) {
-        console.error("[MWB] ❌ Erro fatal:", err);
+        console.error("[MWB] ❌ Erro:", err);
     }
 };
 
-const montarDesignacoesAutomaticas = async (listaNomesMwb) => {
-    console.log("%c[FIREBASE] 📡 Iniciando busca mapeada...", "color: #f39c12; font-weight: bold;");
-    
+// 2. Função para montar no ecrã e decidir qual designação escolher em caso de duplicados
+const montarDesignacoesAutomaticas = async (listaMwb) => {
     const designacoesRef = db.collection('designacoes');
     document.getElementById('activeDesignationsContainer').innerHTML = '';
     document.getElementById('leituraBibliaDesignationContainer').innerHTML = '';
@@ -1935,41 +1897,58 @@ const montarDesignacoesAutomaticas = async (listaNomesMwb) => {
     const ano = await getAnoPainelFirebase();
     const horariosData = await getHorariosFromFirebase(ano);
     const diaSemanaReuniaoString = horariosData['dia-semana'];
-    const diasSemanaDisplay = document.getElementById('weekDisplay').innerHTML;
-    const diasSemanaMatch = diasSemanaDisplay.match(/\((.*?)\)/);
+    const infoSemana = document.getElementById('weekDisplay').innerHTML;
+    const diasSemanaMatch = infoSemana.match(/\((.*?)\)/);
     const diasSemana = diasSemanaMatch ? diasSemanaMatch[1] : null;
+
+    const snapEscola = await designacoesRef.where('parte', '==', 'escola').where('status', '==', true).get();
+    const designacoesDB = snapEscola.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     let ordemManual = 1;
 
-    for (const nomeBruto of listaNomesMwb) {
-        const nomeMapeado = mapearNomeDesignacao(nomeBruto);
-        console.log(`[FIREBASE] 🔎 Original: "${nomeBruto}" -> Busca: "${nomeMapeado}"`);
+    // Função interna para limpar texto (remove acentos, espaços e preposições comuns)
+    const simplificar = (txt) => {
+        return txt.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
+            .replace(/\b(o|a|os|as|de|do|da|dos|das|em|no|na)\b/g, "") // remove preposições
+            .replace(/\s+/g, "") // remove todos os espaços
+            .trim();
+    };
 
-        const snapshot = await designacoesRef
-            .where('nome', '==', nomeMapeado)
-            .where('parte', '==', 'escola')
-            .where('status', '==', true)
-            .limit(1)
-            .get();
+    for (const itemMwb of listaMwb) {
+        const buscaSimplificada = simplificar(itemMwb.nomeBase);
         
-        if (!snapshot.empty) {
-            const doc = snapshot.docs[0];
-            console.log(`%c   -> ✨ ENCONTRADO: ${nomeMapeado}`, "color: #2ecc71;");
+        // Procuramos no DB quem mais se parece com o nome do JSON
+        let candidatos = designacoesDB.filter(d => {
+            const nomeDBSimplificado = simplificar(d.nome);
+            return nomeDBSimplificado.includes(buscaSimplificada) || buscaSimplificada.includes(nomeDBSimplificado);
+        });
 
-            updateActiveDesignationDisplay(
-                { id: doc.id, ...doc.data() }, 
-                ordemManual++, 
-                1, 
-                {}, 
-                diasSemana, 
-                diaSemanaReuniaoString, 
-                {}
-            );
+        let escolhida = null;
+
+        if (candidatos.length === 1) {
+            escolhida = candidatos[0];
+        } 
+        else if (candidatos.length > 1) {
+            // DESEMPATE POR CONTEXTO (Explicar Crenças - Demonstração vs Discurso)
+            escolhida = candidatos.find(c => {
+                const diferenciador = c.nome.toLowerCase()
+                    .replace(itemMwb.nomeBase.toLowerCase(), "")
+                    .replace(/[^a-z]/g, "").trim();
+                return diferenciador && itemMwb.contexto.toLowerCase().includes(diferenciador);
+            });
+            if (!escolhida) escolhida = candidatos[0];
+        }
+
+        if (escolhida) {
+            console.log(`%c✨ Encontrado: ${escolhida.nome}`, "color: #2ecc71");
+            updateActiveDesignationDisplay(escolhida, ordemManual++, 1, {}, diasSemana, diaSemanaReuniaoString, {});
         } else {
-            console.log(`%c   -> ⏭️ IGNORADO: "${nomeMapeado}" não encontrado no Firebase.`, "color: #95a5a6;");
+            console.log(`%c⏭️ Ignorado: "${itemMwb.nomeBase}" (Sem correspondência no Firebase)`, "color: #95a5a6");
         }
     }
 };
+
 
 
  // ======================================================================== //
@@ -4466,18 +4445,22 @@ document.getElementById('btnSeguinte').addEventListener('click', async function(
     
     console.log(`%c[INÍCIO] Verificando fluxo para: ${tipoReuniao.toUpperCase()}`, "color: #3498db; font-weight: bold; font-size: 12px;");
 
-    if (tipoReuniao === 'normal') {
-        console.log("%c[LOG] Reunião Normal: Iniciando processamento MWB...", "color: #7f8c8d;");
+    // --- ALTERAÇÃO AQUI: Adicionamos 'visita-servo' à condição de Reunião Normal ---
+    if (tipoReuniao === 'normal' || tipoReuniao === 'visita-servo') {
+        console.log("%c[LOG] Fluxo Completo: Iniciando processamento MWB...", "color: #7f8c8d;");
         btnSeguinte.disabled = true;
         btnSeguinte.textContent = "Carregando Programação...";
+        
         await processarMwbAutomatico();
         
+        // Exibe as seções de designação (o que antes só acontecia no 'normal')
         document.getElementById('designacoesSection').classList.add('active');
         document.getElementById('leituraBibliaSection').style.display = 'block';
         document.querySelector('#fluxoSemanalForm button[type="submit"]').style.display = 'block';
+        
         btnSeguinte.disabled = false;
         btnSeguinte.textContent = "Seguinte";
-        return;
+        return; // Sai da função para não entrar na lógica de "Evento Especial" abaixo
     }
 
     // --- LÓGICA PARA EVENTOS ESPECIAIS ---
