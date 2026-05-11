@@ -1107,148 +1107,118 @@ const getRecentPairs = async () => {
 
 // Função principal de validação (com logs de depuração)
 const validateAllSelections = async () => {
-    console.log('%c[VALIDATION TRIGGERED] A função validateAllSelections foi chamada.', 'background: #222; color: #bada55');
+    console.log('%c[VALIDATION] Analisando regras técnicas e impedimentos...', 'color: #3498db; font-weight: bold;');
     const alertContainer = document.getElementById('validation-alert-container');
     const alertIcon = document.getElementById('validation-alert-icon');
     const validationList = document.getElementById('validation-list');
 
-    document.querySelectorAll('.form-select.invalid-selection, .form-select.warning-selection').forEach(el => {
-        el.classList.remove('invalid-selection', 'warning-selection');
-    });
+    // 1. Limpeza de interface
+    document.querySelectorAll('.form-select').forEach(el => el.classList.remove('invalid-selection', 'warning-selection'));
     validationList.innerHTML = '';
     let allViolations = [];
 
     const ano = await getAnoPainelFirebase();
     const mes = parseInt(document.getElementById('mes').value);
-    const semanaNumero = parseInt(document.getElementById('semanaNumero').value);
+    const semanaNum = document.getElementById('semanaNumero').value;
+    const diasSemanaStr = getDiasSemana(ano, mes, semanaNum);
+    const semanaindexAlvo = `(${diasSemanaStr} ${ano})`;
 
+    // 2. Buscar Dados Contextuais
     const [prevWeekCtx, nextWeekCtx] = await Promise.all([
-        getPreviousWeekContext(ano, mes, semanaNumero),
-        getNextWeekContext(ano, mes, semanaNumero)
-    ]);
-    const [participantsLastWeek, participantsNextWeek, recentPairsMap, participationStats] = await Promise.all([
-        getParticipantsFromWeek(prevWeekCtx),
-        getParticipantsFromWeek(nextWeekCtx),
-        getRecentPairs(),
-        getParticipationStatsForYear(ano)
+        getPreviousWeekContext(ano, mes, parseInt(semanaNum)),
+        getNextWeekContext(ano, mes, parseInt(semanaNum))
     ]);
 
-    const currentSelections = new Map();
-    document.querySelectorAll('#activeDesignationsContainer .form-select:not(.descricao-input):not(.discurso-search-input)').forEach(select => {
-        if (select.value) {
+    const [participantsLastWeek, participantsNextWeek, snapHistorico] = await Promise.all([
+        getParticipantsFromWeek(prevWeekCtx), 
+        getParticipantsFromWeek(nextWeekCtx), 
+        db.collection('historico').where('semanaindex', '==', semanaindexAlvo).get()
+    ]);
+
+    // Mapeia quem já está ocupado (ex: quem já está na Escola ou Vida e Ministério)
+    const ocupadosNoHistorico = new Map(); 
+    snapHistorico.forEach(doc => {
+        doc.data().designacoes?.forEach(desig => {
+            Object.values(desig.participantes || {}).forEach(pId => ocupadosNoHistorico.set(pId, desig.designacaoId));
+        });
+    });
+
+    const currentSelections = new Map(); 
+    const containers = document.querySelectorAll('.active-designation-container');
+
+    // 3. Validação por Cartão (Designação)
+    containers.forEach(container => {
+        const designacaoId = container.dataset.designacaoId;
+        const desigInfo = allDesignations.get(designacaoId);
+        const selects = Array.from(container.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'));
+
+        // --- NOVA REGRA: IMPEDIMENTOS DE PRIVILÉGIO (Dirigente vs Ajudantes) ---
+        if (selects.length >= 2 && selects[0].value) {
+            const dId = selects[0].value;
+            const dNome = selects[0].options[selects[0].selectedIndex].text;
+
+            for (let i = 1; i < selects.length; i++) {
+                if (selects[i].value) {
+                    const pId = selects[i].value;
+                    const pNome = selects[i].options[selects[i].selectedIndex].text;
+
+                    if (verificarRestricaoImpedimento(dId, pId, designacaoId)) {
+                        allViolations.push({ 
+                            message: `🚫 Restrição: ${pNome} não pode ser ajudante de ${dNome} em "${desigInfo?.nome}".`, 
+                            type: 'error' 
+                        });
+                        selects[0].classList.add('invalid-selection');
+                        selects[i].classList.add('invalid-selection');
+                    }
+                }
+            }
+        }
+
+        // --- VALIDAÇÕES INDIVIDUAIS ---
+        selects.forEach(select => {
+            if (!select.value) return;
             const personId = select.value;
             const personName = (allPeopleDataMap.get(personId) || {}).nome || 'Desconhecido';
-            let hasRedError = false;
 
+            // Duplicado na página
             if (currentSelections.has(personId)) {
-                console.log(`%c[DUPLICADO DETETADO] A verificar ${personName}...`, 'color: orange; font-weight: bold;');
-                const firstOccurrence = currentSelections.get(personId);
-                const firstSelect = firstOccurrence.selectElement;
-                const currentDesignationId = select.closest('.active-designation-container')?.dataset.designacaoId;
-                const firstDesignationId = firstSelect.closest('.active-designation-container')?.dataset.designacaoId;
-                console.log(`> Designação 1 (anterior): ${firstDesignationId}`);
-                console.log(`> Designação 2 (atual): ${currentDesignationId}`);
-                if (!currentDesignationId || !firstDesignationId || currentDesignationId === firstDesignationId) {
-                    console.error('>> ERRO REGISTADO: Designações inválidas ou idênticas.');
-                    allViolations.push({ message: `${personName} está designado(a) para mais de uma tarefa.`, type: 'error' });
+                const prev = currentSelections.get(personId);
+                const repeticaoOk = (desigInfo?.repeticao?.includes(prev.designacaoId)) || (allDesignations.get(prev.designacaoId)?.repeticao?.includes(designacaoId));
+                if (!repeticaoOk) {
+                    allViolations.push({ message: `⚠️ ${personName} está duplicado nas tarefas desta semana.`, type: 'error' });
                     select.classList.add('invalid-selection');
-                    firstSelect.classList.add('invalid-selection');
-                    hasRedError = true;
-                } else {
-                    const currentDesignationInfo = allDesignations.get(currentDesignationId);
-                    const firstDesignationInfo = allDesignations.get(firstDesignationId);
-                    console.log('> Info da Designação 1 (anterior):', firstDesignationInfo);
-                    console.log('> Info da Designação 2 (atual):', currentDesignationInfo);
-                    const check1 = currentDesignationInfo?.repeticao?.includes(firstDesignationId);
-                    const check2 = firstDesignationInfo?.repeticao?.includes(currentDesignationId);
-                    const isRepetitionAllowed = check1 || check2;
-                    console.log(`> Verificação 1 (Atual permite a Anterior?): ${check1}`);
-                    console.log(`> Verificação 2 (Anterior permite a Atual?): ${check2}`);
-                    console.log(`>> RESULTADO: A repetição é permitida? ${isRepetitionAllowed}`);
-                    if (!isRepetitionAllowed) {
-                        console.error('>> ERRO REGISTADO: A repetição não é permitida pelas regras.');
-                        allViolations.push({ message: `${personName} está designado(a) para mais de uma tarefa.`, type: 'error' });
-                        select.classList.add('invalid-selection');
-                        firstSelect.classList.add('invalid-selection');
-                        hasRedError = true;
-                    } else {
-                        console.log('%c>> AVISO IGNORADO: A regra de repetição permitiu a duplicação.', 'color: green;');
-                    }
+                    prev.element.classList.add('invalid-selection');
                 }
-                console.log('--- Fim da verificação de duplicado ---');
             } else {
-                currentSelections.set(personId, { selectElement: select, name: personName });
+                currentSelections.set(personId, { element: select, designacaoId });
             }
 
-            if (participantsLastWeek.has(personId)) {
-                allViolations.push({ message: `${personName} participou em outra designação na semana anterior.`, type: 'warning' });
-                select.classList.add('warning-selection'); 
-            }
-
-            // ======================================================================== //
-            // ========================= INÍCIO DA ALTERAÇÃO ========================== //
-            // ======================================================================== //
-            if (participantsNextWeek.has(personId)) {
-                // 1. A mensagem foi alterada.
-                // 2. O tipo foi alterado de 'error' para 'warning'.
-                allViolations.push({ message: `${personName} já está designado(a) para outra tarefa na semana seguinte.`, type: 'warning' });
-                // 3. A classe CSS foi alterada de 'invalid-selection' para 'warning-selection'.
-                select.classList.add('warning-selection');
-                // 4. A flag 'hasRedError' foi removida, pois isto é agora um aviso.
-            }
-            // ======================================================================== //
-            // =========================== FIM DA ALTERAÇÃO =========================== //
-            // ======================================================================== //
-
-            if (!hasRedError) {
-                const designacaoId = select.closest('.active-designation-container')?.dataset.designacaoId;
-                if (designacaoId && participationStats.has(designacaoId)) {
-                    const stats = participationStats.get(designacaoId);
-                    const pCount = stats.counts.get(personId) || 0;
-                    if (pCount > stats.average && stats.average > 0) {
-                        allViolations.push({ message: `${personName} fez esta parte ${pCount}x este ano (média: ${stats.average.toFixed(1)}).`, type: 'warning' });
-                        select.classList.add('warning-selection');
-                    }
+            // Ocupado no Histórico (Escola/Ministério)
+            if (ocupadosNoHistorico.has(personId)) {
+                const idAntiga = ocupadosNoHistorico.get(personId);
+                if (desigInfo?.bloqueio?.[idAntiga] !== "Sim") {
+                    const nomeAntiga = allDesignations.get(idAntiga)?.nome || "outra parte";
+                    allViolations.push({ message: `🚫 ${personName} já tem "${nomeAntiga}" no histórico desta semana.`, type: 'error' });
+                    select.classList.add('invalid-selection');
                 }
             }
-        }
+        });
     });
 
-    document.querySelectorAll('#activeDesignationsContainer .active-designation-container').forEach(instance => {
-        const selectedPeople = Array.from(instance.querySelectorAll('.form-select:not(.descricao-input):not(.discurso-search-input)'))
-            .filter(select => select.value)
-            .map(select => ({ id: select.value, name: (allPeopleDataMap.get(select.value) || {}).nome, element: select }));
-        if (selectedPeople.length >= 2) {
-            const pairNames = selectedPeople.map(p => p.name).join(' e ');
-            const ids = selectedPeople.map(p => p.id).sort();
-            const pairKey = ids.join('_');
-            if (recentPairsMap.has(pairKey)) {
-                const history = recentPairsMap.get(pairKey);
-                const lastDate = new Date(history.lastDate);
-                const lastMonthYear = lastDate.getFullYear() * 12 + lastDate.getMonth();
-                const currentMonthYear = new Date().getFullYear() * 12 + new Date().getMonth();
-                if (Math.abs(currentMonthYear - lastMonthYear) <= 1) {
-                    allViolations.push({ message: `${pairNames} trabalharam juntos recentemente.`, type: 'error' });
-                    selectedPeople.forEach(p => p.element.classList.add('invalid-selection'));
-                }
-            }
-        }
-    });
-
+    // 4. Exibição Final
     if (allViolations.length > 0) {
-        const hasErrors = allViolations.some(v => v.type === 'error');
-        alertIcon.classList.toggle('warning-only', !hasErrors);
-        const uniqueViolations = [...new Map(allViolations.map(v => [v.message, v])).values()];
-        uniqueViolations.forEach(violation => {
+        const hasCritical = allViolations.some(v => v.type === 'error');
+        alertIcon.classList.toggle('warning-only', !hasCritical);
+        const uniqueMessages = [...new Map(allViolations.map(v => [v.message, v])).values()];
+        uniqueMessages.forEach(v => {
             const li = document.createElement('li');
-            li.textContent = violation.message;
-            li.classList.add(violation.type === 'warning' ? 'warning-item' : 'error-item');
+            li.textContent = v.message;
+            li.className = v.type === 'warning' ? 'warning-item' : 'error-item';
             validationList.appendChild(li);
         });
         alertContainer.style.display = 'block';
     } else {
         alertContainer.style.display = 'none';
-        document.getElementById('validation-panel').classList.remove('active');
     }
 };
 
@@ -2709,56 +2679,44 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
     return { vaga, candidatos: candidatosComFrequencia };
 }
 
-      function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignmentsMap, designationsMap, nivelBloqueio) {
+     function isCandidatoValido(candidato, vaga, atribuicoesAtuais, preloadedAssignmentsMap, designationsMap, nivelBloqueio) {
     const designacaoAtual = designationsMap.get(vaga.designacaoId);
     if (!designacaoAtual) return false;
 
-    // Obtém uma lista de todas as designações que o candidato já tem, de ambas as fontes.
-    const existingDesignationIds = new Set();
-    
-    // Fonte 1: Designações pré-carregadas do histórico (ex: da parte da "Escola").
+    // 1. Verificação de Duplicação e Regras de Repetição
+    const designacoesQueJaTem = new Set();
     if (preloadedAssignmentsMap.has(candidato.id)) {
-        preloadedAssignmentsMap.get(candidato.id).forEach(id => existingDesignationIds.add(id));
+        preloadedAssignmentsMap.get(candidato.id).forEach(id => designacoesQueJaTem.add(id));
     }
-
-    // Fonte 2: Designações já feitas nesta execução do foguetão.
-    for (const [vagaId, pessoaId] of Object.entries(atribuicoesAtuais)) {
-        if (pessoaId === candidato.id) {
-            const dId = document.getElementById(vagaId).closest('.active-designation-container').dataset.designacaoId;
-            existingDesignationIds.add(dId);
+    for (const [vagaId, pId] of Object.entries(atribuicoesAtuais)) {
+        if (pId === candidato.id) {
+            const card = document.getElementById(vagaId).closest('.active-designation-container');
+            designacoesQueJaTem.add(card.dataset.designacaoId);
         }
     }
 
-    // Se a pessoa não tem nenhuma designação, ela é válida (do ponto de vista de duplicação).
-    if (existingDesignationIds.size === 0) {
-        return true;
+    for (const idExistente of designacoesQueJaTem) {
+        const desigExistente = designationsMap.get(idExistente);
+        const repeticaoOk = (designacaoAtual.repeticao?.includes(idExistente)) || (desigExistente?.repeticao?.includes(vaga.designacaoId));
+        if (!repeticaoOk) return false; 
     }
 
-    // Agora, verifica as regras de bloqueio/repetição para cada designação que a pessoa já tem.
-    for (const existingD_Id of existingDesignationIds) {
-        const designacaoExistente = designationsMap.get(existingD_Id);
-        if (!designacaoExistente) continue; // Pula se a designação não for encontrada.
+    // --- NOVA REGRA: VERIFICAÇÃO DE IMPEDIMENTO DE PRIVILÉGIO NO TURBO ---
+    const selectVaga = document.getElementById(vaga.elementId);
+    if (selectVaga) {
+        const card = selectVaga.closest('.active-designation-container');
+        const allSelects = Array.from(card.querySelectorAll('select.form-select'));
+        const minhaPosicao = allSelects.indexOf(selectVaga);
 
-        // Verifica se a designação atual permite repetir a existente.
-        const repeticaoPermitida = designacaoAtual.repeticao?.includes(existingD_Id) || designacaoExistente.repeticao?.includes(designacaoAtual.id);
-        
-        // Se a repetição é permitida, não precisamos verificar o bloqueio.
-        if (repeticaoPermitida) {
-            continue; // Passa para a próxima designação existente.
-        }
-
-        // Se a repetição não é permitida, verifica as regras de bloqueio.
-        const bloqueioAtual = designacaoAtual.bloqueio?.[existingD_Id];
-        if (bloqueioAtual === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioAtual === 'Moderado')) {
-            return false; // Bloqueio encontrado. Candidato inválido.
-        }
-        const bloqueioOutro = designacaoExistente.bloqueio?.[designacaoAtual.id];
-        if (bloqueioOutro === 'Não' || (nivelBloqueio === 'Moderado' && bloqueioOutro === 'Moderado')) {
-            return false; // Bloqueio encontrado. Candidato inválido.
+        // Se eu sou o ajudante, verifico se posso trabalhar com o dirigente já escolhido
+        if (minhaPosicao > 0) {
+            const dirigenteId = allSelects[0].value || atribuicoesAtuais[allSelects[0].id];
+            if (dirigenteId && verificarRestricaoImpedimento(dirigenteId, candidato.id, vaga.designacaoId)) {
+                return false; // Bloqueia porque o par técnico é proibido por privilégios
+            }
         }
     }
 
-    // Se passou por todas as verificações, o candidato é válido.
     return true;
 }
 
@@ -3686,6 +3644,28 @@ async function saveSpecialEventFast() {
         await db.collection("historico").add(data);
         return true;
     } catch (e) { console.error(e); return false; }
+}
+
+function verificarRestricaoImpedimento(dirigenteId, parceiroId, designacaoId) {
+    const desig = allDesignations.get(designacaoId);
+    // Se a designação não tiver impedimentos configurados, o par é permitido
+    if (!desig || !desig.impedimentos || desig.impedimentos.length === 0) return false;
+
+    const dirigenteData = allPeopleDataMap.get(dirigenteId);
+    const parceiroData = allPeopleDataMap.get(parceiroId);
+
+    if (!dirigenteData || !parceiroData) return false;
+
+    // Concatena todos os privilégios (Congregacionais e Especiais) de cada irmão
+    const privsDirigente = [...(dirigenteData.privilegiosCongregacao || []), ...(dirigenteData.privilegiosEspeciais || [])];
+    const privsParceiro = [...(parceiroData.privilegiosCongregacao || []), ...(parceiroData.privilegiosEspeciais || [])];
+
+    // Verifica se alguma regra de impedimento ("Ancião não faz com Ancião", etc.) é quebrada
+    return desig.impedimentos.some(regra => {
+        const dirigenteViola = privsDirigente.includes(regra.Dirigente);
+        const parceiroViola = privsParceiro.includes(regra.Outro);
+        return dirigenteViola && parceiroViola;
+    });
 }
 
 // ===================================================================
