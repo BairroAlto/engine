@@ -4541,7 +4541,6 @@ document.getElementById('btnSeguinte').addEventListener('click', async function(
                 console.log("[LOG] Usuário confirmou a gravação rápida.");
                 const gravou = await saveSpecialEvent();
                 if (gravou) {
-                    alert("Evento gravado com sucesso!");
                     window.location.reload();
                 }
             } else {
