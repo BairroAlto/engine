@@ -10,8 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
 /* =================================================================== */
-/*  1. ESTILOS GERAIS E LAYOUT (Vindos de criar.html)                  */
-/*  Estes são os estilos base para o corpo, sidebar e conteúdo.      */
+/*  1. ESTILOS GERAIS E LAYOUT                                         */
 /* =================================================================== */
 
 * { 
@@ -77,7 +76,7 @@ body {
     margin-left: 250px; 
     padding: 30px; 
     flex-grow: 1; 
-    width: 100%; /* Ajuste para melhor responsividade */
+    width: 100%; 
 }
 h1 { 
     color: #2c3e50; 
@@ -140,7 +139,7 @@ h1 {
 /*  3. COMPONENTES DA PÁGINA 'CRIAR DESIGNAÇÃO' (Formulário)           */
 /* =================================================================== */
 
-.card { /* Este .card é o container do formulário */
+.card { 
     background: white; 
     padding: 20px; 
     border-radius: 8px; 
@@ -162,7 +161,7 @@ input:checked + .slider:before { transform: translateX(26px); }
 .slider.round { border-radius: 34px; }
 .slider.round:before { border-radius: 50%; }
 
-.btn-criar { /* Estilo base para botões 'Criar', pode ser sobrescrito */
+.btn-criar { 
     background-color: #2c3e50; 
     color: white; 
     padding: 10px 20px; 
@@ -189,7 +188,7 @@ input:checked + .slider:before { transform: translateX(26px); }
 .checkbox-group-horizontal { display: flex; gap: 10px; flex-wrap: wrap; }
 .option-item-horizontal { display: flex; align-items: center; padding: 8px 16px; border-radius: 20px; background-color: #ecf0f1; border: 1px solid #bdc3c7; cursor: pointer; transition: background-color 0.3s; }
 .option-item-horizontal:has(input:checked) { background-color: #3498db; color: white; border-color: #2980b9; }
-.option-item-horizontal input[type="checkbox"], .option-item-horizontal input[type="radio"] { /* Oculta o botão de rádio/checkbox original */ display: none; }
+.option-item-horizontal input[type="checkbox"], .option-item-horizontal input[type="radio"] { display: none; }
 
 .tab-nav { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
 .tab-button { padding: 10px 20px; cursor: pointer; border: none; background-color: transparent; font-size: 16px; color: #7f8c8d; border-bottom: 2px solid transparent; transition: all 0.3s ease; }
@@ -205,46 +204,19 @@ input:checked + .slider:before { transform: translateX(26px); }
 .popup-content { background-color: #ffffff; padding: 30px 50px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: center; color: #2c3e50; font-size: 1.1em; }
 
 /* --- SEÇÕES DE ANEXO --- */
-.anexo-section {
-    background-color: #f2f5f7;
-    padding: 15px;
-    margin-top: 10px;
-    border-radius: 5px;
-}
-.anexo-section h4 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #2c3e50;
-    font-size: 16px;
-}
-.anexo-section .anexo-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-#horarios-anexo-section { border-left: 4px solid #3498db; } /* Cor azul para horários */
-#locais-anexo-section { border-left: 4px solid #f39c12; } /* Cor laranja para locais */
-
-/* =================================================================== */
-/*  4. RESPONSIVIDADE (Mobile)                                         */
-/*  Esta regra aplica-se a TODAS as páginas.                         */
-/* =================================================================== */
+.anexo-section { background-color: #f2f5f7; padding: 15px; margin-top: 10px; border-radius: 5px; }
+.anexo-section h4 { margin-top: 0; margin-bottom: 15px; color: #2c3e50; font-size: 16px; }
+.anexo-section .anexo-container { display: flex; flex-wrap: wrap; gap: 10px; }
+#horarios-anexo-section { border-left: 4px solid #3498db; }
+#locais-anexo-section { border-left: 4px solid #f39c12; }
 
 @media (max-width: 768px) { 
-    .sidebar { 
-        width: 70px; 
-    } 
-    .sidebar .logo h2, .sidebar .nav-item a span { 
-        display: none; 
-    } 
-    .content { 
-        margin-left: 70px; 
-        padding: 15px; /* Reduz o padding em telas menores */
-    } 
+    .sidebar { width: 70px; } 
+    .sidebar .logo h2, .sidebar .nav-item a span { display: none; } 
+    .content { margin-left: 70px; padding: 15px; } 
 }
-/* Cores para os novos itens */
-.checkbox-item:has(input[value="Servo de Circuito"]) { background-color: #d1c4e9; } /* Roxo claro */
-.checkbox-item:has(input[value="Orador Público"]) { background-color: #cfd8dc; }    /* Cinza azulado */
+.checkbox-item:has(input[value="Servo de Circuito"]) { background-color: #d1c4e9; } 
+.checkbox-item:has(input[value="Orador Público"]) { background-color: #cfd8dc; } 
 
     </style>
 </head>
@@ -266,10 +238,34 @@ input:checked + .slider:before { transform: translateX(26px); }
                 <div class="tab-content">
                     <!-- Aba 1: Geral -->
                     <div id="tab-1" class="tab-pane active">
-                        <div class="form-group"><label for="nome-designacao">Nome da Designação</label><input type="text" id="nome-designacao" required></div>
-                        <div class="form-group"><label for="numero-participantes">Número de Participantes</label><select id="numero-participantes"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-                        <div class="form-group"><label for="feito-por">Feito por</label><select id="feito-por" required><option value="Masculino">Apenas Homens</option><option value="Feminino">Apenas Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
-                        <div class="form-group"><label for="preferencia">Preferência</label><select id="preferencia" required><option value="Masculino">Homens</option><option value="Feminino">Mulheres</option><option value="Masculino Feminino">Homens e Mulheres</option></select></div>
+                        <div class="form-group">
+                            <label for="nome-designacao">Nome da Designação</label>
+                            <input type="text" id="nome-designacao" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="numero-participantes">Número de Participantes</label>
+                            <select id="numero-participantes">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="feito-por">Feito por</label>
+                            <select id="feito-por" required>
+                                <option value="Masculino">Apenas Homens</option>
+                                <option value="Feminino">Apenas Mulheres</option>
+                                <option value="Masculino Feminino">Homens e Mulheres</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="preferencia">Preferência</label>
+                            <select id="preferencia" required>
+                                <option value="Masculino">Homens</option>
+                                <option value="Feminino">Mulheres</option>
+                                <option value="Masculino Feminino">Homens e Mulheres</option>
+                            </select>
+                        </div>
                         
                         <div class="form-group">
                             <label>Personalidade (do Dirigente)</label>
@@ -279,7 +275,13 @@ input:checked + .slider:before { transform: translateX(26px); }
                             </div>
                         </div>
 
-                        <div class="form-group switch-group"><label for="status">Desligado/Ligado</label><label class="switch"><input type="checkbox" id="status" checked><span class="slider round"></span></label></div>
+                        <div class="form-group switch-group">
+                            <label for="status">Desligado/Ligado</label>
+                            <label class="switch">
+                                <input type="checkbox" id="status" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
                         
                         <div class="form-navigation">
                             <button type="button" class="btn-nav next-btn" data-next-tab="2">Seguinte</button>
@@ -287,153 +289,202 @@ input:checked + .slider:before { transform: translateX(26px); }
                     </div>
 
                     <!-- Aba 2: Detalhes -->
-             <div id="tab-2" class="tab-pane">
-    <div class="form-group">
-        <label for="quando">Quando?</label>
-        <select id="quando" required>
-            <option value="Semana">Semana</option>
-            <option value="Fim de Semana">Fim de Semana</option>
-            <option value="Semana e Fim de Semana">Semana e Fim de Semana</option>
-        </select>
-    </div>
-    <div class="form-group">
-        <label for="tipo">Tipo</label>
-        <select id="tipo" required>
-            <option value="reuniao">Reunião</option>
-            <option value="pregacao">Pregação</option>
-        </select>
-    </div>
-    <div class="form-group">
-        <label for="parte">Parte</label>
-        <select id="parte" required>
-            <option value="escola">Escola</option>
-            <option value="resto da semana">Resto da Semana</option>
-            <option value="fim de semana">Fim de Semana</option>
-            <option value="tecnicas">Técnicas</option>
-            <option value="pregacao">Pregação</option>
-            <option value="dirigencia saida">Dirigência Saída</option>
-        </select>
-    </div>
+                    <div id="tab-2" class="tab-pane">
+                        <div class="form-group">
+                            <label for="quando">Quando?</label>
+                            <select id="quando" required>
+                                <option value="Semana">Semana</option>
+                                <option value="Fim de Semana">Fim de Semana</option>
+                                <option value="Semana e Fim de Semana">Semana e Fim de Semana</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tipo">Tipo</label>
+                            <select id="tipo" required>
+                                <option value="reuniao">Reunião</option>
+                                <option value="pregacao">Pregação</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="parte">Parte</label>
+                            <select id="parte" required>
+                                <option value="escola">Escola</option>
+                                <option value="resto da semana">Resto da Semana</option>
+                                <option value="fim de semana">Fim de Semana</option>
+                                <option value="tecnicas">Técnicas</option>
+                                <option value="pregacao">Pregação</option>
+                                <option value="dirigencia saida">Dirigência Saída</option>
+                            </select>
+                        </div>
 
-    <!-- SEÇÃO DE HORÁRIOS ANEXADOS -->
-    <div id="horarios-anexo-section" class="anexo-section" style="display: none;">
-        <h4>Anexar Horário <span class="help-text">(Opcional)</span></h4>
-        <div class="anexo-container" id="horarios-container"></div>
-    </div>
-    
-    <!-- SEÇÃO DE LOCAIS ANEXADOS (NOVA) -->
-    <div id="locais-anexo-section" class="anexo-section" style="display: none;">
-        <h4>Anexar Local <span class="help-text">(Opcional)</span></h4>
-        <div class="anexo-container" id="locais-container"></div>
-    </div>
+                        <!-- SEÇÃO DE HORÁRIOS ANEXADOS -->
+                        <div id="horarios-anexo-section" class="anexo-section" style="display: none;">
+                            <h4>Anexar Horário <span class="help-text">(Opcional)</span></h4>
+                            <div class="anexo-container" id="horarios-container"></div>
+                        </div>
+                        
+                        <!-- SEÇÃO DE LOCAIS ANEXADOS -->
+                        <div id="locais-anexo-section" class="anexo-section" style="display: none;">
+                            <h4>Anexar Local <span class="help-text">(Opcional)</span></h4>
+                            <div class="anexo-container" id="locais-container"></div>
+                        </div>
 
-    <div class="form-group" style="margin-top: 20px;">
-        <label for="anexo">Anexo <span class="help-text">(Anexar a um Cabeçalho para aparecer na Escala)</span></label>
-        <select id="anexo"><option value="">Nenhum</option></select>
-    </div>
-    <div class="form-group">
-        <label for="descricao">Descrição <span class="help-text">(Necessidades Locais, Orador, etc...)</span></label>
-        <select id="descricao">
-            <option value="nao">Não</option>
-            <option value="sim">Sim</option>
-        </select>
-    </div>
-    <div class="form-group" id="anexado-discursos-group" style="display: none;">
-        <label for="anexado-discursos">Anexado a Discursos</label>
-        <select id="anexado-discursos">
-            <option value="nao" selected>Não</option>
-            <option value="sim">Sim</option>
-        </select>
-    </div>
-    <div class="form-group">
-        <label for="emoji">Emoji (Opcional)</label>
-        <input type="text" id="emoji" maxlength="2">
-    </div>
+                        <!-- SEÇÃO DE IMPEDIMENTOS (NOVA) -->
+                        <div id="impedimentos-section" class="anexo-section" style="display: none; border-left: 4px solid #e74c3c;">
+                            <h4>Impedimentos <span class="help-text">(Restrições de Parelha)</span></h4>
+                            <div id="impedimentos-container">
+                                <!-- Linhas dinâmicas entram aqui via JS -->
+                            </div>
+                            <button type="button" id="btn-add-impedimento" class="btn-nav" style="background-color: #2ecc71; padding: 5px 15px; margin-top: 10px; font-size: 14px;">
+                                <i class="fas fa-plus"></i> Adicionar Restrição
+                            </button>
+                        </div>
 
-    <div class="form-navigation">
-        <button type="button" class="btn-nav prev prev-btn" data-prev-tab="1">Anterior</button>
-        <button type="button" class="btn-nav next-btn" data-next-tab="3">Seguinte</button>
-    </div>
-</div>
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label for="anexo">Anexo <span class="help-text">(Anexar a um Cabeçalho para aparecer na Escala)</span></label>
+                            <select id="anexo"><option value="">Nenhum</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="descricao">Descrição <span class="help-text">(Necessidades Locais, Orador, etc...)</span></label>
+                            <select id="descricao">
+                                <option value="nao">Não</option>
+                                <option value="sim">Sim</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="anexado-discursos-group" style="display: none;">
+                            <label for="anexado-discursos">Anexado a Discursos</label>
+                            <select id="anexado-discursos">
+                                <option value="nao" selected>Não</option>
+                                <option value="sim">Sim</option>
+                            </select>
+                        </div>
+
+                        <div class="form-navigation">
+                            <button type="button" class="btn-nav prev prev-btn" data-prev-tab="1">Anterior</button>
+                            <button type="button" class="btn-nav next-btn" data-next-tab="3">Seguinte</button>
+                        </div>
+                    </div>
 
                     <!-- Aba 3: Participantes -->
-                 <div id="tab-3" class="tab-pane">
-    <div class="form-group">
-        <label>Quem faz?</label>
-        <div class="checkbox-group">
-            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label>
-            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label>
-            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label>
-            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label>
-            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label>
-            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label>
-            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Estudante">Estudante</label>
-            
-            <!-- GAP/ESPAÇO -->
-            <div style="height: 15px;"></div> 
-            
-            <!-- NOVAS OPÇÕES -->
-            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo de Circuito">Servo de Circuito</label>
-            <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Orador Público">Orador Público</label>
-        </div>
-    </div>
-    
-    <div class="form-navigation">
-        <button type="button" class="btn-nav prev prev-btn" data-prev-tab="2">Anterior</button>
-        <button type="submit" class="btn-criar" style="width: auto;">Criar Designação</button>
-    </div>
-</div>
+                    <div id="tab-3" class="tab-pane">
+                        <div class="form-group">
+                            <label>Quem faz?</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Ancião">Ancião</label>
+                                <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo Ministerial">Servo Ministerial</label>
+                                <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Regular">Pioneiro Regular</label>
+                                <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Pioneiro Auxiliar">Pioneiro Auxiliar</label>
+                                <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador">Publicador</label>
+                                <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Publicador não Batizado">Publicador não Batizado</label>
+                                <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Estudante">Estudante</label>
+                                
+                                <div style="height: 15px;"></div> 
+                                
+                                <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Servo de Circuito">Servo de Circuito</label>
+                                <label class="checkbox-item"><input type="checkbox" name="quem_faz" value="Orador Público">Orador Público</label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-navigation">
+                            <button type="button" class="btn-nav prev prev-btn" data-prev-tab="2">Anterior</button>
+                            <button type="submit" class="btn-criar" style="width: auto;">Criar Designação</button>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
+
+        <!-- Popup de Sucesso -->
         <div id="custom-popup" class="popup-container">
-    <div class="popup-content">
-        <p>Designação criada! Redirecionando para a página de ordenação...</p>
-    </div>
-</div>
+            <div class="popup-content">
+                <p>Designação criada! Redirecionando para a página de ordenação...</p>
+            </div>
+        </div>
     </main>
 
-    <script src="firebase-config.js"></script>
+  <script src="firebase-config.js"></script>
     <script src="main.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
             if (typeof db === 'undefined') { alert("Erro de configuração do banco de dados."); return; }
 
             // --- Seletores de Elementos ---
+            const form = document.getElementById('criar-designacao-form');
             const tabButtons = document.querySelectorAll('.tab-button');
             const tabPanes = document.querySelectorAll('.tab-pane');
+            const parteSelect = document.getElementById('parte');
+            const numParticipantesSelect = document.getElementById('numero-participantes');
             const descricaoSelect = document.getElementById('descricao');
             const anexadoDiscursosGroup = document.getElementById('anexado-discursos-group');
-            const parteSelect = document.getElementById('parte');
-            const horariosSection = document.getElementById('horarios-anexo-section');
-            const locaisSection = document.getElementById('locais-anexo-section'); // Novo seletor
-            const form = document.getElementById('criar-designacao-form');
             
-            // Flags para carregar dados apenas uma vez
-            let horariosCarregados = false;
-            let locaisCarregados = false; // Novo flag
+            // Seções Condicionais
+            const horariosSection = document.getElementById('horarios-anexo-section');
+            const locaisSection = document.getElementById('locais-anexo-section');
+            const impedimentosSection = document.getElementById('impedimentos-section');
+            const impedimentosContainer = document.getElementById('impedimentos-container');
+            const btnAddImpedimento = document.getElementById('btn-add-impedimento');
 
-            // --- Lógica das Abas ---
+            // Dados Estáticos
+            const opcoesPrivilegio = ["Ancião", "Servo Ministerial", "Pioneiro Regular", "Pioneiro Auxiliar", "Publicador", "Publicador não Batizado", "Estudante", "Servo de Circuito", "Orador Público"];
+            let horariosCarregados = false;
+            let locaisCarregados = false;
+
+            // ==========================================
+            // 1. LÓGICA DE NAVEGAÇÃO (ABAS)
+            // ==========================================
             function showTab(tabNumber) {
                 tabPanes.forEach(pane => pane.classList.remove('active'));
                 tabButtons.forEach(button => button.classList.remove('active'));
                 document.getElementById(`tab-${tabNumber}`).classList.add('active');
                 document.querySelector(`.tab-button[data-tab="${tabNumber}"]`).classList.add('active');
             }
+
             tabButtons.forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-tab'))));
             document.querySelectorAll('.next-btn').forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-next-tab'))));
             document.querySelectorAll('.prev-btn').forEach(button => button.addEventListener('click', () => showTab(button.getAttribute('data-prev-tab'))));
 
-            // Lógica para mostrar/esconder 'Anexado a Discursos'
-            descricaoSelect.addEventListener('change', function() {
-                anexadoDiscursosGroup.style.display = (this.value === 'sim') ? 'block' : 'none';
-                if (this.value !== 'sim') { document.getElementById('anexado-discursos').value = 'nao'; }
-            });
+            // ==========================================
+            // 2. LÓGICA DE IMPEDIMENTOS (RESTRIÇÕES)
+            // ==========================================
+            function verificarExibicaoImpedimentos() {
+                const num = parseInt(numParticipantesSelect.value);
+                
+                // MUDANÇA AQUI: Agora apenas checa o número de participantes
+                if (num > 1) {
+                    impedimentosSection.style.display = 'block';
+                } else {
+                    impedimentosSection.style.display = 'none';
+                    impedimentosContainer.innerHTML = '';
+                }
+            }
 
-            // --- Funções de Carregamento de Dados ---
+            function adicionarLinhaImpedimento() {
+                const div = document.createElement('div');
+                div.className = 'impedimento-row';
+                div.style = "display: flex; align-items: center; gap: 8px; background: #f9f9f9; padding: 8px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #ddd; flex-wrap: wrap;";
+                
+                let optionsHTML = opcoesPrivilegio.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+
+                div.innerHTML = `
+                    <span style="font-size: 12px; font-weight: bold;">Quando</span>
+                    <select class="sel-dirigente" style="width: auto; flex: 1; padding: 4px;">${optionsHTML}</select>
+                    <span style="font-size: 12px; font-weight: bold;">faz de Dirigente,</span>
+                    <select class="sel-outro" style="width: auto; flex: 1; padding: 4px;">${optionsHTML}</select>
+                    <span style="font-size: 12px; font-weight: bold;">não pode fazer parelha.</span>
+                    <button type="button" class="btn-remove" style="background: none; border: none; color: #e74c3c; cursor: pointer; padding: 5px;"><i class="fas fa-trash"></i></button>
+                `;
+
+                div.querySelector('.btn-remove').addEventListener('click', () => div.remove());
+                impedimentosContainer.appendChild(div);
+            }
+
+            btnAddImpedimento.addEventListener('click', adicionarLinhaImpedimento);
+
+            // ==========================================
+            // 3. CARREGAMENTO DE DADOS (FIREBASE)
+            // ==========================================
             async function carregarAnexos() {
                 const anexoSelect = document.getElementById('anexo');
-                anexoSelect.innerHTML = '<option value="">Selecione um anexo</option>';
                 try {
                     const snapshot = await db.collection('cabecalhos').get();
                     snapshot.forEach(doc => {
@@ -442,149 +493,137 @@ input:checked + .slider:before { transform: translateX(26px); }
                         option.textContent = doc.data().nome;
                         anexoSelect.appendChild(option);
                     });
-                } catch (error) { console.error("Erro ao carregar anexos: ", error); }
+                } catch (error) { console.error("Erro anexos:", error); }
             }
-
-            function capitalize(string) { return string.charAt(0).toUpperCase() + string.slice(1); }
 
             async function carregarHorariosPregacao() {
                 if (horariosCarregados) return;
                 const container = document.getElementById('horarios-container');
-                container.innerHTML = 'Carregando horários...';
                 try {
                     const snapshot = await db.collection('horarios').where('tipo', '==', 'pregacao').get();
-                    if (snapshot.empty) { container.innerHTML = 'Nenhum horário de pregação encontrado.'; return; }
-                    
-                    let horariosHTML = '';
+                    let html = '';
                     snapshot.forEach(doc => {
                         const data = doc.data();
-                        if (data['dias-semana-horarios']) {
-                            for (const dia in data['dias-semana-horarios']) {
-                                data['dias-semana-horarios'][dia].forEach(hora => {
-                                    const valor = `${capitalize(dia)} ${hora}`;
-                                    horariosHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}">${valor}</label>`;
+                        const processarDias = (dias, isWeekend) => {
+                            for (const dia in dias) {
+                                let nomeDia = isWeekend && dia === 'sabado' ? 'Sábado' : dia.charAt(0).toUpperCase() + dia.slice(1);
+                                dias[dia].forEach(hora => {
+                                    const valor = `${nomeDia} ${hora}`;
+                                    html += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}">${valor}</label>`;
                                 });
                             }
-                        }
-                        if (data['dias-fimdesemana-horarios']) {
-                            for (const dia in data['dias-fimdesemana-horarios']) {
-                                let diaF = dia === 'sabado' ? 'Sábado' : capitalize(dia);
-                                data['dias-fimdesemana-horarios'][dia].forEach(hora => {
-                                    const valor = `${diaF} ${hora}`;
-                                    horariosHTML += `<label class="option-item-horizontal"><input type="radio" name="horario_anexado" value="${valor}">${valor}</label>`;
-                                });
-                            }
-                        }
+                        };
+                        if (data['dias-semana-horarios']) processarDias(data['dias-semana-horarios'], false);
+                        if (data['dias-fimdesemana-horarios']) processarDias(data['dias-fimdesemana-horarios'], true);
                     });
-                    container.innerHTML = horariosHTML;
+                    container.innerHTML = html || 'Nenhum horário disponível.';
                     horariosCarregados = true;
-                } catch (error) { console.error("Erro ao carregar horários: ", error); container.innerHTML = 'Erro ao carregar horários.'; }
+                } catch (e) { console.error(e); }
             }
-            
-            // --- NOVA FUNÇÃO PARA CARREGAR LOCAIS ---
+
             async function carregarLocais() {
                 if (locaisCarregados) return;
                 const container = document.getElementById('locais-container');
-                container.innerHTML = 'Carregando locais...';
                 try {
                     const snapshot = await db.collection('locais').where('tag', '==', 'Dirigência Saída').get();
-                    if (snapshot.empty) {
-                        container.innerHTML = 'Nenhum local com a tag "Dirigência Saída" foi encontrado.';
-                        return;
-                    }
-                    let locaisHTML = '';
+                    let html = '';
                     snapshot.forEach(doc => {
-                        const valor = doc.data().nome;
-                        locaisHTML += `<label class="option-item-horizontal"><input type="radio" name="local_anexado" value="${valor}">${valor}</label>`;
+                        const nome = doc.data().nome;
+                        html += `<label class="option-item-horizontal"><input type="radio" name="local_anexado" value="${nome}">${nome}</label>`;
                     });
-                    container.innerHTML = locaisHTML;
+                    container.innerHTML = html || 'Nenhum local disponível.';
                     locaisCarregados = true;
-                } catch (error) { console.error("Erro ao carregar locais: ", error); container.innerHTML = 'Erro ao carregar locais.'; }
+                } catch (e) { console.error(e); }
             }
 
-            // --- Event Listener para o campo "Parte" ---
+            // ==========================================
+            // 4. LISTENERS DE INTERFACE
+            // ==========================================
             parteSelect.addEventListener('change', function() {
                 if (this.value === 'dirigencia saida') {
                     horariosSection.style.display = 'block';
-                    locaisSection.style.display = 'block'; // Mostra também a seção de locais
+                    locaisSection.style.display = 'block';
                     carregarHorariosPregacao();
-                    carregarLocais(); // Chama a nova função para carregar locais
+                    carregarLocais();
                 } else {
                     horariosSection.style.display = 'none';
-                    locaisSection.style.display = 'none'; // Esconde ambas as seções
+                    locaisSection.style.display = 'none';
                 }
             });
 
-            // Carregamento inicial de dados
-            await carregarAnexos();
+            numParticipantesSelect.addEventListener('change', verificarExibicaoImpedimentos);
 
-            // --- Submissão do Formulário ---
-           form.addEventListener('submit', async function(e) {
+            descricaoSelect.addEventListener('change', function() {
+                anexadoDiscursosGroup.style.display = (this.value === 'sim') ? 'block' : 'none';
+            });
+
+            // ==========================================
+            // 5. SUBMISSÃO FINAL
+            // ==========================================
+            form.addEventListener('submit', async function(e) {
                 e.preventDefault();
+
                 if (!document.querySelector('input[name="quem_faz"]:checked')) {
-                    alert('O campo "Quem faz?" é obrigatório. Por favor, selecione pelo menos uma opção.');
+                    alert('Selecione pelo menos um participante na Aba 3.');
                     showTab(3);
                     return;
                 }
-                
-                const personalidadeSel = document.querySelector('input[name="personalidade"]:checked');
-                const horarioAnexadoSel = document.querySelector('input[name="horario_anexado"]:checked');
-                const localAnexadoSel = document.querySelector('input[name="local_anexado"]:checked'); // Pega o local selecionado
-const valorHorarioCompleto = horarioAnexadoSel ? horarioAnexadoSel.value : "";
 
-// NOVO: Prepara as variáveis para o dia e a hora
-let diaAnexado = "";
-let horaAnexada = "";
+                const horarioSel = document.querySelector('input[name="horario_anexado"]:checked');
+                const valorHorario = horarioSel ? horarioSel.value : "";
+                let dia = "", hora = "";
+                if (valorHorario) {
+                    const idx = valorHorario.lastIndexOf(' ');
+                    dia = valorHorario.substring(0, idx);
+                    hora = valorHorario.substring(idx + 1);
+                }
 
-// NOVO: Verifica se um horário foi realmente selecionado antes de tentar dividir
-if (valorHorarioCompleto) {
-    const ultimoEspaco = valorHorarioCompleto.lastIndexOf(' ');
-    if (ultimoEspaco !== -1) {
-        // Pega o texto antes do último espaço (ex: "Sábado" ou "Terça-feira")
-        diaAnexado = valorHorarioCompleto.substring(0, ultimoEspaco); 
-        // Pega o texto depois do último espaço (ex: "09:30")
-        horaAnexada = valorHorarioCompleto.substring(ultimoEspaco + 1);
-    }
-}
-
+                const impedimentos = [];
+                if (impedimentosSection.style.display === 'block') {
+                    document.querySelectorAll('.impedimento-row').forEach(row => {
+                        impedimentos.push({
+                            Dirigente: row.querySelector('.sel-dirigente').value,
+                            Outro: row.querySelector('.sel-outro').value
+                        });
+                    });
+                }
 
                 const designacao = {
                     nome: document.getElementById('nome-designacao').value,
-    numeroParticipantes: parseInt(document.getElementById('numero-participantes').value),
-    feitoPor: document.getElementById('feito-por').value,
-    preferencia: document.getElementById('preferencia').value,
-    personalidade: personalidadeSel ? personalidadeSel.value : "",
-    quando: document.getElementById('quando').value,
-    tipo: document.getElementById('tipo').value,
-    parte: document.getElementById('parte').value,
-    horarioAnexado: valorHorarioCompleto, // Mantém o campo original para referência
-    localAnexado: localAnexadoSel ? localAnexadoSel.value : "",
-    dia: diaAnexado,     // NOVO CAMPO
-    hora: horaAnexada,   // NOVO CAMPO
-    anexo: document.getElementById('anexo').value,
-    descricao: document.getElementById('descricao').value,
-    anexadoDiscursos: document.getElementById('anexado-discursos').value,
-    emoji: document.getElementById('emoji').value,
-    status: document.getElementById('status').checked,
-    quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
-    dataCriacao: new Date()
+                    numeroParticipantes: parseInt(numParticipantesSelect.value),
+                    feitoPor: document.getElementById('feito-por').value,
+                    preferencia: document.getElementById('preferencia').value,
+                    personalidade: document.querySelector('input[name="personalidade"]:checked')?.value || "",
+                    quando: document.getElementById('quando').value,
+                    tipo: document.getElementById('tipo').value,
+                    parte: parteSelect.value,
+                    horarioAnexado: valorHorario,
+                    localAnexado: document.querySelector('input[name="local_anexado"]:checked')?.value || "",
+                    dia: dia,
+                    hora: hora,
+                    anexo: document.getElementById('anexo').value,
+                    descricao: descricaoSelect.value,
+                    anexadoDiscursos: document.getElementById('anexado-discursos').value,
+                    status: document.getElementById('status').checked,
+                    quemFaz: Array.from(document.querySelectorAll('input[name="quem_faz"]:checked')).map(cb => cb.value),
+                    impedimentos: impedimentos,
+                    dataCriacao: new Date()
                 };
 
-                function showPopupAndRedirect(url) {
+                try {
+                    const docRef = await db.collection('designacoes').add(designacao);
                     const popup = document.getElementById('custom-popup');
                     popup.style.display = 'flex';
                     setTimeout(() => { popup.style.opacity = '1'; }, 10);
-                    setTimeout(() => { window.location.href = url; }, 1000);
-                }
-
-                try {
-                    const newDocRef = await db.collection('designacoes').add(designacao);
-                    showPopupAndRedirect(`gerenciar-ordem.html?id=${newDocRef.id}`);
+                    setTimeout(() => { window.location.href = `gerenciar-ordem.html?id=${docRef.id}`; }, 1200);
                 } catch (error) {
-                    console.error('Erro ao criar designação:', error);
-                    alert('Erro ao salvar a designação.');
+                    console.error("Erro ao salvar:", error);
+                    alert("Erro ao salvar a designação.");
                 }
             });
+
+            // Inicialização
+            await carregarAnexos();
         });
     </script>
 </body>
