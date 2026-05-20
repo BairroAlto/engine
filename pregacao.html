@@ -1089,46 +1089,101 @@ function suggestPersonForEdit(index) {
 
     const anoFiltro = parseInt(document.getElementById('filter-ano').value);
     const mesFiltro = document.getElementById('filter-mes').value;
+    
+    // Obter a data da designação atual para a "Regra de Ouro" (Semana anterior/seguinte)
+    const dataExtra = document.getElementById('edit-extra-data').value;
+    let dataReferencia = dataExtra ? new Date(dataExtra + "T12:00:00") : null;
 
-    // 1. IDs de quem já trabalhou neste mês
-    const idsEscaladosNoMes = new Set();
-    cacheHistoricoPregacao.forEach(reg => {
+    // 1. MAPEAMENTO TOTAL: Quem já trabalhou neste mês em QUALQUER pregação?
+    const idsTrabalharamNoMes = new Set();
+    const idsTrabalharamSemanasAdjacentes = new Set();
+
+    // Função auxiliar para verificar conflitos em qualquer entrada de histórico
+    const verificarConflitos = (reg) => {
         const mesReg = typeof reg.mes === 'string' ? reg.mes : monthMap[reg.mes];
-        if (reg.ano === anoFiltro && mesReg === mesFiltro) {
-            if (reg.Pessoa1?.id) idsEscaladosNoMes.add(reg.Pessoa1.id);
-            if (reg.Pessoa2?.id) idsEscaladosNoMes.add(reg.Pessoa2.id);
-            if (reg.Pessoa3?.id) idsEscaladosNoMes.add(reg.Pessoa3.id);
+        const eMesmoMes = (reg.ano === anoFiltro && mesReg === mesFiltro);
+        
+        // Extrair IDs de participantes (seja campo ou público)
+        let idsNesteRegisto = [];
+        if (reg.designacoes) { // Formato Serviço de Campo
+            reg.designacoes.forEach(d => {
+                if (d.participantes?.dirigente) idsNesteRegisto.push(d.participantes.dirigente);
+                if (d.participantes?.participante) idsNesteRegisto.push(d.participantes.participante);
+            });
+        } else { // Formato Testemunho Público
+            if (reg.Pessoa1?.id) idsNesteRegisto.push(reg.Pessoa1.id);
+            if (reg.Pessoa2?.id) idsNesteRegisto.push(reg.Pessoa2.id);
+            if (reg.Pessoa3?.id) idsNesteRegisto.push(reg.Pessoa3.id);
         }
-    });
 
-    // 2. Género alvo
+        idsNesteRegisto.forEach(id => {
+            // Regra do Mês
+            if (eMesmoMes) idsTrabalharamNoMes.add(id);
+
+            // Regra de Ouro (7 dias antes ou depois)
+            if (dataReferencia && reg.data) {
+                const dataReg = new Date(reg.data + "T12:00:00");
+                const diffDias = Math.abs((dataReg - dataReferencia) / (1000 * 60 * 60 * 24));
+                if (diffDias > 0 && diffDias <= 7) {
+                    idsTrabalharamSemanasAdjacentes.add(id);
+                }
+            }
+        });
+    };
+
+    // Executar verificação nos dois bancos de dados (caches)
+    cacheHistorico.forEach(verificarConflitos);
+    cacheHistoricoPregacao.forEach(verificarConflitos);
+
+    // 2. Género alvo (Consistência de grupo)
     let targetGender = null;
     selectedInPopup.forEach(id => {
         const p = fullPeopleCache.find(x => x.id === id);
         if (p) targetGender = p.genero;
     });
 
-    // 3. Filtrar
+    // 3. FILTRAGEM HIERÁRQUICA
+    
+    // Nível 1: Candidatos "Perfeitos" (Aptos, Género OK, Semanas OK, Não trabalhou no mês)
     let candidates = fullPeopleCache.filter(p => {
-        if (!p.fazDesignacoesPregacao) return false;
-        if (selectedInPopup.includes(p.id)) return false; // Já no grupo atual
-        if (idsEscaladosNoMes.has(p.id)) return false;   // Já trabalhou no mês
-        if (targetGender && p.genero !== targetGender) return false; // Género diferente
+        if (!p.fazDesignacoesPregacao || !p.ativo) return false;
+        if (selectedInPopup.includes(p.id)) return false;
+        if (targetGender && p.genero !== targetGender) return false;
+        if (idsTrabalharamSemanasAdjacentes.has(p.id)) return false;
+        if (idsTrabalharamNoMes.has(p.id)) return false;
         return true;
     });
 
+    // Nível 2: Se não houver perfeitos, aceita quem já trabalhou no mês, mas mantém a Regra de Ouro
     if (candidates.length === 0) {
-        alert("Sem pessoas disponíveis (ou todas já trabalharam este mês).");
+        console.log("Sem candidatos 'limpos', relaxando regra do mês...");
+        candidates = fullPeopleCache.filter(p => {
+            if (!p.fazDesignacoesPregacao || !p.ativo) return false;
+            if (selectedInPopup.includes(p.id)) return false;
+            if (targetGender && p.genero !== targetGender) return false;
+            if (idsTrabalharamSemanasAdjacentes.has(p.id)) return false;
+            return true;
+        });
+    }
+
+    // 4. Seleção Final
+    if (candidates.length === 0) {
+        alert("CRÍTICO: Não foi encontrado nenhum participante disponível que não tenha trabalhado na semana anterior/seguinte.");
         return;
     }
 
+    // Escolhe um candidato aleatório do melhor nível encontrado
     const randomP = candidates[Math.floor(Math.random() * candidates.length)];
-    document.getElementById(`select-edit-p${index}`).value = randomP.id;
+    const targetSelect = document.getElementById(`select-edit-p${index}`);
+    targetSelect.value = randomP.id;
     
     // Feedback visual
-    const sel = document.getElementById(`select-edit-p${index}`);
-    sel.style.borderColor = "#2ecc71";
-    setTimeout(() => sel.style.borderColor = "#444", 800);
+    targetSelect.style.borderColor = "#2ecc71";
+    targetSelect.style.boxShadow = "0 0 10px rgba(46, 204, 113, 0.5)";
+    setTimeout(() => {
+        targetSelect.style.borderColor = "#444";
+        targetSelect.style.boxShadow = "none";
+    }, 1000);
 }
 
 
@@ -1148,7 +1203,9 @@ document.getElementById('btn-cancel-delete').onclick = () => {
     document.getElementById('confirm-delete-overlay').style.display = 'none';
 };
 
-
+document.getElementById('close-popup').onclick = function() {
+    document.getElementById('edit-popup-overlay').style.display = 'none';
+};
 
     </script>
 </body>
