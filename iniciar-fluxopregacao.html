@@ -2810,13 +2810,18 @@ async function findSharedCandidatesForGroup(group, peopleMap, historicoData, dat
         });
         score += (participacoesAno * 10);
 
-        if (!relaxRules) {
-            // Penalização por já ter feito no mês (Peso 100)
-            const fezEsteMes = historicoData.some(h => h.mes === mes && h.designacoes?.some(d => Object.values(d.participantes).includes(candidato.id)));
-            if(fezEsteMes) {
-                score += 100;
-                console.log(`[INFO] ${candidato.nomePessoa} tem penalização por já ter participado este mês.`);
-            }
+       if (!relaxRules) {
+    // REGRA: Evitar repetição no mesmo mês para QUALQUER designação de pregação
+    const fezPregaçãoEsteMes = historicoData.some(h => 
+        h.mes === mes && 
+        h.oque === "pregacao" && 
+        h.designacoes?.some(d => Object.values(d.participantes).includes(candidato.id))
+    );
+    if (fezPregaçãoEsteMes) {
+        score += 1000; // Penalização pesada: coloca o participante no fim da fila do mês
+        console.log(`[INFO] ${candidato.nomePessoa} já participou na pregação este mês. Score penalizado.`);
+    }
+
         } else {
             // Em modo relaxado, quem trabalhou na semana passada leva uma penalização GIGANTE 
             // para garantir que se aparecer alguém "limpo" (que talvez tenha falhado o idioma mas o sistema relaxou), ele passe à frente.
