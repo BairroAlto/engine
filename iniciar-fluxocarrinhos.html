@@ -9,6 +9,7 @@
     <!-- Links para Ícones e Firebase -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <!-- SCRIPTS CORRIGIDOS PARA GERAR PDF (na ordem correta) -->
@@ -312,6 +313,36 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        let currentPortalIdPromise = null;
+
+        function getCurrentPortalId() {
+            if (currentPortalIdPromise) return currentPortalIdPromise;
+
+            currentPortalIdPromise = new Promise((resolve, reject) => {
+                firebase.auth().onAuthStateChanged(async (user) => {
+                    if (!user) {
+                        reject(new Error('Utilizador sem sessão ativa.'));
+                        return;
+                    }
+
+                    try {
+                        const userDoc = await db.collection('users').doc(user.uid).get();
+                        const portalId = userDoc.data()?.congregacao;
+
+                        if (!portalId) {
+                            reject(new Error('Congregação do utilizador não encontrada.'));
+                            return;
+                        }
+
+                        resolve(portalId);
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            });
+
+            return currentPortalIdPromise;
+        }
     
        
             const yearSelect = document.getElementById('year-select');
@@ -1148,6 +1179,17 @@ scheduleContainer.addEventListener('change', (event) => {
     
  async function handleSaveClick() { 
     loader.style.display = 'block';
+    let portalId;
+
+    try {
+        portalId = await getCurrentPortalId();
+    } catch (error) {
+        console.error("Erro ao obter portal:", error);
+        alert('Sessão expirada ou congregação não encontrada.');
+        loader.style.display = 'none';
+        return;
+    }
+
     const batch = db.batch();
 
     const anoParaSalvar = parseInt(yearSelect.value, 10);
@@ -1177,6 +1219,7 @@ scheduleContainer.addEventListener('change', (event) => {
                     oque: "pregacao",
                     tipo: "pregacao",
                     parte: "testemunho publico",
+                    portal: portalId,
                     local: card.querySelector('.location-input').value || '',
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     ano: anoParaSalvar,
@@ -1204,6 +1247,7 @@ scheduleContainer.addEventListener('change', (event) => {
                 oque: "pregacao",
                 tipo: "pregacao",
                 parte: "testemunho publico",
+                portal: portalId,
                 local: "N/A (Bloqueado)",
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 ano: anoParaSalvar,
@@ -1229,6 +1273,17 @@ scheduleContainer.addEventListener('change', (event) => {
     
  async function handleUpdateClick() {
     loader.style.display = 'block';
+    let portalId;
+
+    try {
+        portalId = await getCurrentPortalId();
+    } catch (error) {
+        console.error("Erro ao obter portal:", error);
+        alert('Sessão expirada ou congregação não encontrada.');
+        loader.style.display = 'none';
+        return;
+    }
+
     const batch = db.batch();
     const visibleDocIds = new Set();
     const salaAtual = document.getElementById('sala-select').value;
@@ -1255,6 +1310,7 @@ scheduleContainer.addEventListener('change', (event) => {
                     oque: "pregacao",
                     tipo: "pregacao",
                     parte: "testemunho publico",
+                    portal: portalId,
                     local: card.querySelector('.location-input').value || '',
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 };
@@ -1290,6 +1346,7 @@ scheduleContainer.addEventListener('change', (event) => {
                 oque: "pregacao",
                 tipo: "pregacao",
                 parte: "testemunho publico",
+                portal: portalId,
                 ano: loadedScheduleContext.year,
                 mes: loadedScheduleContext.month,
                 grupo: 0
